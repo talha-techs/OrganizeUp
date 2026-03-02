@@ -6,6 +6,7 @@ const {
   createBook,
   updateBook,
   deleteBook,
+  removeVideoFromBook,
   servePdf,
   serveImage,
   updateVideoProgress,
@@ -61,5 +62,6 @@ router.put(
   updateBook,
 );
 router.delete("/:id", protect, deleteBook);
+router.delete("/:id/videos/:videoId", protect, removeVideoFromBook);
 
 module.exports = router;

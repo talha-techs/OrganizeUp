@@ -3,9 +3,14 @@ import api from "../../utils/api";
 
 export const fetchCourses = createAsyncThunk(
   "courses/fetchCourses",
-  async (categoryId, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const params = categoryId ? { category: categoryId } : {};
+      const params = {};
+      if (typeof arg === "string") params.category = arg;
+      else if (arg && typeof arg === "object") {
+        if (arg.categoryId) params.category = arg.categoryId;
+        if (arg.mine) params.mine = "true";
+      }
       const { data } = await api.get("/courses", { params });
       return data;
     } catch (error) {

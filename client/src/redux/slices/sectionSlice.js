@@ -18,9 +18,10 @@ export const scanDriveUniversal = createAsyncThunk(
 
 export const fetchSections = createAsyncThunk(
   "sections/fetchSections",
-  async (_, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const { data } = await api.get("/sections");
+      const params = arg?.mine ? { mine: "true" } : {};
+      const { data } = await api.get("/sections", { params });
       return data;
     } catch (error) {
       return rejectWithValue(

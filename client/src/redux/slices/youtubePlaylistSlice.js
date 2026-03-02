@@ -3,9 +3,10 @@ import api from "../../utils/api";
 
 export const fetchPlaylists = createAsyncThunk(
   "playlists/fetchPlaylists",
-  async (_, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const { data } = await api.get("/youtube-playlists");
+      const params = arg?.mine ? { mine: "true" } : {};
+      const { data } = await api.get("/youtube-playlists", { params });
       return data;
     } catch (error) {
       return rejectWithValue(

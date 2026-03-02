@@ -3,9 +3,10 @@ import api from "../../utils/api";
 
 export const fetchTools = createAsyncThunk(
   "tools/fetchTools",
-  async (_, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const { data } = await api.get("/tools");
+      const params = arg?.mine ? { mine: "true" } : {};
+      const { data } = await api.get("/tools", { params });
       return data;
     } catch (error) {
       return rejectWithValue(

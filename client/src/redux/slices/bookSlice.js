@@ -3,9 +3,14 @@ import api from "../../utils/api";
 
 export const fetchBooks = createAsyncThunk(
   "books/fetchBooks",
-  async (type, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const params = type ? { type } : {};
+      const params = {};
+      if (typeof arg === "string") params.type = arg;
+      else if (arg && typeof arg === "object") {
+        if (arg.type) params.type = arg.type;
+        if (arg.mine) params.mine = "true";
+      }
       const { data } = await api.get("/books", { params });
       return data;
     } catch (error) {
@@ -71,6 +76,20 @@ export const deleteBook = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to delete book",
+      );
+    }
+  },
+);
+
+export const removeVideoFromBook = createAsyncThunk(
+  "books/removeVideo",
+  async ({ bookId, videoId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(`/books/${bookId}/videos/${videoId}`);
+      return { bookId, videoId, book: data.book };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to remove video",
       );
     }
   },
@@ -213,6 +232,12 @@ const bookSlice = createSlice({
       })
       .addCase(deleteBook.fulfilled, (state, action) => {
         state.books = state.books.filter((b) => b._id !== action.payload);
+      })
+      .addCase(removeVideoFromBook.fulfilled, (state, action) => {
+        const { book } = action.payload;
+        const idx = state.books.findIndex((b) => b._id === book._id);
+        if (idx !== -1) state.books[idx] = book;
+        if (state.currentBook?._id === book._id) state.currentBook = book;
       })
       .addCase(fetchBookProgress.fulfilled, (state, action) => {
         state.progress[action.payload.bookId] = {
