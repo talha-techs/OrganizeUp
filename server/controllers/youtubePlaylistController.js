@@ -30,6 +30,8 @@ const getPlaylists = async (req, res) => {
     let filter;
     if (isAdmin) {
       filter = {};
+    } else if (req.query.mine === "true") {
+      filter = { addedBy: req.user._id };
     } else {
       filter = {
         $or: [{ addedBy: req.user._id }, { visibility: "public" }],

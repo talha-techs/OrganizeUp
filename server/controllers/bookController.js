@@ -15,12 +15,13 @@ const getBooks = async (req, res) => {
       filter.type = req.query.type;
     }
 
-    // Users see their own content + public content
-    // Admin sees everything
-    if (req.user.role !== "admin") {
+    if (req.query.mine === "true") {
+      // Profile page: return only this user's own content (all visibilities)
+      filter.addedBy = req.user._id;
+    } else if (req.user.role !== "admin") {
+      // Browse: own content + public from everyone
       filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
     }
-
     const books = await Book.find(filter)
       .populate("addedBy", "name email avatar")
       .sort({ createdAt: -1 });
@@ -348,6 +349,35 @@ const servePdf = async (req, res) => {
   }
 };
 
+// @desc    Remove a single video from a book
+// @route   DELETE /api/books/:id/videos/:videoId
+const removeVideoFromBook = async (req, res) => {
+  try {
+    const book =
+      req.user.role === "admin"
+        ? await Book.findById(req.params.id)
+        : await Book.findOne({ _id: req.params.id, addedBy: req.user._id });
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    const before = book.videos.length;
+    book.videos = book.videos.filter(
+      (v) => v._id.toString() !== req.params.videoId,
+    );
+
+    if (book.videos.length === before) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    await book.save();
+    res.json({ message: "Video removed", book });
+  } catch (error) {
+    console.error("Remove video error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // @desc    Serve an image from GridFS
 // @route   GET /api/images/:fileId
 const serveImage = async (req, res) => {
@@ -365,6 +395,7 @@ module.exports = {
   createBook,
   updateBook,
   deleteBook,
+  removeVideoFromBook,
   servePdf,
   serveImage,
   updateVideoProgress,

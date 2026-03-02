@@ -7,7 +7,11 @@ const getTools = async (req, res) => {
   try {
     const filter = {};
     if (req.user.role !== "admin") {
-      filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
+      if (req.query.mine === "true") {
+        filter.addedBy = req.user._id;
+      } else {
+        filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
+      }
     }
 
     const tools = await Tool.find(filter)
