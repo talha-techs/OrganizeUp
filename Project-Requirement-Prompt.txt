@@ -1,0 +1,93 @@
+next up : "Clarifiy the functionality of each input etc in each section"
+
+Problem Statement:
+"" I'm having trouble in saving free Learning Resources Links, since it is too hard to download all content and it takes time
+and space too, so i usually make .html files containing the links of the resources "Google Drive Links mostly", so everytime i had to
+look in my folder for the html file and it opens link in chrome, i usually get those links from Telegram channels and whatsapp as well. Deployment ready project""
+
+<- The Resourcse include :
+
+- Text(pdf)-Video Books
+
+- Course Links
+
+- Tools Hacks and Tricks for Free Trials of websites and more..
+
+->
+
+My Goal:
+:::
+I want to build a platform , a website for managing these things and later on more sections can be added,
+
+I want a Fully Functional Web App (MERN Stack), with Captivating Front-end with Backend with database for storage,
+
+Deployed on Free Hosting so i can access it,
+
+:::
+
+Key Functionalities:
+
+1 - Audio/Video/Text Books Category :
+
+    -> Contains containers of all links to the resource links of Google Drive ,
+    -> Add New Option
+    -> Delete and Edit Option for each container ( on click the small icon 3-dots on top right of each container )
+
+
+    ```     for the video Books Category, the videos are stored on the Google drive, i want to embed their videos in my platform , like for
+    	example this video frame <<< <iframe src="https://drive.google.com/file/d/16y4A4W8eUFnPiruji0rhygn6j3BbhvXD/preview" width="640" height="480" allow="autoplay"></iframe>  >>>
+    	which ever Video Book i select, the list of videos numbers sequentialy will open up, on click to any video the video section will open up with video embedded , just like learning platforms
+    	or like youtube,
+    	i want a progress bar under the video representing the percentage of the video watched in a line bar, after the video ends and user 100% completes it than a textbox popup appears asking what
+    	did you learned from the video with a submit button, on submit the inputted text will be saved with users data.
+
+    ```
+    ```
+    	for text books, it want to embedd the pdf on the platform, user can read from there, !!! plus feature: i want the scroll bar progress mean the page number progress to be shown as
+    	reading progress in the line bar on the top, such that whenever user closes the book the progress is stored and on return user lands on the same page just where he left , it is the
+    	the same work Microsoft Edge Browser Pdf veiwer do....!!!
+
+    	## on click to the add new book option, user will be required to add book name with author and then the link to his local storage or cloud storage for embedding the pdf. then book will be added if embedding is successful ##
+
+    	# after addition of book container on the section , there will be three dots small button on top for editing and deleting the book, on edit user can change the embed path link, book name , author. #
+
+
+
+    ```
+
+
+    ```
+    	Audio Books:
+    	leave the section blank as it is, we will figure out later,
+
+    ```
+
+2 - Courses :
+-> Courses are Categorized based on some category user can decide, user can add new category and can add any course under that
+category, << navigation of page : courses -> 'all categories are shown with add new Category option ' -> (after selecting category) course link >>
+-> """ Adding new links of courses , requires course name, desription, and banner img (optional) , and then link to the drive , then select category from dropdown (if new category type it and it will be
+recognized and saved as new category) and then save button"""
+<- on save , the container of the course will be added with banner img if provided , other wise blank img ->
+-> edit and delete option on top right of each container for each link,
+
+3 - Tools & Tricks :
+
+    -> Directly Contains the containers of all the links with Clear title and Description (if long, add see more ref for complete view)
+    -> """ Adding new hack requires , title , description and a banner img (optional) , and then link to the drive, then save button,  """
+    -> on save , the container of the link will be added with banner img if provided , other wise blank img,
+    -> Complete CRUD Operation of these Links as well
+
+Website Navigation:
+
+Home Page (Main Page) -> Home Page with Get Started/Login Page, with proper header footer and navigation bar, Login opens form for Gmail Login with email and password, Sign Up opens form for registering user with email address , confirm email, password,
+
+After Successfull Login/SignUp:
+
+First a Home Page with a navbar containing these sections {books, courses, tricks, (... three dots vertical) option opens dropdown with options {profile,logout}
+, with Welcome {User} to OrganizeUp , below this show all the sections containers of courses, books and tools/trciks on click it will open the selected page,
+use redux state management for handling state without reloading the entire page for all components, responsive and sleek design, easy to access options,
+
+Admin Panel:
+
+There will be an Admin Setup , he will be able to add the courses and books and courses and tricks etc to the users, mean all the service providers is centeralized and added by the admin not the users,
+Admin will be able to watch user's data of saved lessons and notes etc...
