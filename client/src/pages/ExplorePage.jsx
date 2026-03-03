@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,7 @@ import {
   IoRemoveCircleOutline,
   IoTrendingUpOutline,
   IoTimeOutline,
+  IoCloseCircleOutline,
 } from 'react-icons/io5';
 import {
   fetchExploreContent,
@@ -28,9 +29,10 @@ import toast from 'react-hot-toast';
 const ExplorePage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
-  const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [commentResource, setCommentResource] = useState(null); // { ...item, contentType }
+  const debounceRef = useRef(null);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -54,9 +56,19 @@ const ExplorePage = () => {
     dispatch(fetchLibrary());
   }, [dispatch]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setSearch(searchInput);
+  // Debounce search input → update committed search state after 400ms idle
+  const handleSearchInput = (value) => {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearch(value);
+    }, 400);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
   };
 
   const handleVote = async (contentType, contentId, value) => {
@@ -229,7 +241,32 @@ const ExplorePage = () => {
   };
 
   const renderSection = (title, items, contentType) => {
-    if (!items || items.length === 0) return null;
+    if (!items || items.length === 0) {
+      // Only show per-section empty state when a search is active or in single-tab mode
+      if (!search && activeTab === 'all') return null;
+      const typeLabel = contentType === 'book' ? 'books' : contentType === 'course' ? 'courses' : 'tricks';
+      return (
+        <motion.div
+          key={`empty-${contentType}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-16"
+        >
+          <IoSearchOutline className="mx-auto text-slate-700 mb-3" size={40} />
+          <p className="text-slate-400 font-medium">
+            {search ? `No ${typeLabel} match “${search}”` : `No public ${typeLabel} yet`}
+          </p>
+          {search && (
+            <button
+              onClick={handleClearSearch}
+              className="mt-3 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              Clear search
+            </button>
+          )}
+        </motion.div>
+      );
+    }
 
     return (
       <div className="mb-10">
@@ -267,15 +304,24 @@ const ExplorePage = () => {
       </motion.div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
-        <form onSubmit={handleSearch} className="flex-1 relative">
+        <form onSubmit={(e) => e.preventDefault()} className="flex-1 relative">
           <IoSearchOutline className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size={18} />
           <input
             type="text"
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search public content..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/50 border border-white/5 text-white text-sm placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
+            onChange={(e) => handleSearchInput(e.target.value)}
+            placeholder="Search public content…"
+            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-800/50 border border-white/5 text-white text-sm placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <IoCloseCircleOutline size={16} />
+            </button>
+          )}
         </form>
 
         <div className="flex items-center gap-2">
@@ -330,7 +376,7 @@ const ExplorePage = () => {
               {renderSection('Books', results.books, 'book')}
               {renderSection('Courses', results.courses, 'course')}
               {renderSection('Tricks & Tools', results.tools, 'tool')}
-              {results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && (
+              {!search && results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -341,6 +387,23 @@ const ExplorePage = () => {
                   <p className="text-sm text-slate-500">
                     Be the first to share content with the community!
                   </p>
+                </motion.div>
+              )}
+              {search && results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-20"
+                >
+                  <IoSearchOutline className="mx-auto text-slate-600 mb-4" size={48} />
+                  <h3 className="text-lg font-medium text-slate-400 mb-2">No results for “{search}”</h3>
+                  <p className="text-sm text-slate-500 mb-4">Try different keywords or browse all content.</p>
+                  <button
+                    onClick={handleClearSearch}
+                    className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    Clear search
+                  </button>
                 </motion.div>
               )}
             </>

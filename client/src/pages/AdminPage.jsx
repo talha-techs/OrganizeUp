@@ -54,7 +54,7 @@ const countFiles = (item) => {
 
 const AdminPage = () => {
   const dispatch = useDispatch();
-  const { stats, users, selectedUser, publishRequests, reviewResource, contentItems, contentTotal, isLoading } =
+  const { stats, users, selectedUser, publishRequests, reviewResource, contentItems, contentTotal, contentLoading, contentError, isLoading } =
     useSelector((state) => state.admin);
   const [view, setView] = useState('dashboard'); // dashboard | users | userDetail | publishRequests | requestDetail | contentManagement
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -470,12 +470,24 @@ const AdminPage = () => {
                 />
               </div>
 
-              {isLoading ? (
+              {contentLoading ? (
                 <LoadingSpinner text="Loading content…" />
+              ) : contentError ? (
+                <div className="text-center py-20 glass-card">
+                  <IoLayersOutline className="mx-auto text-red-700 mb-3" size={44} />
+                  <p className="text-red-400 font-medium">Failed to load content</p>
+                  <p className="text-slate-500 text-sm mt-1">{contentError}</p>
+                  <button
+                    onClick={() => dispatch(fetchAllContent({ type: contentMgmtType }))}
+                    className="mt-4 px-4 py-2 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
               ) : contentItems.length === 0 ? (
                 <div className="text-center py-20 glass-card">
                   <IoLayersOutline className="mx-auto text-slate-700 mb-3" size={44} />
-                  <p className="text-slate-400">No content found</p>
+                  <p className="text-slate-400">No content found{contentSearch ? ` for “${contentSearch}”` : ''}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -488,116 +500,6 @@ const AdminPage = () => {
                         key={item._id}
                         className="glass-card p-4 flex items-center gap-4 group"
                       >
-                        {/* Thumbnail */}
-                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center">
-                          {thumb ? (
-                            <img src={thumb} alt={item.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <IoLayersOutline size={18} className="text-slate-500" />
-                          )}
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium truncate">{item.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 flex-wrap">
-                            {item.addedBy?.name && <span>by {item.addedBy.name}</span>}
-                            {item.category?.name && <span>· {item.category.name}</span>}
-                            <span>· {new Date(item.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-
-                        {/* Visibility badge */}
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          isPublic
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-slate-700/60 text-slate-500'
-                        }`}>
-                          {isPublic ? 'Public' : 'Private'}
-                        </span>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => handleToggleVisibility(item)}
-                            title={isPublic ? 'Make private' : 'Make public'}
-                            className={`p-2 rounded-lg text-sm transition-colors ${
-                              isPublic
-                                ? 'text-emerald-400 hover:bg-emerald-500/10'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-                            }`}
-                          >
-                            {isPublic ? <IoGlobeOutline size={16} /> : <IoLockClosedOutline size={16} />}
-                          </button>
-                          <button
-                            onClick={() => setDeleteContentModal({ type: contentMgmtType, id: item._id, title: item.title })}
-                            className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Delete permanently"
-                          >
-                            <IoTrashOutline size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Content Management View */}
-          {view === 'contentManagement' && (
-            <motion.div key="contentManagement" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              {/* Type tabs */}
-              <div className="flex items-center gap-2 mb-5 flex-wrap">
-                {[
-                  { type: 'book',     label: 'Books',     icon: IoBookOutline,    activeClass: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
-                  { type: 'course',   label: 'Courses',   icon: IoSchoolOutline,  activeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
-                  { type: 'tool',     label: 'Tricks',    icon: IoBulbOutline,    activeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-                  { type: 'section',  label: 'Sections',  icon: IoFolderOutline,  activeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-                  { type: 'playlist', label: 'Playlists', icon: IoLogoYoutube,    activeClass: 'bg-red-500/15 text-red-400 border-red-500/30' },
-                ].map(({ type, label, icon: Icon, activeClass }) => (
-                  <button
-                    key={type}
-                    onClick={() => handleContentTypeChange(type)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                      contentMgmtType === type
-                        ? activeClass
-                        : 'bg-slate-800/50 text-slate-400 border-white/5 hover:bg-slate-700/50'
-                    }`}
-                  >
-                    <Icon size={15} />{label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Search */}
-              <div className="relative mb-5">
-                <IoSearchOutline size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder={`Search ${contentMgmtType}s…`}
-                  value={contentSearch}
-                  onChange={handleContentSearch}
-                  className="input-dark w-full pl-11 text-sm"
-                />
-              </div>
-
-              {isLoading ? (
-                <LoadingSpinner text="Loading content…" />
-              ) : contentItems.length === 0 ? (
-                <div className="text-center py-20 glass-card">
-                  <IoLayersOutline className="mx-auto text-slate-700 mb-3" size={44} />
-                  <p className="text-slate-400">No content found</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs text-slate-500 mb-3">{contentTotal} item{contentTotal !== 1 ? 's' : ''} total</p>
-                  {contentItems.map((item) => {
-                    const thumb = item.bannerImage || item.coverImage || item.thumbnailUrl;
-                    const isPublic = item.visibility === 'public';
-                    return (
-                      <div key={item._id} className="glass-card p-4 flex items-center gap-4">
                         {/* Thumbnail */}
                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center">
                           {thumb ? (

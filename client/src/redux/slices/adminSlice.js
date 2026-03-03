@@ -170,6 +170,8 @@ const adminSlice = createSlice({
     contentItems: [],
     contentTotal: 0,
     contentType: null,
+    contentLoading: false,
+    contentError: null,
     isLoading: false,
     error: null,
   },
@@ -221,17 +223,19 @@ const adminSlice = createSlice({
         state.reviewResource = action.payload;
       })
       .addCase(fetchAllContent.pending, (state) => {
-        state.isLoading = true;
+        state.contentLoading = true;
+        state.contentError = null;
+        state.contentItems = []; // clear stale items while loading
       })
       .addCase(fetchAllContent.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.contentLoading = false;
         state.contentItems = action.payload.items;
         state.contentTotal = action.payload.total;
         state.contentType = action.payload.contentType;
       })
       .addCase(fetchAllContent.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
+        state.contentLoading = false;
+        state.contentError = action.payload;
       })
       .addCase(adminDeleteContent.fulfilled, (state, action) => {
         state.contentItems = state.contentItems.filter(
