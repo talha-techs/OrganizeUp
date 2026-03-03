@@ -201,8 +201,10 @@ const getAllContent = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     let query = Model.find(filter);
-    if (schemaPaths.includes("addedBy")) query = query.populate("addedBy", "name email");
-    if (schemaPaths.includes("category")) query = query.populate("category", "name");
+    if (schemaPaths.includes("addedBy"))
+      query = query.populate("addedBy", "name email");
+    if (schemaPaths.includes("category"))
+      query = query.populate("category", "name");
 
     const [items, total] = await Promise.all([
       query.sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
