@@ -11,8 +11,7 @@ import ResourceCard from '../components/ui/ResourceCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import CommentsModal from '../components/ui/CommentsModal';
-import InlineComments from '../components/ui/InlineComments';
+import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import ToolForm from '../components/forms/ToolForm';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import toast from 'react-hot-toast';
@@ -23,7 +22,7 @@ const ToolsPage = () => {
   const [showDriveImport, setShowDriveImport] = useState(false);
   const [deleteToolId, setDeleteToolId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [commentResource, setCommentResource] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { tools, isLoading } = useSelector((state) => state.tools);
@@ -39,7 +38,7 @@ const ToolsPage = () => {
   };
 
   const openComments = (tool) => {
-    setActiveCommentId((prev) => (prev === tool._id ? null : tool._id));
+    setCommentResource((prev) => (prev?._id === tool._id ? null : tool));
   };
 
   const confirmDeleteTool = async () => {
@@ -103,15 +102,6 @@ const ToolsPage = () => {
                 onClick={() => navigate(`/tools/${tool._id}`)}
                 onComment={() => openComments(tool)}
                 commentCount={tool.commentCount}
-                commentSection={
-                  activeCommentId === tool._id ? (
-                    <InlineComments
-                      contentType="tool"
-                      contentId={tool._id}
-                      onClose={() => setActiveCommentId(null)}
-                    />
-                  ) : null
-                }
                 onRequestPublish={async () => {
                   const result = await dispatch(requestPublish({ contentType: 'tool', contentId: tool._id }));
                   if (result.meta.requestStatus === 'fulfilled') {
@@ -222,6 +212,13 @@ const ToolsPage = () => {
         onConfirm={confirmDeleteTool}
         onCancel={() => setDeleteToolId(null)}
         isLoading={isDeleting}
+      />
+
+      {/* Comment panel – rendered at page level to avoid re-rendering cards on keystroke */}
+      <ResourceCommentPanel
+        resource={commentResource}
+        contentType="tool"
+        onClose={() => setCommentResource(null)}
       />
     </div>
   );

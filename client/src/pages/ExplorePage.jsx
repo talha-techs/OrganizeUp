@@ -14,19 +14,14 @@ import {
   IoAddCircleOutline,
   IoTrendingUpOutline,
   IoTimeOutline,
-  IoTrashOutline,
-  IoSendOutline,
 } from 'react-icons/io5';
 import {
   fetchExploreContent,
   voteContent,
-  fetchComments,
-  addComment,
-  deleteComment,
 } from '../redux/slices/exploreSlice';
 import { addToLibrary } from '../redux/slices/librarySlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import Modal from '../components/ui/Modal';
+import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import toast from 'react-hot-toast';
 
 const ExplorePage = () => {
@@ -34,14 +29,11 @@ const ExplorePage = () => {
   const [sortBy, setSortBy] = useState('latest');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [showComments, setShowComments] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentResource, setCommentResource] = useState(null); // { ...item, contentType }
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { results, totals, isLoading, comments, commentsTotal } = useSelector((state) => state.explore);
+  const { results, totals, isLoading } = useSelector((state) => state.explore);
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -66,47 +58,10 @@ const ExplorePage = () => {
     }
   };
 
-  const openComments = async (item, contentType) => {
-    const nextItem = { ...item, contentType };
-    setSelectedItem(nextItem);
-    setShowComments(true);
-    const result = await dispatch(fetchComments({ contentType, contentId: item._id }));
-    if (result.meta.requestStatus !== 'fulfilled') {
-      toast.error(result.payload || 'Failed to load comments');
-    }
-  };
-
-  const handleSubmitComment = async (e) => {
-    e.preventDefault();
-    if (!commentText.trim() || !selectedItem) return;
-
-    setIsSubmittingComment(true);
-    const result = await dispatch(
-      addComment({
-        contentType: selectedItem.contentType,
-        contentId: selectedItem._id,
-        text: commentText.trim(),
-      }),
+  const openComments = (item, contentType) => {
+    setCommentResource((prev) =>
+      prev?._id === item._id ? null : { ...item, contentType },
     );
-    setIsSubmittingComment(false);
-
-    if (result.meta.requestStatus === 'fulfilled') {
-      setCommentText('');
-      toast.success('Comment posted');
-    } else {
-      toast.error(result.payload || 'Failed to post comment');
-    }
-  };
-
-  const handleDeleteComment = async (commentId) => {
-    const result = await dispatch(
-      deleteComment({ commentId, contentType: selectedItem?.contentType, contentId: selectedItem?._id }),
-    );
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Comment deleted');
-    } else {
-      toast.error(result.payload || 'Failed to delete comment');
-    }
   };
 
   const tabs = [
@@ -358,79 +313,12 @@ const ExplorePage = () => {
         </>
       )}
 
-      <Modal
-        isOpen={showComments}
-        onClose={() => {
-          setShowComments(false);
-          setSelectedItem(null);
-          setCommentText('');
-        }}
-        title={`Comments${selectedItem ? ` • ${selectedItem.title}` : ''}`}
-        maxWidth="max-w-2xl"
-      >
-        <div className="space-y-4">
-          <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
-            <input
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Write a comment..."
-              className="input-dark flex-1"
-              maxLength={500}
-            />
-            <button
-              type="submit"
-              disabled={isSubmittingComment || !commentText.trim()}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <IoSendOutline size={14} /> Post
-            </button>
-          </form>
-
-          <div className="text-xs text-slate-500">{commentsTotal} comment{commentsTotal === 1 ? '' : 's'}</div>
-
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-            {comments.length === 0 ? (
-              <div className="text-sm text-slate-400 py-8 text-center border border-white/5 rounded-xl">
-                No comments yet. Start the discussion.
-              </div>
-            ) : (
-              comments.map((comment) => {
-                const canDelete = user?.role === 'admin' || String(comment.user?._id) === String(user?._id);
-                return (
-                  <div key={comment._id} className="border border-white/5 rounded-xl p-3 bg-slate-900/40">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-full overflow-hidden bg-indigo-500/20 flex items-center justify-center">
-                          {comment.user?.avatar ? (
-                            <img src={comment.user.avatar} alt={comment.user?.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-[10px] font-bold text-white">{comment.user?.name?.charAt(0)?.toUpperCase() || '?'}</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm text-white truncate">{comment.user?.name || 'Unknown'}</div>
-                          <div className="text-[11px] text-slate-500">{new Date(comment.createdAt).toLocaleString()}</div>
-                        </div>
-                      </div>
-
-                      {canDelete && (
-                        <button
-                          onClick={() => handleDeleteComment(comment._id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Delete comment"
-                        >
-                          <IoTrashOutline size={14} />
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">{comment.text}</p>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </Modal>
+      {/* Comment panel – rendered outside card grid so typing doesn't re-render cards */}
+      <ResourceCommentPanel
+        resource={commentResource}
+        contentType={commentResource?.contentType}
+        onClose={() => setCommentResource(null)}
+      />
     </div>
   );
 };

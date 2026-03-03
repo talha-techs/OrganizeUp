@@ -11,8 +11,7 @@ import ResourceCard from '../components/ui/ResourceCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import CommentsModal from '../components/ui/CommentsModal';
-import InlineComments from '../components/ui/InlineComments';
+import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import BookForm from '../components/forms/BookForm';
 import ImportBookModal from '../components/forms/ImportBookModal';
 import toast from 'react-hot-toast';
@@ -24,7 +23,7 @@ const BooksPage = () => {
   const [showImport, setShowImport] = useState(false);
   const [deleteBookId, setDeleteBookId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [commentResource, setCommentResource] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { books, isLoading } = useSelector((state) => state.books);
@@ -67,7 +66,7 @@ const BooksPage = () => {
   };
 
   const openComments = (book) => {
-    setActiveCommentId((prev) => (prev === book._id ? null : book._id));
+    setCommentResource((prev) => (prev?._id === book._id ? null : book));
   };
 
   const handleFormClose = () => {
@@ -151,15 +150,6 @@ const BooksPage = () => {
                 onClick={() => navigate(`/books/${book._id}`)}
                 onComment={() => openComments(book)}
                 commentCount={book.commentCount}
-                commentSection={
-                  activeCommentId === book._id ? (
-                    <InlineComments
-                      contentType="book"
-                      contentId={book._id}
-                      onClose={() => setActiveCommentId(null)}
-                    />
-                  ) : null
-                }
                 onRequestPublish={async () => {
                   const result = await dispatch(requestPublish({ contentType: 'book', contentId: book._id }));
                   if (result.meta.requestStatus === 'fulfilled') {
@@ -213,6 +203,13 @@ const BooksPage = () => {
         onConfirm={confirmDeleteBook}
         onCancel={() => setDeleteBookId(null)}
         isLoading={isDeleting}
+      />
+
+      {/* Comment panel – rendered at page level to avoid re-rendering cards on keystroke */}
+      <ResourceCommentPanel
+        resource={commentResource}
+        contentType="book"
+        onClose={() => setCommentResource(null)}
       />
     </div>
   );

@@ -11,8 +11,7 @@ import ResourceCard from '../components/ui/ResourceCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import CommentsModal from '../components/ui/CommentsModal';
-import InlineComments from '../components/ui/InlineComments';
+import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import CourseForm from '../components/forms/CourseForm';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import toast from 'react-hot-toast';
@@ -26,7 +25,7 @@ const CoursesPage = () => {
   const [showDriveImport, setShowDriveImport] = useState(false);
   const [deleteCourseId, setDeleteCourseId] = useState(null);
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
-  const [activeCommentId, setActiveCommentId] = useState(null);
+  const [commentResource, setCommentResource] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { courses, categories, isLoading } = useSelector((state) => state.courses);
@@ -47,7 +46,7 @@ const CoursesPage = () => {
   };
 
   const openComments = (course) => {
-    setActiveCommentId((prev) => (prev === course._id ? null : course._id));
+    setCommentResource((prev) => (prev?._id === course._id ? null : course));
   };
 
   const confirmDeleteCourse = async () => {
@@ -205,15 +204,6 @@ const CoursesPage = () => {
                     onClick={() => navigate(`/courses/${course._id}`)}
                     onComment={() => openComments(course)}
                     commentCount={course.commentCount}
-                    commentSection={
-                      activeCommentId === course._id ? (
-                        <InlineComments
-                          contentType="course"
-                          contentId={course._id}
-                          onClose={() => setActiveCommentId(null)}
-                        />
-                      ) : null
-                    }
                     onRequestPublish={async () => {
                       const result = await dispatch(requestPublish({ contentType: 'course', contentId: course._id }));
                       if (result.meta.requestStatus === 'fulfilled') {
@@ -369,6 +359,13 @@ const CoursesPage = () => {
         onConfirm={confirmDeleteCourse}
         onCancel={() => setDeleteCourseId(null)}
         isLoading={isDeletingCourse}
+      />
+
+      {/* Comment panel – rendered at page level to avoid re-rendering cards on keystroke */}
+      <ResourceCommentPanel
+        resource={commentResource}
+        contentType="course"
+        onClose={() => setCommentResource(null)}
       />
     </div>
   );

@@ -181,7 +181,10 @@ const ProfilePage = () => {
   // as a defensive layer in case stale Redux state (from a non-mine fetch on another page)
   // hasn't been replaced yet when the tab first renders.
   const ownerId = String(user?._id);
-  const isOwn = (item) => String(item?.addedBy?._id ?? item?.addedBy) === ownerId;
+  const isOwn = (item) => {
+    const itemOwner = String(item?.addedBy?._id ?? item?.addedBy);
+    return itemOwner === ownerId;
+  };
   const myBooks = (books || []).filter(isOwn);
   const myCourses = (courses || []).filter(isOwn);
   const myTools = (tools || []).filter(isOwn);
