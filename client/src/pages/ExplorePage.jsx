@@ -125,12 +125,20 @@ const ExplorePage = () => {
           )}
 
           <div className="flex items-center gap-2 mt-3">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
               <span className="text-[9px] font-bold text-white">
                 {item.addedBy?.name?.[0]?.toUpperCase() || '?'}
               </span>
             </div>
-            <span className="text-xs text-slate-400">{item.addedBy?.name || 'Unknown'}</span>
+            <span className="text-xs text-slate-400 truncate">{item.addedBy?.name || 'Unknown'}</span>
+            {item.createdAt && (
+              <>
+                <span className="text-slate-600 text-xs flex-shrink-0">·</span>
+                <span className="text-xs text-slate-600 flex-shrink-0">
+                  {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
