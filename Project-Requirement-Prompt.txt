@@ -91,3 +91,8 @@ Admin Panel:
 
 There will be an Admin Setup , he will be able to add the courses and books and courses and tricks etc to the users, mean all the service providers is centeralized and added by the admin not the users,
 Admin will be able to watch user's data of saved lessons and notes etc...
+
+
+
+
+public resource to library fix 

@@ -120,12 +120,199 @@ export const removeFileFromSection = createAsyncThunk(
   },
 );
 
+// ── Sub-section thunks ───────────────────────────────────────────────────────
+
+export const fetchSubSections = createAsyncThunk(
+  "sections/fetchSubSections",
+  async (sectionId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/sections/${sectionId}/subsections`);
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to load blocks",
+      );
+    }
+  },
+);
+
+export const createSubSection = createAsyncThunk(
+  "sections/createSubSection",
+  async ({ sectionId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(
+        `/sections/${sectionId}/subsections`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to create block",
+      );
+    }
+  },
+);
+
+export const updateSubSection = createAsyncThunk(
+  "sections/updateSubSection",
+  async ({ sectionId, subId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(
+        `/sections/${sectionId}/subsections/${subId}`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to update block",
+      );
+    }
+  },
+);
+
+export const deleteSubSection = createAsyncThunk(
+  "sections/deleteSubSection",
+  async ({ sectionId, subId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(
+        `/sections/${sectionId}/subsections/${subId}`,
+      );
+      return data; // { subId }
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to delete block",
+      );
+    }
+  },
+);
+
+export const addTodoItem = createAsyncThunk(
+  "sections/addTodoItem",
+  async ({ sectionId, subId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(
+        `/sections/${sectionId}/subsections/${subId}/todos`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const updateTodoItem = createAsyncThunk(
+  "sections/updateTodoItem",
+  async ({ sectionId, subId, todoId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(
+        `/sections/${sectionId}/subsections/${subId}/todos/${todoId}`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const deleteTodoItem = createAsyncThunk(
+  "sections/deleteTodoItem",
+  async ({ sectionId, subId, todoId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(
+        `/sections/${sectionId}/subsections/${subId}/todos/${todoId}`,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const addBoardItem = createAsyncThunk(
+  "sections/addBoardItem",
+  async ({ sectionId, subId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(
+        `/sections/${sectionId}/subsections/${subId}/board`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const updateBoardItem = createAsyncThunk(
+  "sections/updateBoardItem",
+  async ({ sectionId, subId, itemId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(
+        `/sections/${sectionId}/subsections/${subId}/board/${itemId}`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const deleteBoardItem = createAsyncThunk(
+  "sections/deleteBoardItem",
+  async ({ sectionId, subId, itemId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(
+        `/sections/${sectionId}/subsections/${subId}/board/${itemId}`,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const addLink = createAsyncThunk(
+  "sections/addLink",
+  async ({ sectionId, subId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(
+        `/sections/${sectionId}/subsections/${subId}/links`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const removeLink = createAsyncThunk(
+  "sections/removeLink",
+  async ({ sectionId, subId, linkId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(
+        `/sections/${sectionId}/subsections/${subId}/links/${linkId}`,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const sectionSlice = createSlice({
   name: "sections",
   initialState: {
     sections: [],
     currentSection: null,
     driveScan: null,
+    subSections: [],
+    subSectionsLoading: false,
     isLoading: false,
     isScanning: false,
     error: null,
@@ -136,9 +323,13 @@ const sectionSlice = createSlice({
     },
     clearCurrentSection: (state) => {
       state.currentSection = null;
+      state.subSections = [];
     },
     clearDriveScan: (state) => {
       state.driveScan = null;
+    },
+    clearSubSections: (state) => {
+      state.subSections = [];
     },
   },
   extraReducers: (builder) => {
@@ -220,10 +411,55 @@ const sectionSlice = createSlice({
       .addCase(scanDriveUniversal.rejected, (state, action) => {
         state.isScanning = false;
         state.error = action.payload;
+      })
+      // ── Sub-sections ────────────────────────────────────────────────────────
+      .addCase(fetchSubSections.pending, (state) => {
+        state.subSectionsLoading = true;
+      })
+      .addCase(fetchSubSections.fulfilled, (state, action) => {
+        state.subSectionsLoading = false;
+        state.subSections = action.payload.subSections;
+      })
+      .addCase(fetchSubSections.rejected, (state) => {
+        state.subSectionsLoading = false;
+      })
+      .addCase(createSubSection.fulfilled, (state, action) => {
+        state.subSections.push(action.payload.subSection);
+      })
+      .addCase(deleteSubSection.fulfilled, (state, action) => {
+        state.subSections = state.subSections.filter(
+          (s) => s._id !== action.payload.subId,
+        );
       });
+
+    // Helper: merge updated subSection into state
+    const mergeSubSection = (state, action) => {
+      const updated = action.payload.subSection;
+      if (!updated) return;
+      const idx = state.subSections.findIndex((s) => s._id === updated._id);
+      if (idx !== -1) state.subSections[idx] = updated;
+    };
+
+    [
+      updateSubSection,
+      addTodoItem,
+      updateTodoItem,
+      deleteTodoItem,
+      addBoardItem,
+      updateBoardItem,
+      deleteBoardItem,
+      addLink,
+      removeLink,
+    ].forEach((thunk) => {
+      builder.addCase(thunk.fulfilled, mergeSubSection);
+    });
   },
 });
 
-export const { clearSectionError, clearCurrentSection, clearDriveScan } =
-  sectionSlice.actions;
+export const {
+  clearSectionError,
+  clearCurrentSection,
+  clearDriveScan,
+  clearSubSections,
+} = sectionSlice.actions;
 export default sectionSlice.reducer;
