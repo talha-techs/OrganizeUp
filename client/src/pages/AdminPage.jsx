@@ -21,7 +21,6 @@ import {
   IoFolderOutline,
   IoVideocamOutline,
   IoImageOutline,
-  IoLogoYoutube,
   IoLayersOutline,
 } from 'react-icons/io5';
 import {
@@ -64,7 +63,7 @@ const AdminPage = () => {
   const [deleteContentModal, setDeleteContentModal] = useState(null); // { type, id, title }
   const [search, setSearch] = useState('');
   const [requestFilter, setRequestFilter] = useState('pending');
-  const [contentMgmtType, setContentMgmtType] = useState('book');
+  const [contentMgmtType, setContentMgmtType] = useState('course');
   const [contentSearch, setContentSearch] = useState('');
 
   useEffect(() => {
@@ -81,7 +80,7 @@ const AdminPage = () => {
     setView('publishRequests');
   };
 
-  const handleViewContentManagement = (type = 'book') => {
+  const handleViewContentManagement = (type = 'course') => {
     setContentMgmtType(type);
     setContentSearch('');
     dispatch(fetchAllContent({ type }));
@@ -278,7 +277,7 @@ const AdminPage = () => {
                     <IoChevronForward size={18} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
                   </button>
                   <button
-                    onClick={() => handleViewContentManagement('book')}
+                    onClick={() => handleViewContentManagement('course')}
                     className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-white/5 transition-colors group"
                   >
                     <div className="flex items-center gap-3">
@@ -438,11 +437,7 @@ const AdminPage = () => {
               {/* Type tabs */}
               <div className="flex items-center gap-2 mb-5 flex-wrap">
                 {[
-                  { type: 'book',     label: 'Books',     icon: IoBookOutline,    color: 'text-cyan-400',   activeClass: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
-                  { type: 'course',   label: 'Courses',   icon: IoSchoolOutline,  color: 'text-purple-400', activeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
-                  { type: 'tool',     label: 'Tricks',    icon: IoBulbOutline,    color: 'text-amber-400',  activeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-                  { type: 'section',  label: 'Sections',  icon: IoFolderOutline,  color: 'text-emerald-400',activeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-                  { type: 'playlist', label: 'Playlists', icon: IoLogoYoutube,    color: 'text-red-400',    activeClass: 'bg-red-500/15 text-red-400 border-red-500/30' },
+                  { type: 'course', label: 'Courses', icon: IoSchoolOutline, activeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
                 ].map(({ type, label, icon: Icon, activeClass }) => (
                   <button
                     key={type}
