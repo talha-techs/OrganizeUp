@@ -130,14 +130,11 @@ const ExplorePage = () => {
                 {item.addedBy?.name?.[0]?.toUpperCase() || '?'}
               </span>
             </div>
-            <span className="text-xs text-slate-400 truncate">{item.addedBy?.name || 'Unknown'}</span>
+            <span className="text-xs text-slate-400 truncate flex-1">{item.addedBy?.name || 'Unknown'}</span>
             {item.createdAt && (
-              <>
-                <span className="text-slate-600 text-xs flex-shrink-0">·</span>
-                <span className="text-xs text-slate-600 flex-shrink-0">
-                  {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </>
+              <span className="text-xs text-slate-600 flex-shrink-0 ml-auto">
+                {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
             )}
           </div>
 
