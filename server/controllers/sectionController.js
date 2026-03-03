@@ -7,10 +7,11 @@ const getSections = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     let filter;
-    if (isAdmin) {
-      filter = {};
-    } else if (req.query.mine === "true") {
+    if (req.query.mine === "true") {
+      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
       filter = { addedBy: req.user._id };
+    } else if (isAdmin) {
+      filter = {};
     } else {
       filter = {
         $or: [{ addedBy: req.user._id }, { visibility: "public" }],
@@ -181,15 +182,17 @@ const updateSection = async (req, res) => {
 // @route   DELETE /api/sections/:id
 const deleteSection = async (req, res) => {
   try {
-    const section =
-      req.user.role === "admin"
-        ? await CustomSection.findById(req.params.id)
-        : await CustomSection.findOne({
-            _id: req.params.id,
-            addedBy: req.user._id,
-          });
+    const section = await CustomSection.findById(req.params.id);
     if (!section) {
       return res.status(404).json({ message: "Section not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      section.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this section" });
     }
 
     await section.deleteOne();

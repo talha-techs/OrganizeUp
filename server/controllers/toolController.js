@@ -6,12 +6,12 @@ const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 const getTools = async (req, res) => {
   try {
     const filter = {};
-    if (req.user.role !== "admin") {
-      if (req.query.mine === "true") {
-        filter.addedBy = req.user._id;
-      } else {
-        filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
-      }
+    if (req.query.mine === "true") {
+      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
+      filter.addedBy = req.user._id;
+    } else if (req.user.role !== "admin") {
+      // Browse: own content + everyone's public
+      filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
     }
 
     const tools = await Tool.find(filter)
@@ -140,12 +140,17 @@ const updateTool = async (req, res) => {
 // @route   DELETE /api/tools/:id
 const deleteTool = async (req, res) => {
   try {
-    const tool =
-      req.user.role === "admin"
-        ? await Tool.findById(req.params.id)
-        : await Tool.findOne({ _id: req.params.id, addedBy: req.user._id });
+    const tool = await Tool.findById(req.params.id);
     if (!tool) {
       return res.status(404).json({ message: "Tool not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      tool.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this tool" });
     }
 
     if (tool.bannerImageId) {

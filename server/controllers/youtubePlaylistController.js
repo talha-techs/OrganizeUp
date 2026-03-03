@@ -28,10 +28,11 @@ const getPlaylists = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     let filter;
-    if (isAdmin) {
-      filter = {};
-    } else if (req.query.mine === "true") {
+    if (req.query.mine === "true") {
+      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
       filter = { addedBy: req.user._id };
+    } else if (isAdmin) {
+      filter = {};
     } else {
       filter = {
         $or: [{ addedBy: req.user._id }, { visibility: "public" }],
@@ -316,15 +317,17 @@ const refreshPlaylist = async (req, res) => {
 // @route   DELETE /api/youtube-playlists/:id
 const deletePlaylist = async (req, res) => {
   try {
-    const playlist =
-      req.user.role === "admin"
-        ? await YoutubePlaylist.findById(req.params.id)
-        : await YoutubePlaylist.findOne({
-            _id: req.params.id,
-            addedBy: req.user._id,
-          });
+    const playlist = await YoutubePlaylist.findById(req.params.id);
     if (!playlist) {
       return res.status(404).json({ message: "Playlist not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      playlist.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this playlist" });
     }
 
     await playlist.deleteOne();

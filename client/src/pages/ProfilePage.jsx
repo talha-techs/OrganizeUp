@@ -176,12 +176,17 @@ const ProfilePage = () => {
     }
   }, [tab, dispatch]);
 
-  // Server already returns only this user's own items when mine=true
-  const myBooks = books || [];
-  const myCourses = courses || [];
-  const myTools = tools || [];
-  const mySections = sections || [];
-  const myPlaylists = playlists || [];
+  // Filter to only this user's own items.
+  // Server returns the correct set via ?mine=true, but we also filter client-side
+  // as a defensive layer in case stale Redux state (from a non-mine fetch on another page)
+  // hasn't been replaced yet when the tab first renders.
+  const ownerId = String(user?._id);
+  const isOwn = (item) => String(item?.addedBy?._id ?? item?.addedBy) === ownerId;
+  const myBooks = (books || []).filter(isOwn);
+  const myCourses = (courses || []).filter(isOwn);
+  const myTools = (tools || []).filter(isOwn);
+  const mySections = (sections || []).filter(isOwn);
+  const myPlaylists = (playlists || []).filter(isOwn);
 
   /* avatar handlers */
   const handleAvatarSelect = (e) => {

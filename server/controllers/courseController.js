@@ -11,12 +11,12 @@ const getCourses = async (req, res) => {
       filter.category = req.query.category;
     }
 
-    if (req.user.role !== "admin") {
-      if (req.query.mine === "true") {
-        filter.addedBy = req.user._id;
-      } else {
-        filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
-      }
+    if (req.query.mine === "true") {
+      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
+      filter.addedBy = req.user._id;
+    } else if (req.user.role !== "admin") {
+      // Browse: own content + everyone's public
+      filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
     }
 
     const courses = await Course.find(filter)
@@ -197,12 +197,17 @@ const updateCourse = async (req, res) => {
 // @route   DELETE /api/courses/:id
 const deleteCourse = async (req, res) => {
   try {
-    const course =
-      req.user.role === "admin"
-        ? await Course.findById(req.params.id)
-        : await Course.findOne({ _id: req.params.id, addedBy: req.user._id });
+    const course = await Course.findById(req.params.id);
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      course.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this course" });
     }
 
     if (course.bannerImageId) {
