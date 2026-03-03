@@ -93,6 +93,21 @@ const librarySlice = createSlice({
       })
       .addCase(removeFromLibrary.fulfilled, (state, action) => {
         state.saved = state.saved.filter((s) => s._id !== action.payload);
+      })
+      .addCase(addToLibrary.fulfilled, (state, action) => {
+        // action.payload = { message, saved } — saved is the raw UserLibrary doc
+        const s = action.payload.saved;
+        if (s) {
+          // Avoid duplicates if the thunk somehow fires twice
+          const exists = state.saved.some((x) => x._id === s._id);
+          if (!exists) {
+            state.saved.push({
+              _id: s._id,
+              contentType: s.contentType,
+              contentId: s.contentId,
+            });
+          }
+        }
       });
   },
 });

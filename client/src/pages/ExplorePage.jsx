@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ import {
   IoArrowDownOutline,
   IoChatbubbleOutline,
   IoAddCircleOutline,
+  IoRemoveCircleOutline,
   IoTrendingUpOutline,
   IoTimeOutline,
 } from 'react-icons/io5';
@@ -19,7 +20,7 @@ import {
   fetchExploreContent,
   voteContent,
 } from '../redux/slices/exploreSlice';
-import { addToLibrary } from '../redux/slices/librarySlice';
+import { addToLibrary, removeFromLibrary, fetchLibrary } from '../redux/slices/librarySlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import toast from 'react-hot-toast';
@@ -34,11 +35,24 @@ const ExplorePage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { results, totals, isLoading } = useSelector((state) => state.explore);
+  const { saved } = useSelector((state) => state.library);
   const { user } = useSelector((state) => state.auth);
+
+  // Map of contentId (string) → libraryEntryId, rebuilt whenever saved list changes
+  const savedMap = useMemo(() => {
+    const map = {};
+    saved.forEach((s) => { map[String(s.contentId)] = s._id; });
+    return map;
+  }, [saved]);
 
   useEffect(() => {
     dispatch(fetchExploreContent({ type: activeTab, sort: sortBy, search }));
   }, [dispatch, activeTab, sortBy, search]);
+
+  // Populate savedMap on mount so we know which items are already in library
+  useEffect(() => {
+    dispatch(fetchLibrary());
+  }, [dispatch]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -55,6 +69,17 @@ const ExplorePage = () => {
       toast.success('Added to your library!');
     } else {
       toast.error(result.payload || 'Failed to add');
+    }
+  };
+
+  const handleRemoveFromLibrary = async (contentId) => {
+    const libraryEntryId = savedMap[String(contentId)];
+    if (!libraryEntryId) return;
+    const result = await dispatch(removeFromLibrary(libraryEntryId));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Removed from library');
+    } else {
+      toast.error(result.payload || 'Failed to remove');
     }
   };
 
@@ -177,14 +202,25 @@ const ExplorePage = () => {
             </button>
 
             {!isOwn && (
-              <button
-                onClick={() => handleAddToLibrary(contentType, item._id)}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-                title="Add to my library"
-              >
-                <IoAddCircleOutline size={14} />
-                Save
-              </button>
+              savedMap[String(item._id)] ? (
+                <button
+                  onClick={() => handleRemoveFromLibrary(item._id)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-emerald-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="Remove from library"
+                >
+                  <IoRemoveCircleOutline size={14} />
+                  Remove
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleAddToLibrary(contentType, item._id)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                  title="Add to my library"
+                >
+                  <IoAddCircleOutline size={14} />
+                  Save
+                </button>
+              )
             )}
           </div>
         </div>
