@@ -44,6 +44,20 @@ export const removeFromLibrary = createAsyncThunk(
   },
 );
 
+export const updateLibraryNotes = createAsyncThunk(
+  "library/updateNotes",
+  async ({ id, personalNotes }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/library/${id}/notes`, { personalNotes });
+      return { id, personalNotes: data.item.personalNotes };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to save notes",
+      );
+    }
+  },
+);
+
 export const checkInLibrary = createAsyncThunk(
   "library/checkInLibrary",
   async ({ contentType, contentId }, { rejectWithValue }) => {
@@ -108,6 +122,10 @@ const librarySlice = createSlice({
             });
           }
         }
+      })
+      .addCase(updateLibraryNotes.fulfilled, (state, action) => {
+        const item = state.saved.find((s) => s._id === action.payload.id);
+        if (item) item.personalNotes = action.payload.personalNotes;
       });
   },
 });

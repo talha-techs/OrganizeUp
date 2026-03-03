@@ -161,10 +161,108 @@ const toggleVisibility = async (req, res) => {
   }
 };
 
+// @desc    Get all content of a type (Admin)
+// @route   GET /api/admin/content/:type
+const getAllContent = async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { search = "", page = 1, limit = 30 } = req.query;
+
+    let Model;
+    switch (type) {
+      case "book":
+        Model = Book;
+        break;
+      case "course":
+        Model = Course;
+        break;
+      case "tool":
+        Model = Tool;
+        break;
+      case "section": {
+        const CustomSection = require("../models/CustomSection");
+        Model = CustomSection;
+        break;
+      }
+      case "playlist": {
+        const YoutubePlaylist = require("../models/YoutubePlaylist");
+        Model = YoutubePlaylist;
+        break;
+      }
+      default:
+        return res.status(400).json({ message: "Invalid content type" });
+    }
+
+    const filter = {};
+    if (search) filter.title = { $regex: search, $options: "i" };
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [items, total] = await Promise.all([
+      Model.find(filter)
+        .populate("addedBy", "name email")
+        .populate("category", "name")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Model.countDocuments(filter),
+    ]);
+
+    res.json({ items, total, page: parseInt(page), limit: parseInt(limit) });
+  } catch (error) {
+    console.error("getAllContent error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Delete any content (Admin)
+// @route   DELETE /api/admin/content/:type/:id
+const adminDeleteContent = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+
+    let Model;
+    switch (type) {
+      case "book":
+        Model = Book;
+        break;
+      case "course":
+        Model = Course;
+        break;
+      case "tool":
+        Model = Tool;
+        break;
+      case "section": {
+        const CustomSection = require("../models/CustomSection");
+        Model = CustomSection;
+        break;
+      }
+      case "playlist": {
+        const YoutubePlaylist = require("../models/YoutubePlaylist");
+        Model = YoutubePlaylist;
+        break;
+      }
+      default:
+        return res.status(400).json({ message: "Invalid content type" });
+    }
+
+    const doc = await Model.findById(id);
+    if (!doc) return res.status(404).json({ message: "Content not found" });
+
+    await doc.deleteOne();
+    res.json({ message: "Content deleted", contentType: type, contentId: id });
+  } catch (error) {
+    console.error("adminDeleteContent error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getStats,
   getUsers,
   getUserDetail,
   deleteUser,
   toggleVisibility,
+  getAllContent,
+  adminDeleteContent,
 };

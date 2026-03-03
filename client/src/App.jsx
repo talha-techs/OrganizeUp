@@ -28,6 +28,7 @@ import SectionsPage from './pages/SectionsPage';
 import SectionDetailPage from './pages/SectionDetailPage';
 import YouTubePlaylistsPage from './pages/YouTubePlaylistsPage';
 import YouTubePlaylistDetailPage from './pages/YouTubePlaylistDetailPage';
+import SavedLibraryPage from './pages/SavedLibraryPage';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -68,6 +69,7 @@ const App = () => {
         <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
         <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/saved" element={<SavedLibraryPage />} />
         <Route
           path="/admin"
           element={

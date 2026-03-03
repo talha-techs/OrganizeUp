@@ -215,12 +215,17 @@ const updateBook = async (req, res) => {
 // @route   DELETE /api/books/:id
 const deleteBook = async (req, res) => {
   try {
-    const book =
-      req.user.role === "admin"
-        ? await Book.findById(req.params.id)
-        : await Book.findOne({ _id: req.params.id, addedBy: req.user._id });
+    const book = await Book.findById(req.params.id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      book.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this book" });
     }
 
     // Clean up GridFS files
@@ -353,12 +358,17 @@ const servePdf = async (req, res) => {
 // @route   DELETE /api/books/:id/videos/:videoId
 const removeVideoFromBook = async (req, res) => {
   try {
-    const book =
-      req.user.role === "admin"
-        ? await Book.findById(req.params.id)
-        : await Book.findOne({ _id: req.params.id, addedBy: req.user._id });
+    const book = await Book.findById(req.params.id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
+    }
+    if (
+      req.user.role !== "admin" &&
+      book.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to modify this book" });
     }
 
     const before = book.videos.length;

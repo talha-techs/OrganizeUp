@@ -22,15 +22,13 @@ import {
   IoTimeOutline,
   IoLinkOutline,
   IoWarningOutline,
-  IoBookmarkOutline,
-} from 'react-icons/io5';
+  IoBookmarkOutline,} from 'react-icons/io5';
 import { updateProfile } from '../redux/slices/authSlice';
 import { fetchBooks, deleteBook, removeVideoFromBook } from '../redux/slices/bookSlice';
 import { fetchCourses, deleteCourse, removeFileFromCourse } from '../redux/slices/courseSlice';
 import { fetchTools, deleteTool, removeFileFromTool } from '../redux/slices/toolSlice';
 import { fetchSections, deleteSection, removeFileFromSection } from '../redux/slices/sectionSlice';
 import { fetchPlaylists, deletePlaylist } from '../redux/slices/youtubePlaylistSlice';
-import { fetchLibrary, removeFromLibrary } from '../redux/slices/librarySlice';
 import toast from 'react-hot-toast';
 
 /* ── small helpers ──────────────────────────────────────── */
@@ -150,72 +148,6 @@ const SubRow = ({ name, onDelete }) => {
   );
 };
 
-/** Row for a saved (library) item — only has Remove, never admin delete/privatize */
-const SavedItemRow = ({ item, onRemove }) => {
-  const [confirming, setConfirming] = useState(false);
-  const content = item.content;
-  const typeColors = {
-    book: 'text-cyan-400',
-    course: 'text-purple-400',
-    tool: 'text-amber-400',
-  };
-  const typeIcons = {
-    book: <IoBookOutline size={14} className={typeColors.book} />,
-    course: <IoSchoolOutline size={14} className={typeColors.course} />,
-    tool: <IoBulbOutline size={14} className={typeColors.tool} />,
-  };
-
-  return (
-    <div className="flex items-center gap-3 px-5 py-3 group hover:bg-white/2 transition-colors">
-      {/* Thumbnail / type icon */}
-      <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center">
-        {(content?.bannerImage || content?.coverImage) ? (
-          <img src={content.bannerImage || content.coverImage} alt={content?.title} className="w-full h-full object-cover" />
-        ) : (
-          typeIcons[item.contentType] || <IoBookmarkOutline size={14} className="text-slate-500" />
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-white font-medium truncate">{content?.title || 'Unknown'}</p>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className={`text-[10px] font-medium capitalize ${typeColors[item.contentType] || 'text-slate-500'}`}>
-            {item.contentType}
-          </span>
-          {content?.addedBy?.name && (
-            <span className="text-[10px] text-slate-600">by {content.addedBy.name}</span>
-          )}
-          {content?.category?.name && (
-            <span className="text-[10px] text-slate-600">· {content.category.name}</span>
-          )}
-        </div>
-      </div>
-
-      <span className="text-[10px] text-slate-600 flex-shrink-0">
-        Saved {new Date(item.savedAt).toLocaleDateString()}
-      </span>
-
-      {!confirming ? (
-        <button
-          onClick={() => setConfirming(true)}
-          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all flex-shrink-0"
-          title="Remove from library"
-        >
-          <IoTrashOutline size={14} />
-        </button>
-      ) : (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-[10px] text-slate-400 flex items-center gap-1">
-            <IoWarningOutline size={12} className="text-orange-400" /> Sure?
-          </span>
-          <button onClick={() => { onRemove(); setConfirming(false); }} className="text-[10px] px-2 py-0.5 rounded-md bg-red-500 text-white hover:bg-red-400">Yes</button>
-          <button onClick={() => setConfirming(false)} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-700 text-slate-300 hover:bg-slate-600">No</button>
-        </div>
-      )}
-    </div>
-  );
-};
-
 /* ── main component ─────────────────────────────────────── */
 const ProfilePage = () => {
   const { user } = useSelector((state) => state.auth);
@@ -224,7 +156,6 @@ const ProfilePage = () => {
   const { tools } = useSelector((state) => state.tools);
   const { sections } = useSelector((state) => state.sections);
   const { playlists } = useSelector((state) => state.playlists);
-  const { saved } = useSelector((state) => state.library);
   const dispatch = useDispatch();
 
   const [name, setName] = useState(user?.name || '');
@@ -233,7 +164,7 @@ const ProfilePage = () => {
   const [avatarFile, setAvatarFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
-  const [tab, setTab] = useState('profile'); // profile | work | saved
+  const [tab, setTab] = useState('profile'); // profile | work
 
   useEffect(() => {
     if (tab === 'work') {
@@ -242,9 +173,6 @@ const ProfilePage = () => {
       dispatch(fetchTools({ mine: true }));
       dispatch(fetchSections({ mine: true }));
       dispatch(fetchPlaylists({ mine: true }));
-    }
-    if (tab === 'saved') {
-      dispatch(fetchLibrary());
     }
   }, [tab, dispatch]);
 
@@ -320,15 +248,6 @@ const ProfilePage = () => {
     else toast.error(result.payload || `Failed to remove ${label}`);
   };
 
-  const handleRemoveFromLibrary = async (libraryEntryId) => {
-    const result = await dispatch(removeFromLibrary(libraryEntryId));
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Removed from library');
-    } else {
-      toast.error(result.payload || 'Failed to remove');
-    }
-  };
-
   const completedVideos = user?.videoProgress?.filter((vp) => vp.completed)?.length || 0;
   const totalNotes = user?.videoProgress?.filter((vp) => vp.note)?.length || 0;
 
@@ -340,7 +259,6 @@ const ProfilePage = () => {
           {[
             { id: 'profile', label: 'Profile' },
             { id: 'work', label: 'My Uploads' },
-            { id: 'saved', label: 'Saved' },
           ].map((t) => (
             <button
               key={t.id}
@@ -680,39 +598,6 @@ const ProfilePage = () => {
                   <p className="text-slate-500 text-sm mt-1">Head to Books, Courses, or Tricks to add your first resource.</p>
                 </div>
               )}
-            </motion.div>
-          )}
-
-          {/* ── Saved Library Tab ── */}
-          {tab === 'saved' && (
-            <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="glass-card overflow-hidden">
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                    <IoBookmarkOutline size={16} className="text-indigo-400" />
-                  </div>
-                  <span className="text-white font-semibold">Saved from Explore</span>
-                  <span className="text-xs text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full">{saved.length}</span>
-                </div>
-
-                {saved.length === 0 ? (
-                  <div className="text-center py-16 px-5">
-                    <IoBookmarkOutline className="mx-auto text-slate-700 mb-3" size={40} />
-                    <p className="text-slate-400 font-medium">No saved resources yet.</p>
-                    <p className="text-slate-500 text-sm mt-1">Browse Explore and save public resources to your library.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-white/5">
-                    {saved.map((item) => (
-                      <SavedItemRow
-                        key={item._id}
-                        item={item}
-                        onRemove={() => handleRemoveFromLibrary(item._id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
             </motion.div>
           )}
         </AnimatePresence>

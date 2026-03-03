@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
-import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline } from 'react-icons/io5';
+import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline } from 'react-icons/io5';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
 
 const Navbar = () => {
@@ -199,6 +199,15 @@ const Navbar = () => {
                       >
                         <IoPersonOutline size={16} />
                         Profile
+                      </Link>
+
+                      <Link
+                        to="/saved"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <IoBookmarkOutline size={16} />
+                        Saved Library
                       </Link>
 
                       {user?.role === 'admin' && (

@@ -129,6 +129,36 @@ export const toggleVisibility = createAsyncThunk(
   },
 );
 
+export const fetchAllContent = createAsyncThunk(
+  "admin/fetchAllContent",
+  async ({ type, search = "", page = 1 }, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams({ page, limit: 30 });
+      if (search) params.set("search", search);
+      const { data } = await api.get(`/admin/content/${type}?${params}`);
+      return { ...data, contentType: type };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch content",
+      );
+    }
+  },
+);
+
+export const adminDeleteContent = createAsyncThunk(
+  "admin/deleteContent",
+  async ({ type, id }, { rejectWithValue }) => {
+    try {
+      await api.delete(`/admin/content/${type}/${id}`);
+      return { contentType: type, contentId: id };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to delete content",
+      );
+    }
+  },
+);
+
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
@@ -137,6 +167,9 @@ const adminSlice = createSlice({
     selectedUser: null,
     publishRequests: [],
     reviewResource: null,
+    contentItems: [],
+    contentTotal: 0,
+    contentType: null,
     isLoading: false,
     error: null,
   },
@@ -186,6 +219,25 @@ const adminSlice = createSlice({
       })
       .addCase(fetchResourceForReview.fulfilled, (state, action) => {
         state.reviewResource = action.payload;
+      })
+      .addCase(fetchAllContent.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchAllContent.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.contentItems = action.payload.items;
+        state.contentTotal = action.payload.total;
+        state.contentType = action.payload.contentType;
+      })
+      .addCase(fetchAllContent.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(adminDeleteContent.fulfilled, (state, action) => {
+        state.contentItems = state.contentItems.filter(
+          (item) => item._id !== action.payload.contentId,
+        );
+        state.contentTotal = Math.max(0, state.contentTotal - 1);
       });
   },
 });
