@@ -23,6 +23,7 @@ import {
 } from '../redux/slices/youtubePlaylistSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const YouTubePlaylistDetailPage = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const YouTubePlaylistDetailPage = () => {
   const { currentPlaylist, isLoading, isSavingNotes, combinedNotes } = useSelector(
     (state) => state.playlists,
   );
+  useDocumentTitle(currentPlaylist?.title || 'Playlist');
 
   const [activeVideoId, setActiveVideoId] = useState(null);
   const [localNotes, setLocalNotes] = useState('');

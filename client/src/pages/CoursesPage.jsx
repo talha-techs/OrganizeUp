@@ -15,8 +15,10 @@ import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import CourseForm from '../components/forms/CourseForm';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const CoursesPage = () => {
+  useDocumentTitle('Courses');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editCourse, setEditCourse] = useState(null);

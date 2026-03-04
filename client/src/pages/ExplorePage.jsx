@@ -28,8 +28,10 @@ import { cloneSection } from '../redux/slices/sectionSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const ExplorePage = () => {
+  useDocumentTitle('Explore');
   const [activeTab, setActiveTab] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
   const [searchInput, setSearchInput] = useState('');

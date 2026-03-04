@@ -27,7 +27,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
 import toast from 'react-hot-toast';
-
+import useDocumentTitle from '../hooks/useDocumentTitle';
 const FILE_ICONS = {
   pdf: <IoDocumentOutline size={16} className="text-red-400" />,
   html: <IoCodeSlashOutline size={16} className="text-orange-400" />,
@@ -90,6 +90,7 @@ const CourseDetailPage = () => {
   const dispatch = useDispatch();
   const { currentCourse, isLoading, categories } = useSelector((state) => state.courses);
   const { user } = useSelector((state) => state.auth);
+  useDocumentTitle(currentCourse?.title || 'Course');
   const isAdmin = user?.role === 'admin';
   const [showImport, setShowImport] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);

@@ -15,8 +15,10 @@ import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import ToolForm from '../components/forms/ToolForm';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const ToolsPage = () => {
+  useDocumentTitle('Tricks');
   const [showForm, setShowForm] = useState(false);
   const [editTool, setEditTool] = useState(null);
   const [showDriveImport, setShowDriveImport] = useState(false);

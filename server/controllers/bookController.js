@@ -3,6 +3,7 @@ const User = require("../models/User");
 const {
   uploadToGridFS,
   streamFromGridFS,
+  streamAudioFromGridFS,
   deleteFromGridFS,
 } = require("../config/gridfs");
 
@@ -103,6 +104,31 @@ const createBook = async (req, res) => {
     // Admin content is public by default, user content is private
     const visibility = req.user.role === "admin" ? "public" : "private";
 
+    // Handle multiple audio file uploads
+    const audioFileUploads = req.files?.audioFiles || [];
+    const parsedAudioMeta = req.body.audioFileMeta
+      ? JSON.parse(req.body.audioFileMeta)
+      : [];
+    const audioFiles = [];
+    for (let i = 0; i < audioFileUploads.length; i++) {
+      const af = audioFileUploads[i];
+      const meta = parsedAudioMeta[i] || {};
+      const fileId = await uploadToGridFS(
+        af.buffer,
+        af.originalname,
+        af.mimetype,
+        "audio",
+      );
+      audioFiles.push({
+        title: meta.title || af.originalname.replace(/\.[^.]+$/, ""),
+        fileId,
+        originalName: af.originalname,
+        duration: meta.duration || "",
+        size: af.size || af.buffer?.length || 0,
+        order: i,
+      });
+    }
+
     const book = await Book.create({
       title,
       author,
@@ -117,6 +143,7 @@ const createBook = async (req, res) => {
       driveLink,
       totalPages: totalPages || 0,
       videos: videos ? JSON.parse(videos) : [],
+      audioFiles,
       addedBy: req.user._id,
       visibility,
     });
@@ -201,6 +228,30 @@ const updateBook = async (req, res) => {
     if (totalPages !== undefined) book.totalPages = totalPages;
     if (videos) book.videos = JSON.parse(videos);
 
+    // Append new audio file uploads (existing tracks are preserved unless explicitly removed)
+    const newAudioUploads = req.files?.audioFiles || [];
+    const parsedAudioMeta = req.body.audioFileMeta
+      ? JSON.parse(req.body.audioFileMeta)
+      : [];
+    for (let i = 0; i < newAudioUploads.length; i++) {
+      const af = newAudioUploads[i];
+      const meta = parsedAudioMeta[i] || {};
+      const fileId = await uploadToGridFS(
+        af.buffer,
+        af.originalname,
+        af.mimetype,
+        "audio",
+      );
+      book.audioFiles.push({
+        title: meta.title || af.originalname.replace(/\.[^.]+$/, ""),
+        fileId,
+        originalName: af.originalname,
+        duration: meta.duration || "",
+        size: af.size || af.buffer?.length || 0,
+        order: book.audioFiles.length,
+      });
+    }
+
     await book.save();
     res.json({ message: "Book updated successfully", book });
   } catch (error) {
@@ -232,6 +283,10 @@ const deleteBook = async (req, res) => {
     }
     if (book.coverImageId) {
       await deleteFromGridFS(book.coverImageId, "image");
+    }
+    // Clean up audio files
+    for (const af of book.audioFiles || []) {
+      if (af.fileId) await deleteFromGridFS(af.fileId, "audio");
     }
 
     await book.deleteOne();
@@ -386,6 +441,49 @@ const removeVideoFromBook = async (req, res) => {
   }
 };
 
+// @desc    Serve an audio file from GridFS (with Range/seek support)
+// @route   GET /api/books/audio/:fileId
+const serveAudio = async (req, res) => {
+  try {
+    await streamAudioFromGridFS(req.params.fileId, req, res, "audio");
+  } catch (error) {
+    console.error("Serve audio error:", error);
+    res.status(500).json({ message: "Error serving audio" });
+  }
+};
+
+// @desc    Remove a single audio track from a book
+// @route   DELETE /api/books/:id/audio/:audioId
+const removeAudioFromBook = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+    if (
+      req.user.role !== "admin" &&
+      book.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const track = book.audioFiles.find(
+      (a) => a._id.toString() === req.params.audioId,
+    );
+    if (!track) return res.status(404).json({ message: "Track not found" });
+
+    // Delete the file from GridFS
+    if (track.fileId) await deleteFromGridFS(track.fileId, "audio");
+
+    book.audioFiles = book.audioFiles.filter(
+      (a) => a._id.toString() !== req.params.audioId,
+    );
+    await book.save();
+    res.json({ message: "Audio track removed", book });
+  } catch (error) {
+    console.error("Remove audio error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // @desc    Serve an image from GridFS
 // @route   GET /api/images/:fileId
 const serveImage = async (req, res) => {
@@ -404,7 +502,9 @@ module.exports = {
   updateBook,
   deleteBook,
   removeVideoFromBook,
+  removeAudioFromBook,
   servePdf,
+  serveAudio,
   serveImage,
   updateVideoProgress,
   updateReadingProgress,

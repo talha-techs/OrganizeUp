@@ -30,6 +30,7 @@ import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
 import SubSectionBlock from '../components/sections/SubSectionBlock';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 // â”€â”€â”€ Block type definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const BLOCK_TYPES = [
@@ -160,6 +161,7 @@ const SectionDetailPage = () => {
   const { currentSection, isLoading, subSections, subSectionsLoading } =
     useSelector((state) => state.sections);
   const { user } = useSelector((state) => state.auth);
+  useDocumentTitle(currentSection?.name || 'Section');
   const isAdmin = user?.role === 'admin';
 
   const [showImport,    setShowImport]    = useState(false);

@@ -21,6 +21,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const COLORS = [
   { name: 'indigo', from: 'from-indigo-500', to: 'to-blue-600' },
@@ -36,6 +37,7 @@ function getColorClasses(color) {
 }
 
 const SectionsPage = () => {
+  useDocumentTitle('Sections');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');

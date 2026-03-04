@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { createBook, updateBook } from '../../redux/slices/bookSlice';
 import toast from 'react-hot-toast';
-import { IoAdd, IoTrash } from 'react-icons/io5';
+import { IoAdd, IoTrash, IoMusicalNote, IoCloudUploadOutline } from 'react-icons/io5';
 
 const BookForm = ({ book, onClose }) => {
   const [formData, setFormData] = useState({
@@ -20,9 +20,12 @@ const BookForm = ({ book, onClose }) => {
       ? book.videos
       : [{ title: '', driveFileId: '', duration: '', order: 0 }]
   );
+  // Pending audio uploads: [{ file: File, title: string }]
+  const [pendingAudio, setPendingAudio] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
   const [coverImageFile, setCoverImageFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const audioInputRef = useRef(null);
   const dispatch = useDispatch();
 
   const handleVideoChange = (index, field, value) => {
@@ -39,6 +42,28 @@ const BookForm = ({ book, onClose }) => {
     if (videos.length > 1) {
       setVideos(videos.filter((_, i) => i !== index));
     }
+  };
+
+  const handleAudioFilesSelected = (e) => {
+    const files = Array.from(e.target.files);
+    const newEntries = files.map((f) => ({
+      file: f,
+      title: f.name.replace(/\.[^.]+$/, ''), // strip extension as default title
+    }));
+    setPendingAudio((prev) => [...prev, ...newEntries]);
+    e.target.value = ''; // reset input so same file can be re-added
+  };
+
+  const updatePendingAudioTitle = (index, title) => {
+    setPendingAudio((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], title };
+      return next;
+    });
+  };
+
+  const removePendingAudio = (index) => {
+    setPendingAudio((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -58,13 +83,14 @@ const BookForm = ({ book, onClose }) => {
         fd.append('videos', JSON.stringify(videos.map((v, i) => ({ ...v, order: i }))));
       }
 
-      if (pdfFile) {
-        fd.append('pdfFile', pdfFile);
+      if (formData.type === 'audio' && pendingAudio.length > 0) {
+        const meta = pendingAudio.map((a) => ({ title: a.title }));
+        fd.append('audioFileMeta', JSON.stringify(meta));
+        pendingAudio.forEach((a) => fd.append('audioFiles', a.file));
       }
 
-      if (coverImageFile) {
-        fd.append('coverImage', coverImageFile);
-      }
+      if (pdfFile) fd.append('pdfFile', pdfFile);
+      if (coverImageFile) fd.append('coverImage', coverImageFile);
 
       let result;
       if (book) {
@@ -84,6 +110,12 @@ const BookForm = ({ book, onClose }) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const fmtSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   };
 
   return (
@@ -171,6 +203,88 @@ const BookForm = ({ book, onClose }) => {
               min={0}
             />
           </div>
+        </div>
+      )}
+
+      {/* Audio-specific fields */}
+      {formData.type === 'audio' && (
+        <div className="space-y-4 p-4 rounded-xl bg-slate-900/50 border border-white/5">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-indigo-400 flex items-center gap-2">
+              <IoMusicalNote size={15} /> Audio Tracks
+            </h4>
+            <button
+              type="button"
+              onClick={() => audioInputRef.current?.click()}
+              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+            >
+              <IoCloudUploadOutline size={14} /> Add Files
+            </button>
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.ogg,.aac,.flac,.m4a"
+              multiple
+              className="hidden"
+              onChange={handleAudioFilesSelected}
+            />
+          </div>
+
+          {/* Existing tracks (edit mode) */}
+          {book?.audioFiles?.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-slate-500 mb-2">Existing tracks — remove them from the player view:</p>
+              {book.audioFiles.map((af, i) => (
+                <div key={af._id || i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/40 text-slate-400 text-xs">
+                  <IoMusicalNote size={13} className="text-indigo-400 flex-shrink-0" />
+                  <span className="flex-1 truncate">{af.title || af.originalName || `Track ${i + 1}`}</span>
+                  {af.size > 0 && <span className="text-slate-600">{fmtSize(af.size)}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pending new uploads */}
+          {pendingAudio.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500">New tracks to upload:</p>
+              {pendingAudio.map((entry, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50">
+                  <IoMusicalNote size={14} className="text-indigo-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={entry.title}
+                      onChange={(e) => updatePendingAudioTitle(i, e.target.value)}
+                      placeholder="Track title"
+                      className="input-dark text-sm w-full"
+                    />
+                    <p className="text-xs text-slate-500 mt-1 truncate">
+                      {entry.file.name} · {fmtSize(entry.file.size)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePendingAudio(i)}
+                    className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
+                  >
+                    <IoTrash size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pendingAudio.length === 0 && !book?.audioFiles?.length && (
+            <div
+              className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-500/30 transition-colors"
+              onClick={() => audioInputRef.current?.click()}
+            >
+              <IoMusicalNote className="mx-auto text-slate-600 mb-2" size={28} />
+              <p className="text-sm text-slate-400">Click to select audio files</p>
+              <p className="text-xs text-slate-600 mt-1">MP3, WAV, OGG, AAC, FLAC, M4A</p>
+            </div>
+          )}
         </div>
       )}
 

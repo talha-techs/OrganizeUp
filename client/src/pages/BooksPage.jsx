@@ -15,8 +15,10 @@ import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import BookForm from '../components/forms/BookForm';
 import ImportBookModal from '../components/forms/ImportBookModal';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const BooksPage = () => {
+  useDocumentTitle('Books');
   const [activeTab, setActiveTab] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [editBook, setEditBook] = useState(null);

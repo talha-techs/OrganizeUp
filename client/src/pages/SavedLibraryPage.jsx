@@ -20,6 +20,7 @@ import {
 import { fetchLibrary, removeFromLibrary, updateLibraryNotes } from '../redux/slices/librarySlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 /* ── constants ─────────────────────────────────── */
 const TYPE_META = {
@@ -217,6 +218,7 @@ const TypeSection = ({ type, items, onRemove }) => {
 
 /* ── Main page ──────────────────────────────────── */
 const SavedLibraryPage = () => {
+  useDocumentTitle('Saved Library');
   const dispatch = useDispatch();
   const { saved, isLoading } = useSelector((state) => state.library);
 
