@@ -503,7 +503,7 @@ const AdminPage = () => {
                         {/* Thumbnail */}
                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center">
                           {thumb ? (
-                            <img src={thumb} alt={item.title} className="w-full h-full object-cover" />
+                            <img src={thumb} alt={item.title || item.name} className="w-full h-full object-cover" />
                           ) : (
                             <IoLayersOutline size={18} className="text-slate-500" />
                           )}
@@ -511,7 +511,7 @@ const AdminPage = () => {
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium truncate">{item.title}</p>
+                          <p className="text-white font-medium truncate">{item.title || item.name}</p>
                           <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 flex-wrap">
                             {item.addedBy?.name && <span>by {item.addedBy.name}</span>}
                             {item.category?.name && <span>· {item.category.name}</span>}
@@ -542,7 +542,7 @@ const AdminPage = () => {
                             {isPublic ? <IoGlobeOutline size={16} /> : <IoLockClosedOutline size={16} />}
                           </button>
                           <button
-                            onClick={() => setDeleteContentModal({ type: contentMgmtType, id: item._id, title: item.title })}
+                            onClick={() => setDeleteContentModal({ type: contentMgmtType, id: item._id, title: item.title || item.name })}
                             className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                             title="Delete permanently"
                           >
