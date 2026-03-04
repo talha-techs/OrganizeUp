@@ -66,9 +66,11 @@ export const fetchResourceForReview = createAsyncThunk(
           ? "/books"
           : contentType === "course"
             ? "/courses"
-            : "/tools";
+            : contentType === "section"
+              ? "/sections"
+              : "/tools";
       const { data } = await api.get(`${route}/${contentId}`);
-      const resource = data.book || data.course || data.tool;
+      const resource = data.book || data.course || data.section || data.tool;
       return { contentType, resource };
     } catch (error) {
       return rejectWithValue(
@@ -219,8 +221,17 @@ const adminSlice = createSlice({
         );
         state.reviewResource = null;
       })
+      .addCase(fetchResourceForReview.pending, (state) => {
+        state.reviewResource = null;
+        state.isLoading = true;
+      })
       .addCase(fetchResourceForReview.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.reviewResource = action.payload;
+      })
+      .addCase(fetchResourceForReview.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       })
       .addCase(fetchAllContent.pending, (state) => {
         state.contentLoading = true;

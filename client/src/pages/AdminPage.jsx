@@ -684,6 +684,7 @@ const AdminPage = () => {
                               <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
                                 type === 'book' ? 'bg-cyan-500/10 text-cyan-400'
                                 : type === 'course' ? 'bg-purple-500/10 text-purple-400'
+                                : type === 'section' ? 'bg-green-500/10 text-green-400'
                                 : 'bg-amber-500/10 text-amber-400'
                               }`}>
                                 {type}
@@ -694,7 +695,7 @@ const AdminPage = () => {
                                 </span>
                               )}
                             </div>
-                            <h2 className="text-2xl font-bold text-white mb-1">{res.title}</h2>
+                            <h2 className="text-2xl font-bold text-white mb-1">{res.title || res.name}</h2>
                             {res.author && <p className="text-indigo-400 text-sm">{res.author}</p>}
                             {res.description && (
                               <p className="text-slate-400 text-sm mt-2 leading-relaxed">{res.description}</p>
@@ -837,6 +838,29 @@ const AdminPage = () => {
                                   ))}
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {/* Section specifics */}
+                          {type === 'section' && (
+                            <div className="space-y-3">
+                              {res.description && (
+                                <p className="text-slate-400 text-sm leading-relaxed">{res.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 text-sm text-slate-400 flex-wrap">
+                                <span className="flex items-center gap-1.5">
+                                  <IoGlobeOutline size={14} className={res.visibility === 'public' ? 'text-green-400' : 'text-slate-500'} />
+                                  <span className={res.visibility === 'public' ? 'text-green-400' : 'text-slate-400'}>
+                                    {res.visibility === 'public' ? 'Public' : 'Private'}
+                                  </span>
+                                </span>
+                                {res.subSections?.length > 0 && (
+                                  <span className="flex items-center gap-1.5">
+                                    <IoLayersOutline size={14} className="text-indigo-400" />
+                                    {res.subSections.length} sub-section{res.subSections.length !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           )}
 
