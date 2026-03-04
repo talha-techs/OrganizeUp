@@ -2,8 +2,14 @@ const UserLibrary = require("../models/UserLibrary");
 const Book = require("../models/Book");
 const Course = require("../models/Course");
 const Tool = require("../models/Tool");
+const CustomSection = require("../models/CustomSection");
 
-const models = { book: Book, course: Course, tool: Tool };
+const models = {
+  book: Book,
+  course: Course,
+  tool: Tool,
+  section: CustomSection,
+};
 
 // @desc    Get user's library (saved public items + own private items)
 // @route   GET /api/library?type=all|books|courses|tools
@@ -85,11 +91,9 @@ const addToLibrary = async (req, res) => {
 
     // Don't add your own content
     if (content.addedBy.toString() === req.user._id.toString()) {
-      return res
-        .status(400)
-        .json({
-          message: "This is your own content — it's already in your space",
-        });
+      return res.status(400).json({
+        message: "This is your own content — it's already in your space",
+      });
     }
 
     const saved = await UserLibrary.create({

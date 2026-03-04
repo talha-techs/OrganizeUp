@@ -69,7 +69,7 @@ const SavedItem = ({ item, onRemove }) => {
         {/* Thumbnail */}
         <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center">
           {thumb ? (
-            <img src={thumb} alt={content.title} className="w-full h-full object-cover" />
+            <img src={thumb} alt={content.title || content.name} className="w-full h-full object-cover" />
           ) : (
             <meta.icon size={22} className={meta.color} />
           )}
@@ -79,7 +79,7 @@ const SavedItem = ({ item, onRemove }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-white font-semibold truncate">{content.title || 'Unknown'}</p>
+              <p className="text-white font-semibold truncate">{content.title || content.name || 'Unknown'}</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${meta.bg} ${meta.color}`}>
                   {meta.label}

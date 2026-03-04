@@ -17,14 +17,12 @@ import {
   IoTimeOutline,
   IoCloseCircleOutline,
   IoFolderOutline,
-  IoCopyOutline,
 } from 'react-icons/io5';
 import {
   fetchExploreContent,
   voteContent,
 } from '../redux/slices/exploreSlice';
 import { addToLibrary, removeFromLibrary, fetchLibrary } from '../redux/slices/librarySlice';
-import { cloneSection } from '../redux/slices/sectionSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import toast from 'react-hot-toast';
@@ -104,15 +102,6 @@ const ExplorePage = () => {
     setCommentResource((prev) =>
       prev?._id === item._id ? null : { ...item, contentType },
     );
-  };
-
-  const handleCloneSection = async (sectionId) => {
-    const result = await dispatch(cloneSection(sectionId));
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success(result.payload.message || 'Section cloned to your library!');
-    } else {
-      toast.error(result.payload || 'Failed to clone section');
-    }
   };
 
   const tabs = [
@@ -240,16 +229,7 @@ const ExplorePage = () => {
             </button>
 
             {!isOwn && (
-              contentType === 'section' ? (
-                <button
-                  onClick={() => handleCloneSection(item._id)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-                  title={`Clone section${item.publishMode === 'without_data' ? ' (template)' : ' (with data)'}`}
-                >
-                  <IoCopyOutline size={14} />
-                  {item.publishMode === 'without_data' ? 'Use Template' : 'Clone'}
-                </button>
-              ) : savedMap[String(item._id)] ? (
+              savedMap[String(item._id)] ? (
                 <button
                   onClick={() => handleRemoveFromLibrary(item._id)}
                   className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-emerald-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
