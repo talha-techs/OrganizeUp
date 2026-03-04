@@ -37,8 +37,7 @@ const BLOCK_TYPES = [
   { type: 'todo',    icon: 'âœ…', label: 'To-Do List',   desc: 'Manage tasks with priorities and due dates',     accent: 'border-emerald-500/30 hover:border-emerald-500/60 hover:bg-emerald-500/5' },
   { type: 'board',   icon: 'ðŸ“‹', label: 'Status Board', desc: 'Visual kanban to track work across stages',      accent: 'border-purple-500/30 hover:border-purple-500/60 hover:bg-purple-500/5' },
   { type: 'links',   icon: 'ðŸ”—', label: 'Links',        desc: 'Collect and organize important URLs',            accent: 'border-cyan-500/30 hover:border-cyan-500/60 hover:bg-cyan-500/5' },
-  { type: 'snippet', icon: '</>', label: 'Code Snippet', desc: 'Save reusable code with syntax highlighting',    accent: 'border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/5' },
-];
+  { type: 'snippet', icon: '</>', label: 'Code Snippet', desc: 'Save reusable code with syntax highlighting',    accent: 'border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/5' },  { type: 'image',   icon: '🖼️', label: 'Image',        desc: 'Add an image with an optional caption',          accent: 'border-rose-500/30 hover:border-rose-500/60 hover:bg-rose-500/5' },];
 
 // â”€â”€â”€ Drive file icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FILE_ICONS = {

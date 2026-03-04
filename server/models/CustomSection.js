@@ -74,6 +74,17 @@ const customSectionSchema = new mongoose.Schema(
       enum: ["public", "private", "pending"],
       default: "private",
     },
+    publishMode: {
+      type: String,
+      enum: ["with_data", "without_data"],
+      default: "with_data",
+    },
+    // If this section is a clone, reference the original
+    clonedFrom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CustomSection",
+      default: null,
+    },
   },
   {
     timestamps: true,

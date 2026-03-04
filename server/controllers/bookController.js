@@ -15,13 +15,11 @@ const getBooks = async (req, res) => {
       filter.type = req.query.type;
     }
 
-    if (req.query.mine === "true") {
-      // Profile page: return only this user's own content (all visibilities)
+    if (req.user.role !== "admin") {
+      // Non-admin users only see their own books
       filter.addedBy = req.user._id;
-    } else if (req.user.role !== "admin") {
-      // Browse: own content + public from everyone
-      filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
     }
+    // Admin with no filter sees all books
     const books = await Book.find(filter)
       .populate("addedBy", "name email avatar")
       .sort({ createdAt: -1 });

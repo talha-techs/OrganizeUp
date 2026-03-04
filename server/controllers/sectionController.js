@@ -1,4 +1,5 @@
 const CustomSection = require("../models/CustomSection");
+const SubSection = require("../models/SubSection");
 
 // @desc    Get all custom sections for current user (+ public ones)
 // @route   GET /api/sections
@@ -7,15 +8,11 @@ const getSections = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     let filter;
-    if (req.query.mine === "true") {
-      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
-      filter = { addedBy: req.user._id };
-    } else if (isAdmin) {
+    if (isAdmin) {
       filter = {};
     } else {
-      filter = {
-        $or: [{ addedBy: req.user._id }, { visibility: "public" }],
-      };
+      // Non-admin users only see their own sections
+      filter = { addedBy: req.user._id };
     }
 
     const sections = await CustomSection.find(filter)
@@ -195,6 +192,7 @@ const deleteSection = async (req, res) => {
         .json({ message: "Not authorized to delete this section" });
     }
 
+    await SubSection.deleteMany({ sectionId: section._id });
     await section.deleteOne();
     res.json({ message: "Section deleted" });
   } catch (error) {
@@ -230,6 +228,109 @@ const removeFile = async (req, res) => {
   }
 };
 
+// @desc    Clone a published section into the current user's library
+// @route   POST /api/sections/:id/clone
+const cloneSection = async (req, res) => {
+  try {
+    const original = await CustomSection.findById(req.params.id);
+    if (!original) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    // Only allow cloning public sections
+    if (original.visibility !== "public") {
+      return res.status(403).json({ message: "Section is not public" });
+    }
+
+    // Prevent cloning own section
+    if (original.addedBy.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: "You already own this section" });
+    }
+
+    // Prevent duplicate clones
+    const existingClone = await CustomSection.findOne({
+      clonedFrom: original._id,
+      addedBy: req.user._id,
+    });
+    if (existingClone) {
+      return res
+        .status(400)
+        .json({ message: "You already cloned this section" });
+    }
+
+    // Create the cloned section (always private for the new user)
+    const cloned = await CustomSection.create({
+      name: original.name,
+      description: original.description,
+      icon: original.icon,
+      color: original.color,
+      addedBy: req.user._id,
+      visibility: "private",
+      clonedFrom: original._id,
+    });
+
+    // Clone sub-sections (blocks)
+    const originalBlocks = await SubSection.find({
+      sectionId: original._id,
+    }).sort({ order: 1 });
+
+    const isWithData = original.publishMode === "with_data";
+
+    for (const block of originalBlocks) {
+      const clonedBlock = {
+        sectionId: cloned._id,
+        name: block.name,
+        type: block.type,
+        order: block.order,
+        addedBy: req.user._id,
+      };
+
+      if (isWithData) {
+        // Copy all data
+        clonedBlock.content = block.content;
+        clonedBlock.todos = block.todos;
+        clonedBlock.boardColumns = block.boardColumns;
+        clonedBlock.boardItems = block.boardItems;
+        clonedBlock.links = block.links;
+        clonedBlock.code = block.code;
+        clonedBlock.language = block.language;
+        clonedBlock.imageUrl = block.imageUrl;
+        clonedBlock.imageCaption = block.imageCaption;
+      } else {
+        // Template only — copy structure with placeholder/empty data
+        clonedBlock.content = "";
+        clonedBlock.todos = [];
+        clonedBlock.boardColumns = block.boardColumns; // Keep column structure
+        clonedBlock.boardItems = [];
+        clonedBlock.links = [];
+        clonedBlock.code = block.code
+          ? `// Template: fill in your ${block.language || "code"} here`
+          : "";
+        clonedBlock.language = block.language;
+        clonedBlock.imageUrl = "";
+        clonedBlock.imageCaption = block.imageCaption || "";
+      }
+
+      await SubSection.create(clonedBlock);
+    }
+
+    const populated = await CustomSection.findById(cloned._id).populate(
+      "addedBy",
+      "name email avatar",
+    );
+
+    res.status(201).json({
+      message: isWithData
+        ? "Section cloned with data"
+        : "Section cloned as template",
+      section: populated,
+    });
+  } catch (error) {
+    console.error("Clone section error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getSections,
   getSection,
@@ -238,4 +339,5 @@ module.exports = {
   updateSection,
   deleteSection,
   removeFile,
+  cloneSection,
 };

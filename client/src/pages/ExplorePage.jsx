@@ -16,12 +16,15 @@ import {
   IoTrendingUpOutline,
   IoTimeOutline,
   IoCloseCircleOutline,
+  IoFolderOutline,
+  IoCopyOutline,
 } from 'react-icons/io5';
 import {
   fetchExploreContent,
   voteContent,
 } from '../redux/slices/exploreSlice';
 import { addToLibrary, removeFromLibrary, fetchLibrary } from '../redux/slices/librarySlice';
+import { cloneSection } from '../redux/slices/sectionSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import toast from 'react-hot-toast';
@@ -101,17 +104,28 @@ const ExplorePage = () => {
     );
   };
 
+  const handleCloneSection = async (sectionId) => {
+    const result = await dispatch(cloneSection(sectionId));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success(result.payload.message || 'Section cloned to your library!');
+    } else {
+      toast.error(result.payload || 'Failed to clone section');
+    }
+  };
+
   const tabs = [
     { key: 'all', label: 'All', icon: <IoGridOutline size={16} /> },
     { key: 'books', label: 'Books', icon: <IoBookOutline size={16} />, count: totals.books },
     { key: 'courses', label: 'Courses', icon: <IoSchoolOutline size={16} />, count: totals.courses },
     { key: 'tools', label: 'Tricks', icon: <IoConstructOutline size={16} />, count: totals.tools },
+    { key: 'sections', label: 'Sections', icon: <IoFolderOutline size={16} />, count: totals.sections },
   ];
 
   const detailRouteByType = {
     book: '/books',
     course: '/courses',
     tool: '/tools',
+    section: '/sections',
   };
 
   const ContentCard = ({ item, contentType }) => {
@@ -137,6 +151,8 @@ const ExplorePage = () => {
                 <IoBookOutline className="text-slate-600" size={40} />
               ) : contentType === 'course' ? (
                 <IoSchoolOutline className="text-slate-600" size={40} />
+              ) : contentType === 'section' ? (
+                <IoFolderOutline className="text-slate-600" size={40} />
               ) : (
                 <IoConstructOutline className="text-slate-600" size={40} />
               )}
@@ -162,11 +178,19 @@ const ExplorePage = () => {
           )}
 
           <div className="flex items-center gap-2 mt-3">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
-              <span className="text-[9px] font-bold text-white">
-                {item.addedBy?.name?.[0]?.toUpperCase() || '?'}
-              </span>
-            </div>
+            {item.addedBy?.avatar ? (
+              <img
+                src={item.addedBy.avatar}
+                alt={item.addedBy.name}
+                className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
+                <span className="text-[9px] font-bold text-white">
+                  {item.addedBy?.name?.[0]?.toUpperCase() || '?'}
+                </span>
+              </div>
+            )}
             <span className="text-xs text-slate-400 truncate flex-1">{item.addedBy?.name || 'Unknown'}</span>
             {item.createdAt && (
               <span className="text-xs text-slate-600 flex-shrink-0 ml-auto">
@@ -214,7 +238,16 @@ const ExplorePage = () => {
             </button>
 
             {!isOwn && (
-              savedMap[String(item._id)] ? (
+              contentType === 'section' ? (
+                <button
+                  onClick={() => handleCloneSection(item._id)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                  title={`Clone section${item.publishMode === 'without_data' ? ' (template)' : ' (with data)'}`}
+                >
+                  <IoCopyOutline size={14} />
+                  {item.publishMode === 'without_data' ? 'Use Template' : 'Clone'}
+                </button>
+              ) : savedMap[String(item._id)] ? (
                 <button
                   onClick={() => handleRemoveFromLibrary(item._id)}
                   className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-emerald-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -244,7 +277,7 @@ const ExplorePage = () => {
     if (!items || items.length === 0) {
       // Only show per-section empty state when a search is active or in single-tab mode
       if (!search && activeTab === 'all') return null;
-      const typeLabel = contentType === 'book' ? 'books' : contentType === 'course' ? 'courses' : 'tricks';
+      const typeLabel = contentType === 'book' ? 'books' : contentType === 'course' ? 'courses' : contentType === 'section' ? 'sections' : 'tricks';
       return (
         <motion.div
           key={`empty-${contentType}`}
@@ -274,9 +307,10 @@ const ExplorePage = () => {
           {contentType === 'book' && <IoBookOutline className="text-indigo-400" size={20} />}
           {contentType === 'course' && <IoSchoolOutline className="text-cyan-400" size={20} />}
           {contentType === 'tool' && <IoConstructOutline className="text-emerald-400" size={20} />}
+          {contentType === 'section' && <IoFolderOutline className="text-purple-400" size={20} />}
           {title}
           <span className="text-xs text-slate-500 font-normal ml-1">
-            ({contentType === 'book' ? totals.books : contentType === 'course' ? totals.courses : totals.tools})
+            ({contentType === 'book' ? totals.books : contentType === 'course' ? totals.courses : contentType === 'section' ? totals.sections : totals.tools})
           </span>
         </h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -299,7 +333,7 @@ const ExplorePage = () => {
       >
         <h1 className="text-3xl font-bold text-white font-display">Explore</h1>
         <p className="text-slate-400 text-sm mt-1">
-          Discover public books, courses, and tricks shared by the community
+          Discover public books, courses, tricks, and sections shared by the community
         </p>
       </motion.div>
 
@@ -376,7 +410,8 @@ const ExplorePage = () => {
               {renderSection('Books', results.books, 'book')}
               {renderSection('Courses', results.courses, 'course')}
               {renderSection('Tricks & Tools', results.tools, 'tool')}
-              {!search && results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && (
+              {renderSection('Sections', results.sections, 'section')}
+              {!search && results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && results.sections.length === 0 && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -389,7 +424,7 @@ const ExplorePage = () => {
                   </p>
                 </motion.div>
               )}
-              {search && results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && (
+              {search && results.books.length === 0 && results.courses.length === 0 && results.tools.length === 0 && results.sections.length === 0 && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -412,6 +447,7 @@ const ExplorePage = () => {
               {activeTab === 'books' && renderSection('Books', results.books, 'book')}
               {activeTab === 'courses' && renderSection('Courses', results.courses, 'course')}
               {activeTab === 'tools' && renderSection('Tricks & Tools', results.tools, 'tool')}
+              {activeTab === 'sections' && renderSection('Sections', results.sections, 'section')}
             </>
           )}
         </>

@@ -95,4 +95,4 @@ Admin will be able to watch user's data of saved lessons and notes etc...
 
 
 
-public resource to library fix 
+public resource to library fix , sectins all public fix, section del,edit
