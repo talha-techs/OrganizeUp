@@ -19,8 +19,10 @@ import api from '../utils/api';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const YouTubePlaylistsPage = () => {
+  useDocumentTitle('YouTube Playlists');
   const [showForm, setShowForm] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [isAdding, setIsAdding] = useState(false);

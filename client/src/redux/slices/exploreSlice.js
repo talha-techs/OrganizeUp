@@ -95,11 +95,14 @@ export const deleteComment = createAsyncThunk(
 
 export const requestPublish = createAsyncThunk(
   "explore/requestPublish",
-  async ({ contentType, contentId, category }, { rejectWithValue }) => {
+  async (
+    { contentType, contentId, category, publishMode },
+    { rejectWithValue },
+  ) => {
     try {
       const { data } = await api.post(
         `/social/publish-request/${contentType}/${contentId}`,
-        { category },
+        { category, publishMode },
       );
       return data;
     } catch (error) {
@@ -113,8 +116,8 @@ export const requestPublish = createAsyncThunk(
 const exploreSlice = createSlice({
   name: "explore",
   initialState: {
-    results: { books: [], courses: [], tools: [] },
-    totals: { books: 0, courses: 0, tools: 0 },
+    results: { books: [], courses: [], tools: [], sections: [] },
+    totals: { books: 0, courses: 0, tools: 0, sections: 0 },
     currentItem: null,
     comments: [],
     commentsTotal: 0,

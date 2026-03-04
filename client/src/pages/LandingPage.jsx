@@ -2,8 +2,10 @@ import { Link, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoArrowForward, IoRocketOutline, IoShieldCheckmarkOutline, IoCloudOutline, IoCheckmarkCircleOutline } from 'react-icons/io5';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const LandingPage = () => {
+  useDocumentTitle('Welcome');
   const { user } = useSelector((state) => state.auth);
 
   if (user) return <Navigate to="/dashboard" replace />;

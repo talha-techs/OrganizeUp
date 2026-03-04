@@ -4,8 +4,13 @@ const publishRequestSchema = new mongoose.Schema(
   {
     contentType: {
       type: String,
-      enum: ["book", "course", "tool"],
+      enum: ["book", "course", "tool", "section"],
       required: true,
+    },
+    publishMode: {
+      type: String,
+      enum: ["with_data", "without_data"],
+      default: "with_data",
     },
     contentId: {
       type: mongoose.Schema.Types.ObjectId,

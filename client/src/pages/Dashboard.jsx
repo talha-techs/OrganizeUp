@@ -6,8 +6,10 @@ import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoArrowForward, IoS
 import { fetchBooks } from '../redux/slices/bookSlice';
 import { fetchCourses } from '../redux/slices/courseSlice';
 import { fetchTools } from '../redux/slices/toolSlice';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const Dashboard = () => {
+  useDocumentTitle('Dashboard');
   const { user } = useSelector((state) => state.auth);
   const { books } = useSelector((state) => state.books);
   const { courses } = useSelector((state) => state.courses);

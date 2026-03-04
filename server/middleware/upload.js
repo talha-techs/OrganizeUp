@@ -47,7 +47,7 @@ const pdfUpload = multer({
   },
 });
 
-// Combined uploader for book form (PDF + cover image)
+// Combined uploader for book form (PDF + cover image + audio files)
 const bookUpload = multer({
   storage,
   fileFilter: (req, file, cb) => {
@@ -58,12 +58,17 @@ const bookUpload = multer({
       /jpeg|jpg|png|gif|webp/.test(file.mimetype)
     ) {
       cb(null, true);
+    } else if (
+      file.fieldname === "audioFiles" &&
+      /^audio\//.test(file.mimetype)
+    ) {
+      cb(null, true);
     } else {
       cb(new Error("Invalid file type"), false);
     }
   },
   limits: {
-    fileSize: 50 * 1024 * 1024,
+    fileSize: 200 * 1024 * 1024, // 200 MB — enough for long audio chapters
   },
 });
 

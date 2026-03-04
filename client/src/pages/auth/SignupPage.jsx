@@ -5,8 +5,10 @@ import { motion } from 'framer-motion';
 import { IoMail, IoLockClosed, IoLogoGoogle, IoPerson, IoEye, IoEyeOff } from 'react-icons/io5';
 import { register, clearError } from '../../redux/slices/authSlice';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const SignupPage = () => {
+  useDocumentTitle('Sign Up');
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();

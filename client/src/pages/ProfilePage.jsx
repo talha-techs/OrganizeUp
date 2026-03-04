@@ -28,6 +28,7 @@ import { fetchBooks, deleteBook, removeVideoFromBook } from '../redux/slices/boo
 import { fetchCourses, deleteCourse, removeFileFromCourse } from '../redux/slices/courseSlice';
 import { fetchTools, deleteTool, removeFileFromTool } from '../redux/slices/toolSlice';
 import { fetchSections, deleteSection, removeFileFromSection } from '../redux/slices/sectionSlice';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 import { fetchPlaylists, deletePlaylist } from '../redux/slices/youtubePlaylistSlice';
 import toast from 'react-hot-toast';
 
@@ -150,6 +151,7 @@ const SubRow = ({ name, onDelete }) => {
 
 /* ── main component ─────────────────────────────────────── */
 const ProfilePage = () => {
+  useDocumentTitle('Profile');
   const { user } = useSelector((state) => state.auth);
   const { books } = useSelector((state) => state.books);
   const { courses } = useSelector((state) => state.courses);

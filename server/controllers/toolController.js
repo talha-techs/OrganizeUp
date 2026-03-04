@@ -6,13 +6,11 @@ const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 const getTools = async (req, res) => {
   try {
     const filter = {};
-    if (req.query.mine === "true") {
-      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
+    if (req.user.role !== "admin") {
+      // Non-admin users only see their own tools
       filter.addedBy = req.user._id;
-    } else if (req.user.role !== "admin") {
-      // Browse: own content + everyone's public
-      filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
     }
+    // Admin with no filter sees all tools
 
     const tools = await Tool.find(filter)
       .populate("addedBy", "name email avatar")

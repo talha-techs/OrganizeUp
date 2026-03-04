@@ -21,6 +21,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const COLORS = [
   { name: 'indigo', from: 'from-indigo-500', to: 'to-blue-600' },
@@ -36,12 +37,15 @@ function getColorClasses(color) {
 }
 
 const SectionsPage = () => {
+  useDocumentTitle('Sections');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState('indigo');
   const [deleteSectionId, setDeleteSectionId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [publishSection, setPublishSection] = useState(null);
+  const [publishMode, setPublishMode] = useState('with_data');
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -86,6 +90,25 @@ const SectionsPage = () => {
       setDeleteSectionId(null);
     } else {
       toast.error(result.payload || 'Failed to delete section');
+    }
+  };
+
+  const handlePublishRequest = async () => {
+    if (!publishSection) return;
+    const result = await dispatch(
+      requestPublish({
+        contentType: 'section',
+        contentId: publishSection._id,
+        publishMode,
+      }),
+    );
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Publish request submitted');
+      setPublishSection(null);
+      setPublishMode('with_data');
+      dispatch(fetchSections());
+    } else {
+      toast.error(result.payload || 'Failed to submit request');
     }
   };
 
@@ -224,6 +247,18 @@ const SectionsPage = () => {
                               Private
                             </button>
                           )}
+                          {!isAdmin && isOwner && section.visibility === 'private' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPublishSection(section);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-400 transition-colors text-xs"
+                              title="Request to publish"
+                            >
+                              Publish
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -307,6 +342,70 @@ const SectionsPage = () => {
         onCancel={() => setDeleteSectionId(null)}
         isLoading={isDeleting}
       />
+
+      {/* Publish Mode Modal */}
+      <Modal isOpen={!!publishSection} onClose={() => { setPublishSection(null); setPublishMode('with_data'); }} title="Publish Section">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">
+            Choose how others will receive <span className="text-white font-medium">"{publishSection?.name}"</span> when they clone it:
+          </p>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setPublishMode('with_data')}
+              className={`w-full p-4 rounded-xl border text-left transition-all ${
+                publishMode === 'with_data'
+                  ? 'border-indigo-500/50 bg-indigo-500/10 ring-1 ring-indigo-500/30'
+                  : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">📦</span>
+                <span className="text-sm font-semibold text-white">With Data</span>
+              </div>
+              <p className="text-xs text-slate-500 ml-7">
+                Others get a full copy of your section including all notes, tasks, links, and code.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPublishMode('without_data')}
+              className={`w-full p-4 rounded-xl border text-left transition-all ${
+                publishMode === 'without_data'
+                  ? 'border-indigo-500/50 bg-indigo-500/10 ring-1 ring-indigo-500/30'
+                  : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">📄</span>
+                <span className="text-sm font-semibold text-white">Template Only</span>
+              </div>
+              <p className="text-xs text-slate-500 ml-7">
+                Others get the block structure as a blank template — they fill in their own data.
+              </p>
+            </button>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => { setPublishSection(null); setPublishMode('with_data'); }}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handlePublishRequest}
+              className="btn-primary"
+            >
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

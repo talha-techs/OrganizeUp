@@ -1,6 +1,7 @@
 const Book = require("../models/Book");
 const Course = require("../models/Course");
 const Tool = require("../models/Tool");
+const CustomSection = require("../models/CustomSection");
 const Vote = require("../models/Vote");
 const Comment = require("../models/Comment");
 
@@ -28,7 +29,7 @@ const attachSocialCounts = async (items, contentType) => {
 };
 
 // @desc    Get all public content (explore feed)
-// @route   GET /api/explore?type=all|books|courses|tools&sort=latest|popular&search=...
+// @route   GET /api/explore?type=all|books|courses|tools|sections&sort=latest|popular&search=...
 const getExploreContent = async (req, res) => {
   try {
     const {
@@ -50,8 +51,17 @@ const getExploreContent = async (req, res) => {
       ];
     }
 
-    let results = { books: [], courses: [], tools: [] };
-    let totals = { books: 0, courses: 0, tools: 0 };
+    // Section search uses 'name' instead of 'title'
+    const sectionFilter = { visibility: "public" };
+    if (search) {
+      sectionFilter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    let results = { books: [], courses: [], tools: [], sections: [] };
+    let totals = { books: 0, courses: 0, tools: 0, sections: 0 };
 
     // For popular sort: fetch ALL items (no limit), attach scores, sort by score, then slice.
     // For latest sort: fetch with pagination as usual.
@@ -120,6 +130,26 @@ const getExploreContent = async (req, res) => {
       totals.tools = toolCount;
     }
 
+    if (type === "all" || type === "sections") {
+      const [allSections, sectionCount] = await Promise.all([
+        CustomSection.find(sectionFilter)
+          .populate("addedBy", "name avatar")
+          .sort({ createdAt: -1 }),
+        CustomSection.countDocuments(sectionFilter),
+      ]);
+      let scored = await attachSocialCounts(allSections, "section");
+      // Normalize 'name' → 'title' for consistent card rendering
+      scored = scored.map((s) => ({ ...s, title: s.name }));
+      if (isPopular) {
+        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        results.sections = scored.slice(0, perType);
+      } else {
+        const s = type === "sections" ? skip : 0;
+        results.sections = scored.slice(s, s + perType);
+      }
+      totals.sections = sectionCount;
+    }
+
     res.json({ results, totals });
   } catch (error) {
     console.error("Explore error:", error);
@@ -132,7 +162,12 @@ const getExploreContent = async (req, res) => {
 const getExploreItem = async (req, res) => {
   try {
     const { contentType, contentId } = req.params;
-    const models = { book: Book, course: Course, tool: Tool };
+    const models = {
+      book: Book,
+      course: Course,
+      tool: Tool,
+      section: CustomSection,
+    };
     const Model = models[contentType];
 
     if (!Model) {

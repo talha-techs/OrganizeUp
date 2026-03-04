@@ -194,16 +194,24 @@ const getAllContent = async (req, res) => {
     }
 
     const filter = {};
-    if (search) filter.title = { $regex: search, $options: "i" };
+    if (search) {
+      // Sections use 'name' instead of 'title'
+      const schemaPaths = Object.keys(Model.schema.paths);
+      if (schemaPaths.includes("title")) {
+        filter.title = { $regex: search, $options: "i" };
+      } else if (schemaPaths.includes("name")) {
+        filter.name = { $regex: search, $options: "i" };
+      }
+    }
 
     // Only populate fields that actually exist on this model's schema
-    const schemaPaths = Object.keys(Model.schema.paths);
+    const schemaFields = Object.keys(Model.schema.paths);
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     let query = Model.find(filter);
-    if (schemaPaths.includes("addedBy"))
+    if (schemaFields.includes("addedBy"))
       query = query.populate("addedBy", "name email");
-    if (schemaPaths.includes("category"))
+    if (schemaFields.includes("category"))
       query = query.populate("category", "name");
 
     const [items, total] = await Promise.all([

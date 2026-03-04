@@ -6,9 +6,16 @@ const Course = require("../models/Course");
 const Tool = require("../models/Tool");
 const User = require("../models/User");
 
+const CustomSection = require("../models/CustomSection");
+
 // ───── Helper to get the model by content type ─────
 const getModel = (contentType) => {
-  const map = { book: Book, course: Course, tool: Tool };
+  const map = {
+    book: Book,
+    course: Course,
+    tool: Tool,
+    section: CustomSection,
+  };
   return map[contentType] || null;
 };
 
@@ -219,6 +226,7 @@ const createPublishRequest = async (req, res) => {
       contentId,
       requestedBy: req.user._id,
       category: req.body.category || "",
+      publishMode: req.body.publishMode || "with_data",
     });
 
     // Mark content as pending
@@ -248,9 +256,20 @@ const getPublishRequests = async (req, res) => {
       requests.map(async (req) => {
         const Model = getModel(req.contentType);
         const content = Model
-          ? await Model.findById(req.contentId).select("title description")
+          ? await Model.findById(req.contentId).select(
+              req.contentType === "section"
+                ? "name description publishMode"
+                : "title description",
+            )
           : null;
-        return { ...req.toObject(), content };
+        // Normalize title for sections
+        const normalized = content
+          ? {
+              ...content.toObject(),
+              title: content.title || content.name,
+            }
+          : null;
+        return { ...req.toObject(), content: normalized };
       }),
     );
 
@@ -296,7 +315,17 @@ const reviewPublishRequest = async (req, res) => {
       const content = await Model.findById(request.contentId);
       if (content) {
         content.visibility = status === "approved" ? "public" : "private";
+        // Store publishMode on sections when approved
+        if (
+          status === "approved" &&
+          request.contentType === "section" &&
+          request.publishMode
+        ) {
+          content.publishMode = request.publishMode;
+        }
         await content.save();
+
+        const contentTitle = content.title || content.name || "Unknown content";
 
         // Notify the requester if rejected
         if (status === "rejected") {
@@ -305,7 +334,7 @@ const reviewPublishRequest = async (req, res) => {
             requester.notifications.push({
               type: "rejection",
               message: `Your publish request was reviewed by an admin.`,
-              contentTitle: content.title || "Unknown content",
+              contentTitle,
               adminNote: adminNote || "",
               read: false,
             });
@@ -320,7 +349,7 @@ const reviewPublishRequest = async (req, res) => {
             requester.notifications.push({
               type: "approval",
               message: `Your content was approved and is now public!`,
-              contentTitle: content.title || "Unknown content",
+              contentTitle,
               adminNote: adminNote || "",
               read: false,
             });

@@ -8,6 +8,7 @@ const {
   updateSection,
   deleteSection,
   removeFile,
+  cloneSection,
 } = require("../controllers/sectionController");
 const {
   getSubSections,
@@ -30,6 +31,7 @@ router.get("/", protect, getSections);
 router.get("/:id", protect, getSection);
 router.post("/", protect, createSection);
 router.post("/:id/import", protect, importToSection);
+router.post("/:id/clone", protect, cloneSection);
 router.put("/:id", protect, updateSection);
 router.delete("/:id", protect, deleteSection);
 router.delete("/:id/files/:fileId", protect, removeFile);

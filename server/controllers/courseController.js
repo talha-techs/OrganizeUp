@@ -11,13 +11,11 @@ const getCourses = async (req, res) => {
       filter.category = req.query.category;
     }
 
-    if (req.query.mine === "true") {
-      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
+    if (req.user.role !== "admin") {
+      // Non-admin users only see their own courses
       filter.addedBy = req.user._id;
-    } else if (req.user.role !== "admin") {
-      // Browse: own content + everyone's public
-      filter.$or = [{ addedBy: req.user._id }, { visibility: "public" }];
     }
+    // Admin with no filter sees all courses
 
     const courses = await Course.find(filter)
       .populate("category", "name")

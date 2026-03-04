@@ -80,12 +80,22 @@ const updateSubSection = async (req, res) => {
     });
     if (!sub) return res.status(404).json({ message: "Sub-section not found" });
 
-    const { name, content, code, language, boardColumns } = req.body;
+    const {
+      name,
+      content,
+      code,
+      language,
+      boardColumns,
+      imageUrl,
+      imageCaption,
+    } = req.body;
     if (name !== undefined) sub.name = name;
     if (content !== undefined) sub.content = content;
     if (code !== undefined) sub.code = code;
     if (language !== undefined) sub.language = language;
     if (boardColumns !== undefined) sub.boardColumns = boardColumns;
+    if (imageUrl !== undefined) sub.imageUrl = imageUrl;
+    if (imageCaption !== undefined) sub.imageCaption = imageCaption;
 
     await sub.save();
     res.json({ subSection: sub });

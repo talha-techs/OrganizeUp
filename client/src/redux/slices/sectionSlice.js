@@ -120,6 +120,20 @@ export const removeFileFromSection = createAsyncThunk(
   },
 );
 
+export const cloneSection = createAsyncThunk(
+  "sections/cloneSection",
+  async (sectionId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/sections/${sectionId}/clone`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to clone section",
+      );
+    }
+  },
+);
+
 // ── Sub-section thunks ───────────────────────────────────────────────────────
 
 export const fetchSubSections = createAsyncThunk(
@@ -396,6 +410,12 @@ const sectionSlice = createSlice({
           if (state.currentSection?._id === action.payload.sectionId) {
             state.currentSection = action.payload.section;
           }
+        }
+      })
+      // Clone
+      .addCase(cloneSection.fulfilled, (state, action) => {
+        if (action.payload.section) {
+          state.sections.unshift(action.payload.section);
         }
       })
       // Drive scan

@@ -7,7 +7,9 @@ const {
   updateBook,
   deleteBook,
   removeVideoFromBook,
+  removeAudioFromBook,
   servePdf,
+  serveAudio,
   serveImage,
   updateVideoProgress,
   updateReadingProgress,
@@ -27,6 +29,9 @@ router.get("/", protect, getBooks);
 // PDF serve route (must be BEFORE /:id to avoid conflict)
 router.get("/pdf/:fileId", servePdf);
 
+// Audio serve route (must be BEFORE /:id)
+router.get("/audio/:fileId", serveAudio);
+
 router.get("/:id", protect, getBook);
 
 // Progress routes (authenticated users)
@@ -45,6 +50,7 @@ router.post(
   bookUpload.fields([
     { name: "pdfFile", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },
+    { name: "audioFiles", maxCount: 50 },
   ]),
   bookRules,
   validate,
@@ -58,10 +64,12 @@ router.put(
   bookUpload.fields([
     { name: "pdfFile", maxCount: 1 },
     { name: "coverImage", maxCount: 1 },
+    { name: "audioFiles", maxCount: 50 },
   ]),
   updateBook,
 );
 router.delete("/:id", protect, deleteBook);
 router.delete("/:id/videos/:videoId", protect, removeVideoFromBook);
+router.delete("/:id/audio/:audioId", protect, removeAudioFromBook);
 
 module.exports = router;

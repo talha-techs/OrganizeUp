@@ -44,12 +44,17 @@ const bookSchema = new mongoose.Schema(
         order: { type: Number, default: 0 },
       },
     ],
-    // For audio books (future use)
+    // For audio books — each track uploaded to GridFS
     audioFiles: [
       {
         title: { type: String, default: "" },
-        fileLink: { type: String, default: "" },
+        fileId: {
+          type: mongoose.Schema.Types.ObjectId,
+          default: null,
+        },
+        originalName: { type: String, default: "" },
         duration: { type: String, default: "" },
+        size: { type: Number, default: 0 },
         order: { type: Number, default: 0 },
       },
     ],

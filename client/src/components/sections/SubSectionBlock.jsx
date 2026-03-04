@@ -33,6 +33,7 @@ const TYPE_CONFIG = {
   board:   { icon: '📋', label: 'Board',       color: 'purple' },
   links:   { icon: '🔗', label: 'Links',       color: 'cyan' },
   snippet: { icon: '</>', label: 'Snippet',    color: 'amber' },
+  image:   { icon: '🖼️', label: 'Image',       color: 'rose' },
 };
 
 const PRIORITY_DOT = { low: 'bg-emerald-500', medium: 'bg-amber-500', high: 'bg-red-500' };
@@ -503,6 +504,74 @@ const SnippetEditor = ({ block, sectionId, canManage }) => {
   );
 };
 
+// ─── Image ────────────────────────────────────────────────────────────────────
+const ImageEditor = ({ block, sectionId, canManage }) => {
+  const dispatch = useDispatch();
+  const [localUrl, setLocalUrl] = useState(block.imageUrl || '');
+  const [localCaption, setLocalCaption] = useState(block.imageCaption || '');
+  const [saving, setSaving] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const handleSave = async () => {
+    if (localUrl === block.imageUrl && localCaption === block.imageCaption) return;
+    setSaving(true);
+    await dispatch(updateSubSection({ sectionId, subId: block._id, imageUrl: localUrl, imageCaption: localCaption }));
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      {canManage && (
+        <div className="space-y-2">
+          <input
+            value={localUrl}
+            onChange={(e) => { setLocalUrl(e.target.value); setImgError(false); }}
+            onBlur={handleSave}
+            placeholder="Image URL (https://…)"
+            className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
+          />
+          <input
+            value={localCaption}
+            onChange={(e) => setLocalCaption(e.target.value)}
+            onBlur={handleSave}
+            placeholder="Caption (optional)"
+            className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-4 py-2 text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
+          />
+        </div>
+      )}
+
+      {localUrl && !imgError ? (
+        <div className="rounded-xl overflow-hidden border border-white/5">
+          <img
+            src={localUrl}
+            alt={localCaption || block.name}
+            className="w-full max-h-[500px] object-contain bg-slate-950"
+            onError={() => setImgError(true)}
+          />
+          {(localCaption || block.imageCaption) && (
+            <p className="text-xs text-slate-500 text-center py-2 bg-slate-900/50">
+              {localCaption || block.imageCaption}
+            </p>
+          )}
+        </div>
+      ) : localUrl && imgError ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+          <IoCloseOutline size={24} className="mx-auto text-red-400 mb-2" />
+          <p className="text-sm text-red-400">Failed to load image</p>
+          <p className="text-xs text-slate-500 mt-1 truncate">{localUrl}</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-white/10 bg-slate-900/30 p-8 text-center">
+          <span className="text-2xl mb-2 block">🖼️</span>
+          <p className="text-sm text-slate-500">{canManage ? 'Enter an image URL above' : 'No image added yet'}</p>
+        </div>
+      )}
+
+      {saving && <span className="text-xs text-indigo-400 animate-pulse">Saving…</span>}
+    </div>
+  );
+};
+
 // ─── SubSectionBlock (main export) ───────────────────────────────────────────
 const SubSectionBlock = ({ block, sectionId, canManage }) => {
   const dispatch = useDispatch();
@@ -581,6 +650,7 @@ const SubSectionBlock = ({ block, sectionId, canManage }) => {
               {block.type === 'board'   && <BoardEditor   block={block} sectionId={sectionId} canManage={canManage} />}
               {block.type === 'links'   && <LinksEditor   block={block} sectionId={sectionId} canManage={canManage} />}
               {block.type === 'snippet' && <SnippetEditor block={block} sectionId={sectionId} canManage={canManage} />}
+              {block.type === 'image'   && <ImageEditor   block={block} sectionId={sectionId} canManage={canManage} />}
             </div>
           </motion.div>
         )}

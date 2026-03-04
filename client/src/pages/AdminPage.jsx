@@ -40,8 +40,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ProgressBar from '../components/ui/ProgressBar';
 import toast from 'react-hot-toast';
-
-/** Count files recursively in course/tool folders */
+import useDocumentTitle from '../hooks/useDocumentTitle';
 const countFiles = (item) => {
   if (!item) return 0;
   const topLevel = item.files?.length || 0;
@@ -53,6 +52,7 @@ const countFiles = (item) => {
 };
 
 const AdminPage = () => {
+  useDocumentTitle('Admin');
   const dispatch = useDispatch();
   const { stats, users, selectedUser, publishRequests, reviewResource, contentItems, contentTotal, contentLoading, contentError, isLoading } =
     useSelector((state) => state.admin);

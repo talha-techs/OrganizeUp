@@ -95,6 +95,20 @@ export const removeVideoFromBook = createAsyncThunk(
   },
 );
 
+export const removeAudioFromBook = createAsyncThunk(
+  "books/removeAudio",
+  async ({ bookId, audioId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(`/books/${bookId}/audio/${audioId}`);
+      return { bookId, audioId, book: data.book };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to remove audio track",
+      );
+    }
+  },
+);
+
 export const updateVideoProgress = createAsyncThunk(
   "books/updateVideoProgress",
   async ({ bookId, progressData }, { rejectWithValue }) => {
@@ -234,6 +248,12 @@ const bookSlice = createSlice({
         state.books = state.books.filter((b) => b._id !== action.payload);
       })
       .addCase(removeVideoFromBook.fulfilled, (state, action) => {
+        const { book } = action.payload;
+        const idx = state.books.findIndex((b) => b._id === book._id);
+        if (idx !== -1) state.books[idx] = book;
+        if (state.currentBook?._id === book._id) state.currentBook = book;
+      })
+      .addCase(removeAudioFromBook.fulfilled, (state, action) => {
         const { book } = action.payload;
         const idx = state.books.findIndex((b) => b._id === book._id);
         if (idx !== -1) state.books[idx] = book;
