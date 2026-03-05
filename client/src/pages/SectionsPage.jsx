@@ -13,6 +13,7 @@ import {
   fetchSections,
   createSection,
   deleteSection,
+  updateSection,
 } from '../redux/slices/sectionSlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
@@ -95,20 +96,36 @@ const SectionsPage = () => {
 
   const handlePublishRequest = async () => {
     if (!publishSection) return;
-    const result = await dispatch(
-      requestPublish({
-        contentType: 'section',
-        contentId: publishSection._id,
-        publishMode,
-      }),
-    );
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Publish request submitted');
-      setPublishSection(null);
-      setPublishMode('with_data');
-      dispatch(fetchSections());
+
+    if (isAdmin) {
+      // Admin publishes their own section directly — no approval needed
+      const result = await dispatch(
+        updateSection({ id: publishSection._id, visibility: 'public', publishMode }),
+      );
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Section published');
+        setPublishSection(null);
+        setPublishMode('with_data');
+        dispatch(fetchSections());
+      } else {
+        toast.error(result.payload || 'Failed to publish');
+      }
     } else {
-      toast.error(result.payload || 'Failed to submit request');
+      const result = await dispatch(
+        requestPublish({
+          contentType: 'section',
+          contentId: publishSection._id,
+          publishMode,
+        }),
+      );
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Publish request submitted');
+        setPublishSection(null);
+        setPublishMode('with_data');
+        dispatch(fetchSections());
+      } else {
+        toast.error(result.payload || 'Failed to submit request');
+      }
     }
   };
 
@@ -217,7 +234,8 @@ const SectionsPage = () => {
 
                       {canManage && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {isAdmin && (
+                          {/* Admin managing OTHER users' sections: direct visibility toggle */}
+                          {isAdmin && !isOwner && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -229,16 +247,21 @@ const SectionsPage = () => {
                               {section.visibility === 'public' ? 'Private' : 'Public'}
                             </button>
                           )}
-                          {!isAdmin && isOwner && section.visibility === 'public' && (
+                          {/* Owner's own public section → make private */}
+                          {isOwner && section.visibility === 'public' && (
                             <button
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                try {
-                                  await api.put('/content/toggle-visibility', { contentType: 'section', contentId: section._id, visibility: 'private' });
-                                  toast.success('Section set to private');
-                                  dispatch(fetchSections());
-                                } catch (err) {
-                                  toast.error(err.response?.data?.message || 'Failed to update');
+                                if (isAdmin) {
+                                  handleTogglePublic(section);
+                                } else {
+                                  try {
+                                    await api.put('/content/toggle-visibility', { contentType: 'section', contentId: section._id, visibility: 'private' });
+                                    toast.success('Section set to private');
+                                    dispatch(fetchSections());
+                                  } catch (err) {
+                                    toast.error(err.response?.data?.message || 'Failed to update');
+                                  }
                                 }
                               }}
                               className="p-1.5 rounded-lg hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 transition-colors text-xs"
@@ -247,14 +270,15 @@ const SectionsPage = () => {
                               Private
                             </button>
                           )}
-                          {!isAdmin && isOwner && section.visibility === 'private' && (
+                          {/* Owner's own private section → publish (with publishMode modal, for both admin and regular users) */}
+                          {isOwner && section.visibility === 'private' && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setPublishSection(section);
                               }}
                               className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-400 transition-colors text-xs"
-                              title="Request to publish"
+                              title={isAdmin ? 'Publish section' : 'Request to publish'}
                             >
                               Publish
                             </button>

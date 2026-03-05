@@ -59,15 +59,13 @@ const createSection = async (req, res) => {
   try {
     const { name, description, icon, color } = req.body;
 
-    const visibility = req.user.role === "admin" ? "public" : "private";
-
     const section = await CustomSection.create({
       name,
       description: description || "",
       icon: icon || "folder",
       color: color || "indigo",
       addedBy: req.user._id,
-      visibility,
+      visibility: "private",
     });
 
     const populated = await CustomSection.findById(section._id).populate(
@@ -155,11 +153,23 @@ const updateSection = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const { name, description, icon, color } = req.body;
+    const { name, description, icon, color, visibility, publishMode } =
+      req.body;
     if (name) section.name = name;
     if (description !== undefined) section.description = description;
     if (icon) section.icon = icon;
     if (color) section.color = color;
+    // Admin can directly set visibility; owner or admin can set publishMode
+    if (isAdmin && visibility && ["public", "private"].includes(visibility)) {
+      section.visibility = visibility;
+    }
+    if (
+      (isAdmin || isOwner) &&
+      publishMode &&
+      ["with_data", "without_data"].includes(publishMode)
+    ) {
+      section.publishMode = publishMode;
+    }
 
     await section.save();
 
