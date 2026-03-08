@@ -5,6 +5,9 @@ const CustomSection = require("../models/CustomSection");
 const Vote = require("../models/Vote");
 const Comment = require("../models/Comment");
 
+// Escape special regex chars to prevent ReDoS / injection
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
  * Helper: attach vote & comment counts to content items
  */
@@ -45,18 +48,20 @@ const getExploreContent = async (req, res) => {
     const filter = { visibility: "public" };
 
     if (search) {
+      const safe = escapeRegex(search);
       filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { title: { $regex: safe, $options: "i" } },
+        { description: { $regex: safe, $options: "i" } },
       ];
     }
 
     // Section search uses 'name' instead of 'title'
     const sectionFilter = { visibility: "public" };
     if (search) {
+      const safe = escapeRegex(search);
       sectionFilter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { name: { $regex: safe, $options: "i" } },
+        { description: { $regex: safe, $options: "i" } },
       ];
     }
 
@@ -73,7 +78,7 @@ const getExploreContent = async (req, res) => {
       if (search) {
         bookFilter.$or = [
           ...(bookFilter.$or || []),
-          { author: { $regex: search, $options: "i" } },
+          { author: { $regex: escapeRegex(search), $options: "i" } },
         ];
       }
       const [allBooks, bookCount] = await Promise.all([

@@ -35,9 +35,9 @@ router.delete("/categories/:id", protect, adminOnly, deleteCategory);
 // Course routes
 router.get("/", protect, getCourses);
 router.get("/:id", protect, getCourse);
-router.post("/", protect, upload.single("bannerImage"), createCourse);
+router.post("/", protect, upload.single("bannerImage"), courseRules, validate, createCourse);
 router.post("/:id/import", protect, importToCourse);
-router.put("/:id", protect, upload.single("bannerImage"), updateCourse);
+router.put("/:id", protect, upload.single("bannerImage"), courseRules, validate, updateCourse);
 router.delete("/:id", protect, deleteCourse);
 router.delete("/:id/files/:fileId", protect, removeFileFromCourse);
 

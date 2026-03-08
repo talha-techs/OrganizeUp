@@ -7,6 +7,9 @@ const Comment = require("../models/Comment");
 const PublishRequest = require("../models/PublishRequest");
 const { deleteFromGridFS } = require("../config/gridfs");
 
+// Escape special regex chars to prevent ReDoS / injection
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // @desc    Get admin dashboard stats
 // @route   GET /api/admin/stats
 const getStats = async (req, res) => {
@@ -195,12 +198,13 @@ const getAllContent = async (req, res) => {
 
     const filter = {};
     if (search) {
+      const safe = escapeRegex(search);
       // Sections use 'name' instead of 'title'
       const schemaPaths = Object.keys(Model.schema.paths);
       if (schemaPaths.includes("title")) {
-        filter.title = { $regex: search, $options: "i" };
+        filter.title = { $regex: safe, $options: "i" };
       } else if (schemaPaths.includes("name")) {
-        filter.name = { $regex: search, $options: "i" };
+        filter.name = { $regex: safe, $options: "i" };
       }
     }
 
@@ -259,6 +263,17 @@ const adminDeleteContent = async (req, res) => {
 
     const doc = await Model.findById(id);
     if (!doc) return res.status(404).json({ message: "Content not found" });
+
+    // Cascade-delete associated GridFS files to prevent orphaned storage
+    if (type === "book") {
+      if (doc.pdfFileId) await deleteFromGridFS(doc.pdfFileId, "pdf").catch(() => {});
+      if (doc.coverImageId) await deleteFromGridFS(doc.coverImageId, "image").catch(() => {});
+      for (const af of doc.audioFiles || []) {
+        if (af.fileId) await deleteFromGridFS(af.fileId, "audio").catch(() => {});
+      }
+    } else if (type === "course" || type === "tool") {
+      if (doc.bannerImageId) await deleteFromGridFS(doc.bannerImageId, "image").catch(() => {});
+    }
 
     await doc.deleteOne();
     res.json({ message: "Content deleted", contentType: type, contentId: id });

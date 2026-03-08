@@ -22,7 +22,7 @@ const getBooks = async (req, res) => {
     }
     // Admin with no filter sees all books
     const books = await Book.find(filter)
-      .populate("addedBy", "name email avatar")
+      .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
     res.json({ books });
@@ -38,7 +38,7 @@ const getBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
@@ -398,8 +398,17 @@ const getBookProgress = async (req, res) => {
 // @route   GET /api/books/pdf/:fileId
 const servePdf = async (req, res) => {
   try {
-    // Remove X-Frame-Options so PDF can load in iframe
-    res.removeHeader("X-Frame-Options");
+    const book = await Book.findOne({ pdfFileId: req.params.fileId });
+    if (!book) return res.status(404).json({ message: "PDF not found" });
+
+    const isOwner = book.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin && book.visibility !== "public") {
+      return res.status(403).json({ message: "Not authorized to access this file" });
+    }
+
+    // Only allow same-origin framing for owned/public PDFs
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
     await streamFromGridFS(req.params.fileId, res, "pdf");
   } catch (error) {
     console.error("Serve PDF error:", error);
@@ -445,6 +454,15 @@ const removeVideoFromBook = async (req, res) => {
 // @route   GET /api/books/audio/:fileId
 const serveAudio = async (req, res) => {
   try {
+    const book = await Book.findOne({ "audioFiles.fileId": req.params.fileId });
+    if (!book) return res.status(404).json({ message: "Audio not found" });
+
+    const isOwner = book.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin && book.visibility !== "public") {
+      return res.status(403).json({ message: "Not authorized to access this file" });
+    }
+
     await streamAudioFromGridFS(req.params.fileId, req, res, "audio");
   } catch (error) {
     console.error("Serve audio error:", error);

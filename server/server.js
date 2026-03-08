@@ -6,6 +6,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const session = require("express-session");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
 const passport = require("./config/passport");
 
@@ -22,6 +23,7 @@ const driveRoutes = require("./routes/drive");
 const sectionRoutes = require("./routes/sections");
 const youtubePlaylistRoutes = require("./routes/youtubePlaylists");
 const contentRoutes = require("./routes/content");
+const { protect } = require("./middleware/auth");
 const { serveImage } = require("./controllers/bookController");
 
 const app = express();
@@ -33,7 +35,18 @@ connectDB();
 app.use(
   helmet({
     crossOriginEmbedderPolicy: false,
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        frameSrc: ["'self'"],
+        connectSrc: ["'self'", process.env.CLIENT_URL || "http://localhost:5173"],
+        mediaSrc: ["'self'"],
+      },
+    },
   }),
 );
 app.use(morgan("dev"));
@@ -48,13 +61,21 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
 // Session for Passport
+if (!process.env.SESSION_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET environment variable is required in production");
+  }
+  console.warn("[WARN] SESSION_SECRET not set — using insecure default. Set it in .env for security.");
+}
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "organizeup-session-secret",
+    secret: process.env.SESSION_SECRET || "organizeup-session-secret-dev",
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
   }),
@@ -63,22 +84,38 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/books", bookRoutes);
-app.use("/api/courses", courseRoutes);
-app.use("/api/tools", toolRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/social", socialRoutes);
-app.use("/api/explore", exploreRoutes);
-app.use("/api/library", libraryRoutes);
-app.use("/api/drive", driveRoutes);
-app.use("/api/sections", sectionRoutes);
-app.use("/api/youtube-playlists", youtubePlaylistRoutes);
-app.use("/api/content", contentRoutes);
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { message: "Too many attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  message: { message: "Too many requests, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-// Image serving from GridFS
-app.get("/api/images/:fileId", serveImage);
+// Routes
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/books", apiLimiter, bookRoutes);
+app.use("/api/courses", apiLimiter, courseRoutes);
+app.use("/api/tools", apiLimiter, toolRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/social", apiLimiter, socialRoutes);
+app.use("/api/explore", apiLimiter, exploreRoutes);
+app.use("/api/library", apiLimiter, libraryRoutes);
+app.use("/api/drive", apiLimiter, driveRoutes);
+app.use("/api/sections", apiLimiter, sectionRoutes);
+app.use("/api/youtube-playlists", apiLimiter, youtubePlaylistRoutes);
+app.use("/api/content", apiLimiter, contentRoutes);
+
+// Image serving from GridFS (authenticated)
+app.get("/api/images/:fileId", protect, serveImage);
 
 // Health check
 app.get("/api/health", (req, res) => {

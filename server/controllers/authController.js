@@ -47,7 +47,6 @@ const register = async (req, res) => {
         avatar: user.avatar,
         role: user.role,
       },
-      token,
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -95,7 +94,6 @@ const login = async (req, res) => {
         avatar: user.avatar,
         role: user.role,
       },
-      token,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -116,10 +114,8 @@ const googleCallback = async (req, res) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    // Redirect to frontend with token
-    res.redirect(
-      `${process.env.CLIENT_URL}/auth/google/success?token=${token}`,
-    );
+    // Redirect to frontend — token is already in httpOnly cookie, no URL exposure
+    res.redirect(`${process.env.CLIENT_URL}/auth/google/success`);
   } catch (error) {
     console.error("Google callback error:", error);
     res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);

@@ -30,7 +30,10 @@ const connectDB = async () => {
       primaryErr.message.includes("ETIMEOUT") ||
       primaryErr.message.includes("ENOTFOUND") ||
       primaryErr.message.includes("querySrv") ||
-      primaryErr.message.includes("queryTxt");
+      primaryErr.message.includes("queryTxt") ||
+      primaryErr.message.includes("SSL alert") ||
+      primaryErr.message.includes("ssl3_read_bytes") ||
+      primaryErr.message.includes("tlsv1 alert");
 
     if (isDnsError && fallbackUri) {
       console.warn("[DB] SRV DNS lookup failed → retrying with direct URI...");

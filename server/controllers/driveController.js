@@ -148,6 +148,11 @@ const scanDriveFolder = async (req, res) => {
       return res.status(400).json({ message: "Invalid Google Drive link" });
     }
 
+    // Strictly validate the extracted folderId (alphanumeric + hyphens/underscores only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(folderId)) {
+      return res.status(400).json({ message: "Invalid folder ID" });
+    }
+
     const drive = getDrive();
 
     // Get folder metadata (name)
@@ -234,6 +239,11 @@ const scanDriveUniversal = async (req, res) => {
     const folderId = extractFolderId(driveLink);
     if (!folderId) {
       return res.status(400).json({ message: "Invalid Google Drive link" });
+    }
+
+    // Strictly validate the extracted folderId (alphanumeric + hyphens/underscores only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(folderId)) {
+      return res.status(400).json({ message: "Invalid folder ID" });
     }
 
     const drive = getDrive();

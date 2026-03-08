@@ -40,7 +40,7 @@ const getPlaylists = async (req, res) => {
     }
 
     const playlists = await YoutubePlaylist.find(filter)
-      .populate("addedBy", "name email avatar")
+      .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
     res.json({ playlists });
@@ -56,7 +56,7 @@ const getPlaylist = async (req, res) => {
   try {
     const playlist = await YoutubePlaylist.findById(req.params.id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     if (!playlist) {
@@ -132,7 +132,7 @@ const addPlaylist = async (req, res) => {
 
     const populated = await YoutubePlaylist.findById(playlist._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.status(201).json({ playlist: populated });
@@ -186,7 +186,7 @@ const updatePlaylist = async (req, res) => {
 
     const populated = await YoutubePlaylist.findById(playlist._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.json({ playlist: populated });
@@ -303,7 +303,7 @@ const refreshPlaylist = async (req, res) => {
 
     const populated = await YoutubePlaylist.findById(playlist._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.json({ playlist: populated });

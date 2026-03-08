@@ -2,6 +2,9 @@ const Course = require("../models/Course");
 const Category = require("../models/Category");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
+// Escape special regex chars to prevent ReDoS / injection
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // @desc    Get courses (user sees own + public; admin sees all)
 // @route   GET /api/courses?category=categoryId
 const getCourses = async (req, res) => {
@@ -19,7 +22,7 @@ const getCourses = async (req, res) => {
 
     const courses = await Course.find(filter)
       .populate("category", "name")
-      .populate("addedBy", "name email avatar")
+      .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
     res.json({ courses });
@@ -35,7 +38,7 @@ const getCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id)
       .populate("category", "name")
-      .populate("addedBy", "name email avatar");
+      .populate("addedBy", "name avatar");
 
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
@@ -65,8 +68,12 @@ const createCourse = async (req, res) => {
 
     // If new category name is provided, create it
     if (newCategory && newCategory.trim()) {
+      // Only admin can create new categories inline
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Only admins can create new categories" });
+      }
       let existingCategory = await Category.findOne({
-        name: { $regex: new RegExp(`^${newCategory.trim()}$`, "i") },
+        name: { $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i") },
       });
 
       if (!existingCategory) {
@@ -111,7 +118,7 @@ const createCourse = async (req, res) => {
 
     const populated = await course.populate([
       { path: "category", select: "name" },
-      { path: "addedBy", select: "name email avatar" },
+      { path: "addedBy", select: "name avatar" },
     ]);
 
     res
@@ -143,7 +150,7 @@ const updateCourse = async (req, res) => {
 
     if (newCategory && newCategory.trim()) {
       let existingCategory = await Category.findOne({
-        name: { $regex: new RegExp(`^${newCategory.trim()}$`, "i") },
+        name: { $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i") },
       });
       if (!existingCategory) {
         existingCategory = await Category.create({
@@ -181,7 +188,7 @@ const updateCourse = async (req, res) => {
 
     const populated = await course.populate([
       { path: "category", select: "name" },
-      { path: "addedBy", select: "name email avatar" },
+      { path: "addedBy", select: "name avatar" },
     ]);
 
     res.json({ message: "Course updated successfully", course: populated });
@@ -261,7 +268,7 @@ const importToCourse = async (req, res) => {
 
     const populated = await course.populate([
       { path: "category", select: "name" },
-      { path: "addedBy", select: "name email avatar" },
+      { path: "addedBy", select: "name avatar" },
     ]);
 
     res.json({
@@ -297,7 +304,7 @@ const removeFileFromCourse = async (req, res) => {
 
     const populated = await course.populate([
       { path: "category", select: "name" },
-      { path: "addedBy", select: "name email avatar" },
+      { path: "addedBy", select: "name avatar" },
     ]);
 
     res.json({ message: "File removed", course: populated });
@@ -327,7 +334,7 @@ const createCategory = async (req, res) => {
     const { name, description, icon } = req.body;
 
     const existing = await Category.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+      name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, "i") },
     });
 
     if (existing) {

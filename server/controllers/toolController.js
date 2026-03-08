@@ -13,7 +13,7 @@ const getTools = async (req, res) => {
     // Admin with no filter sees all tools
 
     const tools = await Tool.find(filter)
-      .populate("addedBy", "name email avatar")
+      .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
     res.json({ tools });
@@ -29,7 +29,7 @@ const getTool = async (req, res) => {
   try {
     const tool = await Tool.findById(req.params.id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
     if (!tool) {
       return res.status(404).json({ message: "Tool not found" });
@@ -205,7 +205,7 @@ const importToTool = async (req, res) => {
 
     await tool.save();
 
-    const populated = await tool.populate("addedBy", "name email avatar");
+    const populated = await tool.populate("addedBy", "name avatar");
 
     res.json({
       message: `Imported ${files?.length || 0} files`,
@@ -238,7 +238,7 @@ const removeFileFromTool = async (req, res) => {
 
     await tool.save();
 
-    const populated = await tool.populate("addedBy", "name email avatar");
+    const populated = await tool.populate("addedBy", "name avatar");
 
     res.json({ message: "File removed", tool: populated });
   } catch (error) {

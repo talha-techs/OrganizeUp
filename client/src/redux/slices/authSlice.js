@@ -1,13 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
 
-// Get user from localStorage
+// Only persist user profile (not the token — auth uses httpOnly cookies)
 const storedUser = localStorage.getItem("user");
-const storedToken = localStorage.getItem("token");
 
 const initialState = {
   user: storedUser ? JSON.parse(storedUser) : null,
-  token: storedToken || null,
   isLoading: false,
   error: null,
 };
@@ -18,7 +16,6 @@ export const register = createAsyncThunk(
     try {
       const { data } = await api.post("/auth/register", userData);
       localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("token", data.token);
       return data;
     } catch (error) {
       return rejectWithValue(
@@ -34,7 +31,6 @@ export const login = createAsyncThunk(
     try {
       const { data } = await api.post("/auth/login", userData);
       localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("token", data.token);
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
@@ -87,7 +83,6 @@ export const markNotificationsRead = createAsyncThunk(
 export const logout = createAsyncThunk("auth/logout", async () => {
   await api.post("/auth/logout");
   localStorage.removeItem("user");
-  localStorage.removeItem("token");
 });
 
 const authSlice = createSlice({
@@ -99,9 +94,7 @@ const authSlice = createSlice({
     },
     setCredentials: (state, action) => {
       state.user = action.payload.user;
-      state.token = action.payload.token;
       localStorage.setItem("user", JSON.stringify(action.payload.user));
-      localStorage.setItem("token", action.payload.token);
     },
   },
   extraReducers: (builder) => {
@@ -114,7 +107,6 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
@@ -128,7 +120,6 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -140,9 +131,7 @@ const authSlice = createSlice({
       })
       .addCase(getMe.rejected, (state) => {
         state.user = null;
-        state.token = null;
         localStorage.removeItem("user");
-        localStorage.removeItem("token");
       })
       // Update Profile
       .addCase(updateProfile.fulfilled, (state, action) => {
@@ -160,7 +149,6 @@ const authSlice = createSlice({
       // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.token = null;
       });
   },
 });

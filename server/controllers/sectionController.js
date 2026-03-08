@@ -16,7 +16,7 @@ const getSections = async (req, res) => {
     }
 
     const sections = await CustomSection.find(filter)
-      .populate("addedBy", "name email avatar")
+      .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
     res.json({ sections });
@@ -32,7 +32,7 @@ const getSection = async (req, res) => {
   try {
     const section = await CustomSection.findById(req.params.id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     if (!section) {
@@ -70,7 +70,7 @@ const createSection = async (req, res) => {
 
     const populated = await CustomSection.findById(section._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.status(201).json({ section: populated });
@@ -125,7 +125,7 @@ const importToSection = async (req, res) => {
 
     const populated = await CustomSection.findById(section._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.json({
@@ -175,7 +175,7 @@ const updateSection = async (req, res) => {
 
     const populated = await CustomSection.findById(section._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.json({ section: populated });
@@ -326,7 +326,7 @@ const cloneSection = async (req, res) => {
 
     const populated = await CustomSection.findById(cloned._id).populate(
       "addedBy",
-      "name email avatar",
+      "name avatar",
     );
 
     res.status(201).json({

@@ -27,10 +27,10 @@ const { bookUpload } = require("../middleware/upload");
 router.get("/", protect, getBooks);
 
 // PDF serve route (must be BEFORE /:id to avoid conflict)
-router.get("/pdf/:fileId", servePdf);
+router.get("/pdf/:fileId", protect, servePdf);
 
 // Audio serve route (must be BEFORE /:id)
-router.get("/audio/:fileId", serveAudio);
+router.get("/audio/:fileId", protect, serveAudio);
 
 router.get("/:id", protect, getBook);
 
@@ -66,6 +66,8 @@ router.put(
     { name: "coverImage", maxCount: 1 },
     { name: "audioFiles", maxCount: 50 },
   ]),
+  bookRules,
+  validate,
   updateBook,
 );
 router.delete("/:id", protect, deleteBook);

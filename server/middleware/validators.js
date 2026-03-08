@@ -60,7 +60,12 @@ const bookRules = [
 // Course validation rules
 const courseRules = [
   body("title").trim().notEmpty().withMessage("Title is required"),
-  body("category").trim().notEmpty().withMessage("Category is required"),
+  body("category").custom((value, { req }) => {
+    if (!value && !req.body.newCategory) {
+      throw new Error("Category is required");
+    }
+    return true;
+  }),
 ];
 
 // Tool validation rules

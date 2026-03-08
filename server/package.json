@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node --openssl-legacy-provider server.js",
+    "dev": "nodemon --exec \"node --openssl-legacy-provider\" server.js"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +17,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.0",
     "express-session": "^1.19.0",
     "express-validator": "^7.3.1",
     "googleapis": "^171.4.0",

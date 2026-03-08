@@ -1,17 +1,13 @@
 const multer = require("multer");
-const path = require("path");
 
 // Use memory storage for all uploads (GridFS)
 const storage = multer.memoryStorage();
 
-const imageFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
-  const extname = allowedTypes.test(
-    path.extname(file.originalname).toLowerCase(),
-  );
-  const mimetype = allowedTypes.test(file.mimetype);
+const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+const ALLOWED_AUDIO_MIMES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a"];
 
-  if (extname && mimetype) {
+const imageFilter = (req, file, cb) => {
+  if (ALLOWED_IMAGE_MIMES.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(
@@ -55,12 +51,12 @@ const bookUpload = multer({
       cb(null, true);
     } else if (
       file.fieldname === "coverImage" &&
-      /jpeg|jpg|png|gif|webp/.test(file.mimetype)
+      ALLOWED_IMAGE_MIMES.includes(file.mimetype)
     ) {
       cb(null, true);
     } else if (
       file.fieldname === "audioFiles" &&
-      /^audio\//.test(file.mimetype)
+      ALLOWED_AUDIO_MIMES.includes(file.mimetype)
     ) {
       cb(null, true);
     } else {
