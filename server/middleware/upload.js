@@ -3,8 +3,25 @@ const multer = require("multer");
 // Use memory storage for all uploads (GridFS)
 const storage = multer.memoryStorage();
 
-const ALLOWED_IMAGE_MIMES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
-const ALLOWED_AUDIO_MIMES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a"];
+const ALLOWED_IMAGE_MIMES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+];
+const ALLOWED_AUDIO_MIMES = [
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/ogg",
+  "audio/aac",
+  "audio/flac",
+  "audio/x-flac",
+  "audio/mp4",
+  "audio/x-m4a",
+];
 
 const imageFilter = (req, file, cb) => {
   if (ALLOWED_IMAGE_MIMES.includes(file.mimetype)) {

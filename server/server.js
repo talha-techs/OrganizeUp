@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const compression = require("compression");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const session = require("express-session");
@@ -32,6 +33,7 @@ const app = express();
 connectDB();
 
 // Middleware
+app.use(compression());
 app.use(
   helmet({
     crossOriginEmbedderPolicy: false,
@@ -43,7 +45,10 @@ app.use(
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         frameSrc: ["'self'"],
-        connectSrc: ["'self'", process.env.CLIENT_URL || "http://localhost:5173"],
+        connectSrc: [
+          "'self'",
+          process.env.CLIENT_URL || "http://localhost:5173",
+        ],
         mediaSrc: ["'self'"],
       },
     },
@@ -63,9 +68,13 @@ app.use(cookieParser());
 // Session for Passport
 if (!process.env.SESSION_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error("SESSION_SECRET environment variable is required in production");
+    throw new Error(
+      "SESSION_SECRET environment variable is required in production",
+    );
   }
-  console.warn("[WARN] SESSION_SECRET not set — using insecure default. Set it in .env for security.");
+  console.warn(
+    "[WARN] SESSION_SECRET not set — using insecure default. Set it in .env for security.",
+  );
 }
 app.use(
   session({

@@ -404,7 +404,9 @@ const servePdf = async (req, res) => {
     const isOwner = book.addedBy.toString() === req.user._id.toString();
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
-      return res.status(403).json({ message: "Not authorized to access this file" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to access this file" });
     }
 
     // Only allow same-origin framing for owned/public PDFs
@@ -460,7 +462,9 @@ const serveAudio = async (req, res) => {
     const isOwner = book.addedBy.toString() === req.user._id.toString();
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
-      return res.status(403).json({ message: "Not authorized to access this file" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to access this file" });
     }
 
     await streamAudioFromGridFS(req.params.fileId, req, res, "audio");

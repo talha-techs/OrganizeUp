@@ -4,7 +4,7 @@ const voteSchema = new mongoose.Schema(
   {
     contentType: {
       type: String,
-      enum: ["book", "course", "tool"],
+      enum: ["book", "course", "tool", "section"],
       required: true,
     },
     contentId: {

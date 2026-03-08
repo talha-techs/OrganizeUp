@@ -9,26 +9,54 @@ const Comment = require("../models/Comment");
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Helper: attach vote & comment counts to content items
+ * Batch-fetch vote & comment counts for a list of items.
+ * Runs 2 aggregation queries instead of N×3 countDocuments calls,
+ * reducing explore page DB queries from ~240 down to 8 (2 per content type).
  */
 const attachSocialCounts = async (items, contentType) => {
-  return Promise.all(
-    items.map(async (item) => {
-      const obj = item.toObject ? item.toObject() : item;
-      const [upvotes, downvotes, commentCount] = await Promise.all([
-        Vote.countDocuments({ contentType, contentId: obj._id, value: 1 }),
-        Vote.countDocuments({ contentType, contentId: obj._id, value: -1 }),
-        Comment.countDocuments({ contentType, contentId: obj._id }),
-      ]);
-      return {
-        ...obj,
-        upvotes,
-        downvotes,
-        score: upvotes - downvotes,
-        commentCount,
-      };
-    }),
-  );
+  if (!items.length) return [];
+  const ids = items.map((item) => item._id);
+
+  const [voteAgg, commentAgg] = await Promise.all([
+    Vote.aggregate([
+      { $match: { contentType, contentId: { $in: ids } } },
+      {
+        $group: {
+          _id: { contentId: "$contentId", value: "$value" },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    Comment.aggregate([
+      { $match: { contentType, contentId: { $in: ids } } },
+      { $group: { _id: "$contentId", count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const upvoteMap = {};
+  const downvoteMap = {};
+  for (const { _id, count } of voteAgg) {
+    const id = String(_id.contentId);
+    if (_id.value === 1) upvoteMap[id] = count;
+    else downvoteMap[id] = count;
+  }
+  const commentMap = {};
+  for (const { _id, count } of commentAgg) {
+    commentMap[String(_id)] = count;
+  }
+
+  return items.map((item) => {
+    const id = String(item._id);
+    const upvotes = upvoteMap[id] || 0;
+    const downvotes = downvoteMap[id] || 0;
+    return {
+      ...item,
+      upvotes,
+      downvotes,
+      score: upvotes - downvotes,
+      commentCount: commentMap[id] || 0,
+    };
+  });
 };
 
 // @desc    Get all public content (explore feed)
@@ -45,8 +73,11 @@ const getExploreContent = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const lim = parseInt(limit);
-    const filter = { visibility: "public" };
+    const isPopular = sort === "popular";
+    // "all" view shows 6 items per category; specific type views use full pagination
+    const perType = type === "all" ? 6 : lim;
 
+    const filter = { visibility: "public" };
     if (search) {
       const safe = escapeRegex(search);
       filter.$or = [
@@ -65,92 +96,105 @@ const getExploreContent = async (req, res) => {
       ];
     }
 
-    let results = { books: [], courses: [], tools: [], sections: [] };
-    let totals = { books: 0, courses: 0, tools: 0, sections: 0 };
-
-    // For popular sort: fetch ALL items (no limit), attach scores, sort by score, then slice.
-    // For latest sort: fetch with pagination as usual.
-    const isPopular = sort === "popular";
-    const perType = type === "all" ? 6 : lim; // items to return per category
+    const results = { books: [], courses: [], tools: [], sections: [] };
+    const totals = { books: 0, courses: 0, tools: 0, sections: 0 };
 
     if (type === "all" || type === "books") {
       const bookFilter = { ...filter };
       if (search) {
+        const safe = escapeRegex(search);
         bookFilter.$or = [
           ...(bookFilter.$or || []),
-          { author: { $regex: escapeRegex(search), $options: "i" } },
+          { author: { $regex: safe, $options: "i" } },
         ];
       }
-      const [allBooks, bookCount] = await Promise.all([
-        Book.find(bookFilter)
-          .populate("addedBy", "name avatar")
-          .sort({ createdAt: -1 }),
+      // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
+      const dbSkip = isPopular ? 0 : (type === "books" ? skip : 0);
+      let bookQuery = Book.find(bookFilter)
+        .populate("addedBy", "name avatar")
+        .sort({ createdAt: -1 })
+        .lean();
+      if (!isPopular) bookQuery = bookQuery.skip(dbSkip).limit(perType);
+
+      const [books, bookCount] = await Promise.all([
+        bookQuery,
         Book.countDocuments(bookFilter),
       ]);
-      let scored = await attachSocialCounts(allBooks, "book");
+      let scored = await attachSocialCounts(books, "book");
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.books = scored.slice(0, perType);
       } else {
-        const s = type === "books" ? skip : 0;
-        results.books = scored.slice(s, s + perType);
+        results.books = scored;
       }
       totals.books = bookCount;
     }
 
     if (type === "all" || type === "courses") {
-      const [allCourses, courseCount] = await Promise.all([
-        Course.find(filter)
-          .populate("addedBy", "name avatar")
-          .populate("category", "name")
-          .sort({ createdAt: -1 }),
+      const dbSkip = isPopular ? 0 : (type === "courses" ? skip : 0);
+      let courseQuery = Course.find(filter)
+        .populate("addedBy", "name avatar")
+        .populate("category", "name")
+        .sort({ createdAt: -1 })
+        .lean();
+      if (!isPopular) courseQuery = courseQuery.skip(dbSkip).limit(perType);
+
+      const [courses, courseCount] = await Promise.all([
+        courseQuery,
         Course.countDocuments(filter),
       ]);
-      let scored = await attachSocialCounts(allCourses, "course");
+      let scored = await attachSocialCounts(courses, "course");
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.courses = scored.slice(0, perType);
       } else {
-        const s = type === "courses" ? skip : 0;
-        results.courses = scored.slice(s, s + perType);
+        results.courses = scored;
       }
       totals.courses = courseCount;
     }
 
     if (type === "all" || type === "tools") {
-      const [allTools, toolCount] = await Promise.all([
-        Tool.find(filter)
-          .populate("addedBy", "name avatar")
-          .sort({ createdAt: -1 }),
+      const dbSkip = isPopular ? 0 : (type === "tools" ? skip : 0);
+      let toolQuery = Tool.find(filter)
+        .populate("addedBy", "name avatar")
+        .sort({ createdAt: -1 })
+        .lean();
+      if (!isPopular) toolQuery = toolQuery.skip(dbSkip).limit(perType);
+
+      const [tools, toolCount] = await Promise.all([
+        toolQuery,
         Tool.countDocuments(filter),
       ]);
-      let scored = await attachSocialCounts(allTools, "tool");
+      let scored = await attachSocialCounts(tools, "tool");
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.tools = scored.slice(0, perType);
       } else {
-        const s = type === "tools" ? skip : 0;
-        results.tools = scored.slice(s, s + perType);
+        results.tools = scored;
       }
       totals.tools = toolCount;
     }
 
     if (type === "all" || type === "sections") {
-      const [allSections, sectionCount] = await Promise.all([
-        CustomSection.find(sectionFilter)
-          .populate("addedBy", "name avatar")
-          .sort({ createdAt: -1 }),
+      const dbSkip = isPopular ? 0 : (type === "sections" ? skip : 0);
+      let sectionQuery = CustomSection.find(sectionFilter)
+        .populate("addedBy", "name avatar")
+        .sort({ createdAt: -1 })
+        .lean();
+      if (!isPopular) sectionQuery = sectionQuery.skip(dbSkip).limit(perType);
+
+      const [sections, sectionCount] = await Promise.all([
+        sectionQuery,
         CustomSection.countDocuments(sectionFilter),
       ]);
-      let scored = await attachSocialCounts(allSections, "section");
+      let scored = await attachSocialCounts(sections, "section");
       // Normalize 'name' → 'title' for consistent card rendering
       scored = scored.map((s) => ({ ...s, title: s.name }));
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.sections = scored.slice(0, perType);
       } else {
-        const s = type === "sections" ? skip : 0;
-        results.sections = scored.slice(s, s + perType);
+        results.sections = scored;
       }
       totals.sections = sectionCount;
     }

@@ -266,13 +266,17 @@ const adminDeleteContent = async (req, res) => {
 
     // Cascade-delete associated GridFS files to prevent orphaned storage
     if (type === "book") {
-      if (doc.pdfFileId) await deleteFromGridFS(doc.pdfFileId, "pdf").catch(() => {});
-      if (doc.coverImageId) await deleteFromGridFS(doc.coverImageId, "image").catch(() => {});
+      if (doc.pdfFileId)
+        await deleteFromGridFS(doc.pdfFileId, "pdf").catch(() => {});
+      if (doc.coverImageId)
+        await deleteFromGridFS(doc.coverImageId, "image").catch(() => {});
       for (const af of doc.audioFiles || []) {
-        if (af.fileId) await deleteFromGridFS(af.fileId, "audio").catch(() => {});
+        if (af.fileId)
+          await deleteFromGridFS(af.fileId, "audio").catch(() => {});
       }
     } else if (type === "course" || type === "tool") {
-      if (doc.bannerImageId) await deleteFromGridFS(doc.bannerImageId, "image").catch(() => {});
+      if (doc.bannerImageId)
+        await deleteFromGridFS(doc.bannerImageId, "image").catch(() => {});
     }
 
     await doc.deleteOne();

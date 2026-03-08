@@ -1,46 +1,46 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { getMe } from './redux/slices/authSlice';
 
-// Layout
+// Layout (critical path — kept static)
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import LoadingSpinner from './components/ui/LoadingSpinner';
 
-// Public pages
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/auth/LoginPage';
-import SignupPage from './pages/auth/SignupPage';
-import GoogleSuccess from './pages/auth/GoogleSuccess';
+// Public pages (lazy-loaded)
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const SignupPage = lazy(() => import('./pages/auth/SignupPage'));
+const GoogleSuccess = lazy(() => import('./pages/auth/GoogleSuccess'));
 
-// Protected pages
-import Dashboard from './pages/Dashboard';
-import BooksPage from './pages/BooksPage';
-import BookDetailPage from './pages/BookDetailPage';
-import CoursesPage from './pages/CoursesPage';
-import CourseDetailPage from './pages/CourseDetailPage';
-import ToolsPage from './pages/ToolsPage';
-import ToolDetailPage from './pages/ToolDetailPage';
-import ProfilePage from './pages/ProfilePage';
-import AdminPage from './pages/AdminPage';
-import ExplorePage from './pages/ExplorePage';
-import SectionsPage from './pages/SectionsPage';
-import SectionDetailPage from './pages/SectionDetailPage';
-import YouTubePlaylistsPage from './pages/YouTubePlaylistsPage';
-import YouTubePlaylistDetailPage from './pages/YouTubePlaylistDetailPage';
-import SavedLibraryPage from './pages/SavedLibraryPage';
+// Protected pages (lazy-loaded — excluded from initial bundle)
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const BooksPage = lazy(() => import('./pages/BooksPage'));
+const BookDetailPage = lazy(() => import('./pages/BookDetailPage'));
+const CoursesPage = lazy(() => import('./pages/CoursesPage'));
+const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage'));
+const ToolsPage = lazy(() => import('./pages/ToolsPage'));
+const ToolDetailPage = lazy(() => import('./pages/ToolDetailPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const ExplorePage = lazy(() => import('./pages/ExplorePage'));
+const SectionsPage = lazy(() => import('./pages/SectionsPage'));
+const SectionDetailPage = lazy(() => import('./pages/SectionDetailPage'));
+const YouTubePlaylistsPage = lazy(() => import('./pages/YouTubePlaylistsPage'));
+const YouTubePlaylistDetailPage = lazy(() => import('./pages/YouTubePlaylistDetailPage'));
+const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
 
 const App = () => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state) => state.auth);
 
+  // Validate session cookie on mount — getMe handles 401 gracefully
   useEffect(() => {
-    if (token) {
-      dispatch(getMe());
-    }
-  }, [dispatch, token]);
+    dispatch(getMe());
+  }, [dispatch]);
 
   return (
+    <Suspense fallback={<LoadingSpinner />}>
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
@@ -80,6 +80,7 @@ const App = () => {
         />
       </Route>
     </Routes>
+    </Suspense>
   );
 };
 

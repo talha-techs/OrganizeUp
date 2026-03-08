@@ -70,10 +70,14 @@ const createCourse = async (req, res) => {
     if (newCategory && newCategory.trim()) {
       // Only admin can create new categories inline
       if (req.user.role !== "admin") {
-        return res.status(403).json({ message: "Only admins can create new categories" });
+        return res
+          .status(403)
+          .json({ message: "Only admins can create new categories" });
       }
       let existingCategory = await Category.findOne({
-        name: { $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i") },
+        name: {
+          $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i"),
+        },
       });
 
       if (!existingCategory) {
@@ -150,7 +154,9 @@ const updateCourse = async (req, res) => {
 
     if (newCategory && newCategory.trim()) {
       let existingCategory = await Category.findOne({
-        name: { $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i") },
+        name: {
+          $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i"),
+        },
       });
       if (!existingCategory) {
         existingCategory = await Category.create({

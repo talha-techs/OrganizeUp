@@ -24,7 +24,14 @@ router.post(
   createTool,
 );
 router.post("/:id/import", protect, importToTool);
-router.put("/:id", protect, upload.single("bannerImage"), toolRules, validate, updateTool);
+router.put(
+  "/:id",
+  protect,
+  upload.single("bannerImage"),
+  toolRules,
+  validate,
+  updateTool,
+);
 router.delete("/:id", protect, deleteTool);
 router.delete("/:id/files/:fileId", protect, removeFileFromTool);
 
