@@ -109,7 +109,7 @@ const getExploreContent = async (req, res) => {
         ];
       }
       // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
-      const dbSkip = isPopular ? 0 : (type === "books" ? skip : 0);
+      const dbSkip = isPopular ? 0 : type === "books" ? skip : 0;
       let bookQuery = Book.find(bookFilter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
@@ -131,7 +131,7 @@ const getExploreContent = async (req, res) => {
     }
 
     if (type === "all" || type === "courses") {
-      const dbSkip = isPopular ? 0 : (type === "courses" ? skip : 0);
+      const dbSkip = isPopular ? 0 : type === "courses" ? skip : 0;
       let courseQuery = Course.find(filter)
         .populate("addedBy", "name avatar")
         .populate("category", "name")
@@ -154,7 +154,7 @@ const getExploreContent = async (req, res) => {
     }
 
     if (type === "all" || type === "tools") {
-      const dbSkip = isPopular ? 0 : (type === "tools" ? skip : 0);
+      const dbSkip = isPopular ? 0 : type === "tools" ? skip : 0;
       let toolQuery = Tool.find(filter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
@@ -176,7 +176,7 @@ const getExploreContent = async (req, res) => {
     }
 
     if (type === "all" || type === "sections") {
-      const dbSkip = isPopular ? 0 : (type === "sections" ? skip : 0);
+      const dbSkip = isPopular ? 0 : type === "sections" ? skip : 0;
       let sectionQuery = CustomSection.find(sectionFilter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
