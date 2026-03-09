@@ -88,7 +88,7 @@ const CourseDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { currentCourse, isLoading, categories } = useSelector((state) => state.courses);
+  const { currentCourse, isLoading } = useSelector((state) => state.courses);
   const { user } = useSelector((state) => state.auth);
   useDocumentTitle(currentCourse?.title || 'Course');
   const isAdmin = user?.role === 'admin';

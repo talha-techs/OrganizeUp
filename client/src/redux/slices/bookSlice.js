@@ -265,10 +265,10 @@ const bookSlice = createSlice({
           readingProgress: action.payload.readingProgress,
         };
       })
-      .addCase(updateVideoProgress.fulfilled, (state, action) => {
+      .addCase(updateVideoProgress.fulfilled, () => {
         // Progress is stored on user, will be refreshed via getMe
       })
-      .addCase(updateReadingProgress.fulfilled, (state, action) => {
+      .addCase(updateReadingProgress.fulfilled, () => {
         // Progress is stored on user, will be refreshed via getMe
       })
       // Drive scan
