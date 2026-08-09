@@ -131,17 +131,10 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "OrganizeUp API is running" });
 });
 
-// Serve frontend in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../client/dist")));
-
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) {
-      return next();
-    }
-    res.sendFile(path.join(__dirname, "../client/dist/index.html"));
-  });
-}
+// API Root Route
+app.get("/", (req, res) => {
+  res.json({ message: "OrganizeUp API is running" });
+});
 
 // Global error handler
 app.use((err, req, res, next) => {
