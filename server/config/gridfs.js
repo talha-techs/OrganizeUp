@@ -49,7 +49,8 @@ const uploadToGridFS = (buffer, filename, contentType, bucketType = "pdf") => {
     readable.push(null);
 
     const uploadStream = b.openUploadStream(filename, {
-      contentType,
+      contentType, // For older drivers
+      metadata: { contentType }, // For newer drivers (v4+)
     });
 
     readable.pipe(uploadStream);
@@ -80,7 +81,9 @@ const streamFromGridFS = async (fileId, res, bucketType = "pdf") => {
   }
 
   const file = files[0];
-  res.set("Content-Type", file.contentType || "application/octet-stream");
+  const contentType =
+    file.contentType || file.metadata?.contentType || "application/octet-stream";
+  res.set("Content-Type", contentType);
   res.set("Content-Disposition", "inline");
   res.set("Content-Length", file.length);
   res.set("Accept-Ranges", "bytes");
@@ -118,7 +121,8 @@ const streamAudioFromGridFS = async (
 
   const file = files[0];
   const fileSize = file.length;
-  const contentType = file.contentType || "audio/mpeg";
+  const contentType =
+    file.contentType || file.metadata?.contentType || "audio/mpeg";
   const rangeHeader = req.headers.range;
 
   if (rangeHeader) {
