@@ -29,6 +29,9 @@ const { serveImage } = require("./controllers/bookController");
 
 const app = express();
 
+// Trust the Render proxy so rate limiters use the real user IP, not the load balancer IP
+app.set("trust proxy", 1);
+
 // Connect to MongoDB
 connectDB();
 
