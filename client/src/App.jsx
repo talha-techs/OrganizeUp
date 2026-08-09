@@ -30,7 +30,7 @@ const SectionDetailPage = lazy(() => import('./pages/SectionDetailPage'));
 const YouTubePlaylistsPage = lazy(() => import('./pages/YouTubePlaylistsPage'));
 const YouTubePlaylistDetailPage = lazy(() => import('./pages/YouTubePlaylistDetailPage'));
 const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
-const TelegramInbox = lazy(() => import('./pages/telegram/TelegramInbox'));
+const TelegramLibrary = lazy(() => import('./pages/telegram/TelegramLibrary'));
 
 const App = () => {
   const dispatch = useDispatch();
@@ -71,7 +71,7 @@ const App = () => {
         <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/saved" element={<SavedLibraryPage />} />
-        <Route path="/telegram-inbox" element={<TelegramInbox />} />
+        <Route path="/telegram-inbox" element={<TelegramLibrary />} />
         <Route
           path="/admin"
           element={

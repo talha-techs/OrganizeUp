@@ -23,10 +23,14 @@ const telegramMessageSchema = new mongoose.Schema(
       type: String,
       default: "Unknown",
     },
+    note: {
+      type: String,
+      default: "",
+    },
     status: {
       type: String,
       enum: ["pending", "saved", "dismissed"],
-      default: "pending",
+      default: "saved", // Default to saved now since we removed pending
     },
   },
   {

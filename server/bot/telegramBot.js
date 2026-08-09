@@ -112,12 +112,12 @@ const initTelegramBot = () => {
         text: text,
         extractedUrl: extractedUrl,
         senderName: senderName,
-        status: "pending",
+        status: "saved",
       });
 
       bot.sendMessage(
         chatId,
-        "✅ Saved to OrganizeUp Inbox!\n\nOpen your Telegram Inbox on the website to categorize it."
+        "✅ Saved to your OrganizeUp Telegram Library!"
       );
     } catch (error) {
       console.error("Telegram message handle error:", error);

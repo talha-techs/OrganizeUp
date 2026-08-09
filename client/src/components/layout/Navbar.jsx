@@ -45,7 +45,7 @@ const Navbar = () => {
     { to: '/tools', label: 'Tricks', icon: <IoConstructOutline size={18} /> },
     { to: '/sections', label: 'Sections', icon: <IoFolderOutline size={18} /> },
     { to: '/youtube-playlists', label: 'Playlists', icon: <IoLogoYoutube size={18} /> },
-    { to: '/telegram-inbox', label: 'Inbox', icon: <FaTelegramPlane size={18} /> },
+    { to: '/telegram-inbox', label: 'Library', icon: <FaTelegramPlane size={18} /> },
   ];
 
   const navLinkClass = ({ isActive }) =>

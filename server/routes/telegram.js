@@ -48,14 +48,13 @@ router.get("/status", protect, async (req, res) => {
   }
 });
 
-// @desc    Get pending Telegram messages
+// @desc    Get all Telegram messages
 // @route   GET /api/telegram/messages
 // @access  Private
 router.get("/messages", protect, async (req, res) => {
   try {
     const messages = await TelegramMessage.find({
       user: req.user._id,
-      status: "pending",
     }).sort({ createdAt: -1 });
 
     res.json(messages);
@@ -86,14 +85,15 @@ router.delete("/messages/:id", protect, async (req, res) => {
   }
 });
 
-// @desc    Mark a Telegram message as saved
-// @route   PUT /api/telegram/messages/:id/categorize
+// @desc    Update a Telegram message note/tag
+// @route   PUT /api/telegram/messages/:id/note
 // @access  Private
-router.put("/messages/:id/categorize", protect, async (req, res) => {
+router.put("/messages/:id/note", protect, async (req, res) => {
   try {
+    const { note } = req.body;
     const message = await TelegramMessage.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      { status: "saved" },
+      { note },
       { new: true }
     );
 
@@ -103,8 +103,8 @@ router.put("/messages/:id/categorize", protect, async (req, res) => {
 
     res.json(message);
   } catch (error) {
-    console.error("Categorize telegram message error:", error);
-    res.status(500).json({ message: "Server error updating message status" });
+    console.error("Update telegram message note error:", error);
+    res.status(500).json({ message: "Server error updating message note" });
   }
 });
 
