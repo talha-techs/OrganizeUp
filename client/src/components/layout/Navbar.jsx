@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline } from 'react-icons/io5';
+import { FaTelegramPlane } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
 
 const Navbar = () => {
@@ -44,6 +45,7 @@ const Navbar = () => {
     { to: '/tools', label: 'Tricks', icon: <IoConstructOutline size={18} /> },
     { to: '/sections', label: 'Sections', icon: <IoFolderOutline size={18} /> },
     { to: '/youtube-playlists', label: 'Playlists', icon: <IoLogoYoutube size={18} /> },
+    { to: '/telegram-inbox', label: 'Inbox', icon: <FaTelegramPlane size={18} /> },
   ];
 
   const navLinkClass = ({ isActive }) =>

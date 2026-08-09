@@ -43,6 +43,20 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Telegram Integration
+    telegramId: {
+      type: String,
+      default: null,
+      sparse: true, // Allows nulls to not conflict with unique if we made it unique
+    },
+    telegramLinkCode: {
+      type: String,
+      default: null,
+    },
+    telegramLinkCodeExpires: {
+      type: Date,
+      default: null,
+    },
     // Video book progress - stores progress for each video
     videoProgress: [
       {

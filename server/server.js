@@ -24,6 +24,8 @@ const driveRoutes = require("./routes/drive");
 const sectionRoutes = require("./routes/sections");
 const youtubePlaylistRoutes = require("./routes/youtubePlaylists");
 const contentRoutes = require("./routes/content");
+const telegramRoutes = require("./routes/telegram");
+const { initTelegramBot } = require("./bot/telegramBot");
 const { protect } = require("./middleware/auth");
 const { serveImage } = require("./controllers/bookController");
 
@@ -125,6 +127,7 @@ app.use("/api/drive", apiLimiter, driveRoutes);
 app.use("/api/sections", apiLimiter, sectionRoutes);
 app.use("/api/youtube-playlists", apiLimiter, youtubePlaylistRoutes);
 app.use("/api/content", apiLimiter, contentRoutes);
+app.use("/api/telegram", apiLimiter, telegramRoutes);
 
 // Image serving from GridFS (authenticated)
 app.get("/api/images/:fileId", protect, serveImage);
@@ -158,6 +161,9 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 OrganizeUp Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  
+  // Initialize Telegram Bot
+  initTelegramBot();
 });
 
 module.exports = app;
