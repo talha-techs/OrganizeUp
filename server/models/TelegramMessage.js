@@ -27,6 +27,10 @@ const telegramMessageSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    read: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ["pending", "saved", "dismissed"],

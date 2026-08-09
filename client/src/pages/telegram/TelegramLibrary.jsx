@@ -41,6 +41,8 @@ const TelegramLibrary = () => {
     try {
       const res = await api.get('/telegram/messages');
       setMessages(res.data);
+      // Mark as read in background
+      api.put('/telegram/read').catch(err => console.error(err));
     } catch (error) {
       toast.error('Failed to load messages');
     }

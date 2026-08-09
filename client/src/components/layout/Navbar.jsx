@@ -6,11 +6,13 @@ import { HiMenu, HiX } from 'react-icons/hi';
 import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline } from 'react-icons/io5';
 import { FaTelegramPlane } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
+import api from '../../utils/api';
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [telegramUnread, setTelegramUnread] = useState(0);
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
   const dispatch = useDispatch();
@@ -31,6 +33,24 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      const fetchTelegramUnread = async () => {
+        try {
+          const res = await api.get('/telegram/unread-count');
+          setTelegramUnread(res.data.unreadCount);
+        } catch (error) {
+          console.error('Failed to fetch telegram unread count', error);
+        }
+      };
+      fetchTelegramUnread();
+      
+      // Re-fetch when window gets focus
+      window.addEventListener('focus', fetchTelegramUnread);
+      return () => window.removeEventListener('focus', fetchTelegramUnread);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -71,8 +91,21 @@ const Navbar = () => {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} className={navLinkClass}>
-                {link.icon}
+              <NavLink 
+                key={link.to} 
+                to={link.to} 
+                className={navLinkClass}
+                onClick={() => link.to === '/telegram-inbox' && setTelegramUnread(0)}
+              >
+                <div className="relative">
+                  {link.icon}
+                  {link.to === '/telegram-inbox' && telegramUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                  )}
+                </div>
                 {link.label}
               </NavLink>
             ))}
@@ -262,10 +295,21 @@ const Navbar = () => {
                 <NavLink
                   key={link.to}
                   to={link.to}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    if (link.to === '/telegram-inbox') setTelegramUnread(0);
+                  }}
                   className={navLinkClass}
                 >
-                  {link.icon}
+                  <div className="relative">
+                    {link.icon}
+                    {link.to === '/telegram-inbox' && telegramUnread > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                    )}
+                  </div>
                   {link.label}
                 </NavLink>
               ))}

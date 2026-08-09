@@ -64,6 +64,38 @@ router.get("/messages", protect, async (req, res) => {
   }
 });
 
+// @desc    Get unread Telegram messages count
+// @route   GET /api/telegram/unread-count
+// @access  Private
+router.get("/unread-count", protect, async (req, res) => {
+  try {
+    const count = await TelegramMessage.countDocuments({
+      user: req.user._id,
+      read: false,
+    });
+    res.json({ unreadCount: count });
+  } catch (error) {
+    console.error("Get telegram unread count error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// @desc    Mark all Telegram messages as read
+// @route   PUT /api/telegram/read
+// @access  Private
+router.put("/read", protect, async (req, res) => {
+  try {
+    await TelegramMessage.updateMany(
+      { user: req.user._id, read: false },
+      { $set: { read: true } }
+    );
+    res.json({ message: "Messages marked as read" });
+  } catch (error) {
+    console.error("Mark telegram messages read error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // @desc    Dismiss a Telegram message
 // @route   DELETE /api/telegram/messages/:id
 // @access  Private
