@@ -134,7 +134,7 @@ const HeroSection = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/30 to-cyan-500/30 blur-3xl rounded-[2rem] transform group-hover:scale-105 transition-transform duration-700" />
           
           <motion.div 
-            whileHover={{ rotateX: 5, rotateY: -5, scale: 1.02 }}
+            whileHover={{ y: -10, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="relative rounded-xl border border-white/10 overflow-hidden shadow-2xl shadow-black/50 bg-slate-900"
           >
