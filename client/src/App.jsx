@@ -36,7 +36,8 @@ import SplashScreen from './components/layout/SplashScreen';
 
 const App = () => {
   const dispatch = useDispatch();
-  const [showSplash, setShowSplash] = useState(true);
+  // Only show splash screen on mobile devices (width < 768px)
+  const [showSplash, setShowSplash] = useState(window.innerWidth < 768);
 
   // Validate session cookie on mount — getMe handles 401 gracefully
   useEffect(() => {
