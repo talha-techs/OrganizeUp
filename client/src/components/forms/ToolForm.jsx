@@ -87,12 +87,25 @@ const ToolForm = ({ tool, onClose }) => {
 
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1.5">Banner Image (optional)</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImageFile(e.target.files[0])}
-          className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer"
-        />
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files[0])}
+            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer w-full"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">OR URL:</span>
+            <input
+              type="text"
+              placeholder="https://example.com/image.jpg"
+              value={formData.bannerImage?.startsWith('/api/images') ? '' : formData.bannerImage}
+              onChange={(e) => setFormData({ ...formData, bannerImage: e.target.value })}
+              className="input-dark text-sm flex-1"
+              disabled={!!imageFile}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-white/5">

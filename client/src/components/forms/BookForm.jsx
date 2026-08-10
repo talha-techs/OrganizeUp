@@ -90,7 +90,11 @@ const BookForm = ({ book, onClose }) => {
       }
 
       if (pdfFile) fd.append('pdfFile', pdfFile);
-      if (coverImageFile) fd.append('coverImage', coverImageFile);
+      if (coverImageFile) {
+        fd.append('coverImage', coverImageFile);
+      } else if (!coverImageFile) {
+        fd.append('coverImage', formData.coverImage);
+      }
 
       let result;
       if (book) {
@@ -341,12 +345,25 @@ const BookForm = ({ book, onClose }) => {
       {/* Cover Image */}
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1.5">Cover Image (optional)</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setCoverImageFile(e.target.files[0])}
-          className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer"
-        />
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setCoverImageFile(e.target.files[0])}
+            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer w-full"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">OR URL:</span>
+            <input
+              type="text"
+              placeholder="https://example.com/image.jpg"
+              value={formData.coverImage?.startsWith('/api/images') ? '' : formData.coverImage}
+              onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
+              className="input-dark text-sm flex-1"
+              disabled={!!coverImageFile}
+            />
+          </div>
+        </div>
         {coverImageFile && (
           <p className="text-xs text-emerald-400 mt-1.5">
             Selected: {coverImageFile.name} ({(coverImageFile.size / 1024 / 1024).toFixed(1)} MB)

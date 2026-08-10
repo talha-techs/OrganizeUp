@@ -217,6 +217,8 @@ const updateBook = async (req, res) => {
       );
       book.coverImageId = coverImageId;
       book.coverImage = `/api/images/${coverImageId}`;
+    } else if (req.body.coverImage !== undefined) {
+      book.coverImage = req.body.coverImage;
     }
 
     if (title) book.title = title;
