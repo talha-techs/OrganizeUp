@@ -23,6 +23,10 @@ const telegramMessageSchema = new mongoose.Schema(
       type: String,
       default: "Unknown",
     },
+    bannerImageId: {
+      type: String,
+      default: null,
+    },
     note: {
       type: String,
       default: "",

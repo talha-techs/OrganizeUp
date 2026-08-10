@@ -186,7 +186,7 @@ const TelegramLibrary = () => {
                 <div 
                   key={msg._id} 
                   onClick={() => setSelectedMsg(msg)}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-500/50 cursor-pointer transition-all flex flex-col h-64 group"
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-500/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
                 >
                   <div className="flex justify-between items-start mb-3">
                     <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md">
@@ -201,6 +201,16 @@ const TelegramLibrary = () => {
                     <div className="mb-3 flex items-start gap-2 text-xs text-yellow-400 bg-yellow-400/10 p-2 rounded border border-yellow-400/20">
                       <FaTag className="mt-0.5 shrink-0" />
                       <span className="line-clamp-2">{msg.note}</span>
+                    </div>
+                  )}
+
+                  {msg.bannerImageId && (
+                    <div className="w-full h-24 mb-3 rounded-lg overflow-hidden shrink-0 border border-slate-700/50 bg-slate-950">
+                      <img 
+                        src={`/api/telegram/image/${msg.bannerImageId}`} 
+                        alt="Telegram Attachment" 
+                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
+                      />
                     </div>
                   )}
 
@@ -298,6 +308,16 @@ const TelegramLibrary = () => {
               </div>
 
               {/* Message Content */}
+              {selectedMsg.bannerImageId && (
+                <div className="mb-6 w-full rounded-xl overflow-hidden shadow-lg border border-slate-700 max-h-64 flex justify-center bg-slate-950">
+                  <img 
+                    src={`/api/telegram/image/${selectedMsg.bannerImageId}`} 
+                    alt="Message Attachment" 
+                    className="max-w-full h-full object-contain" 
+                  />
+                </div>
+              )}
+
               <div className="text-slate-200 text-base leading-relaxed whitespace-pre-wrap">
                 {renderTextWithLinks(selectedMsg.text)}
               </div>

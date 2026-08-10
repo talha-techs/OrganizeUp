@@ -2,6 +2,7 @@ const tg = require("node-telegram-bot-api");
 const TelegramBot = tg.default || tg;
 const User = require("../models/User");
 const TelegramMessage = require("../models/TelegramMessage");
+const { uploadToGridFS } = require("../config/gridfs");
 
 let bot;
 
@@ -105,6 +106,90 @@ const initTelegramBot = () => {
         senderName = msg.chat.first_name || msg.chat.username || "You";
       }
 
+      // Process attached image if present
+      let bannerImageId = null;
+      console.log("DEBUG: msg.photo =", msg.photo ? "Exists" : "Undefined");
+      console.log("DEBUG: extractedUrl =", extractedUrl);
+      
+      if (msg.photo && msg.photo.length > 0) {
+        console.log("DEBUG: Entering msg.photo branch");
+        try {
+          const photo = msg.photo[msg.photo.length - 1]; // highest resolution
+          const fileLink = await bot.getFileLink(photo.file_id);
+          const response = await fetch(fileLink);
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            bannerImageId = await uploadToGridFS(
+              buffer,
+              `telegram_${photo.file_id}.jpg`,
+              "image/jpeg",
+              "image"
+            );
+          }
+        } catch (imgError) {
+          console.error("Error processing telegram image:", imgError);
+        }
+      } else if (extractedUrl) {
+        // Scrape OpenGraph image if no native photo is present
+        try {
+          console.log("Attempting to scrape OpenGraph image from:", extractedUrl);
+          const response = await fetch(extractedUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+            }
+          });
+          
+          if (response.ok) {
+            const html = await response.text();
+            // Match og:image or twitter:image
+            const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
+                            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+                            html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
+                            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+            
+            if (ogMatch && ogMatch[1]) {
+              let ogImageUrl = ogMatch[1];
+              console.log("Found OpenGraph image URL:", ogImageUrl);
+              
+              // Handle relative URLs
+              if (ogImageUrl.startsWith('/')) {
+                 const urlObj = new URL(extractedUrl);
+                 ogImageUrl = `${urlObj.protocol}//${urlObj.host}${ogImageUrl}`;
+              }
+              
+              const imgResponse = await fetch(ogImageUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+                }
+              });
+              
+              if (imgResponse.ok) {
+                console.log("Successfully downloaded image. Saving to GridFS...");
+                const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
+                const arrayBuffer = await imgResponse.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                bannerImageId = await uploadToGridFS(
+                  buffer,
+                  `telegram_og_${Date.now()}.jpg`,
+                  contentType,
+                  "image"
+                );
+                console.log("Image saved with ID:", bannerImageId);
+              } else {
+                console.warn(`Failed to download image. Status: ${imgResponse.status}`);
+              }
+            } else {
+              console.log("No og:image or twitter:image found in the HTML.");
+            }
+          } else {
+            console.warn(`Failed to fetch URL for OpenGraph. Status: ${response.status}`);
+          }
+        } catch (ogError) {
+          console.error("Error scraping OpenGraph image:", ogError.message);
+        }
+      }
+
       // Save to database
       await TelegramMessage.create({
         user: user._id,
@@ -112,6 +197,7 @@ const initTelegramBot = () => {
         text: text,
         extractedUrl: extractedUrl,
         senderName: senderName,
+        bannerImageId: bannerImageId,
         status: "saved",
       });
 

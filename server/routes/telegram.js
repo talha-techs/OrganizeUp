@@ -4,6 +4,7 @@ const router = express.Router();
 const User = require("../models/User");
 const TelegramMessage = require("../models/TelegramMessage");
 const { protect } = require("../middleware/auth");
+const { streamFromGridFS } = require("../config/gridfs");
 
 // @desc    Generate a link code for Telegram
 // @route   POST /api/telegram/link
@@ -45,6 +46,19 @@ router.get("/status", protect, async (req, res) => {
   } catch (error) {
     console.error("Get telegram status error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+// @desc    Serve banner image for Telegram message
+// @route   GET /api/telegram/image/:fileId
+// @access  Public (or protected if needed, but usually images are fine)
+router.get("/image/:fileId", async (req, res) => {
+  try {
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    await streamFromGridFS(req.params.fileId, res, "image");
+  } catch (error) {
+    console.error("Serve telegram image error:", error);
+    res.status(500).json({ message: "Error serving image" });
   }
 });
 
