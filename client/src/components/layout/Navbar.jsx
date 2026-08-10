@@ -63,7 +63,6 @@ const Navbar = () => {
     { to: '/books', label: 'Books', icon: <IoBookOutline size={18} /> },
     { to: '/courses', label: 'Courses', icon: <IoSchoolOutline size={18} /> },
     { to: '/tools', label: 'Tricks', icon: <IoConstructOutline size={18} /> },
-    { to: '/sections', label: 'Sections', icon: <IoFolderOutline size={18} /> },
     { to: '/youtube-playlists', label: 'Playlists', icon: <IoLogoYoutube size={18} /> },
     { to: '/telegram-inbox', label: 'Library', icon: <FaTelegramPlane size={18} /> },
   ];
@@ -243,6 +242,15 @@ const Navbar = () => {
                       >
                         <IoBookmarkOutline size={16} />
                         Saved Library
+                      </Link>
+
+                      <Link
+                        to="/sections"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <IoFolderOutline size={16} />
+                        Custom Sections
                       </Link>
 
                       {user?.role === 'admin' && (

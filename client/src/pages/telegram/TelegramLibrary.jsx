@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { FaTelegramPlane, FaCheck, FaTrash, FaLink, FaTimes, FaTag } from 'react-icons/fa';
+import { FaTelegramPlane, FaCheck, FaTrash, FaLink, FaTimes, FaTag, FaSync } from 'react-icons/fa';
 import api from '../../utils/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -103,6 +103,72 @@ const TelegramLibrary = () => {
     });
   };
 
+  const recentMessages = messages.slice(0, 3);
+  const libraryMessages = messages.slice(3);
+
+  const renderMessageCards = (msgs) => {
+    if (msgs.length === 0) return null;
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {msgs.map((msg) => (
+          <div 
+            key={msg._id} 
+            onClick={() => setSelectedMsg(msg)}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-500/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
+          >
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md">
+                From: {msg.senderName}
+              </span>
+              <span className="text-xs text-slate-500">
+                {new Date(msg.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            
+            {msg.note && (
+              <div className="mb-3 flex items-start gap-2 text-xs text-yellow-400 bg-yellow-400/10 p-2 rounded border border-yellow-400/20">
+                <FaTag className="mt-0.5 shrink-0" />
+                <span className="line-clamp-2">{msg.note}</span>
+              </div>
+            )}
+
+            {msg.bannerImageId && (
+              <div className="w-full h-48 mb-3 rounded-lg overflow-hidden shrink-0 border border-slate-700/50 bg-slate-950">
+                <img 
+                  src={`/api/telegram/image/${msg.bannerImageId}`} 
+                  alt="Telegram Attachment" 
+                  className="w-full h-full object-cover object-top opacity-80 group-hover:opacity-100 transition-opacity" 
+                />
+              </div>
+            )}
+
+            <div className="text-slate-300 text-sm whitespace-pre-wrap flex-1 overflow-hidden relative">
+              <div className="line-clamp-4">{msg.text}</div>
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+              {msg.extractedUrl ? (
+                <div className="flex items-center gap-2 text-blue-400 text-xs overflow-hidden">
+                  <FaLink className="shrink-0" />
+                  <span className="truncate">Contains link</span>
+                </div>
+              ) : <div></div>}
+              
+              <button
+                onClick={(e) => deleteMessage(msg._id, e)}
+                className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                title="Delete"
+              >
+                <FaTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -170,8 +236,16 @@ const TelegramLibrary = () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-white">Saved Messages ({messages.length})</h2>
-            <div className="text-sm px-3 py-1 bg-green-500/10 text-green-400 rounded-full border border-green-500/20 flex items-center gap-2">
-              <FaCheck /> Connected to Telegram
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={fetchMessages}
+                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors text-sm"
+              >
+                <FaSync className={loading ? "animate-spin" : ""} /> Refresh
+              </button>
+              <div className="text-sm px-3 py-1 bg-green-500/10 text-green-400 rounded-full border border-green-500/20 flex items-center gap-2">
+                <FaCheck /> Connected to Telegram
+              </div>
             </div>
           </div>
 
@@ -181,62 +255,20 @@ const TelegramLibrary = () => {
               <p className="text-slate-500 mt-2">Forward a message to @{botUsername} on Telegram to see it here.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {messages.map((msg) => (
-                <div 
-                  key={msg._id} 
-                  onClick={() => setSelectedMsg(msg)}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-500/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md">
-                      From: {msg.senderName}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      {new Date(msg.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  
-                  {msg.note && (
-                    <div className="mb-3 flex items-start gap-2 text-xs text-yellow-400 bg-yellow-400/10 p-2 rounded border border-yellow-400/20">
-                      <FaTag className="mt-0.5 shrink-0" />
-                      <span className="line-clamp-2">{msg.note}</span>
-                    </div>
-                  )}
-
-                  {msg.bannerImageId && (
-                    <div className="w-full h-24 mb-3 rounded-lg overflow-hidden shrink-0 border border-slate-700/50 bg-slate-950">
-                      <img 
-                        src={`/api/telegram/image/${msg.bannerImageId}`} 
-                        alt="Telegram Attachment" 
-                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
-                      />
-                    </div>
-                  )}
-
-                  <div className="text-slate-300 text-sm whitespace-pre-wrap flex-1 overflow-hidden relative">
-                    <div className="line-clamp-4">{msg.text}</div>
-                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
-                    {msg.extractedUrl ? (
-                      <div className="flex items-center gap-2 text-blue-400 text-xs overflow-hidden">
-                        <FaLink className="shrink-0" />
-                        <span className="truncate">Contains link</span>
-                      </div>
-                    ) : <div></div>}
-                    
-                    <button
-                      onClick={(e) => deleteMessage(msg._id, e)}
-                      className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                      title="Delete"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
+            <div className="space-y-10">
+              {recentMessages.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-slate-300 mb-4 border-b border-slate-800 pb-2">Recently Added</h3>
+                  {renderMessageCards(recentMessages)}
                 </div>
-              ))}
+              )}
+              
+              {libraryMessages.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-slate-300 mb-4 border-b border-slate-800 pb-2">Library</h3>
+                  {renderMessageCards(libraryMessages)}
+                </div>
+              )}
             </div>
           )}
         </div>
