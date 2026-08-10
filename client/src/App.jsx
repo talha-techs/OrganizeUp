@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { getMe } from './redux/slices/authSlice';
@@ -32,13 +32,20 @@ const YouTubePlaylistDetailPage = lazy(() => import('./pages/YouTubePlaylistDeta
 const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
 const TelegramLibrary = lazy(() => import('./pages/telegram/TelegramLibrary'));
 
+import SplashScreen from './components/layout/SplashScreen';
+
 const App = () => {
   const dispatch = useDispatch();
+  const [showSplash, setShowSplash] = useState(true);
 
   // Validate session cookie on mount — getMe handles 401 gracefully
   useEffect(() => {
     dispatch(getMe());
   }, [dispatch]);
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
 
   return (
     <Suspense fallback={<LoadingSpinner />}>

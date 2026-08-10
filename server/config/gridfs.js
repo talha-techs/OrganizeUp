@@ -81,10 +81,17 @@ const streamFromGridFS = async (fileId, res, bucketType = "pdf") => {
   }
 
   const file = files[0];
-  const contentType =
+  let contentType =
     file.contentType || file.metadata?.contentType || "application/octet-stream";
+    
+  if (contentType === "application/octet-stream" && bucketType === "pdf") {
+    contentType = "application/pdf";
+  }
+
+  const filename = file.filename || (bucketType === "pdf" ? "document.pdf" : "file");
+
   res.set("Content-Type", contentType);
-  res.set("Content-Disposition", "inline");
+  res.set("Content-Disposition", `inline; filename="${filename}"`);
   res.set("Content-Length", file.length);
   res.set("Accept-Ranges", "bytes");
   res.set("Cache-Control", "public, max-age=86400");
