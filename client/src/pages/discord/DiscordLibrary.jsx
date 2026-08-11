@@ -158,9 +158,16 @@ const DiscordLibrary = () => {
             className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-[#5865F2]/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
           >
             <div className="flex justify-between items-start mb-3">
-              <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md">
-                From: {msg.authorName}
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md w-fit">
+                  From: {msg.authorName}
+                </span>
+                {msg.guildName && (
+                  <span className="text-[10px] text-slate-500 px-1 font-medium">
+                    in {msg.guildName}
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-slate-500">
                 {new Date(msg.createdAt).toLocaleDateString()}
               </span>
@@ -312,8 +319,15 @@ const DiscordLibrary = () => {
                   {selectedMsg.authorName?.charAt(0) || 'U'}
                 </div>
                 <div>
-                  <h3 className="text-white font-medium">{selectedMsg.authorName}</h3>
-                  <p className="text-xs text-slate-500">{new Date(selectedMsg.createdAt).toLocaleString()}</p>
+                  <h3 className="text-white font-medium flex items-center gap-2">
+                    {selectedMsg.authorName}
+                    {selectedMsg.guildName && (
+                      <span className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+                        in {selectedMsg.guildName}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">{new Date(selectedMsg.createdAt).toLocaleString()}</p>
                 </div>
               </div>
               <button 

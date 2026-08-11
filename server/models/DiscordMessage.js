@@ -15,6 +15,10 @@ const discordMessageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    guildName: {
+      type: String,
+      default: "Direct Message",
+    },
     channelId: {
       type: String,
       default: null,
