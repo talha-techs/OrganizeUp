@@ -49,6 +49,21 @@ router.get("/status", protect, async (req, res) => {
   }
 });
 
+// @desc    Unlink Telegram Account
+// @route   DELETE /api/telegram/unlink
+// @access  Private
+router.delete("/unlink", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.telegramId = undefined;
+    await user.save();
+    res.json({ message: "Telegram account unlinked successfully" });
+  } catch (error) {
+    console.error("Unlink telegram error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // @desc    Serve banner image for Telegram message
 // @route   GET /api/telegram/image/:fileId
 // @access  Public (or protected if needed, but usually images are fine)

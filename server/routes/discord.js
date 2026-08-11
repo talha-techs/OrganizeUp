@@ -110,6 +110,20 @@ router.post('/oauth', protect, async (req, res) => {
   }
 });
 
+// @desc    Unlink Discord Account
+// @route   DELETE /api/discord/unlink
+// @access  Private
+router.delete('/unlink', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.discordId = undefined;
+    await user.save();
+    res.json({ message: 'Discord account unlinked successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @desc    Check Discord Linking Status
 // @route   GET /api/discord/status
 // @access  Private

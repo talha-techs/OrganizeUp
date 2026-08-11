@@ -37,6 +37,20 @@ const TelegramLibrary = () => {
     }
   };
 
+  const unlinkTelegram = async () => {
+    try {
+      setLoading(true);
+      await api.delete('/telegram/unlink');
+      setIsConnected(false);
+      setMessages([]);
+      toast.success('Telegram account disconnected');
+    } catch (error) {
+      toast.error('Failed to disconnect Telegram');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       const res = await api.get('/telegram/messages');
@@ -173,14 +187,24 @@ const TelegramLibrary = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-blue-500/20 p-3 rounded-xl border border-blue-500/30">
-          <FaTelegramPlane className="text-blue-400 text-2xl" />
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-500/20 p-3 rounded-xl border border-blue-500/30">
+            <FaTelegramPlane className="text-blue-400 text-2xl" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-white">Telegram Library</h1>
+            <p className="text-slate-400">Your permanent vault for Telegram resources</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-white">Telegram Library</h1>
-          <p className="text-slate-400">Your permanent vault for Telegram resources</p>
-        </div>
+        {isConnected && (
+          <button
+            onClick={unlinkTelegram}
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <FaTimes /> Unlink Account
+          </button>
+        )}
       </div>
 
       {!isConnected ? (

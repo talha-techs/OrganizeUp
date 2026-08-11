@@ -62,6 +62,20 @@ const DiscordLibrary = () => {
     }
   };
 
+  const unlinkDiscord = async () => {
+    try {
+      setLoading(true);
+      await api.delete('/discord/unlink');
+      setIsConnected(false);
+      setMessages([]);
+      toast.success('Discord account disconnected');
+    } catch (error) {
+      toast.error('Failed to disconnect Discord');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       const res = await api.get('/discord/messages');
@@ -218,14 +232,24 @@ const DiscordLibrary = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-[#5865F2]/20 p-3 rounded-xl border border-[#5865F2]/30">
-          <FaDiscord className="text-[#5865F2] text-2xl" />
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+          <div className="bg-[#5865F2]/20 p-3 rounded-xl border border-[#5865F2]/30">
+            <FaDiscord className="text-[#5865F2] text-2xl" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-white">Discord Library</h1>
+            <p className="text-slate-400">Your permanent vault for Discord resources</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-white">Discord Library</h1>
-          <p className="text-slate-400">Your permanent vault for Discord resources</p>
-        </div>
+        {isConnected && (
+          <button
+            onClick={unlinkDiscord}
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <FaTimes /> Unlink Account
+          </button>
+        )}
       </div>
 
       {!isConnected ? (
