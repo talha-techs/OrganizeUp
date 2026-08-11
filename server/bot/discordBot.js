@@ -80,7 +80,9 @@ client.on('interactionCreate', async interaction => {
     let text = targetMessage.content || "";
     let extractedUrls = extractUrls(text);
     let authorName = targetMessage.author ? targetMessage.author.tag : "Unknown";
-    let guildName = interaction.guild ? interaction.guild.name : "Direct Message";
+    let guildName = interaction.guild 
+      ? interaction.guild.name 
+      : (interaction.guildId ? "External Server" : "Direct Message");
     
     // Create the message document data
     const messageData = {
