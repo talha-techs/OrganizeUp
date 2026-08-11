@@ -93,7 +93,7 @@ const DiscordLibrary = () => {
       if (!clientId) throw new Error("Missing client ID");
       
       const redirectUri = window.location.origin + '/discord-inbox';
-      const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=identify%20applications.commands`;
+      const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=identify%20applications.commands&integration_type=1`;
       
       window.location.href = oauthUrl;
     } catch (error) {
