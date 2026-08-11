@@ -25,7 +25,9 @@ const sectionRoutes = require("./routes/sections");
 const youtubePlaylistRoutes = require("./routes/youtubePlaylists");
 const contentRoutes = require("./routes/content");
 const telegramRoutes = require("./routes/telegram");
+const discordRoutes = require("./routes/discord");
 const { initTelegramBot } = require("./bot/telegramBot");
+const { initDiscordBot } = require("./bot/discordBot");
 const { protect } = require("./middleware/auth");
 const { serveImage } = require("./controllers/bookController");
 
@@ -128,6 +130,7 @@ app.use("/api/sections", apiLimiter, sectionRoutes);
 app.use("/api/youtube-playlists", apiLimiter, youtubePlaylistRoutes);
 app.use("/api/content", apiLimiter, contentRoutes);
 app.use("/api/telegram", apiLimiter, telegramRoutes);
+app.use("/api/discord", apiLimiter, discordRoutes);
 
 // Image serving from GridFS (authenticated)
 app.get("/api/images/:fileId", protect, serveImage);
@@ -164,6 +167,9 @@ app.listen(PORT, () => {
   
   // Initialize Telegram Bot
   initTelegramBot();
+  
+  // Initialize Discord Bot
+  initDiscordBot();
 });
 
 module.exports = app;

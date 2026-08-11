@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline } from 'react-icons/io5';
-import { FaTelegramPlane } from 'react-icons/fa';
+import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
 import api from '../../utils/api';
 
@@ -251,6 +251,15 @@ const Navbar = () => {
                       >
                         <IoFolderOutline size={16} />
                         Custom Sections
+                      </Link>
+
+                      <Link
+                        to="/discord-inbox"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#5865F2] hover:text-[#5865F2] hover:bg-[#5865F2]/10 transition-all"
+                      >
+                        <FaDiscord size={16} />
+                        Discord Library
                       </Link>
 
                       {user?.role === 'admin' && (

@@ -31,6 +31,7 @@ const YouTubePlaylistsPage = lazy(() => import('./pages/YouTubePlaylistsPage'));
 const YouTubePlaylistDetailPage = lazy(() => import('./pages/YouTubePlaylistDetailPage'));
 const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
 const TelegramLibrary = lazy(() => import('./pages/telegram/TelegramLibrary'));
+const DiscordLibrary = lazy(() => import('./pages/discord/DiscordLibrary'));
 
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
@@ -83,6 +84,7 @@ const App = () => {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/saved" element={<SavedLibraryPage />} />
           <Route path="/telegram-inbox" element={<TelegramLibrary />} />
+          <Route path="/discord-inbox" element={<DiscordLibrary />} />
           <Route
             path="/admin"
             element={
