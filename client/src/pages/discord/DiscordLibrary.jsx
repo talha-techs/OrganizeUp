@@ -413,8 +413,6 @@ const DiscordLibrary = () => {
           </div>
         </div>
       )}
-
-      )}
     </div>
   );
 };
