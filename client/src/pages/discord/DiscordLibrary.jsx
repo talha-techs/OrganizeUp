@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { FaDiscord, FaCheck, FaTrash, FaLink, FaTimes, FaTag, FaSync, FaExternalLinkAlt } from 'react-icons/fa';
 import api from '../../utils/api';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
@@ -10,17 +11,41 @@ const DiscordLibrary = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Modal State
   const [selectedMsg, setSelectedMsg] = useState(null);
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [discordIdInput, setDiscordIdInput] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [noteInput, setNoteInput] = useState('');
 
   useEffect(() => {
-    checkStatus();
+    const code = searchParams.get('code');
+    if (code) {
+      handleOAuthCallback(code);
+    } else {
+      checkStatus();
+    }
   }, []);
+
+  const handleOAuthCallback = async (code) => {
+    setLoading(true);
+    try {
+      const redirectUri = window.location.origin + '/discord-inbox';
+      await api.post('/discord/oauth', { code, redirectUri });
+      toast.success('Discord linked successfully!');
+      
+      // Remove code from URL
+      searchParams.delete('code');
+      setSearchParams(searchParams);
+      
+      checkStatus();
+    } catch (error) {
+      toast.error('Failed to link Discord account');
+      searchParams.delete('code');
+      setSearchParams(searchParams);
+      checkStatus();
+    }
+  };
 
   const checkStatus = async () => {
     try {
@@ -47,18 +72,19 @@ const DiscordLibrary = () => {
   };
 
   const linkDiscord = async () => {
-    setShowLinkModal(true);
-  };
-
-  const submitDiscordLink = async () => {
-    if (!discordIdInput.trim()) return toast.error("Please enter a valid Discord ID");
     try {
-      await api.post('/discord/link', { discordId: discordIdInput });
-      toast.success('Discord linked successfully!');
-      setShowLinkModal(false);
-      checkStatus();
+      setLoading(true);
+      const res = await api.get('/discord/client-id');
+      const clientId = res.data.clientId;
+      if (!clientId) throw new Error("Missing client ID");
+      
+      const redirectUri = window.location.origin + '/discord-inbox';
+      const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=identify`;
+      
+      window.location.href = oauthUrl;
     } catch (error) {
-      toast.error('Failed to link Discord');
+      toast.error('Failed to initialize Discord login');
+      setLoading(false);
     }
   };
 
@@ -215,7 +241,7 @@ const DiscordLibrary = () => {
             onClick={linkDiscord}
             className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-8 py-3 rounded-lg font-medium transition-colors"
           >
-            Link Discord ID Manually
+            Connect Account
           </button>
         </div>
       ) : (
@@ -350,58 +376,6 @@ const DiscordLibrary = () => {
         </div>
       )}
 
-      {/* Link Discord Modal */}
-      {showLinkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowLinkModal(false)}>
-          <div 
-            className="bg-slate-900 border border-[#5865F2]/30 rounded-2xl w-full max-w-md flex flex-col shadow-2xl p-6" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <FaDiscord className="text-[#5865F2] text-2xl" /> Link Discord
-              </h3>
-              <button 
-                onClick={() => setShowLinkModal(false)}
-                className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
-              >
-                <FaTimes />
-              </button>
-            </div>
-            
-            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-              To securely connect your accounts, we need your Discord User ID. You can find this by enabling "Developer Mode" in your Discord settings, then right-clicking your profile and selecting "Copy User ID".
-            </p>
-            
-            <div className="mb-6">
-              <label className="block text-slate-300 text-sm font-medium mb-2">Discord User ID</label>
-              <input
-                type="text"
-                value={discordIdInput}
-                onChange={(e) => setDiscordIdInput(e.target.value)}
-                placeholder="e.g. 1536676086723772486"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#5865F2] transition-colors"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && submitDiscordLink()}
-              />
-            </div>
-            
-            <div className="flex gap-3 justify-end">
-              <button 
-                onClick={() => setShowLinkModal(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={submitDiscordLink}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium bg-[#5865F2] hover:bg-[#4752C4] text-white transition-colors"
-              >
-                Connect Account
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

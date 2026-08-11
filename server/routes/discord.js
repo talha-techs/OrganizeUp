@@ -49,21 +49,64 @@ router.get('/media/:id', async (req, res) => {
   }
 });
 
-// @desc    Link Discord Account
-// @route   POST /api/discord/link
+// @desc    Get Discord Client ID
+// @route   GET /api/discord/client-id
+// @access  Public
+router.get('/client-id', (req, res) => {
+  res.json({ clientId: process.env.DISCORD_CLIENT_ID });
+});
+
+// @desc    OAuth2 Exchange & Link Discord Account
+// @route   POST /api/discord/oauth
 // @access  Private
-router.post('/link', protect, async (req, res) => {
-  const { discordId } = req.body;
-  if (!discordId) return res.status(400).json({ message: 'Discord ID is required' });
+router.post('/oauth', protect, async (req, res) => {
+  const { code, redirectUri } = req.body;
+  if (!code || !redirectUri) return res.status(400).json({ message: 'Code and redirectUri are required' });
 
   try {
+    const data = new URLSearchParams({
+      client_id: process.env.DISCORD_CLIENT_ID,
+      client_secret: process.env.DISCORD_CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: redirectUri
+    });
+
+    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      body: data,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    const tokenData = await tokenResponse.json();
+    
+    if (tokenData.error) {
+      console.error('Discord OAuth Token Error:', tokenData);
+      return res.status(400).json({ message: 'Invalid or expired authorization code' });
+    }
+
+    const userResponse = await fetch('https://discord.com/api/users/@me', {
+      headers: {
+        authorization: `${tokenData.token_type} ${tokenData.access_token}`
+      }
+    });
+
+    const userData = await userResponse.json();
+    
+    if (!userData.id) {
+      return res.status(400).json({ message: 'Failed to fetch Discord user profile' });
+    }
+
     const user = await User.findById(req.user._id);
-    user.discordId = discordId;
+    user.discordId = userData.id;
     await user.save();
+    
     res.json({ message: 'Discord account linked successfully' });
   } catch (error) {
-    console.error('Error linking discord:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error in Discord OAuth flow:', error);
+    res.status(500).json({ message: 'Server error during OAuth exchange' });
   }
 });
 
