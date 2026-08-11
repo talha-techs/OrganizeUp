@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const DiscordMessage = require('../models/DiscordMessage');
-const { protect } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/auth');
 const mongoose = require('mongoose');
 
 let gridfsBucket;
