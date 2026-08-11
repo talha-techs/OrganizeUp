@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  🚀 <b>Live Demo: <a href="https://organize-up.vercel.app">https://organize-up.vercel.app</a></b>
+  🚀 <b>Live Demo: <a href="https://organize-up.vercel.app">https://organizeup.app</a></b>
 </p>
 
 <p align="center">
