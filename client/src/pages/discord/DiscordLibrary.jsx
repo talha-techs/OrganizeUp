@@ -17,6 +17,8 @@ const DiscordLibrary = () => {
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [editingNote, setEditingNote] = useState(false);
   const [noteInput, setNoteInput] = useState('');
+  const [editingGuildName, setEditingGuildName] = useState(false);
+  const [guildNameInput, setGuildNameInput] = useState('');
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -124,6 +126,19 @@ const DiscordLibrary = () => {
       toast.success('Note saved');
     } catch (error) {
       toast.error('Failed to save note');
+    }
+  };
+
+  const saveGuildName = async () => {
+    if (!selectedMsg || !guildNameInput.trim()) return;
+    try {
+      const res = await api.put(`/discord/messages/${selectedMsg._id}/guildName`, { guildName: guildNameInput });
+      setMessages(messages.map((m) => (m._id === selectedMsg._id ? res.data : m)));
+      setSelectedMsg(res.data);
+      setEditingGuildName(false);
+      toast.success('Server name saved');
+    } catch (error) {
+      toast.error('Failed to save server name');
     }
   };
 
@@ -326,10 +341,39 @@ const DiscordLibrary = () => {
                 <div>
                   <h3 className="text-white font-medium flex items-center gap-2">
                     {selectedMsg.authorName}
-                    {selectedMsg.guildName && (
-                      <span className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-                        in {selectedMsg.guildName}
-                      </span>
+                    {editingGuildName ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={guildNameInput}
+                          onChange={(e) => setGuildNameInput(e.target.value)}
+                          placeholder="Save server name manually"
+                          title="Save server name manually. Unfortunately the original server name cannot be displayed due to discord's policy"
+                          className="bg-slate-900 border border-slate-700 text-white text-xs px-2 py-0.5 rounded w-48 focus:outline-none focus:border-[#5865F2]"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && saveGuildName()}
+                        />
+                        <button onClick={saveGuildName} className="text-green-400 hover:text-green-300 bg-slate-800 p-1 rounded">
+                          <FaCheck size={10} />
+                        </button>
+                        <button onClick={() => setEditingGuildName(false)} className="text-slate-400 hover:text-slate-300 bg-slate-800 p-1 rounded">
+                          <FaTimes size={10} />
+                        </button>
+                      </div>
+                    ) : (
+                      selectedMsg.guildName && (
+                        <span 
+                          className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1 group/guild cursor-pointer hover:bg-slate-700 transition-colors"
+                          onClick={() => {
+                            setGuildNameInput(selectedMsg.guildName === "External Server" ? "" : selectedMsg.guildName);
+                            setEditingGuildName(true);
+                          }}
+                          title={selectedMsg.guildName === "External Server" ? "Save server name manually. Unfortunately the original server name cannot be displayed due to discord's policy" : "Edit server name"}
+                        >
+                          in {selectedMsg.guildName}
+                          <FaEdit className="opacity-0 group-hover/guild:opacity-100 transition-opacity text-slate-500 hover:text-white" size={10} />
+                        </span>
+                      )
                     )}
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">{new Date(selectedMsg.createdAt).toLocaleString()}</p>

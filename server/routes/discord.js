@@ -136,6 +136,24 @@ router.get('/status', protect, async (req, res) => {
   }
 });
 
+// @desc    Update Discord Message GuildName
+// @route   PUT /api/discord/messages/:id/guildName
+// @access  Private
+router.put('/messages/:id/guildName', protect, async (req, res) => {
+  try {
+    const { guildName } = req.body;
+    const msg = await DiscordMessage.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { guildName },
+      { new: true }
+    );
+    if (!msg) return res.status(404).json({ message: 'Message not found' });
+    res.json(msg);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @desc    Update Discord Message Note
 // @route   PUT /api/discord/messages/:id/note
 // @access  Private
