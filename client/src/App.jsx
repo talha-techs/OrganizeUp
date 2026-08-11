@@ -33,6 +33,7 @@ const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
 const TelegramLibrary = lazy(() => import('./pages/telegram/TelegramLibrary'));
 
 import SplashScreen from './components/layout/SplashScreen';
+import InstallPrompt from './components/layout/InstallPrompt';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -49,48 +50,51 @@ const App = () => {
   }
 
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/auth/google/success" element={<GoogleSuccess />} />
+    <>
+      <InstallPrompt />
+      <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/auth/google/success" element={<GoogleSuccess />} />
 
-      {/* Protected routes with layout */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/explore" element={<ExplorePage />} />
-        <Route path="/books" element={<BooksPage />} />
-        <Route path="/books/:id" element={<BookDetailPage />} />
-        <Route path="/courses" element={<CoursesPage />} />
-        <Route path="/courses/:id" element={<CourseDetailPage />} />
-        <Route path="/tools" element={<ToolsPage />} />
-        <Route path="/tools/:id" element={<ToolDetailPage />} />
-        <Route path="/sections" element={<SectionsPage />} />
-        <Route path="/sections/:id" element={<SectionDetailPage />} />
-        <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
-        <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/saved" element={<SavedLibraryPage />} />
-        <Route path="/telegram-inbox" element={<TelegramLibrary />} />
+        {/* Protected routes with layout */}
         <Route
-          path="/admin"
           element={
-            <ProtectedRoute adminOnly>
-              <AdminPage />
+            <ProtectedRoute>
+              <Layout />
             </ProtectedRoute>
           }
-        />
-      </Route>
-    </Routes>
-    </Suspense>
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/books" element={<BooksPage />} />
+          <Route path="/books/:id" element={<BookDetailPage />} />
+          <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/courses/:id" element={<CourseDetailPage />} />
+          <Route path="/tools" element={<ToolsPage />} />
+          <Route path="/tools/:id" element={<ToolDetailPage />} />
+          <Route path="/sections" element={<SectionsPage />} />
+          <Route path="/sections/:id" element={<SectionDetailPage />} />
+          <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
+          <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/saved" element={<SavedLibraryPage />} />
+          <Route path="/telegram-inbox" element={<TelegramLibrary />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
+      </Routes>
+      </Suspense>
+    </>
   );
 };
 
