@@ -38,7 +38,7 @@ const discordMessageSchema = new mongoose.Schema(
     media: [
       {
         gridFsId: String,
-        type: String, // e.g. 'image/png'
+        type: { type: String }, // e.g. 'image/png'
         filename: String,
       }
     ],
