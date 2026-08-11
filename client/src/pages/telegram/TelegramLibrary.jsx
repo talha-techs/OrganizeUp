@@ -134,9 +134,14 @@ const TelegramLibrary = () => {
               <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md">
                 From: {msg.senderName}
               </span>
-              <span className="text-xs text-slate-500">
-                {new Date(msg.createdAt).toLocaleDateString()}
-              </span>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="text-xs text-slate-500">
+                  {new Date(msg.createdAt).toLocaleDateString()}
+                </span>
+                <span className="text-[10px] text-slate-500/80">
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
             </div>
             
             {msg.note && (
