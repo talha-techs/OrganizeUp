@@ -138,7 +138,7 @@ const createBook = async (req, res) => {
         ? `/api/images/${coverImageId}`
         : req.body.coverImage || "",
       coverImageId,
-      embedLink: pdfFileId ? `/api/books/pdf/${pdfFileId}` : embedLink || "",
+      embedLink: pdfFileId ? `/api/books/pdf/${pdfFileId}/${encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf` : embedLink || "",
       pdfFileId: pdfFileId || null,
       driveLink,
       totalPages: totalPages || 0,
@@ -198,7 +198,7 @@ const updateBook = async (req, res) => {
         "pdf",
       );
       book.pdfFileId = pdfFileId;
-      book.embedLink = `/api/books/pdf/${pdfFileId}`;
+      book.embedLink = `/api/books/pdf/${pdfFileId}/${encodeURIComponent((title || book.title).replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
     }
 
     // Handle cover image upload to GridFS

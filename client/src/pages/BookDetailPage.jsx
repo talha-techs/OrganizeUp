@@ -424,7 +424,7 @@ const BookDetailPage = () => {
                 </div>
               )}
               <iframe
-                src={`${currentBook.embedLink}#toolbar=1&navpanes=1&scrollbar=1`}
+                src={`${currentBook.embedLink}${currentBook.embedLink.includes('/api/books/pdf/') && !currentBook.embedLink.endsWith('.pdf') ? `/${encodeURIComponent(currentBook.title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf` : ''}#toolbar=1&navpanes=1&scrollbar=1`}
                 width="100%"
                 height="100%"
                 className="border-0 rounded-xl"
