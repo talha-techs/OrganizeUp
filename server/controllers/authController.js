@@ -104,7 +104,12 @@ const login = async (req, res) => {
 // @desc    Google OAuth callback
 // @route   GET /api/auth/google/callback
 const googleCallback = async (req, res) => {
-  const clientUrl = process.env.CLIENT_URL || "https://organizeup.app";
+  let clientUrl = process.env.CLIENT_URL || "https://organizeup.app";
+  // Remove trailing slash if it exists
+  if (clientUrl.endsWith('/')) {
+    clientUrl = clientUrl.slice(0, -1);
+  }
+  
   try {
     const token = generateToken(req.user._id);
 
