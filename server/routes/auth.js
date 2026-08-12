@@ -9,6 +9,7 @@ const {
   logout,
   updateProfile,
   markNotificationsRead,
+  setCookie,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
@@ -22,6 +23,7 @@ const {
 router.post("/register", registerRules, validate, register);
 router.post("/login", loginRules, validate, login);
 router.post("/logout", logout);
+router.post("/set-cookie", setCookie); // Used to fix cross-domain OAuth cookie drops
 
 // Google OAuth
 router.get(

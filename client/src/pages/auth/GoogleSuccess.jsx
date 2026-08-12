@@ -9,14 +9,30 @@ const GoogleSuccess = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Token is in the httpOnly cookie — just fetch current user
-    dispatch(getMe()).then((res) => {
-      if (res.meta.requestStatus === 'fulfilled') {
-        navigate('/dashboard');
-      } else {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+
+    const authenticate = async () => {
+      try {
+        if (token) {
+          // Send token to backend via AJAX so the browser saves the cookie properly
+          // This bypasses Safari/Chrome cross-site tracking cookie blocks on redirects.
+          const { default: api } = await import('../../utils/api');
+          await api.post('/auth/set-cookie', { token });
+        }
+
+        const res = await dispatch(getMe());
+        if (res.meta.requestStatus === 'fulfilled') {
+          navigate('/dashboard');
+        } else {
+          navigate('/login?error=google_auth_failed');
+        }
+      } catch (error) {
         navigate('/login?error=google_auth_failed');
       }
-    });
+    };
+
+    authenticate();
   }, [dispatch, navigate]);
 
   return (

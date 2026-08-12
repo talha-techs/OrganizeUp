@@ -107,19 +107,29 @@ const googleCallback = async (req, res) => {
   try {
     const token = generateToken(req.user._id);
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    // Redirect to frontend — token is already in httpOnly cookie, no URL exposure
-    res.redirect(`${process.env.CLIENT_URL}/auth/google/success`);
+    // Redirect to frontend with token in URL parameter so the frontend can set the cookie via AJAX
+    // This avoids Safari/Chrome cross-site 302 cookie dropping.
+    res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}`);
   } catch (error) {
     console.error("Google callback error:", error);
     res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
   }
+};
+
+// @desc    Set HTTP-only cookie from URL token (for OAuth cross-origin fix)
+// @route   POST /api/auth/set-cookie
+const setCookie = async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ message: "No token provided" });
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  res.json({ success: true });
 };
 
 // @desc    Get current user
@@ -226,5 +236,5 @@ module.exports = {
   getMe,
   logout,
   updateProfile,
-  markNotificationsRead,
+  setCookie,
 };
