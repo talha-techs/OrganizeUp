@@ -101,8 +101,8 @@ const createBook = async (req, res) => {
       );
     }
 
-    // Admin content is public by default, user content is private
-    const visibility = req.user.role === "admin" ? "public" : "private";
+    // All uploaded content is private by default, unless explicitly passed in the request
+    const visibility = req.body.visibility || "private";
 
     // Handle multiple audio file uploads
     const audioFileUploads = req.files?.audioFiles || [];
