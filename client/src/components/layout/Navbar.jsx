@@ -62,7 +62,6 @@ const Navbar = () => {
     { to: '/explore', label: 'Explore', icon: <IoCompassOutline size={18} /> },
     { to: '/books', label: 'Books', icon: <IoBookOutline size={18} /> },
     { to: '/courses', label: 'Courses', icon: <IoSchoolOutline size={18} /> },
-    { to: '/tools', label: 'Tricks', icon: <IoConstructOutline size={18} /> },
     { to: '/youtube-playlists', label: 'Playlists', icon: <IoLogoYoutube size={18} /> },
     { to: '/telegram-inbox', label: 'Library', icon: <FaTelegramPlane size={18} /> },
   ];
@@ -251,6 +250,15 @@ const Navbar = () => {
                       >
                         <IoFolderOutline size={16} />
                         Custom Sections
+                      </Link>
+
+                      <Link
+                        to="/tools"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <IoConstructOutline size={16} />
+                        Tricks
                       </Link>
 
                       <Link
