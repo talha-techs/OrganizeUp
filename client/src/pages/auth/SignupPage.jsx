@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { IoMail, IoLockClosed, IoLogoGoogle, IoPerson, IoEye, IoEyeOff } from 'react-icons/io5';
+import { IoMail, IoLockClosed, IoLogoGoogle, IoPerson, IoEye, IoEyeOff, IoArrowBack } from 'react-icons/io5';
 import { register, clearError } from '../../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
@@ -42,6 +42,15 @@ const SignupPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      {/* Back button */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 md:top-10 md:left-10 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+      >
+        <IoArrowBack size={20} />
+        <span className="hidden sm:inline font-medium">Back to Home</span>
+      </Link>
+
       {/* Background effects */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-indigo-500/8 rounded-full blur-3xl" />
