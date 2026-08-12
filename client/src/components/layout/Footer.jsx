@@ -32,6 +32,8 @@ const Footer = () => {
             <h4 className="text-sm font-semibold text-white mb-3">Contact</h4>
             <a
               href="mailto:support@organizeup.app"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
             >
               <IoMailOutline size={15} /> support@organizeup.app
