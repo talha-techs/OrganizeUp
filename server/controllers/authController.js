@@ -236,5 +236,6 @@ module.exports = {
   getMe,
   logout,
   updateProfile,
+  markNotificationsRead,
   setCookie,
 };
