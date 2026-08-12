@@ -170,6 +170,21 @@ app.listen(PORT, () => {
   
   // Initialize Discord Bot
   initDiscordBot();
+
+  // Keep-alive: ping ourselves every 14 minutes to prevent Render free-tier cold starts
+  if (process.env.NODE_ENV === "production" && process.env.RENDER_EXTERNAL_URL) {
+    const INTERVAL = 14 * 60 * 1000; // 14 minutes
+    setInterval(async () => {
+      try {
+        const url = `${process.env.RENDER_EXTERNAL_URL}/api/health`;
+        const res = await fetch(url);
+        console.log(`[Keep-Alive] Pinged ${url} — ${res.status}`);
+      } catch (err) {
+        console.error("[Keep-Alive] Ping failed:", err.message);
+      }
+    }, INTERVAL);
+    console.log("💓 Keep-alive ping enabled (every 14 min)");
+  }
 });
 
 module.exports = app;
