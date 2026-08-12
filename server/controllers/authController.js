@@ -104,15 +104,16 @@ const login = async (req, res) => {
 // @desc    Google OAuth callback
 // @route   GET /api/auth/google/callback
 const googleCallback = async (req, res) => {
+  const clientUrl = process.env.CLIENT_URL || "https://organizeup.app";
   try {
     const token = generateToken(req.user._id);
 
     // Redirect to frontend with token in URL parameter so the frontend can set the cookie via AJAX
     // This avoids Safari/Chrome cross-site 302 cookie dropping.
-    res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}`);
+    res.redirect(`${clientUrl}/auth/google/success?token=${token}`);
   } catch (error) {
     console.error("Google callback error:", error);
-    res.redirect(`${process.env.CLIENT_URL}/login?error=google_auth_failed`);
+    res.redirect(`${clientUrl}/login?error=google_auth_failed`);
   }
 };
 
