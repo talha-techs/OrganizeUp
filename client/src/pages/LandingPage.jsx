@@ -12,6 +12,8 @@ import {
   IoDesktopOutline
 } from 'react-icons/io5';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import Navbar from '../components/layout/Navbar';
+import Footer from '../components/layout/Footer';
 
 // -- Animation Variants --
 const containerVariants = {
@@ -311,19 +313,7 @@ const CTASection = () => (
   </section>
 );
 
-const Footer = () => (
-  <footer className="bg-slate-950 border-t border-white/5 py-12">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-      <div className="flex items-center gap-3">
-        <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-8 h-8 rounded-lg grayscale opacity-70" />
-        <span className="text-slate-400 font-semibold font-display">OrganizeUp</span>
-      </div>
-      <p className="text-slate-500 text-sm">
-        &copy; {new Date().getFullYear()} OrganizeUp. All rights reserved.
-      </p>
-    </div>
-  </footer>
-);
+
 
 const LandingPage = () => {
   useDocumentTitle('Welcome to OrganizeUp');
