@@ -12,7 +12,6 @@ import {
   IoDesktopOutline
 } from 'react-icons/io5';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 
 // -- Animation Variants --
