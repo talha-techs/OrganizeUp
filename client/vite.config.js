@@ -10,6 +10,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        navigateFallbackDenylist: [/^\/api/],
+      },
       includeAssets: ["pwa-192x192.png", "pwa-512x512.png", "maskable-icon-512x512.png", "splash-screen.png"],
       manifest: {
         name: "OrganizeUp",
