@@ -27,7 +27,8 @@ const { bookUpload } = require("../middleware/upload");
 router.get("/", protect, getBooks);
 
 // PDF serve route (must be BEFORE /:id to avoid conflict)
-router.get("/pdf/:fileId/:filename?", protect, servePdf);
+router.get("/pdf/:fileId", protect, servePdf);
+router.get("/pdf/:fileId/:filename", protect, servePdf);
 
 // Audio serve route (must be BEFORE /:id)
 router.get("/audio/:fileId", protect, serveAudio);
