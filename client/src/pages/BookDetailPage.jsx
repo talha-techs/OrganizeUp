@@ -23,7 +23,7 @@ const BookDetailPage = () => {
   const { user } = useSelector((state) => state.auth);
   useDocumentTitle(currentBook?.title || 'Book');
 
-  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(0);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [note, setNote] = useState('');
   const [completedVideoIndex, setCompletedVideoIndex] = useState(null);
@@ -44,10 +44,19 @@ const BookDetailPage = () => {
 
   const fmtTime = (s) => {
     if (!s || isNaN(s)) return '0:00';
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
+    const totalSecs = Math.floor(s);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  useEffect(() => {
+    dispatch(fetchBook(id));
+  }, [dispatch, id]);
 
   // Wire up audio element events
   useEffect(() => {
@@ -132,10 +141,10 @@ const BookDetailPage = () => {
     setCurrentTime(val);
   };
 
-  const handleVolumeChange = (e) => {
+  const handleVolume = (e) => {
     const val = parseFloat(e.target.value);
-    setAudioVolume(val);
     if (audioRef.current) audioRef.current.volume = val;
+    setAudioVolume(val);
   };
 
   const handleRemoveAudio = async (audioId) => {
@@ -151,7 +160,6 @@ const BookDetailPage = () => {
   };
 
   useEffect(() => {
-    dispatch(fetchBook(id));
     dispatch(fetchBookProgress(id));
     return () => dispatch(clearCurrentBook());
   }, [id, dispatch]);
@@ -244,7 +252,7 @@ const BookDetailPage = () => {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         onClick={() => navigate('/books')}
-        className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors"
+        className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors cursor-pointer"
       >
         <IoArrowBack size={18} /> Back to Books
       </motion.button>
@@ -268,27 +276,43 @@ const BookDetailPage = () => {
           {/* Video Player */}
           <div className="lg:col-span-2">
             <div className="glass-card overflow-hidden">
-              {selectedVideo !== null ? (
+              {selectedVideo !== null && currentBook.videos?.[selectedVideo] ? (
                 <>
                   <div className="aspect-video bg-black rounded-t-2xl overflow-hidden">
-                    <iframe
-                      src={`https://drive.google.com/file/d/${currentBook.videos[selectedVideo]?.driveFileId}/preview`}
-                      width="100%"
-                      height="100%"
-                      allow="autoplay"
-                      allowFullScreen
-                      className="w-full h-full"
-                      onLoad={() => {
-                        // Track progress
-                        const interval = setInterval(() => {
-                          const progress = getVideoProgress(selectedVideo);
-                          if (!progress?.completed) {
-                            handleVideoProgress(selectedVideo, Math.min((progress?.progress || 0) + 5, 95));
-                          }
-                        }, 30000); // Update every 30 seconds
-                        return () => clearInterval(interval);
-                      }}
-                    />
+                    {(() => {
+                      const videoItem = currentBook.videos[selectedVideo];
+                      const videoId = videoItem?.driveFileId || videoItem?.videoId;
+                      const isYouTube =
+                        currentBook.source === 'youtube' ||
+                        (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId));
+                      const iframeSrc = isYouTube
+                        ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
+                        : `https://drive.google.com/file/d/${videoId}/preview`;
+
+                      return (
+                        <iframe
+                          src={iframeSrc}
+                          width="100%"
+                          height="100%"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="w-full h-full border-0"
+                          onLoad={() => {
+                            // Track progress
+                            const interval = setInterval(() => {
+                              const progress = getVideoProgress(selectedVideo);
+                              if (!progress?.completed) {
+                                handleVideoProgress(
+                                  selectedVideo,
+                                  Math.min((progress?.progress || 0) + 5, 95)
+                                );
+                              }
+                            }, 30000);
+                            return () => clearInterval(interval);
+                          }}
+                        />
+                      );
+                    })()}
                   </div>
                   {/* Progress bar under video */}
                   <div className="p-4">
