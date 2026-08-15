@@ -169,6 +169,18 @@ async function fetchAudiobooks({
     clearTimeout(timeout);
 
     if (!response.ok) {
+      if (response.status === 404) {
+        const emptyResult = {
+          books: [],
+          page: pageNum,
+          limit: limitNum,
+          total: 0,
+          totalPages: 0,
+          hasMore: false,
+        };
+        setCache(cacheKey, emptyResult, 10 * 60 * 1000);
+        return emptyResult;
+      }
       throw new Error(`LibriVox API error: ${response.status} ${response.statusText}`);
     }
 
@@ -184,7 +196,7 @@ async function fetchAudiobooks({
         totalPages: 0,
         hasMore: false,
       };
-      setCache(cacheKey, emptyResult, 10 * 60 * 1000); // 10 min cache for empty
+      setCache(cacheKey, emptyResult, 10 * 60 * 1000);
       return emptyResult;
     }
 
