@@ -7,6 +7,7 @@ import { getMe } from './redux/slices/authSlice';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoadingSpinner from './components/ui/LoadingSpinner';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Public pages (lazy-loaded)
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -53,49 +54,51 @@ const App = () => {
   return (
     <>
       <InstallPrompt />
-      <Suspense fallback={<LoadingSpinner />}>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/auth/google/success" element={<GoogleSuccess />} />
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/auth/google/success" element={<GoogleSuccess />} />
 
-        {/* Protected routes with layout */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/explore" element={<ExplorePage />} />
-          <Route path="/books" element={<BooksPage />} />
-          <Route path="/books/:id" element={<BookDetailPage />} />
-          <Route path="/courses" element={<CoursesPage />} />
-          <Route path="/courses/:id" element={<CourseDetailPage />} />
-          <Route path="/tools" element={<ToolsPage />} />
-          <Route path="/tools/:id" element={<ToolDetailPage />} />
-          <Route path="/sections" element={<SectionsPage />} />
-          <Route path="/sections/:id" element={<SectionDetailPage />} />
-          <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
-          <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/saved" element={<SavedLibraryPage />} />
-          <Route path="/telegram-inbox" element={<TelegramLibrary />} />
-          <Route path="/discord-inbox" element={<DiscordLibrary />} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
-        </Route>
-      </Routes>
-      </Suspense>
+            {/* Protected routes with layout */}
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/books" element={<BooksPage />} />
+              <Route path="/books/:id" element={<BookDetailPage />} />
+              <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/courses/:id" element={<CourseDetailPage />} />
+              <Route path="/tools" element={<ToolsPage />} />
+              <Route path="/tools/:id" element={<ToolDetailPage />} />
+              <Route path="/sections" element={<SectionsPage />} />
+              <Route path="/sections/:id" element={<SectionDetailPage />} />
+              <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
+              <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/saved" element={<SavedLibraryPage />} />
+              <Route path="/telegram-inbox" element={<TelegramLibrary />} />
+              <Route path="/discord-inbox" element={<DiscordLibrary />} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { FaDiscord, FaCheck, FaTrash, FaLink, FaTimes, FaTag, FaSync, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaDiscord, FaCheck, FaTrash, FaLink, FaTimes, FaTag, FaSync, FaExternalLinkAlt, FaEdit } from 'react-icons/fa';
 import api from '../../utils/api';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
