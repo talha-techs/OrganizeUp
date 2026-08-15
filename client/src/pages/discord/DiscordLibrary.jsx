@@ -285,7 +285,7 @@ const DiscordLibrary = () => {
           <h2 className="text-2xl font-bold text-white mb-4">Connect Your Discord Account</h2>
           <p className="text-slate-400 mb-8 leading-relaxed">
             Link your OrganizeUp account to our Discord User App. Once connected, you can right-click any message 
-            in any server and select <b>Apps -> Save to OrganizeUp</b> to instantly save it here!
+            in any server and select <b>Apps → Save to OrganizeUp</b> to instantly save it here!
           </p>
 
           <button
@@ -315,7 +315,7 @@ const DiscordLibrary = () => {
           {messages.length === 0 ? (
             <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-2xl p-12 text-center">
               <p className="text-slate-400 text-lg">Your library is empty!</p>
-              <p className="text-slate-500 mt-2">Right-click any message in Discord -> Apps -> Save to OrganizeUp to see it here.</p>
+              <p className="text-slate-500 mt-2">Right-click any message in Discord → Apps → Save to OrganizeUp to see it here.</p>
             </div>
           ) : (
             <div className="space-y-10">
