@@ -14,6 +14,7 @@ const passport = require("./config/passport");
 // Import routes
 const authRoutes = require("./routes/auth");
 const bookRoutes = require("./routes/books");
+const audiobookRoutes = require("./routes/audiobooks");
 const courseRoutes = require("./routes/courses");
 const toolRoutes = require("./routes/tools");
 const adminRoutes = require("./routes/admin");
@@ -56,7 +57,7 @@ app.use(
           "'self'",
           process.env.CLIENT_URL || "http://localhost:5173",
         ],
-        mediaSrc: ["'self'"],
+        mediaSrc: ["'self'", "https:"],
       },
     },
   }),
@@ -119,6 +120,7 @@ const apiLimiter = rateLimit({
 // Routes
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/books", apiLimiter, bookRoutes);
+app.use("/api/audiobooks", apiLimiter, audiobookRoutes);
 app.use("/api/courses", apiLimiter, courseRoutes);
 app.use("/api/tools", apiLimiter, toolRoutes);
 app.use("/api/admin", adminRoutes);

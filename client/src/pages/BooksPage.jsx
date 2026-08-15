@@ -115,24 +115,44 @@ const BooksPage = () => {
         ))}
       </div>
 
-      {/* Books Grid */}
       {isLoading ? (
         <LoadingSpinner text="Loading books..." />
       ) : filteredBooks.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-20"
+          className="text-center py-20 glass-card"
         >
-          <IoBookOutline className="mx-auto text-slate-600 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-slate-400 mb-2">No books yet</h3>
-          <p className="text-sm text-slate-500">
+          {activeTab === 'audio' ? (
+            <IoMusicalNotesOutline className="mx-auto text-indigo-400 mb-4" size={48} />
+          ) : (
+            <IoBookOutline className="mx-auto text-slate-600 mb-4" size={48} />
+          )}
+          <h3 className="text-lg font-medium text-white mb-2">
+            {activeTab === 'audio' ? 'No audiobooks in your space yet' : 'No books yet'}
+          </h3>
+          <p className="text-sm text-slate-400 max-w-md mx-auto mb-5">
             {activeTab === 'audio'
-              ? 'Audio books section coming soon!'
+              ? 'Browse thousands of free classic audiobooks from LibriVox on the Explore page and add them to your shelf with one click.'
               : isAdmin
-              ? 'Click "Add New Book" to get started'
-              : 'Check back soon for new content'}
+              ? 'Click "Add Book" to get started with video or PDF books.'
+              : 'Add your own books or browse public books shared in Explore.'}
           </p>
+          {activeTab === 'audio' ? (
+            <button
+              onClick={() => navigate('/explore')}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2"
+            >
+              <IoMusicalNotesOutline size={16} /> Explore LibriVox Audiobooks
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowForm(true)}
+              className="btn-secondary text-xs py-2.5 px-4 inline-flex items-center gap-2"
+            >
+              <IoAdd size={16} /> Add a Book
+            </button>
+          )}
         </motion.div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

@@ -44,7 +44,7 @@ const bookSchema = new mongoose.Schema(
         order: { type: Number, default: 0 },
       },
     ],
-    // For audio books — each track uploaded to GridFS
+    // For audio books — each track uploaded to GridFS or streamed via audioUrl
     audioFiles: [
       {
         title: { type: String, default: "" },
@@ -52,12 +52,30 @@ const bookSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           default: null,
         },
+        audioUrl: {
+          type: String,
+          default: "",
+        },
         originalName: { type: String, default: "" },
         duration: { type: String, default: "" },
         size: { type: Number, default: 0 },
         order: { type: Number, default: 0 },
       },
     ],
+    librivoxId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    copyrightYear: {
+      type: String,
+      default: "",
+    },
+    source: {
+      type: String,
+      enum: ["local", "drive", "librivox"],
+      default: "local",
+    },
     driveLink: {
       type: String,
       default: "",

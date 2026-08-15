@@ -84,9 +84,9 @@ const BookDetailPage = () => {
     const audio = audioRef.current;
     if (!audio || !currentBook?.audioFiles?.length) return;
     const track = currentBook.audioFiles[currentTrackIdx];
-    if (!track?.fileId) return;
+    if (!track?.fileId && !track?.audioUrl) return;
     const wasPlaying = isPlaying;
-    audio.src = `/api/books/audio/${track.fileId}`;
+    audio.src = track.audioUrl || `/api/books/audio/${track.fileId}`;
     audio.load();
     setCurrentTime(0);
     setAudioDuration(0);

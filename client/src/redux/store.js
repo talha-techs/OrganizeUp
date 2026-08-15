@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
 import bookReducer from "./slices/bookSlice";
+import audiobookReducer from "./slices/audiobookSlice";
 import courseReducer from "./slices/courseSlice";
 import toolReducer from "./slices/toolSlice";
 import adminReducer from "./slices/adminSlice";
@@ -13,6 +14,7 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     books: bookReducer,
+    audiobooks: audiobookReducer,
     courses: courseReducer,
     tools: toolReducer,
     admin: adminReducer,
