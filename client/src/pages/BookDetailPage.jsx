@@ -94,6 +94,18 @@ const BookDetailPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackIdx, currentBook]);
 
+  // Dynamically update document title when playing audio
+  useEffect(() => {
+    if (!currentBook) return;
+    if (currentBook.type === 'audio' && isPlaying) {
+      const track = currentBook.audioFiles?.[currentTrackIdx];
+      const trackName = track?.title ? ` · ${track.title}` : '';
+      document.title = `▶ ${currentBook.title}${trackName} | OrganizeUp`;
+    } else {
+      document.title = `${currentBook.title} | OrganizeUp`;
+    }
+  }, [currentBook, isPlaying, currentTrackIdx]);
+
   const playTrack = (idx) => {
     if (idx === currentTrackIdx) {
       // Toggle play/pause on same track

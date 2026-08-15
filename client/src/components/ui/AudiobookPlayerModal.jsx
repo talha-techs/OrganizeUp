@@ -66,6 +66,21 @@ const AudiobookPlayerModal = ({
     }
   }, [isOpen, book?.id]);
 
+  // Update browser tab title dynamically when playing
+  useEffect(() => {
+    if (!isOpen || !book) return;
+    const prevTitle = document.title;
+    if (isPlaying) {
+      const trackName = currentTrack?.title ? ` · ${currentTrack.title}` : '';
+      document.title = `▶ ${book.title}${trackName} | OrganizeUp`;
+    } else {
+      document.title = `⏸ ${book.title} | OrganizeUp`;
+    }
+    return () => {
+      document.title = prevTitle;
+    };
+  }, [isOpen, book, isPlaying, currentTrack]);
+
   // Load new audio source when track changes
   useEffect(() => {
     const audio = audioRef.current;

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   IoClose,
@@ -15,10 +16,20 @@ const YouTubeAudioPlayerModal = ({
   onSave,
   isSaving = false,
 }) => {
-  if (!isOpen || !book) return null;
+  const videoId = book?.videoId || book?.id;
+  const isSaved = !!book?.isSaved;
 
-  const videoId = book.videoId || book.id;
-  const isSaved = !!book.isSaved;
+  // Update browser tab title dynamically while modal is active
+  useEffect(() => {
+    if (!isOpen || !book) return;
+    const prevTitle = document.title;
+    document.title = `▶ ${book.title} | OrganizeUp`;
+    return () => {
+      document.title = prevTitle;
+    };
+  }, [isOpen, book]);
+
+  if (!isOpen || !book) return null;
 
   return (
     <AnimatePresence>
