@@ -142,7 +142,7 @@ const exploreSlice = createSlice({
       .addCase(fetchExploreContent.fulfilled, (state, action) => {
         state.isLoading = false;
         state.results = action.payload.results;
-        state.totals = action.payload.totals;
+        state.totals = { ...state.totals, ...(action.payload.totals || {}) };
       })
       .addCase(fetchExploreContent.rejected, (state, action) => {
         state.isLoading = false;

@@ -96,18 +96,33 @@ const getExploreContent = async (req, res) => {
       ];
     }
 
+    const bookFilter = { ...filter };
+    if (search) {
+      const safe = escapeRegex(search);
+      bookFilter.$or = [
+        ...(bookFilter.$or || []),
+        { author: { $regex: safe, $options: "i" } },
+      ];
+    }
+
+    // Always fetch global totals for all categories so navbar counts are always accurate
+    const [bookCount, courseCount, toolCount, sectionCount] = await Promise.all([
+      Book.countDocuments(bookFilter),
+      Course.countDocuments(filter),
+      Tool.countDocuments(filter),
+      CustomSection.countDocuments(sectionFilter),
+    ]);
+
+    const totals = {
+      books: bookCount,
+      courses: courseCount,
+      tools: toolCount,
+      sections: sectionCount,
+    };
+
     const results = { books: [], courses: [], tools: [], sections: [] };
-    const totals = { books: 0, courses: 0, tools: 0, sections: 0 };
 
     if (type === "all" || type === "books") {
-      const bookFilter = { ...filter };
-      if (search) {
-        const safe = escapeRegex(search);
-        bookFilter.$or = [
-          ...(bookFilter.$or || []),
-          { author: { $regex: safe, $options: "i" } },
-        ];
-      }
       // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
       const dbSkip = isPopular ? 0 : type === "books" ? skip : 0;
       let bookQuery = Book.find(bookFilter)
@@ -116,10 +131,7 @@ const getExploreContent = async (req, res) => {
         .lean();
       if (!isPopular) bookQuery = bookQuery.skip(dbSkip).limit(perType);
 
-      const [books, bookCount] = await Promise.all([
-        bookQuery,
-        Book.countDocuments(bookFilter),
-      ]);
+      const books = await bookQuery;
       let scored = await attachSocialCounts(books, "book");
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -127,7 +139,6 @@ const getExploreContent = async (req, res) => {
       } else {
         results.books = scored;
       }
-      totals.books = bookCount;
     }
 
     if (type === "all" || type === "courses") {
@@ -139,10 +150,7 @@ const getExploreContent = async (req, res) => {
         .lean();
       if (!isPopular) courseQuery = courseQuery.skip(dbSkip).limit(perType);
 
-      const [courses, courseCount] = await Promise.all([
-        courseQuery,
-        Course.countDocuments(filter),
-      ]);
+      const courses = await courseQuery;
       let scored = await attachSocialCounts(courses, "course");
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -150,7 +158,6 @@ const getExploreContent = async (req, res) => {
       } else {
         results.courses = scored;
       }
-      totals.courses = courseCount;
     }
 
     if (type === "all" || type === "tools") {
@@ -161,10 +168,7 @@ const getExploreContent = async (req, res) => {
         .lean();
       if (!isPopular) toolQuery = toolQuery.skip(dbSkip).limit(perType);
 
-      const [tools, toolCount] = await Promise.all([
-        toolQuery,
-        Tool.countDocuments(filter),
-      ]);
+      const tools = await toolQuery;
       let scored = await attachSocialCounts(tools, "tool");
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -172,7 +176,6 @@ const getExploreContent = async (req, res) => {
       } else {
         results.tools = scored;
       }
-      totals.tools = toolCount;
     }
 
     if (type === "all" || type === "sections") {
@@ -183,10 +186,7 @@ const getExploreContent = async (req, res) => {
         .lean();
       if (!isPopular) sectionQuery = sectionQuery.skip(dbSkip).limit(perType);
 
-      const [sections, sectionCount] = await Promise.all([
-        sectionQuery,
-        CustomSection.countDocuments(sectionFilter),
-      ]);
+      const sections = await sectionQuery;
       let scored = await attachSocialCounts(sections, "section");
       // Normalize 'name' → 'title' for consistent card rendering
       scored = scored.map((s) => ({ ...s, title: s.name }));
@@ -196,7 +196,6 @@ const getExploreContent = async (req, res) => {
       } else {
         results.sections = scored;
       }
-      totals.sections = sectionCount;
     }
 
     res.json({ results, totals });
