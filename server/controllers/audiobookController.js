@@ -1,6 +1,7 @@
 const Book = require("../models/Book");
 const UserLibrary = require("../models/UserLibrary");
 const librivoxService = require("../services/librivoxService");
+const youtubeAudiobookService = require("../services/youtubeAudiobookService");
 
 // @desc    Get explore audiobooks from LibriVox API
 // @route   GET /api/audiobooks/explore?page=1&limit=20&genre=...&search=...
@@ -19,7 +20,6 @@ const getExploreAudiobooks = async (req, res) => {
     if (req.user && data.books && data.books.length > 0) {
       const librivoxIds = data.books.map((b) => b.id);
 
-      // Find any Book documents created for these LibriVox IDs
       const existingBooks = await Book.find({
         librivoxId: { $in: librivoxIds },
       }).select("_id librivoxId");
@@ -31,7 +31,6 @@ const getExploreAudiobooks = async (req, res) => {
           return b._id;
         });
 
-        // Find which ones are in this user's library
         const savedEntries = await UserLibrary.find({
           user: req.user._id,
           contentType: "book",
@@ -202,9 +201,125 @@ const unsaveAudiobookFromLibrary = async (req, res) => {
   }
 };
 
+// @desc    Get Modern Audiobooks & Book Summaries (YouTube)
+// @route   GET /api/audiobooks/modern?topic=...&search=...
+const getModernAudiobooks = async (req, res) => {
+  try {
+    const { topic = "All", search = "" } = req.query;
+
+    const data = await youtubeAudiobookService.searchYouTubeAudiobooks({
+      topic,
+      query: search,
+      limit: 24,
+    });
+
+    // Check which videos user already saved in library
+    if (req.user && data.books && data.books.length > 0) {
+      const videoIds = data.books.map((b) => b.videoId);
+
+      const existingBooks = await Book.find({
+        "videos.driveFileId": { $in: videoIds },
+      }).select("_id videos");
+
+      if (existingBooks.length > 0) {
+        const videoIdToBookId = {};
+        const bookObjectIds = existingBooks.map((b) => {
+          const vId = b.videos?.[0]?.driveFileId;
+          if (vId) videoIdToBookId[vId] = b._id;
+          return b._id;
+        });
+
+        const savedEntries = await UserLibrary.find({
+          user: req.user._id,
+          contentType: "book",
+          contentId: { $in: bookObjectIds },
+        });
+
+        const savedBookIds = new Set(savedEntries.map((e) => e.contentId.toString()));
+
+        data.books = data.books.map((b) => {
+          const dbId = videoIdToBookId[b.videoId];
+          const isSaved = dbId ? savedBookIds.has(dbId.toString()) : false;
+          return {
+            ...b,
+            isSaved,
+            dbBookId: dbId || null,
+          };
+        });
+      }
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error("Get modern audiobooks error:", error);
+    res.status(500).json({ message: "Failed to search modern audiobooks" });
+  }
+};
+
+// @desc    Save a Modern Audiobook (YouTube) to user's library
+// @route   POST /api/audiobooks/modern/:videoId/save
+const saveModernAudiobookToLibrary = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { title, author, duration, thumbnail, description } = req.body;
+    const userId = req.user._id;
+
+    // Find or create Book document
+    let bookDoc = await Book.findOne({ "videos.driveFileId": videoId });
+
+    if (!bookDoc) {
+      bookDoc = await Book.create({
+        title: title || "Modern Audiobook",
+        author: author || "Bestseller",
+        type: "video",
+        description: description || "Modern Audiobook & Summary",
+        coverImage: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        source: "drive",
+        visibility: "public",
+        addedBy: userId,
+        videos: [
+          {
+            title: title || "Full Audiobook",
+            driveFileId: videoId, // YouTube video ID mapped for player
+            duration: duration || "",
+            order: 0,
+          },
+        ],
+      });
+    }
+
+    // Create UserLibrary entry
+    let saved = await UserLibrary.findOne({
+      user: userId,
+      contentType: "book",
+      contentId: bookDoc._id,
+    });
+
+    if (!saved) {
+      saved = await UserLibrary.create({
+        user: userId,
+        contentType: "book",
+        contentId: bookDoc._id,
+      });
+    }
+
+    res.status(201).json({
+      message: "Saved to your library",
+      book: bookDoc,
+      libraryId: saved._id,
+      isSaved: true,
+    });
+  } catch (error) {
+    console.error("Save modern audiobook error:", error);
+    res.status(500).json({ message: "Failed to save modern audiobook" });
+  }
+};
+
 module.exports = {
   getExploreAudiobooks,
   getAudiobookById,
   saveAudiobookToLibrary,
   unsaveAudiobookFromLibrary,
+  getModernAudiobooks,
+  saveModernAudiobookToLibrary,
 };

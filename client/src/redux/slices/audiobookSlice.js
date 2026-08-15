@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
 
+// LibriVox Classics
 export const fetchExploreAudiobooks = createAsyncThunk(
   "audiobooks/fetchExploreAudiobooks",
   async ({ page = 1, limit = 20, genre = "", search = "" } = {}, { rejectWithValue }) => {
@@ -60,9 +61,44 @@ export const unsaveAudiobook = createAsyncThunk(
   },
 );
 
+// Modern Audiobooks & Summaries (YouTube)
+export const fetchModernAudiobooks = createAsyncThunk(
+  "audiobooks/fetchModernAudiobooks",
+  async ({ topic = "All", search = "" } = {}, { rejectWithValue }) => {
+    try {
+      const params = { topic };
+      if (search && search.trim()) params.search = search.trim();
+      const { data } = await api.get("/audiobooks/modern", { params });
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to search modern audiobooks",
+      );
+    }
+  },
+);
+
+export const saveModernAudiobook = createAsyncThunk(
+  "audiobooks/saveModernAudiobook",
+  async (book, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(
+        `/audiobooks/modern/${book.videoId || book.id}/save`,
+        book,
+      );
+      return { videoId: book.videoId || book.id, ...data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to save modern audiobook",
+      );
+    }
+  },
+);
+
 const audiobookSlice = createSlice({
   name: "audiobooks",
   initialState: {
+    // Classics (LibriVox)
     audiobooks: [],
     page: 1,
     limit: 20,
@@ -72,7 +108,13 @@ const audiobookSlice = createSlice({
     isLoading: false,
     error: null,
     currentAudiobook: null,
-    activePlayerBook: null, // Currently active audiobook in quick player modal
+    activePlayerBook: null,
+
+    // Modern Audiobooks (YouTube)
+    modernAudiobooks: [],
+    selectedTopic: "All",
+    isModernLoading: false,
+    activeModernPlayerBook: null,
   },
   reducers: {
     setSelectedGenre: (state, action) => {
@@ -92,10 +134,19 @@ const audiobookSlice = createSlice({
     clearActivePlayerBook: (state) => {
       state.activePlayerBook = null;
     },
+    setSelectedTopic: (state, action) => {
+      state.selectedTopic = action.payload;
+    },
+    setActiveModernPlayerBook: (state, action) => {
+      state.activeModernPlayerBook = action.payload;
+    },
+    clearActiveModernPlayerBook: (state) => {
+      state.activeModernPlayerBook = null;
+    },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch explore audiobooks
+      // Fetch explore audiobooks (Classics)
       .addCase(fetchExploreAudiobooks.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -124,7 +175,7 @@ const audiobookSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      // Save audiobook
+      // Save classic audiobook
       .addCase(saveAudiobook.fulfilled, (state, action) => {
         const { id, libraryId, book } = action.payload;
         const index = state.audiobooks.findIndex((b) => b.id === id);
@@ -138,7 +189,7 @@ const audiobookSlice = createSlice({
           state.activePlayerBook.libraryId = libraryId;
         }
       })
-      // Unsave audiobook
+      // Unsave classic audiobook
       .addCase(unsaveAudiobook.fulfilled, (state, action) => {
         const { id } = action.payload;
         const index = state.audiobooks.findIndex((b) => b.id === id);
@@ -150,6 +201,37 @@ const audiobookSlice = createSlice({
           state.activePlayerBook.isSaved = false;
           state.activePlayerBook.libraryId = null;
         }
+      })
+      // Fetch modern audiobooks (YouTube)
+      .addCase(fetchModernAudiobooks.pending, (state) => {
+        state.isModernLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchModernAudiobooks.fulfilled, (state, action) => {
+        state.isModernLoading = false;
+        state.modernAudiobooks = action.payload.books || [];
+      })
+      .addCase(fetchModernAudiobooks.rejected, (state, action) => {
+        state.isModernLoading = false;
+        state.error = action.payload;
+        state.modernAudiobooks = [];
+      })
+      // Save modern audiobook
+      .addCase(saveModernAudiobook.fulfilled, (state, action) => {
+        const { videoId, libraryId, book } = action.payload;
+        const index = state.modernAudiobooks.findIndex(
+          (b) => b.videoId === videoId || b.id === videoId,
+        );
+        if (index !== -1) {
+          state.modernAudiobooks[index].isSaved = true;
+          state.modernAudiobooks[index].dbBookId = book?._id;
+        }
+        if (
+          state.activeModernPlayerBook?.videoId === videoId ||
+          state.activeModernPlayerBook?.id === videoId
+        ) {
+          state.activeModernPlayerBook.isSaved = true;
+        }
       });
   },
 });
@@ -160,6 +242,9 @@ export const {
   setAudiobookPage,
   setActivePlayerBook,
   clearActivePlayerBook,
+  setSelectedTopic,
+  setActiveModernPlayerBook,
+  clearActiveModernPlayerBook,
 } = audiobookSlice.actions;
 
 export default audiobookSlice.reducer;

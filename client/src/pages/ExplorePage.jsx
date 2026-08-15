@@ -23,6 +23,7 @@ import {
   IoChevronBack,
   IoChevronForward,
   IoSparklesOutline,
+  IoLogoYoutube,
 } from 'react-icons/io5';
 import {
   fetchExploreContent,
@@ -37,11 +38,18 @@ import {
   setAudiobookPage,
   setActivePlayerBook,
   clearActivePlayerBook,
+  fetchModernAudiobooks,
+  saveModernAudiobook,
+  setSelectedTopic,
+  setActiveModernPlayerBook,
+  clearActiveModernPlayerBook,
 } from '../redux/slices/audiobookSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import AudiobookCard from '../components/ui/AudiobookCard';
 import AudiobookPlayerModal from '../components/ui/AudiobookPlayerModal';
+import ModernAudiobookCard from '../components/ui/ModernAudiobookCard';
+import YouTubeAudioPlayerModal from '../components/ui/YouTubeAudioPlayerModal';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -60,10 +68,20 @@ const AUDIOBOOK_GENRES = [
   'Children',
 ];
 
+const MODERN_TOPICS = [
+  'All',
+  'Habits & Mindset',
+  'Wealth & Finance',
+  'Productivity & Focus',
+  'Psychology & Influence',
+  'Self-Discipline & Grit',
+  'Leadership & Business',
+];
+
 const ExplorePage = () => {
   useDocumentTitle('Explore');
   const [activeTab, setActiveTab] = useState('all');
-  const [bookSubTab, setBookSubTab] = useState('all'); // 'all' | 'video' | 'text' | 'audio'
+  const [bookSubTab, setBookSubTab] = useState('all'); // 'all' | 'video' | 'text' | 'audio' | 'modern'
   const [sortBy, setSortBy] = useState('latest');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -84,6 +102,10 @@ const ExplorePage = () => {
     selectedGenre,
     isLoading: isAudioLoading,
     activePlayerBook,
+    modernAudiobooks,
+    selectedTopic,
+    isModernLoading,
+    activeModernPlayerBook,
   } = useSelector((state) => state.audiobooks);
 
   // Map of contentId (string) → libraryEntryId, rebuilt whenever saved list changes
@@ -104,7 +126,7 @@ const ExplorePage = () => {
     dispatch(fetchLibrary());
   }, [dispatch]);
 
-  // Fetch LibriVox audiobooks when book sub-tab is 'audio' or when books tab is selected
+  // Fetch LibriVox classic audiobooks when book sub-tab is 'audio'
   useEffect(() => {
     if (activeTab === 'books' && bookSubTab === 'audio') {
       dispatch(
@@ -117,6 +139,18 @@ const ExplorePage = () => {
       );
     }
   }, [dispatch, activeTab, bookSubTab, audioPage, selectedGenre, search]);
+
+  // Fetch Modern Audiobooks & Summaries (YouTube) when book sub-tab is 'modern'
+  useEffect(() => {
+    if (activeTab === 'books' && bookSubTab === 'modern') {
+      dispatch(
+        fetchModernAudiobooks({
+          topic: selectedTopic,
+          search,
+        }),
+      );
+    }
+  }, [dispatch, activeTab, bookSubTab, selectedTopic, search]);
 
   // Debounce search input → update committed search state after 400ms idle
   const handleSearchInput = (value) => {
@@ -187,6 +221,18 @@ const ExplorePage = () => {
     }
   };
 
+  const handleSaveModernAudiobook = async (book) => {
+    setSavingAudioId(book.videoId || book.id);
+    const result = await dispatch(saveModernAudiobook(book));
+    setSavingAudioId(null);
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Modern audiobook saved to your library!');
+      dispatch(fetchLibrary());
+    } else {
+      toast.error(result.payload || 'Failed to save');
+    }
+  };
+
   const handleAudioPageChange = (newPage) => {
     dispatch(setAudiobookPage(newPage));
     if (audiobooksTopRef.current) {
@@ -196,6 +242,10 @@ const ExplorePage = () => {
 
   const handleGenreChange = (genre) => {
     dispatch(setSelectedGenre(genre));
+  };
+
+  const handleTopicChange = (topic) => {
+    dispatch(setSelectedTopic(topic));
   };
 
   const openComments = (item, contentType) => {
@@ -234,14 +284,14 @@ const ExplorePage = () => {
 
   const bookSubTabs = [
     { key: 'all', label: 'All Formats', icon: <IoBookOutline size={14} /> },
-    { key: 'video', label: 'Video Books', icon: <IoVideocamOutline size={14} /> },
-    { key: 'text', label: 'Text Books (PDF)', icon: <IoDocumentTextOutline size={14} /> },
+    { key: 'modern', label: '✨ Modern Bestsellers (Audio)', icon: <IoSparklesOutline size={14} />, highlight: true },
     {
       key: 'audio',
-      label: 'Audio Books (LibriVox)',
+      label: '🎧 Classic Audiobooks (LibriVox)',
       icon: <IoMusicalNotesOutline size={14} />,
-      highlight: true,
     },
+    { key: 'video', label: '📹 Video Books', icon: <IoVideocamOutline size={14} /> },
+    { key: 'text', label: '📄 Text Books (PDF)', icon: <IoDocumentTextOutline size={14} /> },
   ];
 
   const detailRouteByType = {
@@ -518,8 +568,7 @@ const ExplorePage = () => {
       >
         <h1 className="text-3xl font-bold text-white font-display">Explore</h1>
         <p className="text-slate-400 text-sm mt-1">
-          Discover public books, courses, audiobooks, tricks, and sections shared
-          with the community
+          Discover public books, modern bestsellers, classic audiobooks, courses, and sections
         </p>
       </motion.div>
 
@@ -535,8 +584,10 @@ const ExplorePage = () => {
             value={searchInput}
             onChange={(e) => handleSearchInput(e.target.value)}
             placeholder={
-              activeTab === 'books' && bookSubTab === 'audio'
-                ? 'Search 18,000+ LibriVox audiobooks by title or author…'
+              activeTab === 'books' && bookSubTab === 'modern'
+                ? 'Search modern bestsellers (e.g. Atomic Habits, 7 Habits, Rich Dad)…'
+                : activeTab === 'books' && bookSubTab === 'audio'
+                ? 'Search 18,000+ LibriVox classic audiobooks by title or author…'
                 : 'Search public content…'
             }
             className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-800/50 border border-white/5 text-white text-sm placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
@@ -553,7 +604,7 @@ const ExplorePage = () => {
         </form>
 
         {/* Sort Controls (for DB content) */}
-        {!(activeTab === 'books' && bookSubTab === 'audio') && (
+        {!(activeTab === 'books' && (bookSubTab === 'audio' || bookSubTab === 'modern')) && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSortBy('latest')}
@@ -616,7 +667,7 @@ const ExplorePage = () => {
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 bookSubTab === subTab.key
                   ? subTab.highlight
-                    ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow-md shadow-indigo-500/20'
+                    ? 'bg-gradient-to-r from-red-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-indigo-500/25'
                     : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                   : 'bg-slate-800/40 text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
@@ -664,7 +715,96 @@ const ExplorePage = () => {
             </>
           )}
 
-          {/* BOOKS TAB: LIBRIVOX AUDIOBOOKS VIEW */}
+          {/* BOOKS TAB: MODERN BESTSELLERS & SUMMARIES (YOUTUBE) */}
+          {activeTab === 'books' && bookSubTab === 'modern' && (
+            <div className="space-y-6">
+              {/* Header & Topic Filter Chips */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
+                      <IoSparklesOutline className="text-amber-400" size={22} />
+                      Modern Audiobooks & Summaries
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
+                        <IoLogoYoutube size={12} /> Bestsellers
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Explore and stream popular modern audiobooks like Atomic Habits, The 7 Habits, The Psychology of Money, and Rich Dad Poor Dad.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Topic Selector Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                  {MODERN_TOPICS.map((topic) => (
+                    <button
+                      key={topic}
+                      onClick={() => handleTopicChange(topic)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                        selectedTopic === topic
+                          ? 'bg-gradient-to-r from-red-600 to-indigo-600 text-white shadow-sm shadow-red-500/30 font-semibold'
+                          : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800 border border-white/5'
+                      }`}
+                    >
+                      {topic}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modern Audiobooks Grid */}
+              {isModernLoading ? (
+                <div className="py-20">
+                  <LoadingSpinner text="Searching modern bestsellers…" />
+                </div>
+              ) : modernAudiobooks.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-20 glass-card"
+                >
+                  <IoSparklesOutline
+                    className="mx-auto text-slate-600 mb-3"
+                    size={48}
+                  />
+                  <h3 className="text-lg font-medium text-white mb-1">
+                    No modern audiobooks found
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-4">
+                    {search
+                      ? `No results for “${search}” in ${selectedTopic}`
+                      : `Try searching for another bestseller or selecting another topic.`}
+                  </p>
+                  <button
+                    onClick={() => {
+                      handleClearSearch();
+                      handleTopicChange('All');
+                    }}
+                    className="btn-secondary text-xs"
+                  >
+                    Reset filters
+                  </button>
+                </motion.div>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  <AnimatePresence>
+                    {modernAudiobooks.map((book) => (
+                      <ModernAudiobookCard
+                        key={book.id || book.videoId}
+                        book={book}
+                        onPlay={(b) => dispatch(setActiveModernPlayerBook(b))}
+                        onSave={handleSaveModernAudiobook}
+                        isSaving={savingAudioId === (book.videoId || book.id)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* BOOKS TAB: LIBRIVOX CLASSIC AUDIOBOOKS VIEW */}
           {activeTab === 'books' && bookSubTab === 'audio' && (
             <div ref={audiobooksTopRef} className="space-y-6">
               {/* Header & Genre Filter Chips */}
@@ -673,14 +813,13 @@ const ExplorePage = () => {
                   <div>
                     <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
                       <IoMusicalNotesOutline className="text-indigo-400" size={22} />
-                      LibriVox Audiobooks Catalog
+                      Classic Public Domain Audiobooks (LibriVox)
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
-                        Live Feed
+                        18,000+ Classics
                       </span>
                     </h2>
                     <p className="text-xs text-slate-400 mt-1">
-                      Stream over 18,000 free public-domain classic audiobooks or
-                      save them to your personal library.
+                      Stream over 18,000 free legal public-domain classic audiobooks (Dumas, Tolstoy, Marcus Aurelius, Sun Tzu, Austen).
                     </p>
                   </div>
                 </div>
@@ -810,7 +949,7 @@ const ExplorePage = () => {
           )}
 
           {/* BOOKS TAB: VIDEO OR PDF OR ALL BOOKS VIEW */}
-          {activeTab === 'books' && bookSubTab !== 'audio' && (
+          {activeTab === 'books' && bookSubTab !== 'audio' && bookSubTab !== 'modern' && (
             <div>
               {isLoading ? (
                 <LoadingSpinner text="Loading books..." />
@@ -825,14 +964,22 @@ const ExplorePage = () => {
                     No books in this category
                   </h3>
                   <p className="text-sm text-slate-500 mb-4">
-                    Try switching tabs or exploring our audiobooks library.
+                    Try exploring our modern bestsellers or classic audiobooks.
                   </p>
-                  <button
-                    onClick={() => setBookSubTab('audio')}
-                    className="btn-primary text-xs flex items-center gap-1.5 mx-auto"
-                  >
-                    <IoMusicalNotesOutline size={14} /> Explore LibriVox Audiobooks
-                  </button>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      onClick={() => setBookSubTab('modern')}
+                      className="btn-primary text-xs flex items-center gap-1.5"
+                    >
+                      <IoSparklesOutline size={14} /> Modern Bestsellers
+                    </button>
+                    <button
+                      onClick={() => setBookSubTab('audio')}
+                      className="btn-secondary text-xs flex items-center gap-1.5"
+                    >
+                      <IoMusicalNotesOutline size={14} /> Classic Audiobooks
+                    </button>
+                  </div>
                 </motion.div>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -864,13 +1011,21 @@ const ExplorePage = () => {
         </>
       )}
 
-      {/* Global Audiobook Player Modal */}
+      {/* LibriVox Classics Audio Player Modal */}
       <AudiobookPlayerModal
         book={activePlayerBook}
         isOpen={!!activePlayerBook}
         onClose={() => dispatch(clearActivePlayerBook())}
         onSave={handleSaveAudiobook}
         onUnsave={handleUnsaveAudiobook}
+      />
+
+      {/* YouTube Modern Audiobook Player Modal */}
+      <YouTubeAudioPlayerModal
+        book={activeModernPlayerBook}
+        isOpen={!!activeModernPlayerBook}
+        onClose={() => dispatch(clearActiveModernPlayerBook())}
+        onSave={handleSaveModernAudiobook}
       />
 
       {/* Comment panel – rendered outside card grid so typing doesn't re-render cards */}
@@ -884,4 +1039,3 @@ const ExplorePage = () => {
 };
 
 export default ExplorePage;
-
