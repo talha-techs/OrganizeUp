@@ -10,14 +10,14 @@ const {
 } = require("../controllers/audiobookController");
 const { protect } = require("../middleware/auth");
 
-// LibriVox Classics routes
+// 1. Static & Collection Routes (must come BEFORE parameterized /:id routes)
 router.get("/explore", protect, getExploreAudiobooks);
+router.get("/modern", protect, getModernAudiobooks);
+router.post("/modern/:videoId/save", protect, saveModernAudiobookToLibrary);
+
+// 2. Parameterized Routes (:id)
 router.get("/:id", protect, getAudiobookById);
 router.post("/:id/save", protect, saveAudiobookToLibrary);
 router.delete("/:id/unsave", protect, unsaveAudiobookFromLibrary);
-
-// Modern Audiobooks & Summaries (YouTube) routes
-router.get("/modern", protect, getModernAudiobooks);
-router.post("/modern/:videoId/save", protect, saveModernAudiobookToLibrary);
 
 module.exports = router;

@@ -18,43 +18,47 @@ const getExploreAudiobooks = async (req, res) => {
 
     // Check which books the user already saved in their library
     if (req.user && data.books && data.books.length > 0) {
-      const librivoxIds = data.books.map((b) => b.id);
+      try {
+        const librivoxIds = data.books.map((b) => b.id);
 
-      const existingBooks = await Book.find({
-        librivoxId: { $in: librivoxIds },
-      }).select("_id librivoxId");
+        const existingBooks = await Book.find({
+          librivoxId: { $in: librivoxIds },
+        }).select("_id librivoxId").maxTimeMS(3000);
 
-      if (existingBooks.length > 0) {
-        const bookIdToLibrivoxId = {};
-        const bookObjectIds = existingBooks.map((b) => {
-          bookIdToLibrivoxId[b._id.toString()] = b.librivoxId;
-          return b._id;
-        });
+        if (existingBooks.length > 0) {
+          const bookIdToLibrivoxId = {};
+          const bookObjectIds = existingBooks.map((b) => {
+            bookIdToLibrivoxId[b._id.toString()] = b.librivoxId;
+            return b._id;
+          });
 
-        const savedEntries = await UserLibrary.find({
-          user: req.user._id,
-          contentType: "book",
-          contentId: { $in: bookObjectIds },
-        });
+          const savedEntries = await UserLibrary.find({
+            user: req.user._id,
+            contentType: "book",
+            contentId: { $in: bookObjectIds },
+          }).maxTimeMS(3000);
 
-        const savedMap = {};
-        savedEntries.forEach((entry) => {
-          const lId = bookIdToLibrivoxId[entry.contentId.toString()];
-          if (lId) {
-            savedMap[lId] = {
-              saved: true,
-              libraryId: entry._id,
-              dbBookId: entry.contentId,
-            };
-          }
-        });
+          const savedMap = {};
+          savedEntries.forEach((entry) => {
+            const lId = bookIdToLibrivoxId[entry.contentId.toString()];
+            if (lId) {
+              savedMap[lId] = {
+                saved: true,
+                libraryId: entry._id,
+                dbBookId: entry.contentId,
+              };
+            }
+          });
 
-        data.books = data.books.map((b) => ({
-          ...b,
-          isSaved: !!savedMap[b.id]?.saved,
-          libraryId: savedMap[b.id]?.libraryId || null,
-          dbBookId: savedMap[b.id]?.dbBookId || null,
-        }));
+          data.books = data.books.map((b) => ({
+            ...b,
+            isSaved: !!savedMap[b.id]?.saved,
+            libraryId: savedMap[b.id]?.libraryId || null,
+            dbBookId: savedMap[b.id]?.dbBookId || null,
+          }));
+        }
+      } catch (dbErr) {
+        console.warn("Audiobooks DB library check warning:", dbErr.message);
       }
     }
 
@@ -215,37 +219,41 @@ const getModernAudiobooks = async (req, res) => {
 
     // Check which videos user already saved in library
     if (req.user && data.books && data.books.length > 0) {
-      const videoIds = data.books.map((b) => b.videoId);
+      try {
+        const videoIds = data.books.map((b) => b.videoId);
 
-      const existingBooks = await Book.find({
-        "videos.driveFileId": { $in: videoIds },
-      }).select("_id videos");
+        const existingBooks = await Book.find({
+          "videos.driveFileId": { $in: videoIds },
+        }).select("_id videos").maxTimeMS(3000);
 
-      if (existingBooks.length > 0) {
-        const videoIdToBookId = {};
-        const bookObjectIds = existingBooks.map((b) => {
-          const vId = b.videos?.[0]?.driveFileId;
-          if (vId) videoIdToBookId[vId] = b._id;
-          return b._id;
-        });
+        if (existingBooks.length > 0) {
+          const videoIdToBookId = {};
+          const bookObjectIds = existingBooks.map((b) => {
+            const vId = b.videos?.[0]?.driveFileId;
+            if (vId) videoIdToBookId[vId] = b._id;
+            return b._id;
+          });
 
-        const savedEntries = await UserLibrary.find({
-          user: req.user._id,
-          contentType: "book",
-          contentId: { $in: bookObjectIds },
-        });
+          const savedEntries = await UserLibrary.find({
+            user: req.user._id,
+            contentType: "book",
+            contentId: { $in: bookObjectIds },
+          }).maxTimeMS(3000);
 
-        const savedBookIds = new Set(savedEntries.map((e) => e.contentId.toString()));
+          const savedBookIds = new Set(savedEntries.map((e) => e.contentId.toString()));
 
-        data.books = data.books.map((b) => {
-          const dbId = videoIdToBookId[b.videoId];
-          const isSaved = dbId ? savedBookIds.has(dbId.toString()) : false;
-          return {
-            ...b,
-            isSaved,
-            dbBookId: dbId || null,
-          };
-        });
+          data.books = data.books.map((b) => {
+            const dbId = videoIdToBookId[b.videoId];
+            const isSaved = dbId ? savedBookIds.has(dbId.toString()) : false;
+            return {
+              ...b,
+              isSaved,
+              dbBookId: dbId || null,
+            };
+          });
+        }
+      } catch (dbErr) {
+        console.warn("Modern audiobooks DB check warning:", dbErr.message);
       }
     }
 
