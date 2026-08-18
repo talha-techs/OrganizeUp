@@ -602,7 +602,7 @@ const BookDetailPage = () => {
                             max={1}
                             step={0.02}
                             value={audioVolume}
-                            onChange={handleVolumeChange}
+                            onChange={handleVolume}
                             className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-1.5"
                           />
                         </div>
