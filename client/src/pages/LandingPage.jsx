@@ -67,18 +67,8 @@ const Navbar = () => (
 );
 
 const HeroSection = () => {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
-  });
-
-  // Parallax effect on the screenshot
-  const yImage = useTransform(scrollYProgress, [0, 1], [0, 150]);
-  const opacityImage = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-
   return (
-    <section ref={containerRef} className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden min-h-screen flex flex-col justify-center">
+    <section className="relative pt-32 pb-24 lg:pt-44 lg:pb-36 overflow-hidden min-h-screen flex flex-col justify-center">
       {/* 3D Fiber Floating Scene */}
       <Suspense fallback={null}>
         <LandingHero3D />
@@ -133,29 +123,32 @@ const HeroSection = () => {
 
         {/* 3D Desktop Mockup */}
         <motion.div 
-          style={{ y: yImage, opacity: opacityImage }}
-          initial={{ opacity: 0, y: 100 }}
+          initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.5, type: 'spring' }}
-          className="mt-20 relative mx-auto max-w-5xl group perspective-1000"
+          transition={{ duration: 0.8, delay: 0.35, type: 'spring' }}
+          className="mt-28 mb-12 relative mx-auto max-w-5xl group perspective-1000 z-10"
         >
           {/* Subtle Glow Behind Image */}
-          <div className="absolute inset-0 bg-gradient-to-t from-accent/25 to-amber-500/20 blur-3xl rounded-[2rem] transform group-hover:scale-105 transition-transform duration-700" />
+          <div className="absolute -inset-2 bg-gradient-to-t from-accent/30 to-amber-500/20 blur-3xl rounded-[2.5rem] transform group-hover:scale-105 transition-transform duration-700 pointer-events-none" />
           
           <motion.div 
-            whileHover={{ y: -10, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="relative rounded-xl border border-subtle overflow-hidden shadow-2xl shadow-black/50 bg-surface-raised"
+            whileHover={{ y: -6, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 280, damping: 22 }}
+            className="relative rounded-2xl border border-subtle overflow-hidden shadow-2xl shadow-black/50 bg-surface-raised"
           >
-            <div className="bg-surface px-4 py-3 flex items-center gap-2 border-b border-subtle">
-              <div className="w-3 h-3 rounded-full bg-red-500/80" />
-              <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-              <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+            <div className="bg-surface px-4 py-3 flex items-center justify-between border-b border-subtle">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+                <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+              </div>
+              <div className="text-[11px] font-mono text-muted tracking-tight">app.organizeup.com</div>
+              <div className="w-12" />
             </div>
             <img 
               src="/screenshot-desktop.png" 
               alt="OrganizeUp Dashboard" 
-              className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+              className="w-full h-auto object-cover opacity-100 block"
             />
           </motion.div>
         </motion.div>
