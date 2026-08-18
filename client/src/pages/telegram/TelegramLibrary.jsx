@@ -214,46 +214,69 @@ const TelegramLibrary = () => {
 
       {!isConnected ? (
         <div className="bg-surface border border-subtle rounded-2xl p-8 max-w-2xl mx-auto text-center">
-          <FaTelegramPlane className="text-6xl text-accent mx-auto mb-6 opacity-80" />
-          <h2 className="text-2xl font-bold text-primary mb-4">Connect Your Telegram Account</h2>
-          <p className="text-secondary mb-8 leading-relaxed">
-            Link your OrganizeUp account to our Telegram bot. Once connected, you can forward any useful message, 
-            course link, or tool to the bot, and it will instantly be saved in this library.
+          <FaTelegramPlane className="text-6xl text-accent mx-auto mb-6 opacity-90" />
+          <h2 className="text-2xl font-bold text-primary mb-3">Connect Your Telegram Account</h2>
+          <p className="text-secondary mb-6 leading-relaxed text-sm">
+            Link your OrganizeUp account to our Telegram bot{' '}
+            <a 
+              href={`https://t.me/${botUsername}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-accent font-semibold hover:underline inline-flex items-center gap-1"
+            >
+              @{botUsername}
+            </a>. 
+            Once connected, you can forward any useful message, course link, PDF, or tool to the bot, and it will instantly be saved in this library.
           </p>
+
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <a
+              href={`https://t.me/${botUsername}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary text-xs px-4 py-2.5 rounded-xl inline-flex items-center gap-2"
+            >
+              <FaTelegramPlane className="text-accent" /> Open Telegram Bot (@{botUsername})
+            </a>
+          </div>
 
           {!linkCode ? (
             <button
               onClick={generateLinkCode}
-              className="btn-primary px-8 py-3 rounded-lg font-medium transition-colors cursor-pointer"
+              className="btn-primary px-8 py-3 rounded-xl font-medium transition-colors cursor-pointer shadow-lg shadow-accent/20"
             >
               Generate Link Code
             </button>
           ) : (
             <div className="bg-canvas border border-subtle p-6 rounded-xl text-left">
-              <h3 className="text-lg font-semibold text-primary mb-4">Follow these steps:</h3>
-              <ol className="text-secondary space-y-4 list-decimal list-inside">
+              <h3 className="text-base font-semibold text-primary mb-3">Follow these quick steps:</h3>
+              <ol className="text-secondary text-sm space-y-3.5 list-decimal list-inside">
                 <li>
-                  Open Telegram and search for <strong className="text-accent">@{botUsername}</strong> or click <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">here</a>.
+                  Open Telegram and go to{' '}
+                  <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="text-accent font-semibold hover:underline">
+                    @{botUsername}
+                  </a>{' '}
+                  or search for <strong>{botUsername}</strong> in the Telegram search bar.
                 </li>
-                <li>Start a chat with the bot (click Start).</li>
+                <li>Press <strong>Start</strong> in the chat with the bot.</li>
                 <li>
-                  Send the bot this exact code:
-                  <div className="mt-2 flex items-center gap-4 bg-surface p-3 rounded-lg border border-subtle">
-                    <code className="text-xl font-mono text-accent flex-1">#link-{linkCode}</code>
+                  Send the bot this exact link code:
+                  <div className="mt-2 flex items-center gap-3 bg-surface p-3 rounded-lg border border-subtle">
+                    <code className="text-lg font-mono text-accent flex-1">#link-{linkCode}</code>
                     <button 
                       onClick={() => copyToClipboard(`#link-${linkCode}`)}
-                      className="bg-surface-raised hover:bg-surface p-2 rounded text-secondary hover:text-primary transition-colors cursor-pointer"
+                      className="btn-secondary text-xs px-3 py-1.5 rounded-lg cursor-pointer"
                     >
-                      Copy
+                      Copy Code
                     </button>
                   </div>
                 </li>
-                <li>Once the bot replies "Success", click the button below.</li>
+                <li>Once the bot confirms connection with "Success", click the button below.</li>
               </ol>
-              <div className="mt-8 text-center">
+              <div className="mt-6 text-center">
                 <button
                   onClick={checkStatus}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-medium transition-colors cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-medium transition-colors cursor-pointer shadow-lg shadow-emerald-600/20"
                 >
                   I've Linked My Account
                 </button>
@@ -263,25 +286,81 @@ const TelegramLibrary = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          {/* Active Bot Instructions Banner */}
+          <div className="bg-accent-subtle/40 border border-accent/25 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="p-2.5 rounded-xl bg-accent/15 text-accent shrink-0 mt-0.5 sm:mt-0">
+                <FaTelegramPlane size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-primary">Forward to Save in OrganizeUp</p>
+                <p className="text-xs text-secondary mt-0.5 leading-relaxed">
+                  Forward any message, article, course link, PDF, or note to{' '}
+                  <a 
+                    href={`https://t.me/${botUsername}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-accent font-semibold hover:underline"
+                  >
+                    @{botUsername}
+                  </a>{' '}
+                  on Telegram. It will automatically appear and be saved in your OrganizeUp library.
+                </p>
+              </div>
+            </div>
+            <a
+              href={`https://t.me/${botUsername}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 whitespace-nowrap self-start sm:self-auto shadow-md shadow-accent/20"
+            >
+              <FaTelegramPlane /> Open @{botUsername}
+            </a>
+          </div>
+
+          <div className="flex justify-between items-center pt-2">
             <h2 className="text-xl font-semibold text-primary">Saved Messages ({messages.length})</h2>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button 
                 onClick={fetchMessages}
                 className="text-secondary hover:text-primary bg-surface-raised hover:bg-surface px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors text-sm border border-subtle cursor-pointer"
               >
                 <FaSync className={loading ? "animate-spin" : ""} /> Refresh
               </button>
-              <div className="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-2">
-                <FaCheck /> Connected to Telegram
+              <div className="text-xs px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-1.5 font-medium">
+                <FaCheck size={12} /> Connected to Telegram
               </div>
             </div>
           </div>
 
           {messages.length === 0 ? (
             <div className="bg-surface border border-subtle border-dashed rounded-2xl p-12 text-center">
-              <p className="text-secondary text-lg">Your library is empty!</p>
-              <p className="text-muted mt-2">Forward a message to @{botUsername} on Telegram to see it here.</p>
+              <div className="w-14 h-14 rounded-2xl bg-accent-subtle text-accent flex items-center justify-center mx-auto mb-4 border border-accent/20">
+                <FaTelegramPlane size={24} />
+              </div>
+              <p className="text-primary text-lg font-medium">Your Telegram inbox is empty!</p>
+              <p className="text-secondary text-sm mt-1 max-w-md mx-auto">
+                Forward any text, links, or media to{' '}
+                <a 
+                  href={`https://t.me/${botUsername}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-accent font-semibold hover:underline"
+                >
+                  @{botUsername}
+                </a>{' '}
+                on Telegram to see them instantly organized here.
+              </p>
+              <div className="mt-6">
+                <a
+                  href={`https://t.me/${botUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary text-xs py-2.5 px-5 rounded-xl inline-flex items-center gap-2"
+                >
+                  <FaTelegramPlane /> Open @{botUsername} in Telegram
+                </a>
+              </div>
             </div>
           ) : (
             <div className="space-y-10">
