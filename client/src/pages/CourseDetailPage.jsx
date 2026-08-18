@@ -28,6 +28,7 @@ import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+
 const FILE_ICONS = {
   pdf: <IoDocumentOutline size={16} className="text-red-400" />,
   html: <IoCodeSlashOutline size={16} className="text-orange-400" />,
@@ -143,6 +144,19 @@ const CourseDetailPage = () => {
         <button onClick={() => navigate('/courses')} className="btn-secondary">
           Back to Courses
         </button>
+      </div>
+    );
+  }
+
+  // Full-Screen Dedicated File Viewer
+  if (selectedFile) {
+    return (
+      <div className="h-[calc(100vh-64px)] flex flex-col p-3 sm:p-6 max-w-7xl mx-auto w-full">
+        <FileViewer
+          file={selectedFile}
+          onBack={() => setSelectedFile(null)}
+          onClose={() => setSelectedFile(null)}
+        />
       </div>
     );
   }
@@ -298,11 +312,6 @@ const CourseDetailPage = () => {
             </div>
           )}
         </motion.div>
-      )}
-
-      {/* File Viewer Modal */}
-      {selectedFile && (
-        <FileViewer file={selectedFile} onClose={() => setSelectedFile(null)} />
       )}
 
       {/* Drive Import Modal */}
