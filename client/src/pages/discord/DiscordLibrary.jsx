@@ -153,7 +153,7 @@ const DiscordLibrary = () => {
     return parts.map((part, i) => {
       if (part.match(urlRegex)) {
         return (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
             {part}
           </a>
         );
@@ -170,31 +170,31 @@ const DiscordLibrary = () => {
           <div 
             key={msg._id} 
             onClick={() => setSelectedMsg(msg)}
-            className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-[#5865F2]/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
+            className="bg-surface border border-subtle rounded-xl p-5 hover:border-accent/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
           >
             <div className="flex justify-between items-start mb-3">
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md w-fit">
+                <span className="text-xs font-medium bg-surface-raised text-secondary px-2 py-1 rounded-md w-fit">
                   From: {msg.authorName}
                 </span>
                 {msg.guildName && (
-                  <span className="text-[10px] text-slate-500 px-1 font-medium">
+                  <span className="text-[10px] text-muted px-1 font-medium">
                     in {msg.guildName}
                   </span>
                 )}
               </div>
               <div className="flex flex-col items-end gap-0.5">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted">
                   {new Date(msg.createdAt).toLocaleDateString()}
                 </span>
-                <span className="text-[10px] text-slate-500/80">
+                <span className="text-[10px] text-muted">
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             </div>
             
             {msg.note && (
-              <div className="mb-3 flex items-start gap-2 text-xs text-yellow-400 bg-yellow-400/10 p-2 rounded border border-yellow-400/20">
+              <div className="mb-3 flex items-start gap-2 text-xs text-amber-400 bg-amber-400/10 p-2 rounded border border-amber-400/20">
                 <FaTag className="mt-0.5 shrink-0" />
                 <span className="line-clamp-2">{msg.note}</span>
               </div>
@@ -202,7 +202,7 @@ const DiscordLibrary = () => {
 
             {/* Images Render */}
             {msg.media && msg.media.length > 0 && (
-              <div className="w-full h-48 mb-3 rounded-lg overflow-hidden shrink-0 border border-slate-700/50 bg-slate-950 grid gap-1 grid-cols-2">
+              <div className="w-full h-48 mb-3 rounded-lg overflow-hidden shrink-0 border border-subtle bg-canvas grid gap-1 grid-cols-2">
                 {msg.media.map(mediaFile => (
                   <img 
                     key={mediaFile.gridFsId}
@@ -214,15 +214,15 @@ const DiscordLibrary = () => {
               </div>
             )}
 
-            <div className="text-slate-300 text-sm whitespace-pre-wrap flex-1 overflow-hidden relative">
+            <div className="text-secondary text-sm whitespace-pre-wrap flex-1 overflow-hidden relative">
               <div className="line-clamp-4">{msg.text}</div>
-              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-surface to-transparent"></div>
             </div>
 
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-subtle">
               <div className="flex items-center gap-2">
                 {msg.extractedUrls?.length > 0 && (
-                  <div className="flex items-center gap-1 text-blue-400 text-xs overflow-hidden">
+                  <div className="flex items-center gap-1 text-accent text-xs overflow-hidden">
                     <FaLink className="shrink-0" />
                     <span className="truncate">Links</span>
                   </div>
@@ -233,7 +233,7 @@ const DiscordLibrary = () => {
                     target="_blank" 
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 text-[#5865F2] text-xs hover:underline z-10"
+                    className="flex items-center gap-1 text-accent text-xs hover:underline z-10"
                   >
                     <FaExternalLinkAlt className="shrink-0" />
                     <span>Video Message</span>
@@ -243,7 +243,7 @@ const DiscordLibrary = () => {
               
               <button
                 onClick={(e) => deleteMessage(msg._id, e)}
-                className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                className="text-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                 title="Delete"
               >
                 <FaTrash />
@@ -261,18 +261,18 @@ const DiscordLibrary = () => {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-          <div className="bg-[#5865F2]/20 p-3 rounded-xl border border-[#5865F2]/30">
-            <FaDiscord className="text-[#5865F2] text-2xl" />
+          <div className="bg-accent-subtle p-3 rounded-xl border border-accent/30">
+            <FaDiscord className="text-accent text-2xl" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Discord Library</h1>
-            <p className="text-slate-400">Your permanent vault for Discord resources</p>
+            <h1 className="text-3xl font-bold text-primary">Discord Library</h1>
+            <p className="text-secondary">Your permanent vault for Discord resources</p>
           </div>
         </div>
         {isConnected && (
           <button
             onClick={unlinkDiscord}
-            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer"
           >
             <FaTimes /> Unlink Account
           </button>
@@ -280,17 +280,17 @@ const DiscordLibrary = () => {
       </div>
 
       {!isConnected ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-2xl mx-auto text-center">
-          <FaDiscord className="text-6xl text-[#5865F2] mx-auto mb-6 opacity-80" />
-          <h2 className="text-2xl font-bold text-white mb-4">Connect Your Discord Account</h2>
-          <p className="text-slate-400 mb-8 leading-relaxed">
+        <div className="bg-surface border border-subtle rounded-2xl p-8 max-w-2xl mx-auto text-center">
+          <FaDiscord className="text-6xl text-accent mx-auto mb-6 opacity-80" />
+          <h2 className="text-2xl font-bold text-primary mb-4">Connect Your Discord Account</h2>
+          <p className="text-secondary mb-8 leading-relaxed">
             Link your OrganizeUp account to our Discord User App. Once connected, you can right-click any message 
             in any server and select <b>Apps → Save to OrganizeUp</b> to instantly save it here!
           </p>
 
           <button
             onClick={linkDiscord}
-            className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-8 py-3 rounded-lg font-medium transition-colors"
+            className="btn-primary px-8 py-3 rounded-lg font-medium transition-colors cursor-pointer"
           >
             Connect Account
           </button>
@@ -298,24 +298,24 @@ const DiscordLibrary = () => {
       ) : (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Saved Messages ({messages.length})</h2>
+            <h2 className="text-xl font-semibold text-primary">Saved Messages ({messages.length})</h2>
             <div className="flex items-center gap-4">
               <button 
                 onClick={fetchMessages}
-                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors text-sm"
+                className="text-secondary hover:text-primary bg-surface-raised hover:bg-surface px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors text-sm border border-subtle cursor-pointer"
               >
                 <FaSync className={loading ? "animate-spin" : ""} /> Refresh
               </button>
-              <div className="text-sm px-3 py-1 bg-green-500/10 text-green-400 rounded-full border border-green-500/20 flex items-center gap-2">
+              <div className="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-2">
                 <FaCheck /> Connected to Discord
               </div>
             </div>
           </div>
 
           {messages.length === 0 ? (
-            <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-2xl p-12 text-center">
-              <p className="text-slate-400 text-lg">Your library is empty!</p>
-              <p className="text-slate-500 mt-2">Right-click any message in Discord → Apps → Save to OrganizeUp to see it here.</p>
+            <div className="bg-surface border border-subtle border-dashed rounded-2xl p-12 text-center">
+              <p className="text-secondary text-lg">Your library is empty!</p>
+              <p className="text-muted mt-2">Right-click any message in Discord → Apps → Save to OrganizeUp to see it here.</p>
             </div>
           ) : (
             <div className="space-y-10">
@@ -329,17 +329,17 @@ const DiscordLibrary = () => {
       {selectedMsg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setSelectedMsg(null); setEditingNote(false); }}>
           <div 
-            className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl" 
+            className="bg-surface border border-strong rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl" 
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/50 rounded-t-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-subtle bg-surface-raised rounded-t-2xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold">
+                <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-primary font-bold border border-subtle">
                   {selectedMsg.authorName?.charAt(0) || 'U'}
                 </div>
                 <div>
-                  <h3 className="text-white font-medium flex items-center gap-2">
+                  <h3 className="text-primary font-medium flex items-center gap-2">
                     {selectedMsg.authorName}
                     {editingGuildName ? (
                       <div className="flex items-center gap-1">
@@ -349,21 +349,21 @@ const DiscordLibrary = () => {
                           onChange={(e) => setGuildNameInput(e.target.value)}
                           placeholder="Save server name manually"
                           title="Save server name manually. Unfortunately the original server name cannot be displayed due to discord's policy"
-                          className="bg-slate-900 border border-slate-700 text-white text-xs px-2 py-0.5 rounded w-48 focus:outline-none focus:border-[#5865F2]"
+                          className="bg-surface border border-subtle text-primary text-xs px-2 py-0.5 rounded w-48 focus:outline-none focus:border-accent"
                           autoFocus
                           onKeyDown={(e) => e.key === 'Enter' && saveGuildName()}
                         />
-                        <button onClick={saveGuildName} className="text-green-400 hover:text-green-300 bg-slate-800 p-1 rounded">
+                        <button onClick={saveGuildName} className="text-emerald-400 hover:text-emerald-300 bg-surface p-1 rounded cursor-pointer">
                           <FaCheck size={10} />
                         </button>
-                        <button onClick={() => setEditingGuildName(false)} className="text-slate-400 hover:text-slate-300 bg-slate-800 p-1 rounded">
+                        <button onClick={() => setEditingGuildName(false)} className="text-muted hover:text-primary bg-surface p-1 rounded cursor-pointer">
                           <FaTimes size={10} />
                         </button>
                       </div>
                     ) : (
                       selectedMsg.guildName && (
                         <span 
-                          className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1 group/guild cursor-pointer hover:bg-slate-700 transition-colors"
+                          className="text-xs font-normal text-secondary bg-surface px-2 py-0.5 rounded-full flex items-center gap-1 group/guild cursor-pointer hover:bg-surface-raised transition-colors border border-subtle"
                           onClick={() => {
                             setGuildNameInput(selectedMsg.guildName === "External Server" ? "" : selectedMsg.guildName);
                             setEditingGuildName(true);
@@ -371,17 +371,17 @@ const DiscordLibrary = () => {
                           title={selectedMsg.guildName === "External Server" ? "Save server name manually. Unfortunately the original server name cannot be displayed due to discord's policy" : "Edit server name"}
                         >
                           in {selectedMsg.guildName}
-                          <FaEdit className="opacity-0 group-hover/guild:opacity-100 transition-opacity text-slate-500 hover:text-white" size={10} />
+                          <FaEdit className="opacity-0 group-hover/guild:opacity-100 transition-opacity text-muted hover:text-primary" size={10} />
                         </span>
                       )
                     )}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1">{new Date(selectedMsg.createdAt).toLocaleString()}</p>
+                  <p className="text-xs text-muted mt-1">{new Date(selectedMsg.createdAt).toLocaleString()}</p>
                 </div>
               </div>
               <button 
                 onClick={() => { setSelectedMsg(null); setEditingNote(false); }}
-                className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-muted hover:text-primary p-2 rounded-lg hover:bg-surface transition-colors cursor-pointer"
               >
                 <FaTimes />
               </button>
@@ -390,37 +390,37 @@ const DiscordLibrary = () => {
             {/* Body */}
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
               {selectedMsg.note && !editingNote && (
-                <div className="mb-6 bg-yellow-400/10 border border-yellow-400/20 rounded-xl p-4 flex gap-3">
-                  <FaTag className="text-yellow-400 mt-1 shrink-0" />
+                <div className="mb-6 bg-amber-400/10 border border-amber-400/20 rounded-xl p-4 flex gap-3">
+                  <FaTag className="text-amber-400 mt-1 shrink-0" />
                   <div className="flex-1">
-                    <p className="text-yellow-400/90 text-sm whitespace-pre-wrap">{selectedMsg.note}</p>
+                    <p className="text-amber-400 text-sm whitespace-pre-wrap">{selectedMsg.note}</p>
                   </div>
                 </div>
               )}
 
               {selectedMsg.videoLink && (
                 <div className="mb-6">
-                  <a href={selectedMsg.videoLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-[#5865F2]/10 text-[#5865F2] hover:bg-[#5865F2]/20 px-4 py-2 rounded-lg transition-colors border border-[#5865F2]/20">
+                  <a href={selectedMsg.videoLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-accent-subtle text-accent hover:bg-accent/20 px-4 py-2 rounded-lg transition-colors border border-accent/20 cursor-pointer">
                     <FaExternalLinkAlt /> Open Discord Video Message
                   </a>
                 </div>
               )}
 
               {selectedMsg.media && selectedMsg.media.length > 0 && (
-                <div className="mb-6 rounded-xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col gap-2">
+                <div className="mb-6 rounded-xl overflow-hidden border border-subtle bg-canvas flex flex-col gap-2">
                   {selectedMsg.media.map(mediaFile => (
                     <img key={mediaFile.gridFsId} src={`/api/discord/media/${mediaFile.gridFsId}`} alt="Attachment" className="w-full max-h-96 object-contain" />
                   ))}
                 </div>
               )}
 
-              <div className="text-slate-300 whitespace-pre-wrap text-[15px] leading-relaxed font-sans">
+              <div className="text-primary whitespace-pre-wrap text-[15px] leading-relaxed font-sans">
                 {renderTextWithLinks(selectedMsg.text)}
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-800 bg-slate-900/50 rounded-b-2xl flex items-center justify-between gap-4">
+            <div className="p-4 border-t border-subtle bg-surface-raised rounded-b-2xl flex items-center justify-between gap-4">
               <div className="flex-1">
                 {editingNote ? (
                   <div className="flex items-center gap-2">
@@ -429,19 +429,19 @@ const DiscordLibrary = () => {
                       value={noteInput}
                       onChange={(e) => setNoteInput(e.target.value)}
                       placeholder="Add a searchable note..."
-                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="flex-1 bg-surface border border-subtle rounded-lg px-4 py-2 text-sm text-primary focus:outline-none focus:border-accent"
                       autoFocus
                       onKeyDown={(e) => e.key === 'Enter' && saveNote()}
                     />
-                    <button onClick={saveNote} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <button onClick={saveNote} className="btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer">
                       Save
                     </button>
-                    <button onClick={() => setEditingNote(false)} className="text-slate-400 hover:text-white px-3 py-2 text-sm transition-colors">
+                    <button onClick={() => setEditingNote(false)} className="text-muted hover:text-primary px-3 py-2 text-sm transition-colors cursor-pointer">
                       Cancel
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => { setNoteInput(selectedMsg.note || ''); setEditingNote(true); }} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm transition-colors">
+                  <button onClick={() => { setNoteInput(selectedMsg.note || ''); setEditingNote(true); }} className="text-secondary hover:text-primary flex items-center gap-2 text-sm transition-colors cursor-pointer">
                     <FaTag /> {selectedMsg.note ? 'Edit Note' : 'Add Note'}
                   </button>
                 )}
@@ -451,7 +451,7 @@ const DiscordLibrary = () => {
                 {selectedMsg.text && (
                   <button 
                     onClick={() => copyToClipboard(selectedMsg.text)}
-                    className="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg text-slate-300 transition-colors"
+                    className="bg-surface hover:bg-surface-raised p-2 rounded-lg text-secondary hover:text-primary transition-colors border border-subtle cursor-pointer"
                     title="Copy Text"
                   >
                     Copy Text

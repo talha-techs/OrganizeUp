@@ -25,12 +25,12 @@ import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const COLORS = [
-  { name: 'indigo', from: 'from-indigo-500', to: 'to-blue-600' },
-  { name: 'cyan', from: 'from-cyan-500', to: 'to-teal-600' },
+  { name: 'coral', from: 'from-[#ff5722]', to: 'to-[#f4511e]' },
+  { name: 'amber', from: 'from-amber-500', to: 'to-orange-600' },
   { name: 'purple', from: 'from-purple-500', to: 'to-pink-600' },
   { name: 'emerald', from: 'from-emerald-500', to: 'to-green-600' },
-  { name: 'amber', from: 'from-amber-500', to: 'to-orange-600' },
   { name: 'rose', from: 'from-rose-500', to: 'to-red-600' },
+  { name: 'zinc', from: 'from-zinc-700', to: 'to-zinc-900' },
 ];
 
 function getColorClasses(color) {
@@ -42,7 +42,7 @@ const SectionsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedColor, setSelectedColor] = useState('indigo');
+  const [selectedColor, setSelectedColor] = useState('coral');
   const [deleteSectionId, setDeleteSectionId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [publishSection, setPublishSection] = useState(null);
@@ -71,7 +71,7 @@ const SectionsPage = () => {
       setShowForm(false);
       setName('');
       setDescription('');
-      setSelectedColor('indigo');
+      setSelectedColor('coral');
     } else {
       toast.error(result.payload || 'Failed to create section');
     }
@@ -153,8 +153,8 @@ const SectionsPage = () => {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
       >
         <div>
-          <h1 className="text-3xl font-bold text-white font-display">Custom Sections</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <h1 className="text-3xl font-bold text-primary font-display">Custom Sections</h1>
+          <p className="text-secondary text-sm mt-1">
             Create custom sections and import content from Google Drive
           </p>
         </div>
@@ -172,9 +172,9 @@ const SectionsPage = () => {
           animate={{ opacity: 1 }}
           className="text-center py-20"
         >
-          <IoFolderOutline className="mx-auto text-slate-600 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-slate-400 mb-2">No sections yet</h3>
-          <p className="text-sm text-slate-500">
+          <IoFolderOutline className="mx-auto text-muted mb-4" size={48} />
+          <h3 className="text-lg font-medium text-secondary mb-2">No sections yet</h3>
+          <p className="text-sm text-muted">
             Create your first custom section to organize Drive content
           </p>
         </motion.div>
@@ -195,7 +195,7 @@ const SectionsPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass-card group relative overflow-hidden cursor-pointer"
+                  className="glass-card group relative overflow-hidden cursor-pointer border border-subtle"
                   onClick={() => navigate(`/sections/${section._id}`)}
                 >
                   {/* Color banner */}
@@ -203,14 +203,14 @@ const SectionsPage = () => {
                     className={`h-32 bg-gradient-to-br ${col.from} ${col.to} relative flex items-center justify-center`}
                   >
                     <IoFolderOutline size={40} className="text-white/30" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
 
                     {/* Visibility badge */}
                     <div
                       className={`absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm ${
                         section.visibility === 'public'
-                          ? 'text-emerald-300 bg-emerald-500/20'
-                          : 'text-slate-300 bg-slate-500/20'
+                          ? 'text-emerald-400 bg-emerald-500/20'
+                          : 'text-secondary bg-surface-raised/80'
                       }`}
                     >
                       {section.visibility}
@@ -219,16 +219,16 @@ const SectionsPage = () => {
 
                   {/* Content */}
                   <div className="p-4">
-                    <h3 className="text-base font-semibold text-white truncate mb-1">
+                    <h3 className="text-base font-semibold text-primary truncate mb-1">
                       {section.name}
                     </h3>
                     {section.description && (
-                      <p className="text-sm text-slate-400 line-clamp-2 mb-2">
+                      <p className="text-sm text-secondary line-clamp-2 mb-2">
                         {section.description}
                       </p>
                     )}
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted">
                         {section.files?.length || 0} file{section.files?.length !== 1 ? 's' : ''}
                       </span>
 
@@ -241,7 +241,7 @@ const SectionsPage = () => {
                                 e.stopPropagation();
                                 handleTogglePublic(section);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors text-xs"
+                              className="p-1.5 rounded-lg hover:bg-surface-raised text-secondary hover:text-primary transition-colors text-xs cursor-pointer"
                               title={section.visibility === 'public' ? 'Make Private' : 'Make Public'}
                             >
                               {section.visibility === 'public' ? 'Private' : 'Public'}
@@ -264,20 +264,20 @@ const SectionsPage = () => {
                                   }
                                 }
                               }}
-                              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 transition-colors text-xs"
+                              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-secondary hover:text-amber-400 transition-colors text-xs cursor-pointer"
                               title="Make Private"
                             >
                               Private
                             </button>
                           )}
-                          {/* Owner's own private section → publish (with publishMode modal, for both admin and regular users) */}
+                          {/* Owner's own private section → publish */}
                           {isOwner && section.visibility === 'private' && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setPublishSection(section);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-400 transition-colors text-xs"
+                              className="p-1.5 rounded-lg hover:bg-accent-subtle text-secondary hover:text-accent transition-colors text-xs cursor-pointer"
                               title={isAdmin ? 'Publish section' : 'Request to publish'}
                             >
                               Publish
@@ -288,7 +288,7 @@ const SectionsPage = () => {
                               e.stopPropagation();
                               handleDelete(section._id);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400 transition-colors cursor-pointer"
                           >
                             <IoTrashOutline size={14} />
                           </button>
@@ -307,7 +307,7 @@ const SectionsPage = () => {
       <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="New Custom Section">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Name</label>
+            <label className="block text-sm font-medium text-secondary mb-1.5">Name</label>
             <input
               type="text"
               value={name}
@@ -319,7 +319,7 @@ const SectionsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-secondary mb-1.5">
               Description (optional)
             </label>
             <textarea
@@ -330,16 +330,16 @@ const SectionsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Color</label>
+            <label className="block text-sm font-medium text-secondary mb-1.5">Color</label>
             <div className="flex gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c.name}
                   type="button"
                   onClick={() => setSelectedColor(c.name)}
-                  className={`w-8 h-8 rounded-xl bg-gradient-to-br ${c.from} ${c.to} transition-all ${
+                  className={`w-8 h-8 rounded-xl bg-gradient-to-br ${c.from} ${c.to} transition-all cursor-pointer ${
                     selectedColor === c.name
-                      ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110'
+                      ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface scale-110'
                       : 'opacity-60 hover:opacity-100'
                   }`}
                 />
@@ -370,25 +370,25 @@ const SectionsPage = () => {
       {/* Publish Mode Modal */}
       <Modal isOpen={!!publishSection} onClose={() => { setPublishSection(null); setPublishMode('with_data'); }} title="Publish Section">
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">
-            Choose how others will receive <span className="text-white font-medium">"{publishSection?.name}"</span> when they clone it:
+          <p className="text-sm text-secondary">
+            Choose how others will receive <span className="text-primary font-medium">"{publishSection?.name}"</span> when they clone it:
           </p>
 
           <div className="space-y-3">
             <button
               type="button"
               onClick={() => setPublishMode('with_data')}
-              className={`w-full p-4 rounded-xl border text-left transition-all ${
+              className={`w-full p-4 rounded-xl border text-left transition-all cursor-pointer ${
                 publishMode === 'with_data'
-                  ? 'border-indigo-500/50 bg-indigo-500/10 ring-1 ring-indigo-500/30'
-                  : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+                  ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
+                  : 'border-subtle hover:border-strong hover:bg-surface-raised'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">📦</span>
-                <span className="text-sm font-semibold text-white">With Data</span>
+                <span className="text-sm font-semibold text-primary">With Data</span>
               </div>
-              <p className="text-xs text-slate-500 ml-7">
+              <p className="text-xs text-muted ml-7">
                 Others get a full copy of your section including all notes, tasks, links, and code.
               </p>
             </button>
@@ -396,17 +396,17 @@ const SectionsPage = () => {
             <button
               type="button"
               onClick={() => setPublishMode('without_data')}
-              className={`w-full p-4 rounded-xl border text-left transition-all ${
+              className={`w-full p-4 rounded-xl border text-left transition-all cursor-pointer ${
                 publishMode === 'without_data'
-                  ? 'border-indigo-500/50 bg-indigo-500/10 ring-1 ring-indigo-500/30'
-                  : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+                  ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
+                  : 'border-subtle hover:border-strong hover:bg-surface-raised'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-lg">📄</span>
-                <span className="text-sm font-semibold text-white">Template Only</span>
+                <span className="text-sm font-semibold text-primary">Template Only</span>
               </div>
-              <p className="text-xs text-slate-500 ml-7">
+              <p className="text-xs text-muted ml-7">
                 Others get the block structure as a blank template — they fill in their own data.
               </p>
             </button>

@@ -101,30 +101,30 @@ const CoursesPage = () => {
           {selectedCategory && (
             <button
               onClick={() => setSelectedCategory(null)}
-              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-2 transition-colors"
+              className="flex items-center gap-2 text-sm text-secondary hover:text-primary mb-2 transition-colors cursor-pointer"
             >
               <IoArrowBack size={14} /> All Categories
             </button>
           )}
-          <h1 className="text-3xl font-bold text-white font-display">
+          <h1 className="text-3xl font-bold text-primary font-display">
             {selectedCategory ? selectedCategory.name : 'Courses'}
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-secondary text-sm mt-1">
             {selectedCategory
               ? `${filteredCourses.length} course(s) in this category`
               : 'Browse courses by category'}
           </p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setShowDriveImport(true)} className="btn-secondary flex items-center gap-2">
+          <button onClick={() => setShowDriveImport(true)} className="btn-secondary flex items-center gap-2 cursor-pointer">
             <IoCloudDownloadOutline size={16} /> Import from Drive
           </button>
           {isAdmin && !selectedCategory && (
-            <button onClick={() => setShowCategoryForm(true)} className="btn-secondary">
+            <button onClick={() => setShowCategoryForm(true)} className="btn-secondary cursor-pointer">
               <IoGridOutline size={16} /> New Category
             </button>
           )}
-          <button onClick={() => setShowForm(true)} className="btn-primary">
+          <button onClick={() => setShowForm(true)} className="btn-primary cursor-pointer">
             <IoAdd size={18} /> Add Course
           </button>
         </div>
@@ -137,9 +137,9 @@ const CoursesPage = () => {
             <LoadingSpinner text="Loading categories..." />
           ) : categories.length === 0 ? (
             <div className="text-center py-20">
-              <IoSchoolOutline className="mx-auto text-slate-600 mb-4" size={48} />
-              <h3 className="text-lg text-slate-400 mb-2">No categories yet</h3>
-              <p className="text-sm text-slate-500">
+              <IoSchoolOutline className="mx-auto text-muted mb-4" size={48} />
+              <h3 className="text-lg text-secondary mb-2">No categories yet</h3>
+              <p className="text-sm text-muted">
                 {isAdmin ? 'Create your first category to organize courses' : 'Check back soon'}
               </p>
             </div>
@@ -156,17 +156,17 @@ const CoursesPage = () => {
                   >
                     <button
                       onClick={() => setSelectedCategory(cat)}
-                      className="w-full glass-card p-6 text-left group"
+                      className="w-full glass-card p-6 text-left group border border-subtle hover:border-strong transition-all cursor-pointer"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/20">
                         <IoSchoolOutline className="text-white" size={22} />
                       </div>
-                      <h3 className="text-base font-semibold text-white mb-1">{cat.name}</h3>
-                      <p className="text-sm text-slate-400">{courseCount} course(s)</p>
+                      <h3 className="text-base font-semibold text-primary mb-1">{cat.name}</h3>
+                      <p className="text-sm text-secondary">{courseCount} course(s)</p>
                       {isAdmin && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat._id); }}
-                          className="mt-3 text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="mt-3 text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                         >
                           Delete category
                         </button>
@@ -185,8 +185,8 @@ const CoursesPage = () => {
             <LoadingSpinner text="Loading courses..." />
           ) : filteredCourses.length === 0 ? (
             <div className="text-center py-20">
-              <IoSchoolOutline className="mx-auto text-slate-600 mb-4" size={48} />
-              <h3 className="text-lg text-slate-400 mb-2">No courses in this category</h3>
+              <IoSchoolOutline className="mx-auto text-muted mb-4" size={48} />
+              <h3 className="text-lg text-secondary mb-2">No courses in this category</h3>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -233,7 +233,7 @@ const CoursesPage = () => {
                       }
                     }}
                   >
-                    <div className="flex items-center gap-1.5 mt-3 text-xs text-cyan-400">
+                    <div className="flex items-center gap-1.5 mt-3 text-xs text-accent">
                       <IoOpenOutline size={12} />
                       <span>View Course</span>
                     </div>

@@ -85,14 +85,14 @@ const CommentsModal = ({ isOpen, onClose, item }) => {
           </button>
         </form>
 
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-muted">
           {commentsTotal} comment{commentsTotal === 1 ? '' : 's'}
         </div>
 
         {/* Comment list */}
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
           {comments.length === 0 ? (
-            <div className="text-sm text-slate-400 py-8 text-center border border-white/5 rounded-xl">
+            <div className="text-sm text-secondary py-8 text-center border border-subtle rounded-xl">
               No comments yet. Start the discussion.
             </div>
           ) : (
@@ -103,11 +103,11 @@ const CommentsModal = ({ isOpen, onClose, item }) => {
               return (
                 <div
                   key={comment._id}
-                  className="border border-white/5 rounded-xl p-3 bg-slate-900/40"
+                  className="border border-subtle rounded-xl p-3 bg-surface"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-full overflow-hidden bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-accent-subtle flex items-center justify-center flex-shrink-0">
                         {comment.user?.avatar ? (
                           <img
                             src={comment.user.avatar}
@@ -115,16 +115,16 @@ const CommentsModal = ({ isOpen, onClose, item }) => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <span className="text-[10px] font-bold text-white">
+                          <span className="text-[10px] font-bold text-primary">
                             {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
                           </span>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-sm text-white truncate">
+                        <div className="text-sm text-primary font-medium truncate">
                           {comment.user?.name || 'Unknown'}
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-muted">
                           {new Date(comment.createdAt).toLocaleString()}
                         </div>
                       </div>
@@ -133,14 +133,14 @@ const CommentsModal = ({ isOpen, onClose, item }) => {
                     {canDelete && (
                       <button
                         onClick={() => handleDelete(comment._id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                        className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0 cursor-pointer"
                         title="Delete comment"
                       >
                         <IoTrashOutline size={14} />
                       </button>
                     )}
                   </div>
-                  <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">
+                  <p className="text-sm text-secondary mt-2 whitespace-pre-wrap">
                     {comment.text}
                   </p>
                 </div>

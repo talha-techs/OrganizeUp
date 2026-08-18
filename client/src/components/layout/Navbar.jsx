@@ -69,19 +69,19 @@ const Navbar = () => {
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
       isActive
-        ? 'bg-indigo-500/15 text-indigo-400 shadow-lg shadow-indigo-500/5'
-        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+        ? 'bg-accent-subtle text-accent shadow-lg shadow-black/5 font-semibold'
+        : 'text-secondary hover:text-primary hover:bg-surface-raised'
     }`;
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-subtle bg-surface/85 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-9 h-9 rounded-xl shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-shadow" />
+            <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-9 h-9 rounded-xl shadow-lg shadow-black/20 group-hover:shadow-accent/20 transition-shadow" />
             <span className="text-lg font-bold font-display hidden sm:block">
-              <span className="text-white">Organize</span>
+              <span className="text-primary">Organize</span>
               <span className="gradient-text">Up</span>
             </span>
           </Link>
@@ -118,7 +118,7 @@ const Navbar = () => {
                   setNotifOpen((prev) => !prev);
                   if (unreadCount > 0) dispatch(markNotificationsRead());
                 }}
-                className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                className="relative p-2 rounded-xl text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
               >
                 <IoNotificationsOutline size={20} />
                 {unreadCount > 0 && (
@@ -135,42 +135,42 @@ const Navbar = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-80 rounded-2xl bg-surface-raised/95 backdrop-blur-xl border border-strong shadow-2xl shadow-black/40 overflow-hidden z-50"
                   >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                      <span className="text-sm font-semibold text-white">Notifications</span>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-subtle">
+                      <span className="text-sm font-semibold text-primary">Notifications</span>
                       {unreadCount === 0 && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-muted flex items-center gap-1">
                           <IoCheckmarkDoneOutline size={13} /> All read
                         </span>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {!user?.notifications?.length ? (
-                        <p className="text-center text-slate-500 text-sm py-8">No notifications</p>
+                        <p className="text-center text-muted text-sm py-8">No notifications</p>
                       ) : (
                         [...(user.notifications)].reverse().map((n, i) => (
                           <div
                             key={i}
-                            className={`px-4 py-3 border-b border-white/5 last:border-0 ${
-                              !n.read ? 'bg-indigo-500/5' : ''
+                            className={`px-4 py-3 border-b border-subtle last:border-0 ${
+                              !n.read ? 'bg-accent-subtle/30' : ''
                             }`}
                           >
                             <div className="flex items-start gap-2">
                               <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
                                 n.type === 'approval' ? 'bg-emerald-400'
                                 : n.type === 'rejection' ? 'bg-red-400'
-                                : 'bg-indigo-400'
+                                : 'bg-accent'
                               }`} />
                               <div className="flex-1 min-w-0">
                                 {n.contentTitle && (
-                                  <p className="text-xs font-semibold text-white truncate">{n.contentTitle}</p>
+                                  <p className="text-xs font-semibold text-primary truncate">{n.contentTitle}</p>
                                 )}
-                                <p className="text-xs text-slate-300 mt-0.5">{n.message}</p>
+                                <p className="text-xs text-secondary mt-0.5">{n.message}</p>
                                 {n.adminNote && (
-                                  <p className="text-xs text-slate-500 italic mt-0.5">"{n.adminNote}"</p>
+                                  <p className="text-xs text-muted italic mt-0.5">"{n.adminNote}"</p>
                                 )}
-                                <p className="text-[10px] text-slate-600 mt-1">
+                                <p className="text-[10px] text-muted mt-1">
                                   {new Date(n.createdAt).toLocaleString()}
                                 </p>
                               </div>
@@ -188,12 +188,12 @@ const Navbar = () => {
             <div ref={dropdownRef} className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-9 h-9 rounded-xl overflow-hidden ring-2 ring-transparent hover:ring-indigo-500/50 transition-all"
+                className="w-9 h-9 rounded-xl overflow-hidden ring-2 ring-transparent hover:ring-accent/50 transition-all cursor-pointer"
               >
                 {user?.avatar ? (
                   <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
+                  <div className="w-full h-full bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center">
                     <span className="text-sm font-bold text-white">{user?.name?.charAt(0)?.toUpperCase()}</span>
                   </div>
                 )}
@@ -206,21 +206,21 @@ const Navbar = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-800/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 overflow-hidden"
+                    className="absolute right-0 mt-2 w-56 rounded-2xl bg-surface-raised/95 backdrop-blur-xl border border-strong shadow-2xl shadow-black/40 overflow-hidden z-50"
                   >
-                    <div className="flex items-center gap-3 p-3 border-b border-white/5">
+                    <div className="flex items-center gap-3 p-3 border-b border-subtle">
                       <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
                         {user?.avatar ? (
                           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
+                          <div className="w-full h-full bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center">
                             <span className="text-sm font-bold text-white">{user?.name?.charAt(0)?.toUpperCase()}</span>
                           </div>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-                        <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                        <p className="text-sm font-medium text-primary truncate">{user?.name}</p>
+                        <p className="text-xs text-secondary truncate">{user?.email}</p>
                       </div>
                     </div>
 
@@ -228,7 +228,7 @@ const Navbar = () => {
                       <Link
                         to="/profile"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-secondary hover:text-primary hover:bg-surface transition-all"
                       >
                         <IoPersonOutline size={16} />
                         Profile
@@ -237,7 +237,7 @@ const Navbar = () => {
                       <Link
                         to="/saved"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-secondary hover:text-primary hover:bg-surface transition-all"
                       >
                         <IoBookmarkOutline size={16} />
                         Saved Library
@@ -246,7 +246,7 @@ const Navbar = () => {
                       <Link
                         to="/sections"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-secondary hover:text-primary hover:bg-surface transition-all"
                       >
                         <IoFolderOutline size={16} />
                         Custom Sections
@@ -255,7 +255,7 @@ const Navbar = () => {
                       <Link
                         to="/tools"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-secondary hover:text-primary hover:bg-surface transition-all"
                       >
                         <IoConstructOutline size={16} />
                         Tricks
@@ -274,7 +274,7 @@ const Navbar = () => {
                         <Link
                           to="/admin"
                           onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/5 transition-all"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
                         >
                           <IoShieldCheckmarkOutline size={16} />
                           Admin Panel
@@ -283,7 +283,7 @@ const Navbar = () => {
 
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-all"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
                       >
                         <IoLogOutOutline size={16} />
                         Logout
@@ -297,7 +297,7 @@ const Navbar = () => {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+              className="md:hidden p-2 rounded-xl text-secondary hover:text-primary hover:bg-surface-raised transition-all cursor-pointer"
             >
               {mobileOpen ? <HiX size={22} /> : <HiMenu size={22} />}
             </button>
@@ -313,9 +313,36 @@ const Navbar = () => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden overflow-hidden border-t border-white/5"
+            className="md:hidden overflow-hidden border-t border-subtle"
           >
-            <div className="px-4 py-3 space-y-1 bg-slate-950/95">
+            <div className="px-4 py-3 space-y-1 bg-surface">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    if (link.to === '/telegram-inbox') setTelegramUnread(0);
+                  }}
+                  className={navLinkClass}
+                >
+                  <div className="relative">
+                    {link.icon}
+                    {link.to === '/telegram-inbox' && telegramUnread > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                    )}
+                  </div>
+                  {link.label}
+                </NavLink>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </nav>
               {navLinks.map((link) => (
                 <NavLink
                   key={link.to}

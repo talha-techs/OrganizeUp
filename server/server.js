@@ -166,10 +166,10 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 OrganizeUp Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
-  
+
   // Initialize Telegram Bot
   initTelegramBot();
-  
+
   // Initialize Discord Bot
   initDiscordBot();
 

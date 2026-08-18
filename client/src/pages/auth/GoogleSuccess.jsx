@@ -36,7 +36,7 @@ const GoogleSuccess = () => {
   }, [dispatch, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+    <div className="min-h-screen bg-canvas text-primary flex items-center justify-center">
       <LoadingSpinner size="lg" text="Authenticating with Google..." />
     </div>
   );

@@ -107,28 +107,28 @@ const ImportBookModal = ({ isOpen, onClose }) => {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl max-h-[85vh] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[85vh] bg-surface-raised border border-strong rounded-2xl shadow-2xl overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
+        <div className="flex items-center justify-between p-6 border-b border-subtle">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
               <IoCloudUploadOutline size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Import from Google Drive</h2>
-              <p className="text-xs text-slate-400">Step {step} of 2</p>
+              <h2 className="text-lg font-semibold text-primary">Import from Google Drive</h2>
+              <p className="text-xs text-muted">Step {step} of 2</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface text-secondary hover:text-primary transition-colors cursor-pointer">
             <IoClose size={20} />
           </button>
         </div>
 
         {/* Step Indicator */}
         <div className="flex items-center gap-2 px-6 pt-4">
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? 'bg-indigo-500' : 'bg-slate-700'}`} />
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? 'bg-indigo-500' : 'bg-slate-700'}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? 'bg-accent' : 'bg-surface'}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? 'bg-accent' : 'bg-surface'}`} />
         </div>
 
         {/* Content */}
@@ -138,9 +138,9 @@ const ImportBookModal = ({ isOpen, onClose }) => {
             {step === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                 <div className="text-center mb-6">
-                  <IoFolderOpenOutline size={48} className="mx-auto text-indigo-400 mb-3" />
-                  <h3 className="text-white font-medium mb-1">Paste your Google Drive folder link</h3>
-                  <p className="text-sm text-slate-400">
+                  <IoFolderOpenOutline size={48} className="mx-auto text-accent mb-3" />
+                  <h3 className="text-primary font-medium mb-1">Paste your Google Drive folder link</h3>
+                  <p className="text-sm text-secondary">
                     The folder must be shared as "Anyone with the link" and contain video files
                   </p>
                 </div>
@@ -155,7 +155,7 @@ const ImportBookModal = ({ isOpen, onClose }) => {
                       className="input-dark w-full pr-12"
                       autoFocus
                     />
-                    <IoSearchOutline size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <IoSearchOutline size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted" />
                   </div>
 
                   <button
@@ -193,7 +193,7 @@ const ImportBookModal = ({ isOpen, onClose }) => {
                 {/* Book Details */}
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Book Name</label>
+                    <label className="block text-sm font-medium text-secondary mb-1.5">Book Name</label>
                     <input
                       type="text"
                       value={bookName}
@@ -203,7 +203,7 @@ const ImportBookModal = ({ isOpen, onClose }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Author</label>
+                    <label className="block text-sm font-medium text-secondary mb-1.5">Author</label>
                     <input
                       type="text"
                       value={author}
@@ -213,7 +213,7 @@ const ImportBookModal = ({ isOpen, onClose }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Description (optional)</label>
+                    <label className="block text-sm font-medium text-secondary mb-1.5">Description (optional)</label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -225,22 +225,22 @@ const ImportBookModal = ({ isOpen, onClose }) => {
 
                 {/* Video List */}
                 <div>
-                  <h4 className="text-sm font-medium text-slate-300 mb-3">
+                  <h4 className="text-sm font-medium text-secondary mb-3">
                     Videos ({driveScanned.videoCount})
                   </h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {driveScanned.videos.map((video, i) => (
                       <div
                         key={video.driveFileId}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-white/5"
+                        className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-subtle"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-indigo-400">{i + 1}</span>
+                        <div className="w-7 h-7 rounded-lg bg-accent-subtle flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-accent">{i + 1}</span>
                         </div>
-                        <IoVideocamOutline size={16} className="text-slate-500 flex-shrink-0" />
-                        <span className="text-sm text-white truncate flex-1">{video.title}</span>
+                        <IoVideocamOutline size={16} className="text-muted flex-shrink-0" />
+                        <span className="text-sm text-primary truncate flex-1">{video.title}</span>
                         {video.size && (
-                          <span className="text-xs text-slate-500 flex-shrink-0">{formatFileSize(video.size)}</span>
+                          <span className="text-xs text-muted flex-shrink-0">{formatFileSize(video.size)}</span>
                         )}
                       </div>
                     ))}
@@ -253,13 +253,12 @@ const ImportBookModal = ({ isOpen, onClose }) => {
 
         {/* Footer */}
         {step === 2 && (
-          <div className="flex items-center justify-between p-6 border-t border-white/5">
+          <div className="flex items-center justify-between p-6 border-t border-subtle">
             <button
               onClick={() => { setStep(1); dispatch(clearDriveScanned()); }}
               className="btn-secondary flex items-center gap-2"
             >
-              <IoChevronBack size={16} />
-              Back
+              <IoChevronBack size={16} /> Back
             </button>
             <button
               onClick={handleImport}
@@ -273,8 +272,8 @@ const ImportBookModal = ({ isOpen, onClose }) => {
                 </>
               ) : (
                 <>
+                  <IoCloudUploadOutline size={18} />
                   Import Book
-                  <IoChevronForward size={16} />
                 </>
               )}
             </button>

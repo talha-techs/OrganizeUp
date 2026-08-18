@@ -177,18 +177,18 @@ const YouTubePlaylistDetailPage = () => {
       >
         <button
           onClick={() => navigate('/youtube-playlists')}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-4 transition-colors"
+          className="flex items-center gap-2 text-sm text-secondary hover:text-primary mb-4 transition-colors cursor-pointer"
         >
           <IoArrowBack size={14} /> All Playlists
         </button>
 
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">{currentPlaylist.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary font-display">{currentPlaylist.title}</h1>
             {currentPlaylist.channelTitle && (
               <p className="text-red-400 text-sm mt-1">{currentPlaylist.channelTitle}</p>
             )}
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted mt-1">
               {currentPlaylist.videoCount || 0} video{currentPlaylist.videoCount !== 1 ? 's' : ''}
             </p>
           </div>
@@ -197,7 +197,7 @@ const YouTubePlaylistDetailPage = () => {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="btn-secondary flex items-center gap-2 text-sm"
+              className="btn-secondary flex items-center gap-2 text-sm cursor-pointer"
               title="Re-sync videos from YouTube"
             >
               <IoRefreshOutline size={16} className={isRefreshing ? 'animate-spin' : ''} />
@@ -205,7 +205,7 @@ const YouTubePlaylistDetailPage = () => {
             </button>
             <button
               onClick={handleShowCombinedNotes}
-              className={`btn-secondary flex items-center gap-2 text-sm ${showCombinedNotes ? 'ring-1 ring-indigo-500' : ''}`}
+              className={`btn-secondary flex items-center gap-2 text-sm cursor-pointer ${showCombinedNotes ? 'ring-1 ring-accent' : ''}`}
             >
               <IoDocumentTextOutline size={16} />
               All Notes
@@ -214,7 +214,7 @@ const YouTubePlaylistDetailPage = () => {
               href={ytUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary flex items-center gap-2 text-sm"
+              className="btn-secondary flex items-center gap-2 text-sm cursor-pointer"
             >
               <IoOpenOutline size={16} /> YouTube
             </a>
@@ -228,10 +228,10 @@ const YouTubePlaylistDetailPage = () => {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="glass-card p-6 mb-6"
+          className="glass-card p-6 mb-6 border border-subtle"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
               <IoDocumentTextOutline size={20} />
               Combined Notes — {currentPlaylist.title}
             </h3>
@@ -239,13 +239,13 @@ const YouTubePlaylistDetailPage = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCopyCombinedNotes}
-                  className="btn-secondary flex items-center gap-1.5 text-xs"
+                  className="btn-secondary flex items-center gap-1.5 text-xs cursor-pointer"
                 >
                   <IoClipboardOutline size={14} /> Copy
                 </button>
                 <button
                   onClick={handleDownloadNotes}
-                  className="btn-secondary flex items-center gap-1.5 text-xs"
+                  className="btn-secondary flex items-center gap-1.5 text-xs cursor-pointer"
                 >
                   <IoDownloadOutline size={14} /> Download .md
                 </button>
@@ -253,13 +253,13 @@ const YouTubePlaylistDetailPage = () => {
             )}
           </div>
           {combinedNotes ? (
-            <div className="bg-slate-900/50 rounded-xl p-4 max-h-96 overflow-y-auto">
-              <pre className="text-sm text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
+            <div className="bg-surface rounded-xl p-4 max-h-96 overflow-y-auto border border-subtle">
+              <pre className="text-sm text-secondary whitespace-pre-wrap font-sans leading-relaxed">
                 {combinedNotes}
               </pre>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No notes yet. Select a video and start writing notes below the player.</p>
+            <p className="text-sm text-muted">No notes yet. Select a video and start writing notes below the player.</p>
           )}
         </motion.div>
       )}
@@ -273,7 +273,7 @@ const YouTubePlaylistDetailPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card overflow-hidden"
+            className="glass-card overflow-hidden border border-subtle"
           >
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
@@ -291,9 +291,9 @@ const YouTubePlaylistDetailPage = () => {
           {/* Active video title */}
           {activeVideo && (
             <div className="px-1">
-              <h2 className="text-lg font-semibold text-white">{activeVideo.title}</h2>
+              <h2 className="text-lg font-semibold text-primary">{activeVideo.title}</h2>
               {activeVideo.duration && (
-                <span className="text-xs text-slate-500">Duration: {activeVideo.duration}</span>
+                <span className="text-xs text-muted">Duration: {activeVideo.duration}</span>
               )}
             </div>
           )}
@@ -304,16 +304,16 @@ const YouTubePlaylistDetailPage = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="glass-card p-4"
+              className="glass-card p-4 border border-subtle"
             >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-secondary flex items-center gap-2">
                   <IoDocumentTextOutline size={16} />
                   Notes — {activeVideo.title}
                 </h3>
                 <div className="flex items-center gap-2">
                   {isSavingNotes && (
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <span className="text-xs text-muted flex items-center gap-1">
                       <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -323,7 +323,7 @@ const YouTubePlaylistDetailPage = () => {
                   )}
                   <button
                     onClick={handleSaveNotes}
-                    className="btn-secondary flex items-center gap-1.5 text-xs"
+                    className="btn-secondary flex items-center gap-1.5 text-xs cursor-pointer"
                     disabled={isSavingNotes}
                   >
                     <IoSaveOutline size={14} /> Save
@@ -337,7 +337,7 @@ const YouTubePlaylistDetailPage = () => {
                 placeholder="Write your notes for this video here... (auto-saves after 3s, or press Ctrl+S)"
                 className="input-dark w-full min-h-[160px] resize-y text-sm leading-relaxed"
               />
-              <p className="text-xs text-slate-600 mt-1.5">
+              <p className="text-xs text-muted mt-1.5">
                 Notes are saved per video and combined sequentially under "All Notes".
               </p>
             </motion.div>
@@ -351,8 +351,8 @@ const YouTubePlaylistDetailPage = () => {
           transition={{ delay: 0.15 }}
           className="lg:col-span-1"
         >
-          <div className="glass-card p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">
+          <div className="glass-card p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] overflow-hidden flex flex-col border border-subtle">
+            <h3 className="text-sm font-semibold text-secondary mb-3">
               Videos ({currentPlaylist.videos?.length || 0})
             </h3>
             <div className="space-y-1 overflow-y-auto flex-1 pr-1 custom-scrollbar">
@@ -364,22 +364,22 @@ const YouTubePlaylistDetailPage = () => {
                   <button
                     key={video.videoId || i}
                     onClick={() => handleSelectVideo(video)}
-                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left group ${
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left group cursor-pointer ${
                       isActive
-                        ? 'bg-indigo-500/15 ring-1 ring-indigo-500/30'
-                        : 'hover:bg-white/5'
+                        ? 'bg-accent-subtle ring-1 ring-accent/30'
+                        : 'hover:bg-surface-raised'
                     }`}
                   >
                     {/* Number */}
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
                         isActive
-                          ? 'bg-indigo-500/20 text-indigo-400'
-                          : 'bg-slate-800 text-slate-500'
+                          ? 'bg-accent/20 text-accent'
+                          : 'bg-surface text-muted'
                       }`}
                     >
                       {isActive ? (
-                        <IoPlayCircleOutline size={16} className="text-indigo-400" />
+                        <IoPlayCircleOutline size={16} className="text-accent" />
                       ) : (
                         i + 1
                       )}
@@ -393,8 +393,8 @@ const YouTubePlaylistDetailPage = () => {
                         className="w-20 h-11 object-cover rounded-lg flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-20 h-11 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <IoPlayCircleOutline size={18} className="text-slate-600" />
+                      <div className="w-20 h-11 bg-surface rounded-lg flex items-center justify-center flex-shrink-0">
+                        <IoPlayCircleOutline size={18} className="text-muted" />
                       </div>
                     )}
 
@@ -402,14 +402,14 @@ const YouTubePlaylistDetailPage = () => {
                     <div className="flex-1 min-w-0">
                       <p
                         className={`text-xs font-medium truncate ${
-                          isActive ? 'text-indigo-300' : 'text-slate-300 group-hover:text-white'
+                          isActive ? 'text-accent' : 'text-secondary group-hover:text-primary'
                         }`}
                       >
                         {video.title || `Video ${i + 1}`}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {video.duration && (
-                          <span className="text-[10px] text-slate-500">{video.duration}</span>
+                          <span className="text-[10px] text-muted">{video.duration}</span>
                         )}
                         {hasNotes && (
                           <IoCheckmarkCircle size={12} className="text-emerald-500" title="Has notes" />

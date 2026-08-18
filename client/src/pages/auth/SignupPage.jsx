@@ -41,11 +41,11 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-canvas text-primary flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Back button */}
       <Link 
         to="/" 
-        className="absolute top-6 left-6 md:top-10 md:left-10 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+        className="absolute top-6 left-6 md:top-10 md:left-10 text-secondary hover:text-primary flex items-center gap-2 transition-colors z-20"
       >
         <IoArrowBack size={20} />
         <span className="hidden sm:inline font-medium">Back to Home</span>
@@ -53,8 +53,8 @@ const SignupPage = () => {
 
       {/* Background effects */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-indigo-500/8 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-cyan-500/6 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-accent/8 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/3 left-1/4 w-80 h-80 bg-orange-500/6 rounded-full blur-3xl" />
       </div>
 
       <motion.div
@@ -64,37 +64,37 @@ const SignupPage = () => {
       >
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
               <span className="text-white font-bold">O</span>
             </div>
             <span className="text-2xl font-bold font-display">
-              <span className="text-white">Organize</span>
+              <span className="text-primary">Organize</span>
               <span className="gradient-text">Up</span>
             </span>
           </Link>
-          <p className="text-slate-400 mt-3 text-sm">Create your account to get started</p>
+          <p className="text-secondary mt-3 text-sm">Create your account to get started</p>
         </div>
 
-        <div className="glass-card p-8">
+        <div className="glass-card p-8 border border-subtle">
           <button
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-white/10 bg-white/5 text-white font-medium hover:bg-white/10 transition-all mb-6"
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-subtle bg-surface text-primary font-medium hover:bg-surface-raised transition-all mb-6 cursor-pointer"
           >
-            <IoLogoGoogle size={18} className="text-red-400" />
+            <IoLogoGoogle size={18} className="text-red-500" />
             Continue with Google
           </button>
 
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-xs text-slate-500">or</span>
-            <div className="flex-1 h-px bg-white/10" />
+            <div className="flex-1 h-px bg-subtle" />
+            <span className="text-xs text-muted">or</span>
+            <div className="flex-1 h-px bg-subtle" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Name</label>
+              <label className="block text-sm font-medium text-secondary mb-1.5">Full Name</label>
               <div className="relative">
-                <IoPerson className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <IoPerson className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                 <input
                   type="text"
                   value={formData.name}
@@ -107,9 +107,9 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-secondary mb-1.5">Email</label>
               <div className="relative">
-                <IoMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <IoMail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                 <input
                   type="email"
                   value={formData.email}
@@ -122,9 +122,9 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+              <label className="block text-sm font-medium text-secondary mb-1.5">Password</label>
               <div className="relative">
-                <IoLockClosed className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <IoLockClosed className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
@@ -137,7 +137,7 @@ const SignupPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary cursor-pointer"
                 >
                   {showPassword ? <IoEyeOff size={16} /> : <IoEye size={16} />}
                 </button>
@@ -145,9 +145,9 @@ const SignupPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirm Password</label>
+              <label className="block text-sm font-medium text-secondary mb-1.5">Confirm Password</label>
               <div className="relative">
-                <IoLockClosed className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <IoLockClosed className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                 <input
                   type="password"
                   value={formData.confirmPassword}
@@ -174,9 +174,9 @@ const SignupPage = () => {
           </form>
         </div>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-muted mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium">
+          <Link to="/login" className="text-accent hover:underline font-medium">
             Login
           </Link>
         </p>

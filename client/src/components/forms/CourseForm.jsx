@@ -67,7 +67,7 @@ const CourseForm = ({ course, onClose }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Course Name *</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Course Name *</label>
         <input
           type="text"
           value={formData.title}
@@ -78,7 +78,7 @@ const CourseForm = ({ course, onClose }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Description</label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -88,7 +88,7 @@ const CourseForm = ({ course, onClose }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Drive Link</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Drive Link</label>
         <input
           type="url"
           value={formData.driveLink}
@@ -99,7 +99,7 @@ const CourseForm = ({ course, onClose }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Category *</label>
         <select
           value={formData.category}
           onChange={(e) => setFormData({ ...formData, category: e.target.value, newCategory: '' })}
@@ -120,16 +120,16 @@ const CourseForm = ({ course, onClose }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Banner Image (optional)</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Banner Image (optional)</label>
         <div className="space-y-3">
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setImageFile(e.target.files[0])}
-            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer w-full"
+            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:text-accent file:text-sm file:cursor-pointer w-full"
           />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">OR URL:</span>
+            <span className="text-xs text-muted font-medium">OR URL:</span>
             <input
               type="text"
               placeholder="https://example.com/image.jpg"
@@ -142,7 +142,7 @@ const CourseForm = ({ course, onClose }) => {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+      <div className="flex justify-end gap-3 pt-4 border-t border-subtle">
         <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
         <button type="submit" disabled={isSubmitting} className="btn-primary disabled:opacity-50">
           {isSubmitting ? (

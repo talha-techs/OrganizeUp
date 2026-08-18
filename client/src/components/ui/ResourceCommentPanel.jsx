@@ -95,23 +95,23 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="w-[50vw] min-w-[360px] max-w-[680px] h-full bg-slate-950 border-l border-white/5 flex flex-col shadow-2xl"
+            className="w-[50vw] min-w-[360px] max-w-[680px] h-full bg-surface-raised border-l border-subtle flex flex-col shadow-2xl z-50"
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Top bar ── */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/5 flex-shrink-0">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-subtle flex-shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <IoChatbubbleOutline className="text-indigo-400 flex-shrink-0" size={16} />
-                <span className="text-sm font-semibold text-white truncate">
+                <IoChatbubbleOutline className="text-accent flex-shrink-0" size={16} />
+                <span className="text-sm font-semibold text-primary truncate">
                   Comments
                 </span>
-                <span className="text-xs text-slate-500 font-normal truncate">
+                <span className="text-xs text-muted font-normal truncate">
                   · {resource?.title}
                 </span>
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 flex-shrink-0 ml-2 transition-colors"
+                className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface flex-shrink-0 ml-2 transition-colors cursor-pointer"
                 title="Close"
               >
                 <IoCloseOutline size={18} />
@@ -119,7 +119,7 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
             </div>
 
             {/* ── Resource banner ── */}
-            <div className="relative w-full h-44 bg-gradient-to-br from-slate-800 to-slate-900 flex-shrink-0">
+            <div className="relative w-full h-44 bg-surface flex-shrink-0">
               {bannerSrc ? (
                 <img
                   src={bannerSrc}
@@ -128,25 +128,25 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <PlaceholderIcon className="text-slate-700" size={48} />
+                  <PlaceholderIcon className="text-muted" size={48} />
                 </div>
               )}
               {/* Gradient fade at bottom */}
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-surface-raised to-transparent" />
             </div>
 
             {/* ── Resource title / subtitle ── */}
             <div className="px-5 pb-4 flex-shrink-0">
-              <h2 className="text-base font-bold text-white leading-snug line-clamp-2">
+              <h2 className="text-base font-bold text-primary leading-snug line-clamp-2">
                 {resource?.title}
               </h2>
               {subtitle && (
-                <p className="text-xs text-indigo-400 mt-0.5">{subtitle}</p>
+                <p className="text-xs text-accent mt-0.5">{subtitle}</p>
               )}
             </div>
 
             {/* ── Comment input (pinned below banner) ── */}
-            <div className="px-5 pb-4 flex-shrink-0 border-b border-white/5">
+            <div className="px-5 pb-4 flex-shrink-0 border-b border-subtle">
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
                 {/* User avatar */}
                 {user?.avatar ? (
@@ -156,8 +156,8 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
                     className="w-7 h-7 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-indigo-500/25 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[10px] font-bold text-white">
+                  <div className="w-7 h-7 rounded-full bg-accent-subtle flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-bold text-primary">
                       {user?.name?.charAt(0)?.toUpperCase() || '?'}
                     </span>
                   </div>
@@ -168,12 +168,12 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Write a comment…"
                   maxLength={500}
-                  className="flex-1 px-3 py-2 rounded-xl bg-slate-800/70 border border-white/5 text-white text-sm placeholder-slate-500 focus:border-indigo-500/50 focus:outline-none transition-colors"
+                  className="flex-1 px-3 py-2 rounded-xl bg-surface border border-subtle text-primary text-sm placeholder-muted focus:border-accent focus:outline-none transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={isSubmitting || !text.trim()}
-                  className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                  className="p-2 rounded-xl bg-accent-subtle text-accent hover:bg-accent-glow disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0 cursor-pointer"
                   title="Post comment"
                 >
                   <IoSendOutline size={15} />
@@ -183,17 +183,17 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
 
             {/* ── Comments list (scrollable) ── */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              <div className="text-xs text-slate-500 mb-3">
+              <div className="text-xs text-muted mb-3">
                 {commentsTotal} comment{commentsTotal !== 1 ? 's' : ''}
               </div>
 
               {isLoading ? (
-                <p className="text-center text-sm text-slate-500 py-10">Loading…</p>
+                <p className="text-center text-sm text-muted py-10">Loading…</p>
               ) : comments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <IoChatbubbleOutline className="text-slate-700 mb-3" size={36} />
-                  <p className="text-sm text-slate-500">No comments yet.</p>
-                  <p className="text-xs text-slate-600 mt-1">Be the first to share your thoughts!</p>
+                  <IoChatbubbleOutline className="text-muted mb-3" size={36} />
+                  <p className="text-sm text-secondary">No comments yet.</p>
+                  <p className="text-xs text-muted mt-1">Be the first to share your thoughts!</p>
                 </div>
               ) : (
                 <AnimatePresence initial={false}>
@@ -210,7 +210,7 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
                         className="flex items-start gap-3 group"
                       >
                         {/* Avatar */}
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-indigo-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-accent-subtle flex items-center justify-center flex-shrink-0 mt-0.5">
                           {comment.user?.avatar ? (
                             <img
                               src={comment.user.avatar}
@@ -218,33 +218,33 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <span className="text-[10px] font-bold text-white">
+                            <span className="text-[10px] font-bold text-primary">
                               {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex-1 min-w-0 bg-slate-900/50 rounded-xl px-3 py-2.5 border border-white/5">
+                        <div className="flex-1 min-w-0 bg-surface rounded-xl px-3 py-2.5 border border-subtle">
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-semibold text-slate-200 truncate">
+                              <span className="text-xs font-semibold text-primary truncate">
                                 {comment.user?.name || 'Unknown'}
                               </span>
-                              <span className="text-[10px] text-slate-600 flex-shrink-0">
+                              <span className="text-[10px] text-muted flex-shrink-0">
                                 {new Date(comment.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                             {canDelete && (
                               <button
                                 onClick={() => handleDelete(comment._id)}
-                                className="p-1 rounded text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                className="p-1 rounded text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 cursor-pointer"
                                 title="Delete"
                               >
                                 <IoTrashOutline size={12} />
                               </button>
                             )}
                           </div>
-                          <p className="text-sm text-slate-300 whitespace-pre-wrap break-words leading-relaxed">
+                          <p className="text-sm text-secondary whitespace-pre-wrap break-words leading-relaxed">
                             {comment.text}
                           </p>
                         </div>

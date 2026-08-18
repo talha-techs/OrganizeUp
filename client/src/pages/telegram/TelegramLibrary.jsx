@@ -108,7 +108,7 @@ const TelegramLibrary = () => {
     return parts.map((part, i) => {
       if (part.match(urlRegex)) {
         return (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
             {part}
           </a>
         );
@@ -128,31 +128,31 @@ const TelegramLibrary = () => {
           <div 
             key={msg._id} 
             onClick={() => setSelectedMsg(msg)}
-            className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-500/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
+            className="bg-surface border border-subtle rounded-xl p-5 hover:border-accent/50 cursor-pointer transition-all flex flex-col h-auto min-h-[16rem] group"
           >
             <div className="flex justify-between items-start mb-3">
-              <span className="text-xs font-medium bg-slate-800 text-slate-300 px-2 py-1 rounded-md">
+              <span className="text-xs font-medium bg-surface-raised text-secondary px-2 py-1 rounded-md">
                 From: {msg.senderName}
               </span>
               <div className="flex flex-col items-end gap-0.5">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted">
                   {new Date(msg.createdAt).toLocaleDateString()}
                 </span>
-                <span className="text-[10px] text-slate-500/80">
+                <span className="text-[10px] text-muted">
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             </div>
             
             {msg.note && (
-              <div className="mb-3 flex items-start gap-2 text-xs text-yellow-400 bg-yellow-400/10 p-2 rounded border border-yellow-400/20">
+              <div className="mb-3 flex items-start gap-2 text-xs text-amber-400 bg-amber-400/10 p-2 rounded border border-amber-400/20">
                 <FaTag className="mt-0.5 shrink-0" />
                 <span className="line-clamp-2">{msg.note}</span>
               </div>
             )}
 
             {msg.bannerImageId && (
-              <div className="w-full h-48 mb-3 rounded-lg overflow-hidden shrink-0 border border-slate-700/50 bg-slate-950">
+              <div className="w-full h-48 mb-3 rounded-lg overflow-hidden shrink-0 border border-subtle bg-canvas">
                 <img 
                   src={`/api/telegram/image/${msg.bannerImageId}`} 
                   alt="Telegram Attachment" 
@@ -161,14 +161,14 @@ const TelegramLibrary = () => {
               </div>
             )}
 
-            <div className="text-slate-300 text-sm whitespace-pre-wrap flex-1 overflow-hidden relative">
+            <div className="text-secondary text-sm whitespace-pre-wrap flex-1 overflow-hidden relative">
               <div className="line-clamp-4">{msg.text}</div>
-              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-surface to-transparent"></div>
             </div>
 
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-subtle">
               {msg.extractedUrl ? (
-                <div className="flex items-center gap-2 text-blue-400 text-xs overflow-hidden">
+                <div className="flex items-center gap-2 text-accent text-xs overflow-hidden">
                   <FaLink className="shrink-0" />
                   <span className="truncate">Contains link</span>
                 </div>
@@ -176,7 +176,7 @@ const TelegramLibrary = () => {
               
               <button
                 onClick={(e) => deleteMessage(msg._id, e)}
-                className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                className="text-muted hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                 title="Delete"
               >
                 <FaTrash />
@@ -194,18 +194,18 @@ const TelegramLibrary = () => {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-500/20 p-3 rounded-xl border border-blue-500/30">
-            <FaTelegramPlane className="text-blue-400 text-2xl" />
+          <div className="bg-accent-subtle p-3 rounded-xl border border-accent/30">
+            <FaTelegramPlane className="text-accent text-2xl" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Telegram Library</h1>
-            <p className="text-slate-400">Your permanent vault for Telegram resources</p>
+            <h1 className="text-3xl font-bold text-primary">Telegram Library</h1>
+            <p className="text-secondary">Your permanent vault for Telegram resources</p>
           </div>
         </div>
         {isConnected && (
           <button
             onClick={unlinkTelegram}
-            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer"
           >
             <FaTimes /> Unlink Account
           </button>
@@ -213,10 +213,10 @@ const TelegramLibrary = () => {
       </div>
 
       {!isConnected ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-2xl mx-auto text-center">
-          <FaTelegramPlane className="text-6xl text-blue-500 mx-auto mb-6 opacity-80" />
-          <h2 className="text-2xl font-bold text-white mb-4">Connect Your Telegram Account</h2>
-          <p className="text-slate-400 mb-8 leading-relaxed">
+        <div className="bg-surface border border-subtle rounded-2xl p-8 max-w-2xl mx-auto text-center">
+          <FaTelegramPlane className="text-6xl text-accent mx-auto mb-6 opacity-80" />
+          <h2 className="text-2xl font-bold text-primary mb-4">Connect Your Telegram Account</h2>
+          <p className="text-secondary mb-8 leading-relaxed">
             Link your OrganizeUp account to our Telegram bot. Once connected, you can forward any useful message, 
             course link, or tool to the bot, and it will instantly be saved in this library.
           </p>
@@ -224,25 +224,25 @@ const TelegramLibrary = () => {
           {!linkCode ? (
             <button
               onClick={generateLinkCode}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
+              className="btn-primary px-8 py-3 rounded-lg font-medium transition-colors cursor-pointer"
             >
               Generate Link Code
             </button>
           ) : (
-            <div className="bg-slate-950 border border-slate-800 p-6 rounded-xl text-left">
-              <h3 className="text-lg font-semibold text-white mb-4">Follow these steps:</h3>
-              <ol className="text-slate-300 space-y-4 list-decimal list-inside">
+            <div className="bg-canvas border border-subtle p-6 rounded-xl text-left">
+              <h3 className="text-lg font-semibold text-primary mb-4">Follow these steps:</h3>
+              <ol className="text-secondary space-y-4 list-decimal list-inside">
                 <li>
-                  Open Telegram and search for <strong className="text-blue-400">@{botUsername}</strong> or click <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">here</a>.
+                  Open Telegram and search for <strong className="text-accent">@{botUsername}</strong> or click <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">here</a>.
                 </li>
                 <li>Start a chat with the bot (click Start).</li>
                 <li>
                   Send the bot this exact code:
-                  <div className="mt-2 flex items-center gap-4 bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    <code className="text-xl font-mono text-blue-400 flex-1">#link-{linkCode}</code>
+                  <div className="mt-2 flex items-center gap-4 bg-surface p-3 rounded-lg border border-subtle">
+                    <code className="text-xl font-mono text-accent flex-1">#link-{linkCode}</code>
                     <button 
                       onClick={() => copyToClipboard(`#link-${linkCode}`)}
-                      className="bg-slate-800 hover:bg-slate-700 p-2 rounded text-slate-300 transition-colors"
+                      className="bg-surface-raised hover:bg-surface p-2 rounded text-secondary hover:text-primary transition-colors cursor-pointer"
                     >
                       Copy
                     </button>
@@ -253,7 +253,7 @@ const TelegramLibrary = () => {
               <div className="mt-8 text-center">
                 <button
                   onClick={checkStatus}
-                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-medium transition-colors cursor-pointer"
                 >
                   I've Linked My Account
                 </button>
@@ -264,37 +264,37 @@ const TelegramLibrary = () => {
       ) : (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Saved Messages ({messages.length})</h2>
+            <h2 className="text-xl font-semibold text-primary">Saved Messages ({messages.length})</h2>
             <div className="flex items-center gap-4">
               <button 
                 onClick={fetchMessages}
-                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors text-sm"
+                className="text-secondary hover:text-primary bg-surface-raised hover:bg-surface px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors text-sm border border-subtle cursor-pointer"
               >
                 <FaSync className={loading ? "animate-spin" : ""} /> Refresh
               </button>
-              <div className="text-sm px-3 py-1 bg-green-500/10 text-green-400 rounded-full border border-green-500/20 flex items-center gap-2">
+              <div className="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-2">
                 <FaCheck /> Connected to Telegram
               </div>
             </div>
           </div>
 
           {messages.length === 0 ? (
-            <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-2xl p-12 text-center">
-              <p className="text-slate-400 text-lg">Your library is empty!</p>
-              <p className="text-slate-500 mt-2">Forward a message to @{botUsername} on Telegram to see it here.</p>
+            <div className="bg-surface border border-subtle border-dashed rounded-2xl p-12 text-center">
+              <p className="text-secondary text-lg">Your library is empty!</p>
+              <p className="text-muted mt-2">Forward a message to @{botUsername} on Telegram to see it here.</p>
             </div>
           ) : (
             <div className="space-y-10">
               {recentMessages.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-medium text-slate-300 mb-4 border-b border-slate-800 pb-2">Recently Added</h3>
+                  <h3 className="text-lg font-medium text-secondary mb-4 border-b border-subtle pb-2">Recently Added</h3>
                   {renderMessageCards(recentMessages)}
                 </div>
               )}
               
               {libraryMessages.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-medium text-slate-300 mb-4 border-b border-slate-800 pb-2">Library</h3>
+                  <h3 className="text-lg font-medium text-secondary mb-4 border-b border-subtle pb-2">Library</h3>
                   {renderMessageCards(libraryMessages)}
                 </div>
               )}
@@ -307,20 +307,20 @@ const TelegramLibrary = () => {
       {selectedMsg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setSelectedMsg(null); setEditingNote(false); }}>
           <div 
-            className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl" 
+            className="bg-surface border border-strong rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl" 
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-800">
+            <div className="flex justify-between items-center p-6 border-b border-subtle">
               <div>
-                <h3 className="text-lg font-bold text-white">From: {selectedMsg.senderName}</h3>
-                <p className="text-xs text-slate-500 mt-1">{new Date(selectedMsg.createdAt).toLocaleString()}</p>
+                <h3 className="text-lg font-bold text-primary">From: {selectedMsg.senderName}</h3>
+                <p className="text-xs text-muted mt-1">{new Date(selectedMsg.createdAt).toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={(e) => deleteMessage(selectedMsg._id, e)} className="text-slate-400 hover:text-red-400 transition-colors bg-slate-800 p-2 rounded-lg">
+                <button onClick={(e) => deleteMessage(selectedMsg._id, e)} className="text-muted hover:text-red-400 transition-colors bg-surface-raised p-2 rounded-lg cursor-pointer">
                   <FaTrash />
                 </button>
-                <button onClick={() => { setSelectedMsg(null); setEditingNote(false); }} className="text-slate-400 hover:text-white transition-colors bg-slate-800 p-2 rounded-lg">
+                <button onClick={() => { setSelectedMsg(null); setEditingNote(false); }} className="text-muted hover:text-primary transition-colors bg-surface-raised p-2 rounded-lg cursor-pointer">
                   <FaTimes />
                 </button>
               </div>
@@ -329,15 +329,15 @@ const TelegramLibrary = () => {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
               {/* Note Section */}
-              <div className="mb-6 bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <div className="mb-6 bg-canvas p-4 rounded-xl border border-subtle">
                 <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                    <FaTag className="text-yellow-500" /> Custom Tag / Note
+                  <h4 className="text-sm font-semibold text-secondary flex items-center gap-2">
+                    <FaTag className="text-amber-400" /> Custom Tag / Note
                   </h4>
                   {!editingNote && (
                     <button 
                       onClick={() => { setEditingNote(true); setNoteInput(selectedMsg.note); }}
-                      className="text-xs text-blue-400 hover:text-blue-300"
+                      className="text-xs text-accent hover:underline cursor-pointer"
                     >
                       {selectedMsg.note ? 'Edit' : 'Add Note'}
                     </button>
@@ -351,18 +351,18 @@ const TelegramLibrary = () => {
                       value={noteInput}
                       onChange={(e) => setNoteInput(e.target.value)}
                       placeholder="Add a tag like 'React Course' or 'Must Read'..."
-                      className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                      className="flex-1 bg-surface border border-subtle rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
                       autoFocus
                     />
-                    <button onClick={saveNote} className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg text-sm transition-colors">
+                    <button onClick={saveNote} className="btn-primary px-4 rounded-lg text-sm transition-colors cursor-pointer">
                       Save
                     </button>
-                    <button onClick={() => setEditingNote(false)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 rounded-lg text-sm transition-colors">
+                    <button onClick={() => setEditingNote(false)} className="bg-surface-raised hover:bg-surface text-secondary px-4 rounded-lg text-sm transition-colors border border-subtle cursor-pointer">
                       Cancel
                     </button>
                   </div>
                 ) : (
-                  <p className={`text-sm ${selectedMsg.note ? 'text-yellow-400/90' : 'text-slate-500 italic'}`}>
+                  <p className={`text-sm ${selectedMsg.note ? 'text-amber-400' : 'text-muted italic'}`}>
                     {selectedMsg.note || 'No note added yet.'}
                   </p>
                 )}
@@ -370,7 +370,7 @@ const TelegramLibrary = () => {
 
               {/* Message Content */}
               {selectedMsg.bannerImageId && (
-                <div className="mb-6 w-full rounded-xl overflow-hidden shadow-lg border border-slate-700 max-h-64 flex justify-center bg-slate-950">
+                <div className="mb-6 w-full rounded-xl overflow-hidden shadow-lg border border-subtle max-h-64 flex justify-center bg-canvas">
                   <img 
                     src={`/api/telegram/image/${selectedMsg.bannerImageId}`} 
                     alt="Message Attachment" 
@@ -379,7 +379,7 @@ const TelegramLibrary = () => {
                 </div>
               )}
 
-              <div className="text-slate-200 text-base leading-relaxed whitespace-pre-wrap">
+              <div className="text-primary text-base leading-relaxed whitespace-pre-wrap">
                 {renderTextWithLinks(selectedMsg.text)}
               </div>
             </div>

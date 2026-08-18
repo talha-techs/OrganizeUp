@@ -18,8 +18,8 @@ export default defineConfig({
         name: "OrganizeUp",
         short_name: "OrganizeUp",
         description: "Import. Organize. Learn. Anywhere.",
-        theme_color: "#020617", // slate-950
-        background_color: "#020617",
+        theme_color: "#09090b", // zinc-950
+        background_color: "#09090b",
         display: "standalone",
         icons: [
           {

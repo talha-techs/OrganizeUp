@@ -85,8 +85,8 @@ const BooksPage = () => {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
       >
         <div>
-          <h1 className="text-3xl font-bold text-white font-display">Books</h1>
-          <p className="text-slate-400 text-sm mt-1">Your video and text book library</p>
+          <h1 className="text-3xl font-bold text-primary font-display">Books</h1>
+          <p className="text-secondary text-sm mt-1">Your video and text book library</p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => setShowImport(true)} className="btn-secondary flex items-center gap-2">
@@ -104,10 +104,10 @@ const BooksPage = () => {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === tab.key
-                ? 'bg-indigo-500/15 text-indigo-400 shadow-lg shadow-indigo-500/5'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-accent-subtle text-accent border border-accent/20'
+                : 'text-secondary hover:text-primary hover:bg-surface-raised'
             }`}
           >
             {tab.icon} {tab.label}
@@ -124,14 +124,14 @@ const BooksPage = () => {
           className="text-center py-20 glass-card"
         >
           {activeTab === 'audio' ? (
-            <IoMusicalNotesOutline className="mx-auto text-indigo-400 mb-4" size={48} />
+            <IoMusicalNotesOutline className="mx-auto text-accent mb-4" size={48} />
           ) : (
-            <IoBookOutline className="mx-auto text-slate-600 mb-4" size={48} />
+            <IoBookOutline className="mx-auto text-muted mb-4" size={48} />
           )}
-          <h3 className="text-lg font-medium text-white mb-2">
+          <h3 className="text-lg font-medium text-primary mb-2">
             {activeTab === 'audio' ? 'No audiobooks in your space yet' : 'No books yet'}
           </h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto mb-5">
+          <p className="text-sm text-secondary max-w-md mx-auto mb-5">
             {activeTab === 'audio'
               ? 'Browse thousands of free classic audiobooks from LibriVox on the Explore page and add them to your shelf with one click.'
               : isAdmin

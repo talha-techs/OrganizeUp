@@ -57,13 +57,13 @@ const InlineComments = ({ contentType, contentId, onClose }) => {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-slate-400 flex items-center gap-1.5">
+        <span className="text-xs text-secondary flex items-center gap-1.5">
           <IoChatbubbleOutline size={13} />
           {commentsTotal} comment{commentsTotal !== 1 ? 's' : ''}
         </span>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors"
+          className="p-1 rounded-lg text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
         >
           <IoCloseOutline size={14} />
         </button>
@@ -77,12 +77,12 @@ const InlineComments = ({ contentType, contentId, onClose }) => {
           onChange={(e) => setText(e.target.value)}
           placeholder="Write a comment…"
           maxLength={500}
-          className="flex-1 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-white/5 text-white text-xs placeholder-slate-500 focus:border-indigo-500/50 focus:outline-none transition-colors"
+          className="flex-1 px-3 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-xs placeholder-muted focus:border-accent focus:outline-none transition-colors"
         />
         <button
           type="submit"
           disabled={isSubmitting || !text.trim()}
-          className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded-lg bg-accent-subtle text-accent hover:bg-accent-glow disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
           title="Post comment"
         >
           <IoSendOutline size={13} />
@@ -92,9 +92,9 @@ const InlineComments = ({ contentType, contentId, onClose }) => {
       {/* Comment list */}
       <div className="space-y-2 max-h-52 overflow-y-auto pr-0.5">
         {isLoading ? (
-          <p className="text-center text-xs text-slate-500 py-3">Loading…</p>
+          <p className="text-center text-xs text-muted py-3">Loading…</p>
         ) : comments.length === 0 ? (
-          <p className="text-center text-xs text-slate-500 py-3">
+          <p className="text-center text-xs text-muted py-3">
             No comments yet. Be the first!
           </p>
         ) : (
@@ -112,7 +112,7 @@ const InlineComments = ({ contentType, contentId, onClose }) => {
                   className="flex items-start gap-2 group"
                 >
                   {/* Avatar */}
-                  <div className="w-6 h-6 rounded-full overflow-hidden bg-indigo-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-accent-subtle flex items-center justify-center flex-shrink-0 mt-0.5">
                     {comment.user?.avatar ? (
                       <img
                         src={comment.user.avatar}
@@ -120,7 +120,7 @@ const InlineComments = ({ contentType, contentId, onClose }) => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-[9px] font-bold text-white">
+                      <span className="text-[9px] font-bold text-primary">
                         {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
                       </span>
                     )}
@@ -128,23 +128,23 @@ const InlineComments = ({ contentType, contentId, onClose }) => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-medium text-slate-300 truncate">
+                      <span className="text-[11px] font-medium text-primary truncate">
                         {comment.user?.name || 'Unknown'}
-                        <span className="text-slate-600 ml-1.5 font-normal">
+                        <span className="text-muted ml-1.5 font-normal">
                           {new Date(comment.createdAt).toLocaleDateString()}
                         </span>
                       </span>
                       {canDelete && (
                         <button
                           onClick={() => handleDelete(comment._id)}
-                          className="p-1 rounded text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                          className="p-1 rounded text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                           title="Delete"
                         >
                           <IoTrashOutline size={11} />
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 whitespace-pre-wrap break-words">
+                    <p className="text-xs text-secondary whitespace-pre-wrap break-words">
                       {comment.text}
                     </p>
                   </div>

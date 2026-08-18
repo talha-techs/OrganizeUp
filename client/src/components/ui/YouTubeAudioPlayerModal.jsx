@@ -49,19 +49,19 @@ const YouTubeAudioPlayerModal = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.25 }}
-          className="relative w-full max-w-4xl bg-slate-900/95 border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] z-10"
+          className="relative w-full max-w-4xl bg-surface-raised border border-strong rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] z-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-subtle bg-surface">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-red-500/10 border border-red-500/20 flex-shrink-0 flex items-center justify-center">
                 <IoLogoYoutube className="text-red-500" size={22} />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-white truncate">
+                <h2 className="text-base font-bold text-primary truncate">
                   {book.title}
                 </h2>
-                <p className="text-xs text-indigo-400 truncate">
+                <p className="text-xs text-accent truncate">
                   {book.author} {book.duration ? `· ${book.duration}` : ''}
                 </p>
               </div>
@@ -74,7 +74,7 @@ const YouTubeAudioPlayerModal = ({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                   isSaved
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                    : 'bg-white/5 text-slate-300 border-white/10 hover:text-white hover:bg-white/10'
+                    : 'bg-surface text-secondary border-subtle hover:text-primary hover:bg-surface-raised'
                 }`}
               >
                 {isSaved ? (
@@ -90,7 +90,7 @@ const YouTubeAudioPlayerModal = ({
 
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-secondary hover:text-primary hover:bg-surface transition-colors cursor-pointer"
                 title="Close"
               >
                 <IoClose size={20} />
@@ -99,9 +99,9 @@ const YouTubeAudioPlayerModal = ({
           </div>
 
           {/* Body: Responsive Player & Details */}
-          <div className="p-6 overflow-y-auto space-y-4 bg-gradient-to-b from-slate-900 to-indigo-950/20">
+          <div className="p-6 overflow-y-auto space-y-4 bg-canvas">
             {/* Embedded Responsive Player */}
-            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-xl border border-white/10">
+            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-xl border border-subtle">
               <iframe
                 src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
                 title={book.title}
@@ -112,24 +112,24 @@ const YouTubeAudioPlayerModal = ({
             </div>
 
             {/* Book Meta & Notes Card */}
-            <div className="glass-card p-4 space-y-2 border border-white/5">
+            <div className="glass-card p-4 space-y-2 border border-subtle">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent-subtle text-accent border border-accent/20">
                   <IoSparklesOutline size={12} />
                   {book.topic || 'Modern Audiobook'}
                 </span>
                 {book.duration && (
-                  <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                  <span className="text-xs text-muted font-mono flex items-center gap-1">
                     <IoTimeOutline size={13} /> {book.duration}
                   </span>
                 )}
               </div>
 
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-base font-bold text-primary">
                 {book.title}
               </h3>
               {book.description && (
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-secondary leading-relaxed">
                   {book.description}
                 </p>
               )}

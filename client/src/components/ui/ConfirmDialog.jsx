@@ -13,7 +13,7 @@ const ConfirmDialog = ({
   return (
     <Modal isOpen={isOpen} onClose={onCancel} title={title} maxWidth="max-w-md">
       <div className="space-y-5">
-        <p className="text-sm text-slate-300 leading-relaxed">{message}</p>
+        <p className="text-sm text-secondary leading-relaxed">{message}</p>
 
         <div className="flex justify-end gap-3">
           <button

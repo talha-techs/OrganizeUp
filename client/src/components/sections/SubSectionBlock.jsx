@@ -28,10 +28,10 @@ import {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  note:    { icon: '📝', label: 'Note',        color: 'indigo' },
+  note:    { icon: '📝', label: 'Note',        color: 'accent' },
   todo:    { icon: '✅', label: 'To-Do',       color: 'emerald' },
   board:   { icon: '📋', label: 'Board',       color: 'purple' },
-  links:   { icon: '🔗', label: 'Links',       color: 'cyan' },
+  links:   { icon: '🔗', label: 'Links',       color: 'accent' },
   snippet: { icon: '</>', label: 'Snippet',    color: 'amber' },
   image:   { icon: '🖼️', label: 'Image',       color: 'rose' },
 };
@@ -39,11 +39,13 @@ const TYPE_CONFIG = {
 const PRIORITY_DOT = { low: 'bg-emerald-500', medium: 'bg-amber-500', high: 'bg-red-500' };
 const PRIORITY_TXT = { low: 'text-emerald-400', medium: 'text-amber-400', high: 'text-red-400' };
 const COL_CLS = {
-  slate:   'text-slate-400 border-slate-600',
+  zinc:    'text-secondary border-subtle',
+  slate:   'text-secondary border-subtle',
   amber:   'text-amber-400 border-amber-600/50',
   emerald: 'text-emerald-400 border-emerald-600/50',
   red:     'text-red-400 border-red-600/50',
-  blue:    'text-blue-400 border-blue-600/50',
+  coral:   'text-accent border-accent/50',
+  blue:    'text-accent border-accent/50',
   purple:  'text-purple-400 border-purple-600/50',
 };
 
@@ -60,8 +62,8 @@ const formatDue = (date) => {
   const diff = Math.floor((d - now) / 86400000);
   if (diff < 0)  return { label: 'Overdue',   cls: 'bg-red-500/15 text-red-400' };
   if (diff === 0) return { label: 'Today',     cls: 'bg-amber-500/15 text-amber-400' };
-  if (diff === 1) return { label: 'Tomorrow',  cls: 'bg-blue-500/15 text-blue-300' };
-  return { label: d.toLocaleDateString(), cls: 'bg-slate-700/50 text-slate-400' };
+  if (diff === 1) return { label: 'Tomorrow',  cls: 'bg-accent-subtle text-accent' };
+  return { label: d.toLocaleDateString(), cls: 'bg-surface-raised text-secondary' };
 };
 
 const getDomain = (url) => { try { return new URL(url).hostname; } catch { return url; } };
@@ -90,16 +92,16 @@ const NoteEditor = ({ block, sectionId, canManage }) => {
           onBlur={handleBlur}
           placeholder="Start writing your note…"
           rows={6}
-          className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 resize-y focus:outline-none focus:border-indigo-500/50 transition-colors font-mono leading-relaxed"
+          className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-primary placeholder-muted resize-y focus:outline-none focus:border-accent transition-colors font-mono leading-relaxed"
         />
       ) : (
-        <div className="px-4 py-3 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed min-h-[80px]">
-          {block.content || <span className="text-slate-600 italic">No content yet</span>}
+        <div className="px-4 py-3 text-sm text-secondary whitespace-pre-wrap leading-relaxed min-h-[80px]">
+          {block.content || <span className="text-muted italic">No content yet</span>}
         </div>
       )}
       <div className="flex items-center justify-between px-1">
-        <span className="text-xs text-slate-600">{words} word{words !== 1 ? 's' : ''}</span>
-        {saving && <span className="text-xs text-indigo-400 animate-pulse">Saving…</span>}
+        <span className="text-xs text-muted">{words} word{words !== 1 ? 's' : ''}</span>
+        {saving && <span className="text-xs text-accent animate-pulse">Saving…</span>}
       </div>
     </div>
   );
@@ -132,11 +134,11 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
     <div>
       {todos.length > 0 && (
         <div className="mb-3">
-          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+          <div className="flex justify-between text-xs text-muted mb-1.5">
             <span>{done}/{todos.length} done</span>
             <span>{pct}%</span>
           </div>
-          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
             <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
           </div>
         </div>
@@ -146,16 +148,16 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
         {todos.map((todo) => {
           const due = formatDue(todo.dueDate);
           return (
-            <div key={todo._id} className={`flex items-start gap-3 px-2 py-2 rounded-lg group hover:bg-white/5 transition-colors ${todo.checked ? 'opacity-50' : ''}`}>
+            <div key={todo._id} className={`flex items-start gap-3 px-2 py-2 rounded-lg group hover:bg-surface-raised transition-colors ${todo.checked ? 'opacity-50' : ''}`}>
               <button
                 onClick={() => canManage && handleToggle(todo)}
-                className={`mt-0.5 w-4 h-4 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  todo.checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600 hover:border-slate-400'
+                className={`mt-0.5 w-4 h-4 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                  todo.checked ? 'bg-emerald-500 border-emerald-500' : 'border-subtle hover:border-strong'
                 }`}
               >
                 {todo.checked && <IoCheckmarkOutline size={10} className="text-white" />}
               </button>
-              <span className={`flex-1 text-sm leading-snug ${todo.checked ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+              <span className={`flex-1 text-sm leading-snug ${todo.checked ? 'line-through text-muted' : 'text-primary'}`}>
                 {todo.text}
               </span>
               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -163,7 +165,7 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
                 {due && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${due.cls}`}>{due.label}</span>}
                 {canManage && (
                   <button onClick={() => dispatch(deleteTodoItem({ sectionId, subId: block._id, todoId: todo._id }))}
-                    className="p-1 rounded text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                    className="p-1 rounded text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
                     <IoTrashOutline size={12} />
                   </button>
                 )}
@@ -174,13 +176,13 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
       </div>
 
       {todos.length === 0 && !adding && (
-        <p className="text-sm text-slate-600 italic text-center py-4">No tasks yet</p>
+        <p className="text-sm text-muted italic text-center py-4">No tasks yet</p>
       )}
 
       {canManage && (
         <div className="mt-3">
           {adding ? (
-            <div className="bg-slate-800/60 border border-white/5 rounded-xl p-3 space-y-2">
+            <div className="bg-surface border border-subtle rounded-xl p-3 space-y-2">
               <input
                 ref={inputRef}
                 autoFocus
@@ -188,26 +190,26 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
                 onChange={(e) => setNewText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
                 placeholder="Task description…"
-                className="w-full bg-transparent text-sm text-white placeholder-slate-600 focus:outline-none"
+                className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none"
               />
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
                   {['low','medium','high'].map((p) => (
                     <button key={p} onClick={() => setNewPriority(p)}
-                      className={`w-4 h-4 rounded-full ${PRIORITY_DOT[p]} ${newPriority === p ? 'ring-2 ring-white/40' : 'opacity-40'} transition-all`} title={p} />
+                      className={`w-4 h-4 rounded-full ${PRIORITY_DOT[p]} ${newPriority === p ? 'ring-2 ring-accent' : 'opacity-40'} transition-all cursor-pointer`} title={p} />
                   ))}
                 </div>
                 <input type="date" value={newDue} onChange={(e) => setNewDue(e.target.value)}
-                  className="text-xs bg-transparent text-slate-400 border-none focus:outline-none" />
+                  className="text-xs bg-transparent text-secondary border-none focus:outline-none" />
                 <div className="ml-auto flex gap-3">
-                  <button onClick={() => { setAdding(false); setNewText(''); }} className="text-xs text-slate-500 hover:text-slate-300">Cancel</button>
-                  <button onClick={handleAdd} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Add</button>
+                  <button onClick={() => { setAdding(false); setNewText(''); }} className="text-xs text-muted hover:text-primary cursor-pointer">Cancel</button>
+                  <button onClick={handleAdd} className="text-xs text-accent hover:underline font-medium cursor-pointer">Add</button>
                 </div>
               </div>
             </div>
           ) : (
             <button onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 40); }}
-              className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-300 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors w-full">
+              className="flex items-center gap-2 text-sm text-secondary hover:text-primary px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-colors w-full cursor-pointer">
               <IoAddOutline size={14} /> Add task
             </button>
           )}
@@ -264,23 +266,23 @@ const BoardEditor = ({ block, sectionId, canManage }) => {
             <div key={col.id} className="w-60 flex-shrink-0">
               <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${cls}`}>
                 <span className={`text-[11px] font-bold uppercase tracking-widest ${cls.split(' ')[0]}`}>{col.name}</span>
-                <span className="text-xs text-slate-600 ml-auto">{colItems(col.id).length}</span>
+                <span className="text-xs text-muted ml-auto">{colItems(col.id).length}</span>
               </div>
               <div className="space-y-2">
                 {colItems(col.id).map((item) => (
                   <div key={item._id}
-                    className={`glass-card p-3 cursor-pointer group border-l-2 hover:border-l-4 transition-all ${
-                      item.priority === 'high' ? 'border-red-500/60' : item.priority === 'low' ? 'border-emerald-500/60' : 'border-amber-500/40'
+                    className={`glass-card p-3 cursor-pointer group border-l-2 hover:border-l-4 transition-all border border-subtle ${
+                      item.priority === 'high' ? 'border-l-red-500' : item.priority === 'low' ? 'border-l-emerald-500' : 'border-l-amber-500'
                     }`}
                     onClick={() => openEdit(item)}>
-                    <p className="text-sm text-white font-medium leading-snug">{item.title}</p>
-                    {item.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>}
+                    <p className="text-sm text-primary font-medium leading-snug">{item.title}</p>
+                    {item.description && <p className="text-xs text-muted mt-1 line-clamp-2">{item.description}</p>}
                     <div className="flex items-center gap-2 mt-2">
                       <span className={`text-[10px] font-medium ${PRIORITY_TXT[item.priority]}`}>{item.priority}</span>
-                      {item.dueDate && <span className="text-[10px] text-slate-500">{new Date(item.dueDate).toLocaleDateString()}</span>}
+                      {item.dueDate && <span className="text-[10px] text-muted">{new Date(item.dueDate).toLocaleDateString()}</span>}
                       {canManage && (
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteCard(item._id); }}
-                          className="ml-auto text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                          className="ml-auto text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
                           <IoTrashOutline size={12} />
                         </button>
                       )}
@@ -290,26 +292,26 @@ const BoardEditor = ({ block, sectionId, canManage }) => {
 
                 {canManage && (
                   addingInCol === col.id ? (
-                    <div className="glass-card p-3 space-y-2">
+                    <div className="glass-card p-3 space-y-2 border border-subtle">
                       <input autoFocus value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleAddCard(col.id); if (e.key === 'Escape') setAddingInCol(null); }}
                         placeholder="Card title…"
-                        className="w-full bg-transparent text-sm text-white placeholder-slate-600 focus:outline-none" />
+                        className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none" />
                       <div className="flex items-center gap-2">
                         <div className="flex gap-1">
                           {['low','medium','high'].map((p) => (
                             <button key={p} onClick={() => setNewPriority(p)}
-                              className={`w-3 h-3 rounded-full ${PRIORITY_DOT[p]} ${newPriority === p ? 'ring-2 ring-white/30' : 'opacity-40'}`} title={p} />
+                              className={`w-3 h-3 rounded-full ${PRIORITY_DOT[p]} ${newPriority === p ? 'ring-2 ring-accent' : 'opacity-40'} cursor-pointer`} title={p} />
                           ))}
                         </div>
-                        <button onClick={() => setAddingInCol(null)} className="text-xs text-slate-500 ml-auto">Cancel</button>
-                        <button onClick={() => handleAddCard(col.id)} className="text-xs text-indigo-400 font-medium">Add</button>
+                        <button onClick={() => setAddingInCol(null)} className="text-xs text-muted ml-auto cursor-pointer">Cancel</button>
+                        <button onClick={() => handleAddCard(col.id)} className="text-xs text-accent font-medium cursor-pointer">Add</button>
                       </div>
                     </div>
                   ) : (
                     <button onClick={() => { setAddingInCol(col.id); setNewTitle(''); }}
-                      className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-300 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors w-full">
+                      className="flex items-center gap-2 text-xs text-secondary hover:text-primary px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-colors w-full cursor-pointer">
                       <IoAddOutline size={12} /> Add card
                     </button>
                   )
@@ -327,15 +329,15 @@ const BoardEditor = ({ block, sectionId, canManage }) => {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
             onClick={() => setEditingCard(null)}>
             <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
-              className="glass-card p-5 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+              className="glass-card p-5 w-full max-w-sm space-y-4 border border-strong bg-surface-raised" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between gap-3">
                 {canManage ? (
                   <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                    className="flex-1 bg-transparent text-white font-semibold focus:outline-none border-b border-white/10 pb-1" />
+                    className="flex-1 bg-transparent text-primary font-semibold focus:outline-none border-b border-subtle pb-1" />
                 ) : (
-                  <h4 className="text-white font-semibold">{editingCard.title}</h4>
+                  <h4 className="text-primary font-semibold">{editingCard.title}</h4>
                 )}
-                <button onClick={() => setEditingCard(null)} className="text-slate-500 hover:text-slate-300 flex-shrink-0">
+                <button onClick={() => setEditingCard(null)} className="text-muted hover:text-primary flex-shrink-0 cursor-pointer">
                   <IoCloseOutline size={18} />
                 </button>
               </div>
@@ -343,19 +345,19 @@ const BoardEditor = ({ block, sectionId, canManage }) => {
               {canManage ? (
                 <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
                   placeholder="Add a description…" rows={3}
-                  className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:border-slate-600 transition-colors" />
+                  className="w-full bg-surface border border-subtle rounded-lg px-3 py-2 text-sm text-primary placeholder-muted resize-none focus:outline-none focus:border-accent transition-colors" />
               ) : (
-                editingCard.description && <p className="text-sm text-slate-400">{editingCard.description}</p>
+                editingCard.description && <p className="text-sm text-secondary">{editingCard.description}</p>
               )}
 
               {canManage && (
                 <div className="space-y-3">
                   <div>
-                    <p className="text-xs text-slate-500 mb-2">Move to</p>
+                    <p className="text-xs text-muted mb-2">Move to</p>
                     <div className="flex gap-2 flex-wrap">
                       {columns.filter((c) => c.id !== editingCard.status).map((col) => (
                         <button key={col.id} onClick={() => handleMove(editingCard, col.id)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">
+                          className="text-xs px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-raised text-secondary hover:text-primary transition-colors border border-subtle cursor-pointer">
                           → {col.name}
                         </button>
                       ))}
@@ -363,11 +365,11 @@ const BoardEditor = ({ block, sectionId, canManage }) => {
                   </div>
                   <div className="flex items-center justify-between pt-1">
                     <button onClick={() => handleDeleteCard(editingCard._id)}
-                      className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-400 transition-colors cursor-pointer">
                       <IoTrashOutline size={12} /> Delete card
                     </button>
                     <button onClick={handleSaveCard}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-medium">
+                      className="btn-primary text-xs px-3 py-1.5 rounded-lg transition-colors font-medium">
                       Save
                     </button>
                   </div>
@@ -400,26 +402,26 @@ const LinksEditor = ({ block, sectionId, canManage }) => {
   return (
     <div className="space-y-2">
       {links.map((link) => (
-        <div key={link._id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/70 transition-colors group">
+        <div key={link._id} className="flex items-start gap-3 p-3 rounded-xl bg-surface hover:bg-surface-raised border border-subtle transition-colors group">
           <img src={`https://www.google.com/s2/favicons?domain=${getDomain(link.url)}&sz=32`} alt="" className="w-5 h-5 mt-0.5 flex-shrink-0 rounded"
             onError={(e) => { e.target.style.display = 'none'; }} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white">{link.title}</p>
-            <p className="text-xs text-slate-500 truncate">{link.url}</p>
-            {link.description && <p className="text-xs text-slate-500 mt-0.5">{link.description}</p>}
+            <p className="text-sm font-medium text-primary">{link.title}</p>
+            <p className="text-xs text-muted truncate">{link.url}</p>
+            {link.description && <p className="text-xs text-muted mt-0.5">{link.description}</p>}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <a href={link.url} target="_blank" rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors" title="Open">
+              className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors" title="Open">
               <IoOpenOutline size={14} />
             </a>
             <button onClick={() => { navigator.clipboard.writeText(link.url); toast.success('Copied!'); }}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors" title="Copy URL">
+              className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer" title="Copy URL">
               <IoCopyOutline size={14} />
             </button>
             {canManage && (
               <button onClick={() => dispatch(removeLink({ sectionId, subId: block._id, linkId: link._id }))}
-                className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all" title="Remove">
+                className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer" title="Remove">
                 <IoTrashOutline size={14} />
               </button>
             )}
@@ -428,30 +430,30 @@ const LinksEditor = ({ block, sectionId, canManage }) => {
       ))}
 
       {links.length === 0 && !adding && (
-        <p className="text-sm text-slate-600 italic text-center py-4">No links saved yet</p>
+        <p className="text-sm text-muted italic text-center py-4">No links saved yet</p>
       )}
 
       {canManage && (
         <div className="mt-2">
           {adding ? (
-            <div className="bg-slate-800/60 border border-white/5 rounded-xl p-3 space-y-2">
+            <div className="bg-surface border border-subtle rounded-xl p-3 space-y-2">
               <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://…"
-                className="w-full bg-transparent text-sm text-white placeholder-slate-600 focus:outline-none border-b border-white/5 pb-2" />
+                className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none border-b border-subtle pb-2" />
               <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Title (required)"
-                className="w-full bg-transparent text-sm text-white placeholder-slate-600 focus:outline-none" />
+                className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)"
-                className="w-full bg-transparent text-xs text-slate-400 placeholder-slate-600 focus:outline-none" />
+                className="w-full bg-transparent text-xs text-secondary placeholder-muted focus:outline-none" />
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setAdding(false)} className="text-xs text-slate-500 hover:text-slate-300">Cancel</button>
+                <button onClick={() => setAdding(false)} className="text-xs text-muted hover:text-primary cursor-pointer">Cancel</button>
                 <button onClick={handleAdd} disabled={!newUrl.trim() || !newTitle.trim()}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium ml-auto disabled:opacity-40">
+                  className="text-xs text-accent hover:underline font-medium ml-auto disabled:opacity-40 cursor-pointer">
                   Save Link
                 </button>
               </div>
             </div>
           ) : (
             <button onClick={() => setAdding(true)}
-              className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-300 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors w-full">
+              className="flex items-center gap-2 text-sm text-secondary hover:text-primary px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-colors w-full cursor-pointer">
               <IoAddOutline size={14} /> Add link
             </button>
           )}
@@ -480,13 +482,13 @@ const SnippetEditor = ({ block, sectionId, canManage }) => {
       <div className="flex items-center justify-between mb-2">
         <select value={localLang} onChange={(e) => setLocalLang(e.target.value)} onBlur={handleBlur}
           disabled={!canManage}
-          className="text-xs bg-slate-800 border border-white/5 text-slate-400 rounded-lg px-2 py-1 focus:outline-none focus:border-slate-600">
+          className="text-xs bg-surface border border-subtle text-secondary rounded-lg px-2 py-1 focus:outline-none focus:border-accent">
           {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
         <div className="flex items-center gap-2">
-          {saving && <span className="text-xs text-indigo-400 animate-pulse">Saving…</span>}
+          {saving && <span className="text-xs text-accent animate-pulse">Saving…</span>}
           <button onClick={() => { navigator.clipboard.writeText(localCode); toast.success('Copied!'); }}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-1 rounded-lg hover:bg-white/5">
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-primary transition-colors px-2 py-1 rounded-lg hover:bg-surface-raised cursor-pointer">
             <IoCopyOutline size={12} /> Copy
           </button>
         </div>
@@ -494,10 +496,10 @@ const SnippetEditor = ({ block, sectionId, canManage }) => {
       {canManage ? (
         <textarea value={localCode} onChange={(e) => setLocalCode(e.target.value)} onBlur={handleBlur}
           placeholder={`// ${localLang} code here…`} rows={10} spellCheck={false}
-          className="w-full bg-slate-950/70 border border-white/5 rounded-xl px-4 py-3 text-sm text-emerald-300 placeholder-slate-700 resize-y focus:outline-none focus:border-slate-600 transition-colors font-mono leading-relaxed" />
+          className="w-full bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-emerald-400 placeholder-muted resize-y focus:outline-none focus:border-accent transition-colors font-mono leading-relaxed" />
       ) : (
-        <pre className="bg-slate-950/70 border border-white/5 rounded-xl px-4 py-3 text-sm text-emerald-300 font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
-          {block.code || <span className="text-slate-600 italic">No code yet</span>}
+        <pre className="bg-surface border border-subtle rounded-xl px-4 py-3 text-sm text-emerald-400 font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
+          {block.code || <span className="text-muted italic">No code yet</span>}
         </pre>
       )}
     </div>
@@ -528,28 +530,28 @@ const ImageEditor = ({ block, sectionId, canManage }) => {
             onChange={(e) => { setLocalUrl(e.target.value); setImgError(false); }}
             onBlur={handleSave}
             placeholder="Image URL (https://…)"
-            className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
+            className="w-full bg-surface border border-subtle rounded-xl px-4 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
           />
           <input
             value={localCaption}
             onChange={(e) => setLocalCaption(e.target.value)}
             onBlur={handleSave}
             placeholder="Caption (optional)"
-            className="w-full bg-slate-900/50 border border-white/5 rounded-xl px-4 py-2 text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
+            className="w-full bg-surface border border-subtle rounded-xl px-4 py-2 text-xs text-secondary placeholder-muted focus:outline-none focus:border-accent transition-colors"
           />
         </div>
       )}
 
       {localUrl && !imgError ? (
-        <div className="rounded-xl overflow-hidden border border-white/5">
+        <div className="rounded-xl overflow-hidden border border-subtle">
           <img
             src={localUrl}
             alt={localCaption || block.name}
-            className="w-full max-h-[500px] object-contain bg-slate-950"
+            className="w-full max-h-[500px] object-contain bg-canvas"
             onError={() => setImgError(true)}
           />
           {(localCaption || block.imageCaption) && (
-            <p className="text-xs text-slate-500 text-center py-2 bg-slate-900/50">
+            <p className="text-xs text-muted text-center py-2 bg-surface">
               {localCaption || block.imageCaption}
             </p>
           )}
@@ -558,16 +560,16 @@ const ImageEditor = ({ block, sectionId, canManage }) => {
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
           <IoCloseOutline size={24} className="mx-auto text-red-400 mb-2" />
           <p className="text-sm text-red-400">Failed to load image</p>
-          <p className="text-xs text-slate-500 mt-1 truncate">{localUrl}</p>
+          <p className="text-xs text-muted mt-1 truncate">{localUrl}</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-white/10 bg-slate-900/30 p-8 text-center">
+        <div className="rounded-xl border border-dashed border-subtle bg-surface p-8 text-center">
           <span className="text-2xl mb-2 block">🖼️</span>
-          <p className="text-sm text-slate-500">{canManage ? 'Enter an image URL above' : 'No image added yet'}</p>
+          <p className="text-sm text-muted">{canManage ? 'Enter an image URL above' : 'No image added yet'}</p>
         </div>
       )}
 
-      {saving && <span className="text-xs text-indigo-400 animate-pulse">Saving…</span>}
+      {saving && <span className="text-xs text-accent animate-pulse">Saving…</span>}
     </div>
   );
 };
@@ -595,45 +597,45 @@ const SubSectionBlock = ({ block, sectionId, canManage }) => {
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-      className="glass-card overflow-hidden">
+      className="glass-card overflow-hidden border border-subtle">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-subtle">
         <span className="text-base select-none">{cfg.icon}</span>
 
         {renaming ? (
           <input autoFocus value={nameInput} onChange={(e) => setNameInput(e.target.value)}
             onBlur={handleRename}
             onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') { setNameInput(block.name); setRenaming(false); } }}
-            className="flex-1 bg-transparent text-white text-sm font-medium focus:outline-none border-b border-indigo-500/50 pb-0.5" />
+            className="flex-1 bg-transparent text-primary text-sm font-medium focus:outline-none border-b border-accent pb-0.5" />
         ) : (
-          <button onClick={() => setCollapsed((c) => !c)} className="flex-1 flex items-center gap-2 text-left min-w-0">
-            <span className="text-sm font-semibold text-white truncate">{block.name}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700/60 text-slate-400 flex-shrink-0">{cfg.label}</span>
+          <button onClick={() => setCollapsed((c) => !c)} className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer">
+            <span className="text-sm font-semibold text-primary truncate">{block.name}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-raised text-secondary flex-shrink-0">{cfg.label}</span>
           </button>
         )}
 
         <div className="flex items-center gap-1 flex-shrink-0">
           {canManage && !renaming && !confirmDelete && (
             <button onClick={() => setRenaming(true)}
-              className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-colors" title="Rename">
+              className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer" title="Rename">
               <IoCreateOutline size={14} />
             </button>
           )}
           {canManage && !confirmDelete && (
             <button onClick={() => setConfirmDelete(true)}
-              className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete">
+              className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer" title="Delete">
               <IoTrashOutline size={14} />
             </button>
           )}
           {confirmDelete && (
             <div className="flex items-center gap-2 px-1">
-              <span className="text-xs text-red-400">Delete?</span>
-              <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-300 font-medium px-2 py-0.5 rounded bg-red-500/10">Yes</button>
-              <button onClick={() => setConfirmDelete(false)} className="text-xs text-slate-500 hover:text-slate-300 px-2 py-0.5 rounded bg-white/5">No</button>
+              <span className="text-xs text-red-500">Delete?</span>
+              <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-400 font-medium px-2 py-0.5 rounded bg-red-500/10 cursor-pointer">Yes</button>
+              <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted hover:text-primary px-2 py-0.5 rounded bg-surface cursor-pointer">No</button>
             </div>
           )}
           <button onClick={() => setCollapsed((c) => !c)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-400 hover:bg-white/5 transition-colors">
+            className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer">
             {collapsed ? <IoChevronForward size={14} /> : <IoChevronDown size={14} />}
           </button>
         </div>

@@ -126,7 +126,7 @@ const BookForm = ({ book, onClose }) => {
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Title *</label>
+          <label className="block text-sm font-medium text-secondary mb-1.5">Title *</label>
           <input
             type="text"
             value={formData.title}
@@ -136,7 +136,7 @@ const BookForm = ({ book, onClose }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Author *</label>
+          <label className="block text-sm font-medium text-secondary mb-1.5">Author *</label>
           <input
             type="text"
             value={formData.author}
@@ -149,7 +149,7 @@ const BookForm = ({ book, onClose }) => {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Type *</label>
+          <label className="block text-sm font-medium text-secondary mb-1.5">Type *</label>
           <select
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
@@ -163,7 +163,7 @@ const BookForm = ({ book, onClose }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Description</label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -174,17 +174,17 @@ const BookForm = ({ book, onClose }) => {
 
       {/* PDF-specific fields */}
       {formData.type === 'text' && (
-        <div className="space-y-4 p-4 rounded-xl bg-slate-900/50 border border-white/5">
-          <h4 className="text-sm font-medium text-indigo-400">PDF Settings</h4>
+        <div className="space-y-4 p-4 rounded-xl bg-surface border border-subtle">
+          <h4 className="text-sm font-medium text-accent">PDF Settings</h4>
           <div>
-            <label className="block text-sm text-slate-300 mb-1.5">
+            <label className="block text-sm text-secondary mb-1.5">
               Upload PDF File
             </label>
             <input
               type="file"
               accept="application/pdf"
               onChange={(e) => setPdfFile(e.target.files[0])}
-              className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer"
+              className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:text-accent file:text-sm file:cursor-pointer"
             />
             {pdfFile && (
               <p className="text-xs text-emerald-400 mt-1.5">
@@ -192,13 +192,13 @@ const BookForm = ({ book, onClose }) => {
               </p>
             )}
             {!pdfFile && book?.embedLink && (
-              <p className="text-xs text-slate-500 mt-1.5">
+              <p className="text-xs text-muted mt-1.5">
                 Current PDF already uploaded. Upload a new file to replace it.
               </p>
             )}
           </div>
           <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Total Pages</label>
+            <label className="block text-sm text-secondary mb-1.5">Total Pages</label>
             <input
               type="number"
               value={formData.totalPages}
@@ -212,9 +212,9 @@ const BookForm = ({ book, onClose }) => {
 
       {/* Audio-specific fields */}
       {formData.type === 'audio' && (
-        <div className="space-y-4 p-4 rounded-xl bg-slate-900/50 border border-white/5">
+        <div className="space-y-4 p-4 rounded-xl bg-surface border border-subtle">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-indigo-400 flex items-center gap-2">
+            <h4 className="text-sm font-medium text-accent flex items-center gap-2">
               <IoMusicalNote size={15} /> Audio Tracks
             </h4>
             <button
@@ -237,12 +237,12 @@ const BookForm = ({ book, onClose }) => {
           {/* Existing tracks (edit mode) */}
           {book?.audioFiles?.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs text-slate-500 mb-2">Existing tracks — remove them from the player view:</p>
+              <p className="text-xs text-muted mb-2">Existing tracks — remove them from the player view:</p>
               {book.audioFiles.map((af, i) => (
-                <div key={af._id || i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/40 text-slate-400 text-xs">
-                  <IoMusicalNote size={13} className="text-indigo-400 flex-shrink-0" />
+                <div key={af._id || i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-raised text-secondary text-xs border border-subtle">
+                  <IoMusicalNote size={13} className="text-accent flex-shrink-0" />
                   <span className="flex-1 truncate">{af.title || af.originalName || `Track ${i + 1}`}</span>
-                  {af.size > 0 && <span className="text-slate-600">{fmtSize(af.size)}</span>}
+                  {af.size > 0 && <span className="text-muted">{fmtSize(af.size)}</span>}
                 </div>
               ))}
             </div>
@@ -251,10 +251,10 @@ const BookForm = ({ book, onClose }) => {
           {/* Pending new uploads */}
           {pendingAudio.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-slate-500">New tracks to upload:</p>
+              <p className="text-xs text-muted">New tracks to upload:</p>
               {pendingAudio.map((entry, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50">
-                  <IoMusicalNote size={14} className="text-indigo-400 flex-shrink-0" />
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-surface-raised border border-subtle">
+                  <IoMusicalNote size={14} className="text-accent flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <input
                       type="text"
@@ -263,14 +263,14 @@ const BookForm = ({ book, onClose }) => {
                       placeholder="Track title"
                       className="input-dark text-sm w-full"
                     />
-                    <p className="text-xs text-slate-500 mt-1 truncate">
+                    <p className="text-xs text-muted mt-1 truncate">
                       {entry.file.name} · {fmtSize(entry.file.size)}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => removePendingAudio(i)}
-                    className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0"
+                    className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
                   >
                     <IoTrash size={14} />
                   </button>
@@ -281,12 +281,12 @@ const BookForm = ({ book, onClose }) => {
 
           {pendingAudio.length === 0 && !book?.audioFiles?.length && (
             <div
-              className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-500/30 transition-colors"
+              className="border-2 border-dashed border-subtle rounded-xl p-8 text-center cursor-pointer hover:border-strong transition-colors"
               onClick={() => audioInputRef.current?.click()}
             >
-              <IoMusicalNote className="mx-auto text-slate-600 mb-2" size={28} />
-              <p className="text-sm text-slate-400">Click to select audio files</p>
-              <p className="text-xs text-slate-600 mt-1">MP3, WAV, OGG, AAC, FLAC, M4A</p>
+              <IoMusicalNote className="mx-auto text-muted mb-2" size={28} />
+              <p className="text-sm text-secondary">Click to select audio files</p>
+              <p className="text-xs text-muted mt-1">MP3, WAV, OGG, AAC, FLAC, M4A</p>
             </div>
           )}
         </div>
@@ -294,16 +294,16 @@ const BookForm = ({ book, onClose }) => {
 
       {/* Video-specific fields */}
       {formData.type === 'video' && (
-        <div className="space-y-4 p-4 rounded-xl bg-slate-900/50 border border-white/5">
+        <div className="space-y-4 p-4 rounded-xl bg-surface border border-subtle">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-indigo-400">Video Episodes</h4>
+            <h4 className="text-sm font-medium text-accent">Video Episodes</h4>
             <button type="button" onClick={addVideo} className="btn-secondary text-xs py-1.5 px-3">
               <IoAdd size={14} /> Add Video
             </button>
           </div>
           {videos.map((video, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50">
-              <span className="text-xs text-slate-500 mt-2.5 w-5 flex-shrink-0">{i + 1}.</span>
+            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-surface-raised border border-subtle">
+              <span className="text-xs text-muted mt-2.5 w-5 flex-shrink-0">{i + 1}.</span>
               <div className="flex-1 grid grid-cols-3 gap-3">
                 <input
                   type="text"
@@ -330,13 +330,13 @@ const BookForm = ({ book, onClose }) => {
               <button
                 type="button"
                 onClick={() => removeVideo(i)}
-                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all mt-0.5"
+                className="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all mt-0.5 cursor-pointer"
               >
                 <IoTrash size={14} />
               </button>
             </div>
           ))}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             To get the Drive File ID: right-click video in Google Drive → Share → Copy link → extract the ID between /d/ and /view
           </p>
         </div>
@@ -344,16 +344,16 @@ const BookForm = ({ book, onClose }) => {
 
       {/* Cover Image */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Cover Image (optional)</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Cover Image (optional)</label>
         <div className="space-y-3">
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setCoverImageFile(e.target.files[0])}
-            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer w-full"
+            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:text-accent file:text-sm file:cursor-pointer w-full"
           />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">OR URL:</span>
+            <span className="text-xs text-muted font-medium">OR URL:</span>
             <input
               type="text"
               placeholder="https://example.com/image.jpg"
@@ -370,7 +370,7 @@ const BookForm = ({ book, onClose }) => {
           </p>
         )}
         {!coverImageFile && book?.coverImageId && (
-          <p className="text-xs text-slate-500 mt-1.5">
+          <p className="text-xs text-muted mt-1.5">
             Cover image already uploaded. Upload a new file to replace it.
           </p>
         )}
@@ -378,7 +378,7 @@ const BookForm = ({ book, onClose }) => {
 
       {/* Drive Link (general) */}
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Drive Link (optional)</label>
+        <label className="block text-sm font-medium text-secondary mb-1.5">Drive Link (optional)</label>
         <input
           type="url"
           value={formData.driveLink}
@@ -389,7 +389,7 @@ const BookForm = ({ book, onClose }) => {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-subtle">
         <button type="button" onClick={onClose} className="btn-secondary">
           Cancel
         </button>

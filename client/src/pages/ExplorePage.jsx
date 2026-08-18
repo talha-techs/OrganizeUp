@@ -309,9 +309,9 @@ const ExplorePage = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
-        className="glass-card group hover:border-white/10 transition-all duration-300 flex flex-col h-full overflow-hidden"
+        className="glass-card group hover:border-strong transition-all duration-300 flex flex-col h-full overflow-hidden border border-subtle"
       >
-        <div className="relative h-40 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden flex-shrink-0">
+        <div className="relative h-40 bg-surface-raised overflow-hidden flex-shrink-0">
           {item.coverImage || item.bannerImage ? (
             <img
               src={item.coverImage || item.bannerImage}
@@ -321,13 +321,13 @@ const ExplorePage = () => {
           ) : (
             <div className="flex items-center justify-center h-full">
               {contentType === 'book' ? (
-                <IoBookOutline className="text-slate-600" size={40} />
+                <IoBookOutline className="text-muted" size={40} />
               ) : contentType === 'course' ? (
-                <IoSchoolOutline className="text-slate-600" size={40} />
+                <IoSchoolOutline className="text-muted" size={40} />
               ) : contentType === 'section' ? (
-                <IoFolderOutline className="text-slate-600" size={40} />
+                <IoFolderOutline className="text-muted" size={40} />
               ) : (
-                <IoConstructOutline className="text-slate-600" size={40} />
+                <IoConstructOutline className="text-muted" size={40} />
               )}
             </div>
           )}
@@ -346,7 +346,7 @@ const ExplorePage = () => {
 
         <div className="p-4 flex flex-col flex-1">
           <h3
-            className="text-sm font-semibold text-white truncate cursor-pointer hover:text-indigo-400 transition-colors"
+            className="text-sm font-semibold text-primary truncate cursor-pointer hover:text-accent transition-colors"
             onClick={() =>
               navigate(`${detailRouteByType[contentType]}/${item._id}`)
             }
@@ -354,10 +354,10 @@ const ExplorePage = () => {
             {item.title}
           </h3>
           {item.author && (
-            <p className="text-xs text-slate-400 mt-0.5 truncate">{item.author}</p>
+            <p className="text-xs text-secondary mt-0.5 truncate">{item.author}</p>
           )}
           {item.description && (
-            <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+            <p className="text-xs text-muted mt-1 line-clamp-2">
               {item.description}
             </p>
           )}
@@ -370,17 +370,17 @@ const ExplorePage = () => {
                 className="w-5 h-5 rounded-full object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center flex-shrink-0">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#ff5722] to-[#f4511e] flex items-center justify-center flex-shrink-0">
                 <span className="text-[9px] font-bold text-white">
                   {item.addedBy?.name?.[0]?.toUpperCase() || '?'}
                 </span>
               </div>
             )}
-            <span className="text-xs text-slate-400 truncate flex-1">
+            <span className="text-xs text-secondary truncate flex-1">
               {item.addedBy?.name || 'Community'}
             </span>
             {item.createdAt && (
-              <span className="text-xs text-slate-600 flex-shrink-0 ml-auto">
+              <span className="text-xs text-muted flex-shrink-0 ml-auto">
                 {new Date(item.createdAt).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
@@ -390,7 +390,7 @@ const ExplorePage = () => {
             )}
           </div>
 
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-subtle">
             <div className="flex items-center gap-1">
               <button
                 onClick={() =>
@@ -403,7 +403,7 @@ const ExplorePage = () => {
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   item.userVote === 1
                     ? 'text-emerald-400 bg-emerald-500/10'
-                    : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/5'
+                    : 'text-muted hover:text-emerald-400 hover:bg-emerald-500/5'
                 }`}
               >
                 <IoArrowUpOutline size={14} />
@@ -414,7 +414,7 @@ const ExplorePage = () => {
                     ? 'text-emerald-400'
                     : (item.score || 0) < 0
                     ? 'text-red-400'
-                    : 'text-slate-500'
+                    : 'text-muted'
                 }`}
               >
                 {item.score || 0}
@@ -430,7 +430,7 @@ const ExplorePage = () => {
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   item.userVote === -1
                     ? 'text-red-400 bg-red-500/10'
-                    : 'text-slate-500 hover:text-red-400 hover:bg-red-500/5'
+                    : 'text-muted hover:text-red-400 hover:bg-red-500/5'
                 }`}
               >
                 <IoArrowDownOutline size={14} />
@@ -439,7 +439,7 @@ const ExplorePage = () => {
 
             <button
               onClick={() => openComments(item, contentType)}
-              className="flex items-center gap-1 text-slate-500 hover:text-indigo-400 transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-muted hover:text-accent transition-colors cursor-pointer"
               title="Open comments"
             >
               <IoChatbubbleOutline size={13} />
@@ -459,7 +459,7 @@ const ExplorePage = () => {
               ) : (
                 <button
                   onClick={() => handleAddToLibrary(contentType, item._id)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-indigo-400 hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-accent hover:bg-accent-subtle transition-colors cursor-pointer"
                   title="Add to my library"
                 >
                   <IoAddCircleOutline size={14} />
@@ -490,8 +490,8 @@ const ExplorePage = () => {
           animate={{ opacity: 1 }}
           className="text-center py-16"
         >
-          <IoSearchOutline className="mx-auto text-slate-700 mb-3" size={40} />
-          <p className="text-slate-400 font-medium">
+          <IoSearchOutline className="mx-auto text-muted mb-3" size={40} />
+          <p className="text-secondary font-medium">
             {search
               ? `No ${typeLabel} match “${search}”`
               : `No public ${typeLabel} yet`}
@@ -499,7 +499,7 @@ const ExplorePage = () => {
           {search && (
             <button
               onClick={handleClearSearch}
-              className="mt-3 text-sm text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+              className="mt-3 text-sm text-accent hover:underline transition-colors cursor-pointer"
             >
               Clear search
             </button>
@@ -510,21 +510,21 @@ const ExplorePage = () => {
 
     return (
       <div className="mb-10">
-        <h2 className="text-lg font-bold text-white font-display mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-primary font-display mb-4 flex items-center gap-2">
           {contentType === 'book' && (
-            <IoBookOutline className="text-indigo-400" size={20} />
+            <IoBookOutline className="text-accent" size={20} />
           )}
           {contentType === 'course' && (
-            <IoSchoolOutline className="text-cyan-400" size={20} />
+            <IoSchoolOutline className="text-purple-400" size={20} />
           )}
           {contentType === 'tool' && (
-            <IoConstructOutline className="text-emerald-400" size={20} />
+            <IoConstructOutline className="text-amber-400" size={20} />
           )}
           {contentType === 'section' && (
-            <IoFolderOutline className="text-purple-400" size={20} />
+            <IoFolderOutline className="text-emerald-400" size={20} />
           )}
           {title}
-          <span className="text-xs text-slate-500 font-normal ml-1">
+          <span className="text-xs text-muted font-normal ml-1">
             (
             {contentType === 'book'
               ? totals.books
@@ -566,8 +566,8 @@ const ExplorePage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-3xl font-bold text-white font-display">Explore</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-3xl font-bold text-primary font-display">Explore</h1>
+        <p className="text-secondary text-sm mt-1">
           Discover public books, modern bestsellers, classic audiobooks, courses, and sections
         </p>
       </motion.div>
@@ -576,7 +576,7 @@ const ExplorePage = () => {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <form onSubmit={(e) => e.preventDefault()} className="flex-1 relative">
           <IoSearchOutline
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted"
             size={18}
           />
           <input
@@ -590,13 +590,13 @@ const ExplorePage = () => {
                 ? 'Search 18,000+ LibriVox classic audiobooks by title or author…'
                 : 'Search public content…'
             }
-            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-800/50 border border-white/5 text-white text-sm placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-colors"
+            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-surface border border-subtle text-primary text-sm placeholder-muted focus:border-accent focus:outline-none transition-colors"
           />
           {searchInput && (
             <button
               type="button"
               onClick={handleClearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors cursor-pointer"
             >
               <IoCloseCircleOutline size={16} />
             </button>
@@ -610,8 +610,8 @@ const ExplorePage = () => {
               onClick={() => setSortBy('latest')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 sortBy === 'latest'
-                  ? 'bg-indigo-500/15 text-indigo-400'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-accent-subtle text-accent border border-accent/20 font-semibold'
+                  : 'text-secondary hover:text-primary hover:bg-surface-raised'
               }`}
             >
               <IoTimeOutline size={15} /> Latest
@@ -620,8 +620,8 @@ const ExplorePage = () => {
               onClick={() => setSortBy('popular')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 sortBy === 'popular'
-                  ? 'bg-indigo-500/15 text-indigo-400'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-accent-subtle text-accent border border-accent/20 font-semibold'
+                  : 'text-secondary hover:text-primary hover:bg-surface-raised'
               }`}
             >
               <IoTrendingUpOutline size={15} /> Popular
@@ -641,13 +641,13 @@ const ExplorePage = () => {
             }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === tab.key
-                ? 'bg-indigo-500/15 text-indigo-400 shadow-lg shadow-indigo-500/5'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-accent-subtle text-accent border border-accent/30 font-semibold shadow-lg shadow-accent/5'
+                : 'text-secondary hover:text-primary hover:bg-surface-raised'
             }`}
           >
             {tab.icon} {tab.label}
             {tab.count !== undefined && (
-              <span className="text-xs text-slate-500">({tab.count})</span>
+              <span className="text-xs text-muted">({tab.count})</span>
             )}
           </button>
         ))}
@@ -658,7 +658,7 @@ const ExplorePage = () => {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 border-b border-white/5"
+          className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 border-b border-subtle"
         >
           {bookSubTabs.map((subTab) => (
             <button
@@ -667,9 +667,9 @@ const ExplorePage = () => {
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 bookSubTab === subTab.key
                   ? subTab.highlight
-                    ? 'bg-gradient-to-r from-red-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-indigo-500/25'
-                    : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                  : 'bg-slate-800/40 text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-gradient-to-r from-[#ff5722] to-[#f4511e] text-white shadow-md shadow-accent/25'
+                    : 'bg-accent-subtle text-accent border border-accent/30'
+                  : 'bg-surface text-secondary hover:text-primary hover:bg-surface-raised border border-subtle'
               }`}
             >
               {subTab.icon} {subTab.label}
@@ -701,13 +701,13 @@ const ExplorePage = () => {
                     className="text-center py-20"
                   >
                     <IoSearchOutline
-                      className="mx-auto text-slate-600 mb-4"
+                      className="mx-auto text-muted mb-4"
                       size={48}
                     />
-                    <h3 className="text-lg font-medium text-slate-400 mb-2">
+                    <h3 className="text-lg font-medium text-secondary mb-2">
                       No public content yet
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted">
                       Be the first to share content with the community!
                     </p>
                   </motion.div>
@@ -722,14 +722,14 @@ const ExplorePage = () => {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
                       <IoSparklesOutline className="text-amber-400" size={22} />
                       Modern Audiobooks & Summaries
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
                         <IoLogoYoutube size={12} /> Bestsellers
                       </span>
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-secondary mt-1">
                       Explore and stream popular modern audiobooks like Atomic Habits, The 7 Habits, The Psychology of Money, and Rich Dad Poor Dad.
                     </p>
                   </div>
@@ -743,8 +743,8 @@ const ExplorePage = () => {
                       onClick={() => handleTopicChange(topic)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                         selectedTopic === topic
-                          ? 'bg-gradient-to-r from-red-600 to-indigo-600 text-white shadow-sm shadow-red-500/30 font-semibold'
-                          : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800 border border-white/5'
+                          ? 'bg-gradient-to-r from-[#ff5722] to-[#f4511e] text-white shadow-sm shadow-accent/30 font-semibold'
+                          : 'bg-surface text-secondary hover:text-primary hover:bg-surface-raised border border-subtle'
                       }`}
                     >
                       {topic}
@@ -762,16 +762,16 @@ const ExplorePage = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center py-20 glass-card"
+                  className="text-center py-20 glass-card border border-subtle"
                 >
                   <IoSparklesOutline
-                    className="mx-auto text-slate-600 mb-3"
+                    className="mx-auto text-muted mb-3"
                     size={48}
                   />
-                  <h3 className="text-lg font-medium text-white mb-1">
+                  <h3 className="text-lg font-medium text-primary mb-1">
                     No modern audiobooks found
                   </h3>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <p className="text-sm text-secondary mb-4">
                     {search
                       ? `No results for “${search}” in ${selectedTopic}`
                       : `Try searching for another bestseller or selecting another topic.`}
@@ -811,14 +811,14 @@ const ExplorePage = () => {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-xl font-bold text-white font-display flex items-center gap-2">
-                      <IoMusicalNotesOutline className="text-indigo-400" size={22} />
+                    <h2 className="text-xl font-bold text-primary font-display flex items-center gap-2">
+                      <IoMusicalNotesOutline className="text-accent" size={22} />
                       Classic Public Domain Audiobooks (LibriVox)
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-accent-subtle text-accent border border-accent/30">
                         18,000+ Classics
                       </span>
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-secondary mt-1">
                       Stream over 18,000 free legal public-domain classic audiobooks (Dumas, Tolstoy, Marcus Aurelius, Sun Tzu, Austen).
                     </p>
                   </div>
@@ -832,8 +832,8 @@ const ExplorePage = () => {
                       onClick={() => handleGenreChange(genre)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                         selectedGenre === genre
-                          ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-500/30 font-semibold'
-                          : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800 border border-white/5'
+                          ? 'bg-accent text-white shadow-sm shadow-accent/30 font-semibold'
+                          : 'bg-surface text-secondary hover:text-primary hover:bg-surface-raised border border-subtle'
                       }`}
                     >
                       {genre}
@@ -851,16 +851,16 @@ const ExplorePage = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center py-20 glass-card"
+                  className="text-center py-20 glass-card border border-subtle"
                 >
                   <IoMusicalNotesOutline
-                    className="mx-auto text-slate-600 mb-3"
+                    className="mx-auto text-muted mb-3"
                     size={48}
                   />
-                  <h3 className="text-lg font-medium text-white mb-1">
+                  <h3 className="text-lg font-medium text-primary mb-1">
                     No audiobooks found
                   </h3>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <p className="text-sm text-secondary mb-4">
                     {search
                       ? `No audiobooks matching “${search}” in ${selectedGenre}`
                       : `No audiobooks available in genre ${selectedGenre}`}
@@ -893,10 +893,10 @@ const ExplorePage = () => {
                   </div>
 
                   {/* Pagination Layout (Page 1, 2, 3...) */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-4 border-t border-white/5">
-                    <p className="text-xs text-slate-500 font-medium">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-4 border-t border-subtle">
+                    <p className="text-xs text-muted font-medium">
                       Showing 20 audiobooks · Page{' '}
-                      <span className="text-indigo-400 font-semibold">{audioPage}</span>
+                      <span className="text-accent font-semibold">{audioPage}</span>
                     </p>
 
                     <div className="flex items-center gap-1.5">
@@ -904,7 +904,7 @@ const ExplorePage = () => {
                       <button
                         onClick={() => handleAudioPageChange(Math.max(1, audioPage - 1))}
                         disabled={audioPage === 1}
-                        className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-surface text-secondary hover:text-primary hover:bg-surface-raised border border-subtle disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                       >
                         <IoChevronBack size={14} /> Previous
                       </button>
@@ -925,8 +925,8 @@ const ExplorePage = () => {
                             onClick={() => handleAudioPageChange(p)}
                             className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                               audioPage === p
-                                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                                : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-700'
+                                ? 'bg-accent text-white shadow-lg shadow-accent/25'
+                                : 'bg-surface text-secondary hover:text-primary hover:bg-surface-raised border border-subtle'
                             }`}
                           >
                             {p}
@@ -937,7 +937,7 @@ const ExplorePage = () => {
                       <button
                         onClick={() => handleAudioPageChange(audioPage + 1)}
                         disabled={!audioHasMore}
-                        className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-surface text-secondary hover:text-primary hover:bg-surface-raised border border-subtle disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                       >
                         Next <IoChevronForward size={14} />
                       </button>
@@ -959,23 +959,23 @@ const ExplorePage = () => {
                   animate={{ opacity: 1 }}
                   className="text-center py-20"
                 >
-                  <IoBookOutline className="mx-auto text-slate-600 mb-4" size={48} />
-                  <h3 className="text-lg font-medium text-slate-400 mb-2">
+                  <IoBookOutline className="mx-auto text-muted mb-4" size={48} />
+                  <h3 className="text-lg font-medium text-secondary mb-2">
                     No books in this category
                   </h3>
-                  <p className="text-sm text-slate-500 mb-4">
+                  <p className="text-sm text-muted mb-4">
                     Try exploring our modern bestsellers or classic audiobooks.
                   </p>
                   <div className="flex items-center justify-center gap-3">
                     <button
                       onClick={() => setBookSubTab('modern')}
-                      className="btn-primary text-xs flex items-center gap-1.5"
+                      className="btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                     >
                       <IoSparklesOutline size={14} /> Modern Bestsellers
                     </button>
                     <button
                       onClick={() => setBookSubTab('audio')}
-                      className="btn-secondary text-xs flex items-center gap-1.5"
+                      className="btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
                     >
                       <IoMusicalNotesOutline size={14} /> Classic Audiobooks
                     </button>

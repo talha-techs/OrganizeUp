@@ -24,7 +24,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 
 /* ── constants ─────────────────────────────────── */
 const TYPE_META = {
-  book:     { label: 'Book',     icon: IoBookOutline,    color: 'text-cyan-400',   bg: 'bg-cyan-500/10',   route: (id) => `/books/${id}` },
+  book:     { label: 'Book',     icon: IoBookOutline,    color: 'text-accent',     bg: 'bg-accent-subtle', route: (id) => `/books/${id}` },
   course:   { label: 'Course',   icon: IoSchoolOutline,  color: 'text-purple-400', bg: 'bg-purple-500/10', route: (id) => `/courses/${id}` },
   tool:     { label: 'Trick',    icon: IoBulbOutline,    color: 'text-amber-400',  bg: 'bg-amber-500/10',  route: (id) => `/tools/${id}` },
   section:  { label: 'Section',  icon: IoFolderOutline,  color: 'text-emerald-400',bg: 'bg-emerald-500/10',route: (id) => `/sections/${id}` },
@@ -62,12 +62,12 @@ const SavedItem = ({ item, onRemove }) => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className="glass-card overflow-hidden"
+      className="glass-card overflow-hidden border border-subtle"
     >
       {/* Top row */}
       <div className="flex items-start gap-4 p-4">
         {/* Thumbnail */}
-        <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center">
+        <div className="w-14 h-14 rounded-xl overflow-hidden bg-surface-raised flex-shrink-0 flex items-center justify-center border border-subtle">
           {thumb ? (
             <img src={thumb} alt={content.title || content.name} className="w-full h-full object-cover" />
           ) : (
@@ -79,19 +79,19 @@ const SavedItem = ({ item, onRemove }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-white font-semibold truncate">{content.title || content.name || 'Unknown'}</p>
+              <p className="text-primary font-semibold truncate">{content.title || content.name || 'Unknown'}</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${meta.bg} ${meta.color}`}>
                   {meta.label}
                 </span>
                 {content.addedBy?.name && (
-                  <span className="text-xs text-slate-500">by {content.addedBy.name}</span>
+                  <span className="text-xs text-muted">by {content.addedBy.name}</span>
                 )}
                 {content.category?.name && (
-                  <span className="text-xs text-slate-600">· {content.category.name}</span>
+                  <span className="text-xs text-muted">· {content.category.name}</span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-600 mt-1">
+              <p className="text-[11px] text-muted mt-1">
                 Saved {new Date(item.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
@@ -100,15 +100,15 @@ const SavedItem = ({ item, onRemove }) => {
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
                 onClick={() => navigate(meta.route(item.contentId))}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-colors"
+                className="btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
               >
                 View <IoArrowForwardOutline size={12} />
               </button>
 
               <button
                 onClick={() => setEditingNotes(!editingNotes)}
-                className={`p-1.5 rounded-lg text-xs transition-colors ${
-                  editingNotes ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                  editingNotes ? 'bg-surface-raised text-primary' : 'text-secondary hover:text-primary hover:bg-surface-raised'
                 }`}
                 title="Notes"
               >
@@ -118,25 +118,25 @@ const SavedItem = ({ item, onRemove }) => {
               {!confirming ? (
                 <button
                   onClick={() => setConfirming(true)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                   title="Remove from library"
                 >
                   <IoTrashOutline size={14} />
                 </button>
               ) : (
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                    <IoWarningOutline size={11} className="text-orange-400" />
+                  <span className="text-[10px] text-muted flex items-center gap-0.5">
+                    <IoWarningOutline size={11} className="text-amber-400" />
                   </span>
                   <button
                     onClick={() => { onRemove(); setConfirming(false); }}
-                    className="text-[10px] px-2 py-1 rounded-lg bg-red-500 text-white hover:bg-red-400"
+                    className="text-[10px] px-2 py-1 rounded-lg bg-red-500 text-white hover:bg-red-400 cursor-pointer"
                   >
                     Yes
                   </button>
                   <button
                     onClick={() => setConfirming(false)}
-                    className="text-[10px] px-2 py-1 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    className="text-[10px] px-2 py-1 rounded-lg bg-surface text-secondary hover:text-primary border border-subtle cursor-pointer"
                   >
                     No
                   </button>
@@ -155,10 +155,10 @@ const SavedItem = ({ item, onRemove }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="overflow-hidden border-t border-white/5"
+            className="overflow-hidden border-t border-subtle"
           >
             <div className="px-4 pb-4 pt-3">
-              <p className="text-xs text-slate-400 mb-2 flex items-center gap-1">
+              <p className="text-xs text-secondary mb-2 flex items-center gap-1">
                 <IoCreateOutline size={12} /> Personal notes (only you can see this)
               </p>
               <textarea
@@ -166,19 +166,19 @@ const SavedItem = ({ item, onRemove }) => {
                 onChange={(e) => setNotesDraft(e.target.value)}
                 rows={3}
                 placeholder="Add your private notes about this resource…"
-                className="w-full bg-slate-800/60 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 resize-none"
+                className="w-full bg-surface border border-subtle rounded-xl px-3 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent resize-none"
               />
               <div className="flex items-center justify-end gap-2 mt-2">
                 <button
                   onClick={() => { setNotesDraft(item.personalNotes || ''); setEditingNotes(false); }}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-surface text-secondary hover:text-primary border border-subtle transition-colors cursor-pointer"
                 >
                   <IoCloseOutline size={13} /> Cancel
                 </button>
                 <button
                   onClick={handleSaveNotes}
                   disabled={savingNotes}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-indigo-500 text-white hover:bg-indigo-400 disabled:opacity-50 transition-colors"
+                  className="btn-primary flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   <IoCheckmarkOutline size={13} /> {savingNotes ? 'Saving…' : 'Save'}
                 </button>
@@ -202,8 +202,8 @@ const TypeSection = ({ type, items, onRemove }) => {
         <div className={`w-7 h-7 rounded-lg ${meta.bg} flex items-center justify-center`}>
           <Icon size={14} className={meta.color} />
         </div>
-        <h2 className="text-sm font-semibold text-white">{meta.label}s</h2>
-        <span className="text-xs text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full">{items.length}</span>
+        <h2 className="text-sm font-semibold text-primary">{meta.label}s</h2>
+        <span className="text-xs text-muted bg-surface-raised px-2 py-0.5 rounded-full">{items.length}</span>
       </div>
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
@@ -250,12 +250,12 @@ const SavedLibraryPage = () => {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 flex items-center justify-center">
-            <IoBookmarkOutline size={20} className="text-indigo-400" />
+          <div className="w-10 h-10 rounded-2xl bg-accent-subtle flex items-center justify-center border border-accent/20">
+            <IoBookmarkOutline size={20} className="text-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white font-display">Saved Library</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
+            <h1 className="text-2xl font-bold text-primary font-display">Saved Library</h1>
+            <p className="text-sm text-secondary mt-0.5">
               {saved.length} saved resource{saved.length !== 1 ? 's' : ''}
               {' · '}View, take notes, or remove items you've saved from Explore.
             </p>
@@ -265,11 +265,11 @@ const SavedLibraryPage = () => {
         {isLoading ? (
           <LoadingSpinner text="Loading your library…" />
         ) : saved.length === 0 ? (
-          <div className="text-center py-24 glass-card">
-            <IoBookmarkOutline className="mx-auto text-slate-700 mb-4" size={52} />
-            <h3 className="text-lg font-medium text-slate-400 mb-2">Nothing saved yet</h3>
-            <p className="text-sm text-slate-500">
-              Browse <span className="text-indigo-400 font-medium">Explore</span> and save public resources to build your library.
+          <div className="text-center py-24 glass-card border border-subtle">
+            <IoBookmarkOutline className="mx-auto text-muted mb-4" size={52} />
+            <h3 className="text-lg font-medium text-secondary mb-2">Nothing saved yet</h3>
+            <p className="text-sm text-muted">
+              Browse <span className="text-accent font-medium">Explore</span> and save public resources to build your library.
             </p>
           </div>
         ) : (

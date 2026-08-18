@@ -252,7 +252,7 @@ const BookDetailPage = () => {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         onClick={() => navigate('/books')}
-        className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors cursor-pointer"
+        className="flex items-center gap-2 text-secondary hover:text-primary mb-6 transition-colors cursor-pointer"
       >
         <IoArrowBack size={18} /> Back to Books
       </motion.button>
@@ -263,10 +263,10 @@ const BookDetailPage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-white font-display">{currentBook.title}</h1>
-        <p className="text-indigo-400 mt-1">{currentBook.author}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary font-display">{currentBook.title}</h1>
+        <p className="text-accent mt-1">{currentBook.author}</p>
         {currentBook.description && (
-          <p className="text-slate-400 text-sm mt-3 max-w-2xl">{currentBook.description}</p>
+          <p className="text-secondary text-sm mt-3 max-w-2xl">{currentBook.description}</p>
         )}
       </motion.div>
 
@@ -275,7 +275,7 @@ const BookDetailPage = () => {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Video Player */}
           <div className="lg:col-span-2">
-            <div className="glass-card overflow-hidden">
+            <div className="glass-card overflow-hidden border border-subtle">
               {selectedVideo !== null && currentBook.videos?.[selectedVideo] ? (
                 <>
                   <div className="aspect-video bg-black rounded-t-2xl overflow-hidden">
@@ -317,10 +317,10 @@ const BookDetailPage = () => {
                   {/* Progress bar under video */}
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-medium text-white">
+                      <h3 className="text-sm font-medium text-primary">
                         {currentBook.videos[selectedVideo]?.title || `Video ${selectedVideo + 1}`}
                       </h3>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-muted">
                         {currentBook.videos[selectedVideo]?.duration || ''}
                       </span>
                     </div>
@@ -331,7 +331,7 @@ const BookDetailPage = () => {
                     <div className="flex gap-3 mt-3">
                       <button
                         onClick={() => handleVideoEnd(selectedVideo)}
-                        className="btn-primary text-xs py-2 px-4"
+                        className="btn-primary text-xs py-2 px-4 cursor-pointer"
                       >
                         <IoCheckmarkCircle size={14} /> Mark Complete
                       </button>
@@ -339,10 +339,10 @@ const BookDetailPage = () => {
                   </div>
                 </>
               ) : (
-                <div className="aspect-video flex items-center justify-center bg-slate-900/50 rounded-t-2xl">
+                <div className="aspect-video flex items-center justify-center bg-surface-raised rounded-t-2xl">
                   <div className="text-center">
-                    <IoPlayCircle className="text-indigo-500/30 mx-auto mb-3" size={64} />
-                    <p className="text-slate-400 text-sm">Select a video to start watching</p>
+                    <IoPlayCircle className="text-accent/30 mx-auto mb-3" size={64} />
+                    <p className="text-secondary text-sm">Select a video to start watching</p>
                   </div>
                 </div>
               )}
@@ -351,8 +351,8 @@ const BookDetailPage = () => {
 
           {/* Video List */}
           <div className="lg:col-span-1">
-            <div className="glass-card p-4">
-              <h3 className="text-sm font-semibold text-white mb-3 font-display">
+            <div className="glass-card p-4 border border-subtle">
+              <h3 className="text-sm font-semibold text-primary mb-3 font-display">
                 Videos ({currentBook.videos?.length || 0})
               </h3>
               <div className="space-y-1 max-h-[600px] overflow-y-auto">
@@ -363,27 +363,27 @@ const BookDetailPage = () => {
                     <button
                       key={i}
                       onClick={() => setSelectedVideo(i)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-indigo-500/15 border border-indigo-500/20'
-                          : 'hover:bg-white/5 border border-transparent'
+                          ? 'bg-accent-subtle border border-accent/20'
+                          : 'hover:bg-surface-raised border border-transparent'
                       }`}
                     >
                       <span className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
                         progress?.completed
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : isActive
-                          ? 'bg-indigo-500/20 text-indigo-400'
-                          : 'bg-slate-700/50 text-slate-400'
+                          ? 'bg-accent-subtle text-accent'
+                          : 'bg-surface text-muted'
                       }`}>
                         {progress?.completed ? '✓' : i + 1}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm truncate ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                        <p className={`text-sm truncate ${isActive ? 'text-primary font-semibold' : 'text-secondary'}`}>
                           {video.title || `Video ${i + 1}`}
                         </p>
                         {video.duration && (
-                          <p className="text-xs text-slate-500">{video.duration}</p>
+                          <p className="text-xs text-muted">{video.duration}</p>
                         )}
                         {progress && !progress.completed && (
                           <ProgressBar progress={progress.progress} className="mt-1.5" />
@@ -400,9 +400,9 @@ const BookDetailPage = () => {
 
       {/* Text Book (PDF) View */}
       {isTextBook && (
-        <div className="glass-card overflow-hidden">
+        <div className="glass-card overflow-hidden border border-subtle">
           {/* Reading progress bar + page tracking */}
-          <div className="p-4 border-b border-white/5">
+          <div className="p-4 border-b border-subtle">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               {/* Progress bar */}
               <div className="flex-1 w-full">
@@ -417,29 +417,29 @@ const BookDetailPage = () => {
 
               {/* Page tracking inputs */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <IoBookOutline className="text-indigo-400" size={16} />
-                <span className="text-xs text-slate-400">Page</span>
+                <IoBookOutline className="text-accent" size={16} />
+                <span className="text-xs text-secondary">Page</span>
                 <input
                   type="number"
                   min="1"
                   max={totalPages || 99999}
                   value={currentPage}
                   onChange={(e) => setCurrentPage(parseInt(e.target.value) || 1)}
-                  className="w-16 px-2 py-1.5 rounded-lg bg-slate-800 border border-white/10 text-white text-sm text-center focus:border-indigo-500 focus:outline-none transition-colors"
+                  className="w-16 px-2 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-sm text-center focus:border-accent focus:outline-none transition-colors"
                   placeholder="#"
                 />
-                <span className="text-slate-500 text-sm">/</span>
+                <span className="text-muted text-sm">/</span>
                 <input
                   type="number"
                   min="1"
                   value={totalPages}
                   onChange={(e) => setTotalPages(parseInt(e.target.value) || 0)}
-                  className="w-16 px-2 py-1.5 rounded-lg bg-slate-800 border border-white/10 text-white text-sm text-center focus:border-indigo-500 focus:outline-none transition-colors"
+                  className="w-16 px-2 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-sm text-center focus:border-accent focus:outline-none transition-colors"
                   placeholder="Total"
                 />
                 <button
                   onClick={handleSaveReadingProgress}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 text-sm font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle text-accent hover:bg-accent/20 text-sm font-medium transition-colors cursor-pointer"
                   title="Save reading progress"
                 >
                   <IoSaveOutline size={14} />
@@ -453,10 +453,10 @@ const BookDetailPage = () => {
             <div className="relative w-full" style={{ height: '85vh' }}>
               {/* Loading overlay */}
               {pdfLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-10">
-                  <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
-                  <p className="text-slate-300 text-sm font-medium">Loading PDF...</p>
-                  <p className="text-slate-500 text-xs mt-1">This may take a moment for large files</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-raised/90 z-10">
+                  <div className="w-12 h-12 border-4 border-accent/30 border-t-accent rounded-full animate-spin mb-4" />
+                  <p className="text-primary text-sm font-medium">Loading PDF...</p>
+                  <p className="text-muted text-xs mt-1">This may take a moment for large files</p>
                 </div>
               )}
               <iframe
@@ -470,7 +470,7 @@ const BookDetailPage = () => {
             </div>
           ) : (
             <div className="flex items-center justify-center py-20">
-              <p className="text-slate-400">No PDF file uploaded for this book.</p>
+              <p className="text-muted">No PDF file uploaded for this book.</p>
             </div>
           )}
         </div>
@@ -490,11 +490,11 @@ const BookDetailPage = () => {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Player */}
             <div className="lg:col-span-2">
-              <div className="glass-card overflow-hidden">
+              <div className="glass-card overflow-hidden border border-subtle">
                 {currentBook.audioFiles?.length > 0 ? (
                   <>
                     {/* Waveform + Track info */}
-                    <div className="p-6 bg-gradient-to-br from-slate-900 to-indigo-950/30 text-center">
+                    <div className="p-6 bg-surface-raised text-center border-b border-subtle">
                       {/* Cover art or waveform */}
                       <div className="flex items-end justify-center gap-[3px] h-20 mb-5">
                         {BAR_HEIGHTS.map((h, i) => (
@@ -509,18 +509,18 @@ const BookDetailPage = () => {
                                 : 'none',
                             }}
                             className={`w-1.5 rounded-full flex-shrink-0 transition-colors duration-300 ${
-                              isPlaying ? 'bg-indigo-400' : 'bg-slate-600'
+                              isPlaying ? 'bg-accent' : 'bg-muted'
                             }`}
                           />
                         ))}
                       </div>
-                      <h3 className="text-white font-semibold text-lg truncate">
+                      <h3 className="text-primary font-semibold text-lg truncate">
                         {currentBook.audioFiles[currentTrackIdx]?.title ||
                           currentBook.audioFiles[currentTrackIdx]?.originalName ||
                           `Track ${currentTrackIdx + 1}`}
                       </h3>
-                      <p className="text-indigo-400 text-sm mt-1">{currentBook.author}</p>
-                      <p className="text-slate-500 text-xs mt-1">
+                      <p className="text-accent text-sm mt-1">{currentBook.author}</p>
+                      <p className="text-muted text-xs mt-1">
                         Track {currentTrackIdx + 1} of {currentBook.audioFiles.length}
                       </p>
                     </div>
@@ -531,15 +531,15 @@ const BookDetailPage = () => {
                       <div>
                         <div className="relative h-9 flex items-center cursor-pointer">
                           {/* Track background */}
-                          <div className="absolute inset-x-0 h-2 rounded-full bg-slate-700 pointer-events-none">
+                          <div className="absolute inset-x-0 h-2 rounded-full bg-surface-raised pointer-events-none">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"
+                              className="h-full rounded-full bg-gradient-to-r from-[#ff5722] to-[#f4511e]"
                               style={{ width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%` }}
                             />
                           </div>
                           {/* Scrubber dot */}
                           <div
-                            className="absolute w-4 h-4 rounded-full bg-white shadow-md shadow-indigo-500/40 -translate-x-1/2 pointer-events-none transition-none"
+                            className="absolute w-4 h-4 rounded-full bg-white shadow-md shadow-accent/40 -translate-x-1/2 pointer-events-none transition-none"
                             style={{ left: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%` }}
                           />
                           <input
@@ -552,7 +552,7 @@ const BookDetailPage = () => {
                             className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-2"
                           />
                         </div>
-                        <div className="flex justify-between text-xs text-slate-500 -mt-1">
+                        <div className="flex justify-between text-xs text-muted -mt-1">
                           <span>{fmtTime(currentTime)}</span>
                           <span>{fmtTime(audioDuration)}</span>
                         </div>
@@ -563,14 +563,14 @@ const BookDetailPage = () => {
                         <button
                           onClick={() => playTrack(Math.max(0, currentTrackIdx - 1))}
                           disabled={currentTrackIdx === 0}
-                          className="p-2 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                          className="p-2 text-secondary hover:text-primary disabled:opacity-30 transition-colors cursor-pointer"
                           title="Previous track"
                         >
                           <IoPlaySkipBack size={24} />
                         </button>
                         <button
                           onClick={togglePlay}
-                          className="w-16 h-16 rounded-full bg-indigo-500 hover:bg-indigo-400 active:scale-95 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 transition-all"
+                          className="w-16 h-16 rounded-full bg-accent hover:bg-accent/90 active:scale-95 flex items-center justify-center text-white shadow-lg shadow-accent/25 transition-all cursor-pointer"
                         >
                           {isPlaying
                             ? <IoPauseCircle size={36} />
@@ -579,7 +579,7 @@ const BookDetailPage = () => {
                         <button
                           onClick={() => playTrack(Math.min((currentBook.audioFiles?.length || 1) - 1, currentTrackIdx + 1))}
                           disabled={currentTrackIdx === (currentBook.audioFiles?.length || 1) - 1}
-                          className="p-2 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                          className="p-2 text-secondary hover:text-primary disabled:opacity-30 transition-colors cursor-pointer"
                           title="Next track"
                         >
                           <IoPlaySkipForward size={24} />
@@ -588,11 +588,11 @@ const BookDetailPage = () => {
 
                       {/* Volume */}
                       <div className="flex items-center gap-3">
-                        <IoVolumeMediumOutline className="text-slate-400 flex-shrink-0" size={18} />
+                        <IoVolumeMediumOutline className="text-muted flex-shrink-0" size={18} />
                         <div className="relative flex-1 h-7 flex items-center">
-                          <div className="absolute inset-x-0 h-1.5 rounded-full bg-slate-700 pointer-events-none">
+                          <div className="absolute inset-x-0 h-1.5 rounded-full bg-surface-raised pointer-events-none">
                             <div
-                              className="h-full rounded-full bg-slate-400"
+                              className="h-full rounded-full bg-accent"
                               style={{ width: `${audioVolume * 100}%` }}
                             />
                           </div>
@@ -606,15 +606,15 @@ const BookDetailPage = () => {
                             className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-1.5"
                           />
                         </div>
-                        <span className="text-xs text-slate-500 w-9 text-right">{Math.round(audioVolume * 100)}%</span>
+                        <span className="text-xs text-muted w-9 text-right">{Math.round(audioVolume * 100)}%</span>
                       </div>
                     </div>
                   </>
                 ) : (
                   <div className="p-16 text-center">
-                    <IoMusicalNote className="mx-auto text-slate-700 mb-3" size={44} />
-                    <p className="text-slate-400">No audio tracks uploaded yet.</p>
-                    <p className="text-slate-500 text-sm mt-1">Edit the book to add audio files.</p>
+                    <IoMusicalNote className="mx-auto text-muted mb-3" size={44} />
+                    <p className="text-secondary">No audio tracks uploaded yet.</p>
+                    <p className="text-muted text-sm mt-1">Edit the book to add audio files.</p>
                   </div>
                 )}
               </div>
@@ -622,9 +622,9 @@ const BookDetailPage = () => {
 
             {/* Track list */}
             <div className="lg:col-span-1">
-              <div className="glass-card p-4">
-                <h3 className="text-sm font-semibold text-white mb-3 font-display flex items-center gap-2">
-                  <IoMusicalNote className="text-indigo-400" size={16} />
+              <div className="glass-card p-4 border border-subtle">
+                <h3 className="text-sm font-semibold text-primary mb-3 font-display flex items-center gap-2">
+                  <IoMusicalNote className="text-accent" size={16} />
                   Tracks ({currentBook.audioFiles?.length || 0})
                 </h3>
                 <div className="space-y-1 max-h-[540px] overflow-y-auto">
@@ -635,18 +635,18 @@ const BookDetailPage = () => {
                         key={track._id || i}
                         className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
                           isActive
-                            ? 'bg-indigo-500/15 border border-indigo-500/20'
-                            : 'hover:bg-white/5 border border-transparent'
+                            ? 'bg-accent-subtle border border-accent/20'
+                            : 'hover:bg-surface-raised border border-transparent'
                         }`}
                       >
                         <button
                           onClick={() => playTrack(i)}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold transition-colors ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold transition-colors cursor-pointer ${
                             isActive && isPlaying
-                              ? 'bg-indigo-500/30 text-indigo-300'
+                              ? 'bg-accent text-white'
                               : isActive
-                              ? 'bg-indigo-500/20 text-indigo-400'
-                              : 'bg-slate-700/50 text-slate-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-400'
+                              ? 'bg-accent-subtle text-accent'
+                              : 'bg-surface text-muted group-hover:bg-accent-subtle group-hover:text-accent'
                           }`}
                         >
                           {isActive && isPlaying ? '▶' : i + 1}
@@ -655,11 +655,11 @@ const BookDetailPage = () => {
                           className="min-w-0 flex-1 cursor-pointer"
                           onClick={() => playTrack(i)}
                         >
-                          <p className={`text-sm truncate ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                          <p className={`text-sm truncate ${isActive ? 'text-primary font-semibold' : 'text-secondary'}`}>
                             {track.title || track.originalName || `Track ${i + 1}`}
                           </p>
                           {track.size > 0 && (
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted">
                               {track.size < 1024 * 1024
                                 ? `${(track.size / 1024).toFixed(0)} KB`
                                 : `${(track.size / 1024 / 1024).toFixed(1)} MB`}
@@ -669,7 +669,7 @@ const BookDetailPage = () => {
                         {(isOwner || isAdmin) && (
                           <button
                             onClick={() => handleRemoveAudio(track._id)}
-                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
                             title="Remove track"
                           >
                             <IoTrashOutline size={13} />
@@ -695,14 +695,14 @@ const BookDetailPage = () => {
         title="What did you learn?"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-secondary">
             Great job completing the video! Write down what you learned.
           </p>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="I learned that..."
-            className="input-dark min-h-[120px] resize-y"
+            className="input-dark min-h-[120px] resize-y w-full"
             rows={4}
             autoFocus
           />
@@ -712,11 +712,11 @@ const BookDetailPage = () => {
                 setShowNoteModal(false);
                 handleNoteSubmit();
               }}
-              className="btn-secondary"
+              className="btn-secondary cursor-pointer"
             >
               Skip
             </button>
-            <button onClick={handleNoteSubmit} className="btn-primary">
+            <button onClick={handleNoteSubmit} className="btn-primary cursor-pointer">
               Save Note
             </button>
           </div>

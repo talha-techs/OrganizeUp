@@ -25,12 +25,12 @@ const Dashboard = () => {
   const sections = [
     {
       title: 'Books',
-      desc: 'Video & Text books with progress tracking',
+      desc: 'Video, audio & text books with progress tracking',
       icon: <IoBookOutline size={28} />,
       count: books.length,
       to: '/books',
-      gradient: 'from-indigo-500 to-purple-600',
-      bgGlow: 'bg-indigo-500/8',
+      gradient: 'from-[#ff5722] to-[#f4511e]',
+      bgGlow: 'bg-accent-subtle',
     },
     {
       title: 'Courses',
@@ -38,8 +38,8 @@ const Dashboard = () => {
       icon: <IoSchoolOutline size={28} />,
       count: courses.length,
       to: '/courses',
-      gradient: 'from-cyan-500 to-blue-600',
-      bgGlow: 'bg-cyan-500/8',
+      gradient: 'from-purple-500 to-pink-600',
+      bgGlow: 'bg-purple-500/10',
     },
     {
       title: 'Tools & Tricks',
@@ -47,8 +47,8 @@ const Dashboard = () => {
       icon: <IoConstructOutline size={28} />,
       count: tools.length,
       to: '/tools',
-      gradient: 'from-emerald-500 to-teal-600',
-      bgGlow: 'bg-emerald-500/8',
+      gradient: 'from-amber-500 to-orange-600',
+      bgGlow: 'bg-amber-500/10',
     },
   ];
 
@@ -67,14 +67,14 @@ const Dashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         className="mb-10"
       >
-        <div className="flex items-center gap-2 text-indigo-400 text-sm font-medium mb-2">
+        <div className="flex items-center gap-2 text-accent text-sm font-medium mb-2">
           <IoSparkles size={14} />
           {getGreeting()}
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-white font-display">
+        <h1 className="text-3xl sm:text-4xl font-bold text-primary font-display">
           Welcome back, <span className="gradient-text">{user?.name?.split(' ')[0]}</span>
         </h1>
-        <p className="text-slate-400 mt-2">
+        <p className="text-secondary mt-2">
           Pick up where you left off or explore something new
         </p>
       </motion.div>
@@ -89,7 +89,7 @@ const Dashboard = () => {
             transition={{ delay: i * 0.1 }}
           >
             <Link to={section.to} className="block group">
-              <div className="glass-card p-6 relative overflow-hidden h-full">
+              <div className="glass-card p-6 relative overflow-hidden h-full border border-subtle hover:border-strong transition-all">
                 {/* Background glow */}
                 <div className={`absolute top-0 right-0 w-32 h-32 ${section.bgGlow} rounded-full blur-2xl -translate-y-1/2 translate-x-1/2`} />
 
@@ -100,16 +100,16 @@ const Dashboard = () => {
 
                   <div className="flex items-end justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-white font-display mb-1">{section.title}</h3>
-                      <p className="text-sm text-slate-400">{section.desc}</p>
+                      <h3 className="text-xl font-bold text-primary font-display mb-1">{section.title}</h3>
+                      <p className="text-sm text-secondary">{section.desc}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-3xl font-bold gradient-text">{section.count}</span>
-                      <p className="text-xs text-slate-500">items</p>
+                      <p className="text-xs text-muted">items</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-5 text-sm text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                  <div className="flex items-center gap-2 mt-5 text-sm text-accent group-hover:underline transition-colors">
                     <span>View All</span>
                     <IoArrowForward size={14} className="group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -126,18 +126,18 @@ const Dashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <h2 className="text-xl font-bold text-white font-display mb-4">Quick Access</h2>
+        <h2 className="text-xl font-bold text-primary font-display mb-4">Quick Access</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Recent books */}
           {books.slice(0, 2).map((book) => (
-            <Link key={book._id} to={`/books/${book._id}`} className="glass-card p-4 group">
+            <Link key={book._id} to={`/books/${book._id}`} className="glass-card p-4 group border border-subtle hover:border-strong transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-                  <IoBookOutline className="text-indigo-400" size={18} />
+                <div className="w-10 h-10 rounded-xl bg-accent-subtle flex items-center justify-center flex-shrink-0">
+                  <IoBookOutline className="text-accent" size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate group-hover:text-indigo-300 transition-colors">{book.title}</p>
-                  <p className="text-xs text-slate-500">{book.type} book</p>
+                  <p className="text-sm font-medium text-primary truncate group-hover:text-accent transition-colors">{book.title}</p>
+                  <p className="text-xs text-muted">{book.type} book</p>
                 </div>
               </div>
             </Link>
@@ -145,14 +145,14 @@ const Dashboard = () => {
 
           {/* Recent courses */}
           {courses.slice(0, 2).map((course) => (
-            <a key={course._id} href={course.driveLink} target="_blank" rel="noopener noreferrer" className="glass-card p-4 group">
+            <a key={course._id} href={course.driveLink} target="_blank" rel="noopener noreferrer" className="glass-card p-4 group border border-subtle hover:border-strong transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
-                  <IoSchoolOutline className="text-cyan-400" size={18} />
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <IoSchoolOutline className="text-purple-400" size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate group-hover:text-cyan-300 transition-colors">{course.title}</p>
-                  <p className="text-xs text-slate-500">{course.category?.name || 'Course'}</p>
+                  <p className="text-sm font-medium text-primary truncate group-hover:text-purple-300 transition-colors">{course.title}</p>
+                  <p className="text-xs text-muted">{course.category?.name || 'Course'}</p>
                 </div>
               </div>
             </a>

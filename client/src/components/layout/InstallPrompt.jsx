@@ -60,27 +60,27 @@ const InstallPrompt = () => {
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm"
         >
-          <div className="bg-slate-900 border border-indigo-500/30 shadow-2xl shadow-indigo-500/20 rounded-2xl p-4 flex items-start gap-4">
-            <div className="bg-indigo-500/20 text-indigo-400 p-3 rounded-xl shrink-0 mt-0.5">
+          <div className="bg-surface-raised border border-strong shadow-2xl shadow-black/40 rounded-2xl p-4 flex items-start gap-4">
+            <div className="bg-accent-subtle text-accent p-3 rounded-xl shrink-0 mt-0.5">
               <IoDownloadOutline size={24} />
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="text-white font-semibold text-sm">Install OrganizeUp</h3>
-              <p className="text-slate-400 text-xs mt-1">
+              <h3 className="text-primary font-semibold text-sm">Install OrganizeUp</h3>
+              <p className="text-secondary text-xs mt-1">
                 Install our app on your device for a faster, app-like experience with offline access!
               </p>
               
               <div className="flex items-center gap-3 mt-3">
                 <button
                   onClick={handleInstallClick}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="btn-primary text-xs !py-1.5 !px-3"
                 >
                   Install Now
                 </button>
                 <button
                   onClick={handleDismiss}
-                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
+                  className="text-muted hover:text-primary text-xs font-medium transition-colors cursor-pointer"
                 >
                   Maybe Later
                 </button>
@@ -89,7 +89,7 @@ const InstallPrompt = () => {
             
             <button
               onClick={handleDismiss}
-              className="text-slate-500 hover:text-white shrink-0 p-1"
+              className="text-muted hover:text-primary shrink-0 p-1 cursor-pointer"
             >
               <IoCloseOutline size={20} />
             </button>

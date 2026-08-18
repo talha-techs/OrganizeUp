@@ -36,8 +36,8 @@ import toast from 'react-hot-toast';
 const VisiBadge = ({ v }) => {
   const map = {
     public: { cls: 'text-emerald-400 bg-emerald-500/10', icon: <IoGlobeOutline size={10} />, label: 'Public' },
-    pending: { cls: 'text-orange-400 bg-orange-500/10', icon: <IoTimeOutline size={10} />, label: 'Pending' },
-    private: { cls: 'text-slate-400 bg-slate-500/10', icon: <IoLockClosedOutline size={10} />, label: 'Private' },
+    pending: { cls: 'text-amber-400 bg-amber-500/10', icon: <IoTimeOutline size={10} />, label: 'Pending' },
+    private: { cls: 'text-secondary bg-surface-raised', icon: <IoLockClosedOutline size={10} />, label: 'Private' },
   };
   const cfg = map[v] || map.private;
   return (
@@ -51,17 +51,17 @@ const VisiBadge = ({ v }) => {
 const Section = ({ icon, title, count, color, children }) => {
   const [open, setOpen] = useState(true);
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="glass-card overflow-hidden border border-subtle">
       <button
         onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/2 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-raised transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-xl ${color} flex items-center justify-center`}>{icon}</div>
-          <span className="text-white font-semibold">{title}</span>
-          <span className="text-xs text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full">{count}</span>
+          <span className="text-primary font-semibold">{title}</span>
+          <span className="text-xs text-muted bg-surface-raised px-2 py-0.5 rounded-full">{count}</span>
         </div>
-        {open ? <IoChevronDownOutline size={16} className="text-slate-400" /> : <IoChevronForwardOutline size={16} className="text-slate-400" />}
+        {open ? <IoChevronDownOutline size={16} className="text-muted" /> : <IoChevronForwardOutline size={16} className="text-muted" />}
       </button>
       <AnimatePresence>
         {open && (
@@ -72,7 +72,7 @@ const Section = ({ icon, title, count, color, children }) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/5 divide-y divide-white/5">{children}</div>
+            <div className="border-t border-subtle divide-y divide-subtle">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -87,38 +87,38 @@ const ItemRow = ({ title, meta, visib, onDelete, expandable, children }) => {
 
   return (
     <div>
-      <div className="flex items-center gap-3 px-5 py-3 group hover:bg-white/2 transition-colors">
+      <div className="flex items-center gap-3 px-5 py-3 group hover:bg-surface-raised transition-colors">
         {expandable && (
-          <button onClick={() => setOpen((p) => !p)} className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0">
+          <button onClick={() => setOpen((p) => !p)} className="text-muted hover:text-primary transition-colors flex-shrink-0 cursor-pointer">
             {open ? <IoChevronDownOutline size={14} /> : <IoChevronForwardOutline size={14} />}
           </button>
         )}
         {!expandable && <div className="w-3.5 flex-shrink-0" />}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white font-medium truncate">{title}</p>
-          {meta && <p className="text-xs text-slate-500 truncate mt-0.5">{meta}</p>}
+          <p className="text-sm text-primary font-medium truncate">{title}</p>
+          {meta && <p className="text-xs text-muted truncate mt-0.5">{meta}</p>}
         </div>
         {visib && <VisiBadge v={visib} />}
         {!confirming ? (
           <button
             onClick={() => setConfirming(true)}
-            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all flex-shrink-0"
+            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-muted hover:text-red-400 transition-all flex-shrink-0 cursor-pointer"
             title="Delete"
           >
             <IoTrashOutline size={14} />
           </button>
         ) : (
           <div className="flex items-center gap-1 flex-shrink-0">
-            <span className="text-[10px] text-slate-400 flex items-center gap-1">
-              <IoWarningOutline size={12} className="text-orange-400" /> Sure?
+            <span className="text-[10px] text-muted flex items-center gap-1">
+              <IoWarningOutline size={12} className="text-amber-400" /> Sure?
             </span>
-            <button onClick={() => { onDelete(); setConfirming(false); }} className="text-[10px] px-2 py-0.5 rounded-md bg-red-500 text-white hover:bg-red-400">Yes</button>
-            <button onClick={() => setConfirming(false)} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-700 text-slate-300 hover:bg-slate-600">No</button>
+            <button onClick={() => { onDelete(); setConfirming(false); }} className="text-[10px] px-2 py-0.5 rounded-md bg-red-500 text-white hover:bg-red-400 cursor-pointer">Yes</button>
+            <button onClick={() => setConfirming(false)} className="text-[10px] px-2 py-0.5 rounded-md bg-surface text-secondary hover:text-primary border border-subtle cursor-pointer">No</button>
           </div>
         )}
       </div>
       {expandable && open && (
-        <div className="bg-slate-950/40 border-t border-white/5">{children}</div>
+        <div className="bg-canvas border-t border-subtle">{children}</div>
       )}
     </div>
   );
@@ -128,21 +128,21 @@ const ItemRow = ({ title, meta, visib, onDelete, expandable, children }) => {
 const SubRow = ({ name, onDelete }) => {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="flex items-center gap-3 pl-12 pr-5 py-2 group hover:bg-white/2 transition-colors">
-      <IoDocumentTextOutline size={13} className="text-slate-600 flex-shrink-0" />
-      <p className="flex-1 text-xs text-slate-400 truncate">{name}</p>
+    <div className="flex items-center gap-3 pl-12 pr-5 py-2 group hover:bg-surface-raised transition-colors">
+      <IoDocumentTextOutline size={13} className="text-muted flex-shrink-0" />
+      <p className="flex-1 text-xs text-secondary truncate">{name}</p>
       {!confirming ? (
         <button
           onClick={() => setConfirming(true)}
-          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-slate-600 hover:text-red-400 transition-all flex-shrink-0"
+          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-muted hover:text-red-400 transition-all flex-shrink-0 cursor-pointer"
           title="Remove file"
         >
           <IoTrashOutline size={12} />
         </button>
       ) : (
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => { onDelete(); setConfirming(false); }} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500 text-white hover:bg-red-400">Del</button>
-          <button onClick={() => setConfirming(false)} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600">✕</button>
+          <button onClick={() => { onDelete(); setConfirming(false); }} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500 text-white hover:bg-red-400 cursor-pointer">Del</button>
+          <button onClick={() => setConfirming(false)} className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-secondary hover:text-primary border border-subtle cursor-pointer">✕</button>
         </div>
       )}
     </div>
@@ -265,10 +265,10 @@ const ProfilePage = () => {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 tab === t.id
-                  ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                  : 'bg-slate-800/50 text-slate-400 border border-white/5 hover:bg-slate-700/50'
+                  ? 'bg-accent-subtle text-accent border border-accent/30 font-semibold'
+                  : 'bg-surface text-secondary border border-subtle hover:bg-surface-raised'
               }`}
             >
               {t.label}
@@ -280,11 +280,11 @@ const ProfilePage = () => {
           {/* ── Profile Tab ── */}
           {tab === 'profile' && (
             <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="glass-card p-8">
+              <div className="glass-card p-8 border border-subtle">
                 {/* Avatar & Info */}
                 <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
                   <div className="relative group/avatar">
-                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center shadow-xl shadow-indigo-500/20 overflow-hidden">
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#ff5722] to-[#f4511e] flex items-center justify-center shadow-xl shadow-accent/20 overflow-hidden">
                       {avatarPreview ? (
                         <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                       ) : user?.avatar ? (
@@ -303,15 +303,15 @@ const ProfilePage = () => {
                     {(avatarFile || user?.avatar) && (
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                         {avatarFile && (
-                          <button onClick={handleAvatarUpload} disabled={uploading} className="px-2.5 py-1 text-[10px] font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-400 transition-colors disabled:opacity-50 whitespace-nowrap">
+                          <button onClick={handleAvatarUpload} disabled={uploading} className="btn-primary px-2.5 py-1 text-[10px] font-medium rounded-lg disabled:opacity-50 whitespace-nowrap cursor-pointer">
                             {uploading ? '...' : 'Save'}
                           </button>
                         )}
                         {avatarFile && (
-                          <button onClick={() => { setAvatarFile(null); setAvatarPreview(null); }} className="px-2 py-1 text-[10px] font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors">✕</button>
+                          <button onClick={() => { setAvatarFile(null); setAvatarPreview(null); }} className="px-2 py-1 text-[10px] font-medium rounded-lg bg-surface text-secondary hover:text-primary border border-subtle transition-colors cursor-pointer">✕</button>
                         )}
                         {!avatarFile && user?.avatar && (
-                          <button onClick={handleRemoveAvatar} disabled={uploading} className="p-1.5 rounded-lg bg-red-500/80 text-white hover:bg-red-500 transition-colors opacity-0 group-hover/avatar:opacity-100 disabled:opacity-50" title="Remove photo">
+                          <button onClick={handleRemoveAvatar} disabled={uploading} className="p-1.5 rounded-lg bg-red-500/80 text-white hover:bg-red-500 transition-colors opacity-0 group-hover/avatar:opacity-100 disabled:opacity-50 cursor-pointer" title="Remove photo">
                             <IoTrashOutline size={12} />
                           </button>
                         )}
@@ -319,17 +319,17 @@ const ProfilePage = () => {
                     )}
                   </div>
                   <div className="text-center sm:text-left mt-2">
-                    <h2 className="text-xl font-bold text-white">{user?.name}</h2>
-                    <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
+                    <h2 className="text-xl font-bold text-primary">{user?.name}</h2>
+                    <div className="flex items-center gap-2 text-secondary text-sm mt-1">
                       <IoMail size={14} /> {user?.email}
                     </div>
                     <div className="flex items-center gap-4 mt-2">
                       {user?.role === 'admin' && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-accent bg-accent-subtle px-2.5 py-1 rounded-full border border-accent/20">
                           <IoShieldCheckmark size={12} /> Admin
                         </span>
                       )}
-                      <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <span className="text-xs text-muted flex items-center gap-1">
                         <IoCalendar size={12} /> Joined {new Date(user?.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -337,50 +337,50 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Edit Name */}
-                <div className="border-t border-white/5 pt-6 mb-6">
-                  <h3 className="text-sm font-medium text-slate-300 mb-3">Display Name</h3>
+                <div className="border-t border-subtle pt-6 mb-6">
+                  <h3 className="text-sm font-medium text-secondary mb-3">Display Name</h3>
                   {isEditing ? (
                     <div className="flex gap-3">
                       <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-dark flex-1" />
-                      <button onClick={handleSave} className="btn-primary">Save</button>
-                      <button onClick={() => { setIsEditing(false); setName(user?.name); }} className="btn-secondary">Cancel</button>
+                      <button onClick={handleSave} className="btn-primary cursor-pointer">Save</button>
+                      <button onClick={() => { setIsEditing(false); setName(user?.name); }} className="btn-secondary cursor-pointer">Cancel</button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
-                      <span className="text-white">{user?.name}</span>
-                      <button onClick={() => setIsEditing(true)} className="btn-secondary text-sm py-1.5 px-4">Edit</button>
+                      <span className="text-primary">{user?.name}</span>
+                      <button onClick={() => setIsEditing(true)} className="btn-secondary text-sm py-1.5 px-4 cursor-pointer">Edit</button>
                     </div>
                   )}
                 </div>
 
                 {/* Stats */}
-                <div className="border-t border-white/5 pt-6">
-                  <h3 className="text-sm font-medium text-slate-300 mb-4">Learning Stats</h3>
+                <div className="border-t border-subtle pt-6">
+                  <h3 className="text-sm font-medium text-secondary mb-4">Learning Stats</h3>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="glass-card p-4 text-center">
+                    <div className="glass-card p-4 text-center border border-subtle">
                       <div className="text-2xl font-bold gradient-text">{completedVideos}</div>
-                      <div className="text-xs text-slate-500 mt-1">Videos Completed</div>
+                      <div className="text-xs text-muted mt-1">Videos Completed</div>
                     </div>
-                    <div className="glass-card p-4 text-center">
+                    <div className="glass-card p-4 text-center border border-subtle">
                       <div className="text-2xl font-bold gradient-text">{totalNotes}</div>
-                      <div className="text-xs text-slate-500 mt-1">Notes Written</div>
+                      <div className="text-xs text-muted mt-1">Notes Written</div>
                     </div>
-                    <div className="glass-card p-4 text-center">
+                    <div className="glass-card p-4 text-center border border-subtle">
                       <div className="text-2xl font-bold gradient-text">{user?.readingProgress?.length || 0}</div>
-                      <div className="text-xs text-slate-500 mt-1">Books Reading</div>
+                      <div className="text-xs text-muted mt-1">Books Reading</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Learning Notes */}
                 {user?.videoProgress?.filter((vp) => vp.note)?.length > 0 && (
-                  <div className="border-t border-white/5 pt-6 mt-6">
-                    <h3 className="text-sm font-medium text-slate-300 mb-4">Your Learning Notes</h3>
+                  <div className="border-t border-subtle pt-6 mt-6">
+                    <h3 className="text-sm font-medium text-secondary mb-4">Your Learning Notes</h3>
                     <div className="space-y-3 max-h-64 overflow-y-auto">
                       {user.videoProgress.filter((vp) => vp.note).map((vp, i) => (
-                        <div key={i} className="p-3 rounded-xl bg-slate-900/50 border border-white/5">
-                          <p className="text-sm text-slate-300">{vp.note}</p>
-                          <p className="text-xs text-slate-500 mt-1.5">{new Date(vp.lastWatched).toLocaleDateString()}</p>
+                        <div key={i} className="p-3 rounded-xl bg-surface border border-subtle">
+                          <p className="text-sm text-secondary">{vp.note}</p>
+                          <p className="text-xs text-muted mt-1.5">{new Date(vp.lastWatched).toLocaleDateString()}</p>
                         </div>
                       ))}
                     </div>
@@ -395,12 +395,12 @@ const ProfilePage = () => {
             <motion.div key="work" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
               {/* Books */}
               <Section
-                icon={<IoBookOutline size={16} className="text-cyan-400" />}
+                icon={<IoBookOutline size={16} className="text-accent" />}
                 title="Books"
                 count={myBooks.length}
-                color="bg-cyan-500/10"
+                color="bg-accent-subtle"
               >
-                {myBooks.length === 0 && <p className="px-5 py-4 text-sm text-slate-500">No books uploaded yet.</p>}
+                {myBooks.length === 0 && <p className="px-5 py-4 text-sm text-muted">No books uploaded yet.</p>}
                 {myBooks.map((book) => {
                   const hasVideos = book.type === 'video' && book.videos?.length > 0;
                   return (
@@ -431,7 +431,7 @@ const ProfilePage = () => {
                 count={myCourses.length}
                 color="bg-purple-500/10"
               >
-                {myCourses.length === 0 && <p className="px-5 py-4 text-sm text-slate-500">No courses uploaded yet.</p>}
+                {myCourses.length === 0 && <p className="px-5 py-4 text-sm text-muted">No courses uploaded yet.</p>}
                 {myCourses.map((course) => {
                   const allFiles = [
                     ...(course.files || []),
@@ -457,9 +457,9 @@ const ProfilePage = () => {
                       {/* folder files */}
                       {(course.folders || []).map((folder) => (
                         <div key={folder._id || folder.name}>
-                          <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-indigo-500/5 border-y border-white/5">
-                            <IoFolderOutline size={12} className="text-indigo-400 flex-shrink-0" />
-                            <span className="text-xs text-slate-300 font-medium truncate">{folder.name}</span>
+                          <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-surface-raised border-y border-subtle">
+                            <IoFolderOutline size={12} className="text-accent flex-shrink-0" />
+                            <span className="text-xs text-secondary font-medium truncate">{folder.name}</span>
                           </div>
                           {(folder.files || []).map((f) => (
                             <SubRow
@@ -482,7 +482,7 @@ const ProfilePage = () => {
                 count={myTools.length}
                 color="bg-amber-500/10"
               >
-                {myTools.length === 0 && <p className="px-5 py-4 text-sm text-slate-500">No tricks uploaded yet.</p>}
+                {myTools.length === 0 && <p className="px-5 py-4 text-sm text-muted">No tricks uploaded yet.</p>}
                 {myTools.map((tool) => {
                   const allFiles = [
                     ...(tool.files || []),
@@ -506,9 +506,9 @@ const ProfilePage = () => {
                       ))}
                       {(tool.folders || []).map((folder) => (
                         <div key={folder._id || folder.name}>
-                          <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-amber-500/5 border-y border-white/5">
+                          <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-surface-raised border-y border-subtle">
                             <IoFolderOutline size={12} className="text-amber-400 flex-shrink-0" />
-                            <span className="text-xs text-slate-300 font-medium truncate">{folder.name}</span>
+                            <span className="text-xs text-secondary font-medium truncate">{folder.name}</span>
                           </div>
                           {(folder.files || []).map((f) => (
                             <SubRow
@@ -531,7 +531,7 @@ const ProfilePage = () => {
                 count={mySections.length}
                 color="bg-emerald-500/10"
               >
-                {mySections.length === 0 && <p className="px-5 py-4 text-sm text-slate-500">No sections created yet.</p>}
+                {mySections.length === 0 && <p className="px-5 py-4 text-sm text-muted">No sections created yet.</p>}
                 {mySections.map((section) => {
                   const allFiles = [
                     ...(section.files || []),
@@ -555,9 +555,9 @@ const ProfilePage = () => {
                       ))}
                       {(section.folders || []).map((folder) => (
                         <div key={folder._id || folder.name}>
-                          <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-emerald-500/5 border-y border-white/5">
+                          <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-surface-raised border-y border-subtle">
                             <IoFolderOutline size={12} className="text-emerald-400 flex-shrink-0" />
-                            <span className="text-xs text-slate-300 font-medium truncate">{folder.name}</span>
+                            <span className="text-xs text-secondary font-medium truncate">{folder.name}</span>
                           </div>
                           {(folder.files || []).map((f) => (
                             <SubRow
@@ -580,7 +580,7 @@ const ProfilePage = () => {
                 count={myPlaylists.length}
                 color="bg-red-500/10"
               >
-                {myPlaylists.length === 0 && <p className="px-5 py-4 text-sm text-slate-500">No playlists added yet.</p>}
+                {myPlaylists.length === 0 && <p className="px-5 py-4 text-sm text-muted">No playlists added yet.</p>}
                 {myPlaylists.map((pl) => (
                   <ItemRow
                     key={pl._id}
@@ -594,10 +594,10 @@ const ProfilePage = () => {
               </Section>
 
               {myBooks.length + myCourses.length + myTools.length + mySections.length + myPlaylists.length === 0 && (
-                <div className="text-center py-20 glass-card">
-                  <IoDocumentTextOutline className="mx-auto text-slate-600 mb-4" size={48} />
-                  <p className="text-slate-400 font-medium">You haven't uploaded anything yet.</p>
-                  <p className="text-slate-500 text-sm mt-1">Head to Books, Courses, or Tricks to add your first resource.</p>
+                <div className="text-center py-20 glass-card border border-subtle">
+                  <IoDocumentTextOutline className="mx-auto text-muted mb-4" size={48} />
+                  <p className="text-primary font-medium">You haven't uploaded anything yet.</p>
+                  <p className="text-muted text-sm mt-1">Head to Books, Courses, or Tricks to add your first resource.</p>
                 </div>
               )}
             </motion.div>

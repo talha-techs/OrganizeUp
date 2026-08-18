@@ -64,8 +64,8 @@ const ToolsPage = () => {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
       >
         <div>
-          <h1 className="text-3xl font-bold text-white font-display">Tools & Tricks</h1>
-          <p className="text-slate-400 text-sm mt-1">Hacks, free trials, and useful resources</p>
+          <h1 className="text-3xl font-bold text-primary font-display">Tools & Tricks</h1>
+          <p className="text-secondary text-sm mt-1">Hacks, free trials, and useful resources</p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => setShowDriveImport(true)} className="btn-secondary flex items-center gap-2">
@@ -81,9 +81,9 @@ const ToolsPage = () => {
         <LoadingSpinner text="Loading tools..." />
       ) : tools.length === 0 ? (
         <div className="text-center py-20">
-          <IoConstructOutline className="mx-auto text-slate-600 mb-4" size={48} />
-          <h3 className="text-lg text-slate-400 mb-2">No tools yet</h3>
-          <p className="text-sm text-slate-500">
+          <IoConstructOutline className="mx-auto text-muted mb-4" size={48} />
+          <h3 className="text-lg text-secondary mb-2">No tools yet</h3>
+          <p className="text-sm text-muted">
             {isAdmin ? 'Click "Add New" to get started' : 'Check back soon'}
           </p>
         </div>

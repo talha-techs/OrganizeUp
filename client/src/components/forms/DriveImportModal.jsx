@@ -27,14 +27,14 @@ import toast from 'react-hot-toast';
 const FILE_ICONS = {
   pdf: <IoDocumentOutline size={14} className="text-red-400" />,
   html: <IoCodeSlashOutline size={14} className="text-orange-400" />,
-  text: <IoDocumentOutline size={14} className="text-slate-400" />,
+  text: <IoDocumentOutline size={14} className="text-secondary" />,
   image: <IoImageOutline size={14} className="text-emerald-400" />,
-  video: <IoVideocamOutline size={14} className="text-purple-400" />,
-  gdoc: <IoDocumentOutline size={14} className="text-blue-400" />,
-  gsheet: <IoDocumentOutline size={14} className="text-green-400" />,
+  video: <IoVideocamOutline size={14} className="text-rose-400" />,
+  gdoc: <IoDocumentOutline size={14} className="text-amber-400" />,
+  gsheet: <IoDocumentOutline size={14} className="text-emerald-400" />,
   gslides: <IoDocumentOutline size={14} className="text-yellow-400" />,
-  folder: <IoFolderOutline size={14} className="text-cyan-400" />,
-  other: <IoDocumentOutline size={14} className="text-slate-500" />,
+  folder: <IoFolderOutline size={14} className="text-accent" />,
+  other: <IoDocumentOutline size={14} className="text-muted" />,
 };
 
 /**
@@ -131,29 +131,29 @@ const TreeItem = ({ item, selectedIds, onToggle, depth = 0 }) => {
     return (
       <div>
         <div
-          className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/5 cursor-pointer group"
+          className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-surface-raised cursor-pointer group"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-slate-500 hover:text-white transition-colors"
+            className="text-muted hover:text-primary transition-colors cursor-pointer"
           >
             {expanded ? <IoChevronDown size={12} /> : <IoChevronForward size={12} />}
           </button>
 
-          <button onClick={toggleFolder} className="flex-shrink-0">
+          <button onClick={toggleFolder} className="flex-shrink-0 cursor-pointer">
             {allSelected ? (
-              <IoCheckboxOutline size={16} className="text-indigo-400" />
+              <IoCheckboxOutline size={16} className="text-accent" />
             ) : someSelected ? (
-              <IoRemoveOutline size={16} className="text-indigo-400" />
+              <IoRemoveOutline size={16} className="text-accent" />
             ) : (
-              <IoSquareOutline size={16} className="text-slate-500" />
+              <IoSquareOutline size={16} className="text-muted" />
             )}
           </button>
 
-          <IoFolderOutline size={14} className="text-cyan-400 flex-shrink-0" />
-          <span className="text-sm text-white truncate flex-1">{item.name}</span>
-          <span className="text-xs text-slate-500">{childFileIds.length} files</span>
+          <IoFolderOutline size={14} className="text-accent flex-shrink-0" />
+          <span className="text-sm text-primary truncate flex-1">{item.name}</span>
+          <span className="text-xs text-muted">{childFileIds.length} files</span>
         </div>
 
         {expanded && (
@@ -178,23 +178,23 @@ const TreeItem = ({ item, selectedIds, onToggle, depth = 0 }) => {
 
   return (
     <div
-      className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/5 cursor-pointer"
+      className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-surface-raised cursor-pointer"
       style={{ paddingLeft: `${depth * 16 + 24}px` }}
       onClick={() => onToggle(item.driveFileId, !isSelected)}
     >
       <div className="flex-shrink-0">
         {isSelected ? (
-          <IoCheckboxOutline size={16} className="text-indigo-400" />
+          <IoCheckboxOutline size={16} className="text-accent" />
         ) : (
-          <IoSquareOutline size={16} className="text-slate-500" />
+          <IoSquareOutline size={16} className="text-muted" />
         )}
       </div>
       {FILE_ICONS[item.fileType] || FILE_ICONS.other}
-      <span className={`text-sm truncate flex-1 ${isSelected ? 'text-white' : 'text-slate-400'}`}>
+      <span className={`text-sm truncate flex-1 ${isSelected ? 'text-primary' : 'text-secondary'}`}>
         {item.name}
       </span>
       {item.size && (
-        <span className="text-xs text-slate-600 flex-shrink-0">
+        <span className="text-xs text-muted flex-shrink-0">
           {item.size > 1048576
             ? `${(item.size / 1048576).toFixed(1)} MB`
             : `${(item.size / 1024).toFixed(0)} KB`}
@@ -369,20 +369,20 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl max-h-[85vh] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[85vh] bg-surface-raised border border-strong rounded-2xl shadow-2xl overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
+        <div className="flex items-center justify-between p-6 border-b border-subtle">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
               <IoCloudUploadOutline size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">{title}</h2>
-              <p className="text-xs text-slate-400">Step {step} of {totalSteps}</p>
+              <h2 className="text-lg font-semibold text-primary">{title}</h2>
+              <p className="text-xs text-muted">Step {step} of {totalSteps}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface text-secondary hover:text-primary transition-colors cursor-pointer">
             <IoClose size={20} />
           </button>
         </div>
@@ -390,7 +390,7 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
         {/* Step indicator */}
         <div className="flex items-center gap-2 px-6 pt-4">
           {Array.from({ length: totalSteps }, (_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${step >= i + 1 ? 'bg-indigo-500' : 'bg-slate-700'}`} />
+            <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${step >= i + 1 ? 'bg-accent' : 'bg-surface'}`} />
           ))}
         </div>
 
@@ -400,9 +400,9 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
             {step === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                 <div className="text-center mb-6">
-                  <IoFolderOpenOutline size={48} className="mx-auto text-indigo-400 mb-3" />
-                  <h3 className="text-white font-medium mb-1">Paste your Google Drive folder link</h3>
-                  <p className="text-sm text-slate-400">
+                  <IoFolderOpenOutline size={48} className="mx-auto text-accent mb-3" />
+                  <h3 className="text-primary font-medium mb-1">Paste your Google Drive folder link</h3>
+                  <p className="text-sm text-secondary">
                     The folder must be shared as "Anyone with the link". All files and subfolders will be scanned.
                   </p>
                 </div>
@@ -417,7 +417,7 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
                       className="input-dark w-full pr-12"
                       autoFocus
                     />
-                    <IoSearchOutline size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <IoSearchOutline size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted" />
                   </div>
 
                   <button
@@ -453,22 +453,22 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
 
                 {/* Select / Deselect */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-secondary">
                     {selectedCount} of {allIds.length} selected
                   </span>
                   <div className="flex gap-2">
-                    <button onClick={handleSelectAll} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                    <button onClick={handleSelectAll} className="text-xs text-accent hover:underline transition-colors cursor-pointer">
                       Select All
                     </button>
-                    <span className="text-slate-600">|</span>
-                    <button onClick={handleDeselectAll} className="text-xs text-slate-400 hover:text-white transition-colors">
+                    <span className="text-muted">|</span>
+                    <button onClick={handleDeselectAll} className="text-xs text-secondary hover:text-primary transition-colors cursor-pointer">
                       Deselect All
                     </button>
                   </div>
                 </div>
 
                 {/* File tree */}
-                <div className="max-h-[45vh] overflow-y-auto rounded-xl border border-white/5 bg-slate-800/30 p-2">
+                <div className="max-h-[45vh] overflow-y-auto rounded-xl border border-subtle bg-surface p-2">
                   {driveScan.items.map((item) => (
                     <TreeItem
                       key={item.driveFileId}
@@ -484,19 +484,19 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
             {step === 3 && hasDetails && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                    <IoCreateOutline size={18} className="text-indigo-400" />
+                  <div className="w-8 h-8 rounded-lg bg-accent-subtle flex items-center justify-center">
+                    <IoCreateOutline size={18} className="text-accent" />
                   </div>
                   <div>
-                    <h3 className="text-white font-medium text-sm">Fill in the details</h3>
-                    <p className="text-xs text-slate-400">{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected</p>
+                    <h3 className="text-primary font-medium text-sm">Fill in the details</h3>
+                    <p className="text-xs text-muted">{selectedCount} file{selectedCount !== 1 ? 's' : ''} selected</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   {detailsFields.map((field) => (
                     <div key={field.name}>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-secondary mb-1.5">
                         {field.label} {field.required && <span className="text-red-400">*</span>}
                       </label>
                       {field.type === 'textarea' ? (
@@ -538,10 +538,10 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleFileChange(field.name, e.target.files[0])}
-                            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/10 file:text-indigo-400 file:text-sm file:cursor-pointer"
+                            className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:text-accent file:text-sm file:cursor-pointer"
                           />
                           {imagePreview && (
-                            <img src={imagePreview} alt="Preview" className="mt-2 h-24 w-auto rounded-lg object-cover border border-white/10" />
+                            <img src={imagePreview} alt="Preview" className="mt-2 h-24 w-auto rounded-lg object-cover border border-subtle" />
                           )}
                         </div>
                       ) : (
@@ -563,7 +563,7 @@ const DriveImportModal = ({ isOpen, onClose, onImport, title = 'Import from Goog
 
         {/* Footer */}
         {step >= 2 && (
-          <div className="flex items-center justify-between p-6 border-t border-white/5">
+          <div className="flex items-center justify-between p-6 border-t border-subtle">
             <button
               onClick={() => {
                 if (step === 3) {

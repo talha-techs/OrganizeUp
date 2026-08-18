@@ -8,10 +8,10 @@ const LoadingSpinner = ({ size = 'md', text = '' }) => {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12">
       <div className={`${sizes[size]} relative`}>
-        <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20"></div>
-        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 animate-spin"></div>
+        <div className="absolute inset-0 rounded-full border-2 border-accent-subtle"></div>
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin"></div>
       </div>
-      {text && <p className="text-sm text-slate-400">{text}</p>}
+      {text && <p className="text-sm text-secondary">{text}</p>}
     </div>
   );
 };

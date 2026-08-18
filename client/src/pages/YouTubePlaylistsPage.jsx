@@ -101,8 +101,8 @@ const YouTubePlaylistsPage = () => {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
       >
         <div>
-          <h1 className="text-3xl font-bold text-white font-display">YouTube Playlists</h1>
-          <p className="text-slate-400 text-sm mt-1">Save and watch YouTube playlists</p>
+          <h1 className="text-3xl font-bold text-primary font-display">YouTube Playlists</h1>
+          <p className="text-secondary text-sm mt-1">Save and watch YouTube playlists</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
           <IoAdd size={18} /> Add Playlist
@@ -118,9 +118,9 @@ const YouTubePlaylistsPage = () => {
           animate={{ opacity: 1 }}
           className="text-center py-20"
         >
-          <IoLogoYoutube className="mx-auto text-slate-600 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-slate-400 mb-2">No playlists yet</h3>
-          <p className="text-sm text-slate-500">Add a YouTube playlist URL to get started</p>
+          <IoLogoYoutube className="mx-auto text-muted mb-4" size={48} />
+          <h3 className="text-lg font-medium text-secondary mb-2">No playlists yet</h3>
+          <p className="text-sm text-muted">Add a YouTube playlist URL to get started</p>
         </motion.div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -138,7 +138,7 @@ const YouTubePlaylistsPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass-card group relative overflow-hidden cursor-pointer"
+                  className="glass-card group relative overflow-hidden cursor-pointer border border-subtle"
                   onClick={() => navigate(`/youtube-playlists/${pl._id}`)}
                 >
                   {/* Thumbnail / Banner */}
@@ -154,7 +154,7 @@ const YouTubePlaylistsPage = () => {
                         <IoLogoYoutube size={48} className="text-red-500/30" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent rounded-t-2xl" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent rounded-t-2xl" />
 
                     {/* Play icon overlay */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -165,8 +165,8 @@ const YouTubePlaylistsPage = () => {
                     <div
                       className={`absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm ${
                         pl.visibility === 'public'
-                          ? 'text-emerald-300 bg-emerald-500/20'
-                          : 'text-slate-300 bg-slate-500/20'
+                          ? 'text-emerald-400 bg-emerald-500/20'
+                          : 'text-secondary bg-surface-raised/80'
                       }`}
                     >
                       {pl.visibility}
@@ -175,17 +175,17 @@ const YouTubePlaylistsPage = () => {
 
                   {/* Content */}
                   <div className="p-4">
-                    <h3 className="text-base font-semibold text-white truncate mb-1">
+                    <h3 className="text-base font-semibold text-primary truncate mb-1">
                       {pl.title}
                     </h3>
                     {pl.channelTitle && (
                       <p className="text-sm text-red-400 mb-1">{pl.channelTitle}</p>
                     )}
                     {pl.description && (
-                      <p className="text-sm text-slate-400 line-clamp-2 mb-2">{pl.description}</p>
+                      <p className="text-sm text-secondary line-clamp-2 mb-2">{pl.description}</p>
                     )}
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted">
                         {pl.videoCount || 0} video{pl.videoCount !== 1 ? 's' : ''}
                       </span>
 
@@ -197,7 +197,7 @@ const YouTubePlaylistsPage = () => {
                                 e.stopPropagation();
                                 handleTogglePublic(pl);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors text-xs"
+                              className="p-1.5 rounded-lg hover:bg-surface-raised text-secondary hover:text-primary transition-colors text-xs cursor-pointer"
                             >
                               {pl.visibility === 'public' ? 'Private' : 'Public'}
                             </button>
@@ -214,7 +214,7 @@ const YouTubePlaylistsPage = () => {
                                   toast.error(err.response?.data?.message || 'Failed to update');
                                 }
                               }}
-                              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-slate-400 hover:text-amber-400 transition-colors text-xs"
+                              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-secondary hover:text-amber-400 transition-colors text-xs cursor-pointer"
                               title="Make Private"
                             >
                               Private
@@ -225,7 +225,7 @@ const YouTubePlaylistsPage = () => {
                               e.stopPropagation();
                               handleDelete(pl._id);
                             }}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-400 transition-colors cursor-pointer"
                           >
                             <IoTrashOutline size={14} />
                           </button>
@@ -244,7 +244,7 @@ const YouTubePlaylistsPage = () => {
       <Modal isOpen={showForm} onClose={() => { setShowForm(false); setPlaylistUrl(''); }} title="Add YouTube Playlist">
         <form onSubmit={handleAdd} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">YouTube Playlist URL</label>
+            <label className="block text-sm font-medium text-secondary mb-1.5">YouTube Playlist URL</label>
             <input
               type="text"
               value={playlistUrl}
@@ -255,7 +255,7 @@ const YouTubePlaylistsPage = () => {
               required
               disabled={isAdding}
             />
-            <p className="text-xs text-slate-500 mt-1.5">
+            <p className="text-xs text-muted mt-1.5">
               Paste a playlist link — title, videos, and thumbnails will be fetched automatically.
             </p>
           </div>

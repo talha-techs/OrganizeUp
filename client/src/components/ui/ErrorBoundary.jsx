@@ -23,16 +23,16 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-          <div className="glass-card max-w-md w-full p-8 border border-red-500/20 bg-slate-900/90 shadow-2xl">
+        <div className="min-h-screen bg-canvas flex items-center justify-center p-6 text-center">
+          <div className="glass-card max-w-md w-full p-8 border border-red-500/20 bg-surface/90 shadow-2xl">
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4 text-red-400">
               <IoAlertCircleOutline size={36} />
             </div>
 
-            <h2 className="text-xl font-bold text-white mb-2 font-display">
+            <h2 className="text-xl font-bold text-primary mb-2 font-display">
               Something went wrong
             </h2>
-            <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+            <p className="text-sm text-secondary mb-6 leading-relaxed">
               An unexpected error occurred while rendering this page. You can reload or return to the dashboard.
             </p>
 

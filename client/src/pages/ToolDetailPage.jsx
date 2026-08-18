@@ -31,13 +31,13 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 const FILE_ICONS = {
   pdf: <IoDocumentOutline size={16} className="text-red-400" />,
   html: <IoCodeSlashOutline size={16} className="text-orange-400" />,
-  text: <IoDocumentOutline size={16} className="text-slate-400" />,
+  text: <IoDocumentOutline size={16} className="text-secondary" />,
   image: <IoImageOutline size={16} className="text-emerald-400" />,
-  video: <IoVideocamOutline size={16} className="text-purple-400" />,
-  gdoc: <IoDocumentOutline size={16} className="text-blue-400" />,
-  gsheet: <IoDocumentOutline size={16} className="text-green-400" />,
+  video: <IoVideocamOutline size={16} className="text-rose-400" />,
+  gdoc: <IoDocumentOutline size={16} className="text-amber-400" />,
+  gsheet: <IoDocumentOutline size={16} className="text-emerald-400" />,
   gslides: <IoDocumentOutline size={16} className="text-yellow-400" />,
-  other: <IoDocumentOutline size={16} className="text-slate-500" />,
+  other: <IoDocumentOutline size={16} className="text-muted" />,
 };
 
 const FolderTree = ({ folder, onFileClick, depth = 0 }) => {
@@ -47,13 +47,13 @@ const FolderTree = ({ folder, onFileClick, depth = 0 }) => {
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 py-2 px-3 w-full rounded-lg hover:bg-white/5 transition-colors"
+        className="flex items-center gap-2 py-2 px-3 w-full rounded-lg hover:bg-surface-raised transition-colors cursor-pointer"
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
       >
         {expanded ? <IoChevronDown size={12} /> : <IoChevronForward size={12} />}
-        <IoFolderOutline size={16} className="text-cyan-400" />
-        <span className="text-sm font-medium text-white">{folder.name}</span>
-        <span className="text-xs text-slate-500 ml-auto">{folder.files?.length || 0} files</span>
+        <IoFolderOutline size={16} className="text-accent" />
+        <span className="text-sm font-medium text-primary">{folder.name}</span>
+        <span className="text-xs text-muted ml-auto">{folder.files?.length || 0} files</span>
       </button>
 
       {expanded && (
@@ -62,11 +62,11 @@ const FolderTree = ({ folder, onFileClick, depth = 0 }) => {
             <button
               key={file._id || file.driveFileId}
               onClick={() => onFileClick(file)}
-              className="flex items-center gap-2 py-2 px-3 w-full rounded-lg hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 py-2 px-3 w-full rounded-lg hover:bg-surface-raised transition-colors cursor-pointer"
               style={{ paddingLeft: `${(depth + 1) * 16 + 24}px` }}
             >
               {FILE_ICONS[file.fileType] || FILE_ICONS.other}
-              <span className="text-sm text-slate-300 truncate">{file.name}</span>
+              <span className="text-sm text-secondary truncate">{file.name}</span>
             </button>
           ))}
 
@@ -160,7 +160,7 @@ const ToolDetailPage = () => {
       >
         <button
           onClick={() => navigate('/tools')}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-4 transition-colors"
+          className="flex items-center gap-2 text-sm text-secondary hover:text-primary mb-4 transition-colors cursor-pointer"
         >
           <IoArrowBack size={14} /> All Tools & Tricks
         </button>
@@ -178,13 +178,13 @@ const ToolDetailPage = () => {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white font-display">
+            <h1 className="text-3xl font-bold text-primary font-display">
               {currentTool.title}
             </h1>
             {currentTool.description && (
-              <p className="text-slate-400 text-sm mt-2">{currentTool.description}</p>
+              <p className="text-secondary text-sm mt-2">{currentTool.description}</p>
             )}
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted mt-1">
               {currentTool.files?.length || 0} files
               {currentTool.addedBy?.name && ` · by ${currentTool.addedBy.name}`}
             </p>
@@ -220,9 +220,9 @@ const ToolDetailPage = () => {
           animate={{ opacity: 1 }}
           className="text-center py-20"
         >
-          <IoConstructOutline className="mx-auto text-slate-600 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-slate-400 mb-2">No files yet</h3>
-          <p className="text-sm text-slate-500 mb-4">Import content from Google Drive to get started</p>
+          <IoConstructOutline className="mx-auto text-muted mb-4" size={48} />
+          <h3 className="text-lg font-medium text-secondary mb-2">No files yet</h3>
+          <p className="text-sm text-muted mb-4">Import content from Google Drive to get started</p>
           {canManage && (
             <button
               onClick={() => setShowImport(true)}
@@ -236,12 +236,12 @@ const ToolDetailPage = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-4"
+          className="glass-card p-4 border border-subtle"
         >
           {/* Folder tree */}
           {hasFolders && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-slate-300 px-3 mb-2">Folders</h4>
+              <h4 className="text-sm font-medium text-secondary px-3 mb-2">Folders</h4>
               {currentTool.folders.map((folder, i) => (
                 <FolderTree
                   key={folder.driveFileId || i}
@@ -255,23 +255,23 @@ const ToolDetailPage = () => {
           {/* Root-level files (flat list) */}
           {hasFiles && (
             <div>
-              <h4 className="text-sm font-medium text-slate-300 px-3 mb-2">
+              <h4 className="text-sm font-medium text-secondary px-3 mb-2">
                 {hasFolders ? 'All Files' : 'Files'}
               </h4>
               <div className="space-y-0.5">
                 {currentTool.files.map((file) => (
                   <div
                     key={file._id}
-                    className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors group cursor-pointer"
+                    className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-surface-raised transition-colors group cursor-pointer"
                     onClick={() => setSelectedFile(file)}
                   >
                     {FILE_ICONS[file.fileType] || FILE_ICONS.other}
-                    <span className="text-sm text-white truncate flex-1">{file.name}</span>
+                    <span className="text-sm text-primary truncate flex-1">{file.name}</span>
                     {file.path && file.path.includes('/') && (
-                      <span className="text-xs text-slate-600 truncate max-w-[200px]">{file.path}</span>
+                      <span className="text-xs text-muted truncate max-w-[200px]">{file.path}</span>
                     )}
                     {file.size && (
-                      <span className="text-xs text-slate-600">
+                      <span className="text-xs text-muted">
                         {file.size > 1048576
                           ? `${(file.size / 1048576).toFixed(1)} MB`
                           : `${(file.size / 1024).toFixed(0)} KB`}
@@ -283,7 +283,7 @@ const ToolDetailPage = () => {
                           e.stopPropagation();
                           handleRemoveFile(file._id);
                         }}
-                        className="p-1 rounded hover:bg-red-500/10 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-1 rounded hover:bg-red-500/10 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                       >
                         <IoTrashOutline size={14} />
                       </button>

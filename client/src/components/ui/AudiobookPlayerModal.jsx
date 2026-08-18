@@ -227,12 +227,12 @@ const AudiobookPlayerModal = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.25 }}
-          className="relative w-full max-w-4xl bg-slate-900/95 border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
+          className="relative w-full max-w-4xl bg-surface border border-subtle rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-subtle bg-surface-raised/40">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 flex items-center justify-center border border-white/10">
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-surface-raised flex-shrink-0 flex items-center justify-center border border-subtle">
                 {book.coverImage ? (
                   <img
                     src={book.coverImage}
@@ -240,14 +240,14 @@ const AudiobookPlayerModal = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <IoMusicalNotesOutline className="text-indigo-400" size={20} />
+                  <IoMusicalNotesOutline className="text-accent" size={20} />
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-white truncate">
+                <h2 className="text-base font-bold text-primary truncate">
                   {book.title}
                 </h2>
-                <p className="text-xs text-indigo-400 truncate">
+                <p className="text-xs text-accent truncate">
                   {book.author} {book.copyrightYear ? `· (${book.copyrightYear})` : ''}
                 </p>
               </div>
@@ -259,7 +259,7 @@ const AudiobookPlayerModal = ({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                   isSaved
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
-                    : 'bg-white/5 text-slate-300 border-white/10 hover:text-white hover:bg-white/10'
+                    : 'bg-surface text-secondary border-subtle hover:text-primary hover:bg-surface-raised'
                 }`}
               >
                 {isSaved ? (
@@ -275,7 +275,7 @@ const AudiobookPlayerModal = ({
 
               <button
                 onClick={handleClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
                 title="Close"
               >
                 <IoClose size={20} />
@@ -286,7 +286,7 @@ const AudiobookPlayerModal = ({
           {/* Body: Player & Chapter List */}
           <div className="grid lg:grid-cols-12 flex-1 overflow-hidden">
             {/* Player Column */}
-            <div className="lg:col-span-7 p-6 flex flex-col justify-between overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/5 bg-gradient-to-b from-slate-900 to-indigo-950/20">
+            <div className="lg:col-span-7 p-6 flex flex-col justify-between overflow-y-auto border-b lg:border-b-0 lg:border-r border-subtle bg-surface">
               {/* Waveform Visualization */}
               <div className="py-6 flex flex-col items-center justify-center">
                 <div className="flex items-end justify-center gap-1 h-24 w-full max-w-sm mb-4 px-2">
@@ -301,8 +301,8 @@ const AudiobookPlayerModal = ({
                       }}
                       className={`w-1 sm:w-1.5 rounded-full transition-colors ${
                         isPlaying
-                          ? 'bg-gradient-to-t from-indigo-500 to-cyan-400'
-                          : 'bg-slate-700/60'
+                          ? 'bg-accent'
+                          : 'bg-muted'
                       }`}
                     />
                   ))}
@@ -310,15 +310,15 @@ const AudiobookPlayerModal = ({
 
                 {/* Current Chapter Badge & Title */}
                 <div className="text-center max-w-md px-4">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 mb-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent-subtle text-accent border border-accent/20 mb-2">
                     <IoSparklesOutline size={12} />
                     Track {currentTrackIdx + 1} of {sections.length || 1}
                   </span>
-                  <h3 className="text-lg font-bold text-white line-clamp-2 leading-tight">
+                  <h3 className="text-lg font-bold text-primary line-clamp-2 leading-tight">
                     {currentTrack?.title || `Track ${currentTrackIdx + 1}`}
                   </h3>
                   {currentTrack?.readers?.length > 0 && (
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-secondary mt-1">
                       Read by {currentTrack.readers.join(', ')}
                     </p>
                   )}
@@ -328,9 +328,9 @@ const AudiobookPlayerModal = ({
               {/* Progress Scrubber */}
               <div className="space-y-1.5 my-2">
                 <div className="relative h-6 flex items-center cursor-pointer group">
-                  <div className="absolute inset-x-0 h-1.5 rounded-full bg-slate-800 pointer-events-none group-hover:h-2 transition-all">
+                  <div className="absolute inset-x-0 h-1.5 rounded-full bg-surface-raised pointer-events-none group-hover:h-2 transition-all">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"
+                      className="h-full rounded-full bg-gradient-to-r from-[#ff5722] to-[#f4511e]"
                       style={{
                         width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
                       }}
@@ -346,7 +346,7 @@ const AudiobookPlayerModal = ({
                     className="absolute inset-x-0 w-full opacity-0 cursor-pointer h-4"
                   />
                 </div>
-                <div className="flex justify-between text-xs text-slate-400 font-mono">
+                <div className="flex justify-between text-xs text-muted font-mono">
                   <span>{fmtTime(currentTime)}</span>
                   <span>{fmtTime(duration)}</span>
                 </div>
@@ -359,7 +359,7 @@ const AudiobookPlayerModal = ({
                   {/* Rewind 10s */}
                   <button
                     onClick={() => skipSeconds(-10)}
-                    className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer text-xs flex flex-col items-center"
+                    className="p-2 text-secondary hover:text-primary transition-colors cursor-pointer text-xs flex flex-col items-center"
                     title="Rewind 10s"
                   >
                     <span className="font-mono text-[10px]">-10s</span>
@@ -371,7 +371,7 @@ const AudiobookPlayerModal = ({
                       setCurrentTrackIdx((idx) => Math.max(0, idx - 1))
                     }
                     disabled={currentTrackIdx === 0}
-                    className="p-2.5 rounded-full text-slate-400 hover:text-white disabled:opacity-30 transition-colors cursor-pointer"
+                    className="p-2.5 rounded-full text-secondary hover:text-primary disabled:opacity-30 transition-colors cursor-pointer"
                     title="Previous Chapter"
                   >
                     <IoPlaySkipBack size={20} />
@@ -381,7 +381,7 @@ const AudiobookPlayerModal = ({
                   <button
                     onClick={togglePlay}
                     disabled={isAudioLoading}
-                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-indigo-500/30 transition-all cursor-pointer"
+                    className="w-16 h-16 rounded-full bg-accent hover:bg-accent/90 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-accent/30 transition-all cursor-pointer"
                   >
                     {isAudioLoading ? (
                       <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -400,7 +400,7 @@ const AudiobookPlayerModal = ({
                       )
                     }
                     disabled={currentTrackIdx >= sections.length - 1}
-                    className="p-2.5 rounded-full text-slate-400 hover:text-white disabled:opacity-30 transition-colors cursor-pointer"
+                    className="p-2.5 rounded-full text-secondary hover:text-primary disabled:opacity-30 transition-colors cursor-pointer"
                     title="Next Chapter"
                   >
                     <IoPlaySkipForward size={20} />
@@ -409,7 +409,7 @@ const AudiobookPlayerModal = ({
                   {/* Forward 10s */}
                   <button
                     onClick={() => skipSeconds(10)}
-                    className="p-2 text-slate-400 hover:text-white transition-colors cursor-pointer text-xs flex flex-col items-center"
+                    className="p-2 text-secondary hover:text-primary transition-colors cursor-pointer text-xs flex flex-col items-center"
                     title="Forward 10s"
                   >
                     <span className="font-mono text-[10px]">+10s</span>
@@ -417,10 +417,10 @@ const AudiobookPlayerModal = ({
                 </div>
 
                 {/* Sub-controls: Speed & Volume */}
-                <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between pt-2 border-t border-subtle">
                   {/* Speed Selector */}
                   <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-slate-500 font-medium mr-1">
+                    <span className="text-[11px] text-muted font-medium mr-1">
                       Speed:
                     </span>
                     {SPEED_OPTIONS.map((rate) => (
@@ -429,8 +429,8 @@ const AudiobookPlayerModal = ({
                         onClick={() => changeSpeed(rate)}
                         className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                           playbackRate === rate
-                            ? 'bg-indigo-500 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                            ? 'bg-accent text-white shadow-sm'
+                            : 'text-secondary hover:text-primary hover:bg-surface-raised'
                         }`}
                       >
                         {rate}x
@@ -442,7 +442,7 @@ const AudiobookPlayerModal = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={toggleMute}
-                      className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      className="text-secondary hover:text-primary transition-colors cursor-pointer"
                     >
                       {isMuted ? (
                         <IoVolumeMuteOutline size={18} />
@@ -457,7 +457,7 @@ const AudiobookPlayerModal = ({
                       step={0.05}
                       value={isMuted ? 0 : volume}
                       onChange={handleVolumeChange}
-                      className="w-16 sm:w-20 accent-indigo-500 h-1 bg-slate-700 rounded-lg cursor-pointer"
+                      className="w-16 sm:w-20 accent-[#ff5722] h-1 bg-surface-raised rounded-lg cursor-pointer"
                     />
                   </div>
                 </div>
@@ -465,14 +465,14 @@ const AudiobookPlayerModal = ({
             </div>
 
             {/* Chapter List Column */}
-            <div className="lg:col-span-5 p-5 flex flex-col overflow-hidden bg-slate-900/60">
+            <div className="lg:col-span-5 p-5 flex flex-col overflow-hidden bg-surface-raised/40">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <IoMusicalNotesOutline className="text-indigo-400" size={15} />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
+                  <IoMusicalNotesOutline className="text-accent" size={15} />
                   Chapters ({sections.length})
                 </h4>
                 {book.durationFormatted && (
-                  <span className="text-xs text-slate-500 flex items-center gap-1 font-mono">
+                  <span className="text-xs text-muted flex items-center gap-1 font-mono">
                     <IoTimeOutline size={13} /> {book.durationFormatted}
                   </span>
                 )}
@@ -487,15 +487,15 @@ const AudiobookPlayerModal = ({
                       onClick={() => setCurrentTrackIdx(i)}
                       className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
                         isCurrent
-                          ? 'bg-indigo-500/20 text-white border border-indigo-500/30'
-                          : 'hover:bg-white/5 text-slate-300 border border-transparent'
+                          ? 'bg-accent-subtle text-primary border border-accent/30 font-medium'
+                          : 'hover:bg-surface-raised text-secondary border border-transparent'
                       }`}
                     >
                       <span
                         className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
                           isCurrent
-                            ? 'bg-indigo-500 text-white shadow-sm'
-                            : 'bg-slate-800 text-slate-400'
+                            ? 'bg-accent text-white shadow-sm'
+                            : 'bg-surface text-muted border border-subtle'
                         }`}
                       >
                         {isCurrent && isPlaying ? '▶' : i + 1}
@@ -505,13 +505,13 @@ const AudiobookPlayerModal = ({
                           {track.title || `Chapter ${i + 1}`}
                         </p>
                         {track.readers?.length > 0 && (
-                          <p className="text-[10px] text-slate-500 truncate">
+                          <p className="text-[10px] text-muted truncate">
                             {track.readers.join(', ')}
                           </p>
                         )}
                       </div>
                       {track.playtimeFormatted && (
-                        <span className="text-[11px] text-slate-500 font-mono flex-shrink-0">
+                        <span className="text-[11px] text-muted font-mono flex-shrink-0">
                           {track.playtimeFormatted}
                         </span>
                       )}
