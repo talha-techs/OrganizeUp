@@ -332,6 +332,79 @@ const importDriveBook = async (req, res) => {
   } catch (error) {
     console.error("Import drive book error:", error);
     res.status(500).json({ message: "Failed to import book from Drive" });
+// @desc    Get text / code content of a Drive file
+// @route   GET /api/drive/file/:fileId/content
+const getDriveFileContent = async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+      return res.status(400).json({ message: "Invalid file ID" });
+    }
+
+    const drive = getDrive();
+    let meta = { data: { name: "file", mimeType: "text/plain" } };
+    try {
+      meta = await drive.files.get({
+        fileId,
+        fields: "name, mimeType, size",
+        supportsAllDrives: true,
+      });
+    } catch (mErr) {
+      console.warn("Drive meta fetch warning:", mErr.message);
+    }
+
+    const response = await drive.files.get(
+      { fileId, alt: "media", supportsAllDrives: true },
+      { responseType: "text" }
+    );
+
+    res.json({
+      name: meta.data.name,
+      mimeType: meta.data.mimeType,
+      content: typeof response.data === "string" ? response.data : JSON.stringify(response.data, null, 2),
+    });
+  } catch (error) {
+    console.error("Get Drive file content error:", error.message);
+    res.status(500).json({
+      message: "Failed to fetch file content from Google Drive",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Proxy/stream an image from Google Drive
+// @route   GET /api/drive/file/:fileId/image
+const getDriveFileImage = async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+      return res.status(400).json({ message: "Invalid file ID" });
+    }
+
+    const drive = getDrive();
+    let meta = { data: { mimeType: "image/jpeg" } };
+    try {
+      meta = await drive.files.get({
+        fileId,
+        fields: "name, mimeType",
+        supportsAllDrives: true,
+      });
+    } catch (mErr) {
+      console.warn("Drive image meta warning:", mErr.message);
+    }
+
+    res.set("Content-Type", meta.data.mimeType || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=86400");
+
+    const response = await drive.files.get(
+      { fileId, alt: "media", supportsAllDrives: true },
+      { responseType: "stream" }
+    );
+
+    response.data.pipe(res);
+  } catch (error) {
+    console.warn("Get Drive image error, redirecting to thumbnail:", error.message);
+    res.redirect(`https://lh3.googleusercontent.com/d/${req.params.fileId}`);
   }
 };
 
@@ -340,4 +413,6 @@ module.exports = {
   importDriveBook,
   scanDriveUniversal,
   extractFolderId,
+  getDriveFileContent,
+  getDriveFileImage,
 };
