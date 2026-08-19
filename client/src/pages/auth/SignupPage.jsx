@@ -64,9 +64,7 @@ const SignupPage = () => {
       >
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
-              <span className="text-white font-bold">O</span>
-            </div>
+            <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-10 h-10 rounded-xl shadow-lg shadow-accent/20 object-cover" />
             <span className="text-2xl font-bold font-display">
               <span className="text-primary">Organize</span>
               <span className="gradient-text">Up</span>
