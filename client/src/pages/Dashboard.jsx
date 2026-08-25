@@ -6,6 +6,7 @@ import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoArrowForward, IoS
 import { fetchBooks } from '../redux/slices/bookSlice';
 import { fetchCourses } from '../redux/slices/courseSlice';
 import { fetchTools } from '../redux/slices/toolSlice';
+import AnimatedCounter from '../components/ui/AnimatedCounter';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const Dashboard = () => {
@@ -104,7 +105,12 @@ const Dashboard = () => {
                       <p className="text-sm text-secondary">{section.desc}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-3xl font-bold gradient-text">{section.count}</span>
+                      <AnimatedCounter
+                        value={section.count}
+                        duration={0.8}
+                        delay={i * 0.08}
+                        className="text-3xl font-bold gradient-text block"
+                      />
                       <p className="text-xs text-muted">items</p>
                     </div>
                   </div>

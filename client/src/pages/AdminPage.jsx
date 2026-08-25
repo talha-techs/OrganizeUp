@@ -39,6 +39,7 @@ import {
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ProgressBar from '../components/ui/ProgressBar';
+import AnimatedCounter from '../components/ui/AnimatedCounter';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 const countFiles = (item) => {
@@ -243,7 +244,12 @@ const AdminPage = () => {
                     <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center mb-3 shadow-md`}>
                       <card.icon size={20} className="text-white" />
                     </div>
-                    <div className="text-3xl font-bold text-primary">{card.value}</div>
+                    <AnimatedCounter
+                      value={card.value}
+                      duration={0.85}
+                      delay={i * 0.06}
+                      className="text-3xl font-bold text-primary block"
+                    />
                     <div className="text-sm text-secondary mt-1">{card.label}</div>
                   </motion.div>
                 ))}
@@ -271,7 +277,7 @@ const AdminPage = () => {
                       <span className="text-primary font-medium">Publish Requests</span>
                       {(stats?.pendingRequests || 0) > 0 && (
                         <span className="text-xs font-medium text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
-                          {stats.pendingRequests} pending
+                          <AnimatedCounter value={stats.pendingRequests} duration={0.6} /> pending
                         </span>
                       )}
                     </div>
@@ -285,7 +291,7 @@ const AdminPage = () => {
                       <IoLayersOutline size={20} className="text-accent" />
                       <span className="text-primary font-medium">Manage Content</span>
                       <span className="text-xs text-muted">
-                        {(stats?.books || 0) + (stats?.courses || 0) + (stats?.tools || 0)} items
+                        <AnimatedCounter value={(stats?.books || 0) + (stats?.courses || 0) + (stats?.tools || 0)} duration={0.85} /> items
                       </span>
                     </div>
                     <IoChevronForward size={18} className="text-muted group-hover:text-primary transition-colors" />
