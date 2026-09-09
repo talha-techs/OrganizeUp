@@ -61,7 +61,7 @@ const LoginPage = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3">
-            <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-10 h-10 rounded-xl shadow-lg shadow-accent/20 object-cover" />
+            <img src="/organizeup-logo.svg" alt="OrganizeUp" className="w-11 h-11 object-contain drop-shadow-[0_2px_10px_rgba(255,87,34,0.3)]" />
             <span className="text-2xl font-bold font-display">
               <span className="text-primary">Organize</span>
               <span className="gradient-text">Up</span>

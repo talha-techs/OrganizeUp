@@ -79,7 +79,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-9 h-9 rounded-xl shadow-lg shadow-black/20 group-hover:shadow-accent/20 transition-shadow" />
+            <img src="/organizeup-logo.svg" alt="OrganizeUp" className="w-9 h-9 object-contain drop-shadow-[0_2px_8px_rgba(255,87,34,0.25)] group-hover:scale-105 transition-transform" />
             <span className="text-lg font-bold font-display hidden sm:block">
               <span className="text-primary">Organize</span>
               <span className="gradient-text">Up</span>

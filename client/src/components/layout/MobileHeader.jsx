@@ -40,7 +40,7 @@ const MobileHeader = ({ onOpenMenu }) => {
         </button>
 
         <Link to="/dashboard" className="flex items-center gap-2">
-          <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-7 h-7 rounded-lg shadow-sm" />
+          <img src="/organizeup-logo.svg" alt="OrganizeUp" className="w-7 h-7 object-contain drop-shadow-[0_1px_4px_rgba(255,87,34,0.25)]" />
           <span className="text-base font-bold font-display text-primary">
             Organize<span className="gradient-text">Up</span>
           </span>

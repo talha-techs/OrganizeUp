@@ -135,9 +135,9 @@ const MobileDrawer = ({ isOpen, onClose }) => {
                 <div className="h-16 flex items-center justify-between px-5 border-b border-subtle flex-shrink-0 bg-surface-raised/40">
                   <div className="flex items-center gap-3">
                     <img
-                      src="/pwa-192x192.png"
+                      src="/organizeup-logo.svg"
                       alt="OrganizeUp"
-                      className="w-8 h-8 rounded-xl shadow-md shadow-accent/20"
+                      className="w-8 h-8 object-contain drop-shadow-[0_2px_6px_rgba(255,87,34,0.25)]"
                     />
                     <span className="text-base font-bold font-display text-primary">
                       Organize<span className="gradient-text">Up</span>

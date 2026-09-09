@@ -1,7 +1,10 @@
+<p align="center">
+  <br />
+  <img src="client/public/organizeup-logo.svg" alt="OrganizeUp Logo" width="100" height="100" />
+</p>
+
 <h1 align="center">
-  <br />
-  📚 OrganizeUp
-  <br />
+  OrganizeUp
 </h1>
 
 <p align="center">

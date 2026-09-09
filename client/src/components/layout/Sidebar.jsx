@@ -129,9 +129,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       <div className="h-16 flex items-center justify-between px-4 border-b border-subtle flex-shrink-0">
         <Link to="/dashboard" className="flex items-center gap-3 min-w-0 group">
           <img
-            src="/pwa-192x192.png"
+            src="/organizeup-logo.svg"
             alt="OrganizeUp"
-            className="w-9 h-9 rounded-xl shadow-md shadow-accent/20 flex-shrink-0 group-hover:scale-105 transition-transform"
+            className="w-9 h-9 object-contain flex-shrink-0 group-hover:scale-105 transition-transform drop-shadow-[0_2px_8px_rgba(255,87,34,0.25)]"
           />
           {!isCollapsed && (
             <motion.div

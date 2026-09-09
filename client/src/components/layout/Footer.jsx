@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-8 h-8 rounded-lg" />
+              <img src="/organizeup-logo.svg" alt="OrganizeUp" className="w-8 h-8 object-contain drop-shadow-[0_1px_4px_rgba(255,87,34,0.25)]" />
               <span className="text-base font-semibold text-primary">OrganizeUp</span>
             </div>
             <p className="text-sm text-secondary leading-relaxed max-w-sm">

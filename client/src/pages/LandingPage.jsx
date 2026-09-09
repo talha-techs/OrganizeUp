@@ -41,7 +41,7 @@ const Navbar = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between h-16">
         <div className="flex items-center gap-3">
-          <img src="/pwa-192x192.png" alt="OrganizeUp" className="w-9 h-9 rounded-xl shadow-lg shadow-accent/20" />
+          <img src="/organizeup-logo.svg" alt="OrganizeUp" className="w-9 h-9 object-contain drop-shadow-[0_2px_8px_rgba(255,87,34,0.25)]" />
           <span className="text-lg font-bold font-display">
             <span className="text-primary">Organize</span>
             <span className="gradient-text">Up</span>
