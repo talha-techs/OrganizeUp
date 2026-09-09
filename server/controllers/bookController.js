@@ -308,20 +308,30 @@ const updateVideoProgress = async (req, res) => {
     const bookId = req.params.id;
 
     const existingProgress = user.videoProgress.find(
-      (vp) => vp.bookId.toString() === bookId && vp.videoIndex === videoIndex,
+      (vp) => vp.bookId && vp.bookId.toString() === bookId && vp.videoIndex === videoIndex,
     );
 
+    const isCompleted =
+      completed === true ||
+      (progress !== undefined && progress >= 100) ||
+      (existingProgress && existingProgress.completed && completed !== false);
+
     if (existingProgress) {
-      existingProgress.progress = progress;
-      if (completed !== undefined) existingProgress.completed = completed;
-      if (note) existingProgress.note = note;
+      if (progress !== undefined) {
+        existingProgress.progress = isCompleted
+          ? 100
+          : Math.max(existingProgress.progress || 0, progress);
+      }
+      existingProgress.completed = isCompleted;
+      if (note !== undefined && note.trim()) existingProgress.note = note;
       existingProgress.lastWatched = new Date();
     } else {
       user.videoProgress.push({
         bookId,
+        contentType: "book",
         videoIndex,
-        progress,
-        completed: completed || false,
+        progress: isCompleted ? 100 : (progress || 0),
+        completed: isCompleted,
         note: note || "",
         lastWatched: new Date(),
       });
@@ -347,20 +357,27 @@ const updateReadingProgress = async (req, res) => {
     const bookId = req.params.id;
 
     const existingProgress = user.readingProgress.find(
-      (rp) => rp.bookId.toString() === bookId,
+      (rp) => rp.bookId && rp.bookId.toString() === bookId,
     );
+
+    const isCompleted =
+      (progress !== undefined && progress >= 100) ||
+      (totalPages > 0 && currentPage >= totalPages) ||
+      (existingProgress && existingProgress.completed);
 
     if (existingProgress) {
       existingProgress.currentPage = currentPage;
       if (totalPages) existingProgress.totalPages = totalPages;
       existingProgress.progress = progress;
+      existingProgress.completed = isCompleted;
       existingProgress.lastRead = new Date();
     } else {
       user.readingProgress.push({
         bookId,
         currentPage,
         totalPages: totalPages || 0,
-        progress,
+        progress: progress || 0,
+        completed: isCompleted,
         lastRead: new Date(),
       });
     }

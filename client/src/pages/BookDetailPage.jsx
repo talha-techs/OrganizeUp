@@ -166,7 +166,9 @@ const BookDetailPage = () => {
 
   // Sync reading progress from user data
   useEffect(() => {
-    const rp = user?.readingProgress?.find((rp) => rp.bookId === id);
+    const rp = user?.readingProgress?.find(
+      (rp) => rp.bookId === id || String(rp.bookId?._id || rp.bookId) === String(id)
+    );
     if (rp) {
       setCurrentPage(rp.currentPage || 1);
       setTotalPages(rp.totalPages || currentBook?.totalPages || 0);
@@ -177,7 +179,9 @@ const BookDetailPage = () => {
 
   const getVideoProgress = (videoIndex) => {
     return user?.videoProgress?.find(
-      (vp) => vp.bookId === id && vp.videoIndex === videoIndex
+      (vp) =>
+        (vp.bookId === id || String(vp.bookId?._id || vp.bookId) === String(id)) &&
+        vp.videoIndex === videoIndex
     );
   };
 
@@ -206,10 +210,15 @@ const BookDetailPage = () => {
   };
 
   const handleVideoProgress = (videoIndex, progress) => {
+    const existing = getVideoProgress(videoIndex);
     dispatch(
       updateVideoProgress({
         bookId: id,
-        progressData: { videoIndex, progress, completed: progress >= 100 },
+        progressData: {
+          videoIndex,
+          progress,
+          ...(existing?.completed ? { completed: true } : {}),
+        },
       })
     );
   };

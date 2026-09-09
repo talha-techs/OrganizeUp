@@ -20,6 +20,7 @@ import {
   saveVideoNotes,
   fetchCombinedNotes,
   refreshPlaylist,
+  updatePlaylistVideoProgress,
 } from '../redux/slices/youtubePlaylistSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -29,7 +30,7 @@ const YouTubePlaylistDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { currentPlaylist, isLoading, isSavingNotes, combinedNotes } = useSelector(
+  const { currentPlaylist, isLoading, isSavingNotes, combinedNotes, completedVideos = [], progress = 0 } = useSelector(
     (state) => state.playlists,
   );
   useDocumentTitle(currentPlaylist?.title || 'Playlist');
@@ -140,6 +141,27 @@ const YouTubePlaylistDetailPage = () => {
     }
   };
 
+  const handleToggleVideoComplete = useCallback(
+    async (videoId, e) => {
+      if (e) e.stopPropagation();
+      const isCompleted = completedVideos.includes(videoId);
+      try {
+        await dispatch(
+          updatePlaylistVideoProgress({
+            playlistId: id,
+            videoId,
+            completed: !isCompleted,
+            note: videoId === activeVideoId ? localNotes : undefined,
+          }),
+        ).unwrap();
+        toast.success(!isCompleted ? 'Video completed!' : 'Marked as unwatched');
+      } catch (err) {
+        toast.error(err || 'Failed to update progress');
+      }
+    },
+    [dispatch, id, completedVideos, activeVideoId, localNotes],
+  );
+
   const handleCopyCombinedNotes = () => {
     navigator.clipboard.writeText(combinedNotes);
     toast.success('Notes copied to clipboard');
@@ -188,9 +210,31 @@ const YouTubePlaylistDetailPage = () => {
             {currentPlaylist.channelTitle && (
               <p className="text-red-400 text-sm mt-1">{currentPlaylist.channelTitle}</p>
             )}
-            <p className="text-xs text-muted mt-1">
-              {currentPlaylist.videoCount || 0} video{currentPlaylist.videoCount !== 1 ? 's' : ''}
-            </p>
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <p className="text-xs text-muted">
+                {currentPlaylist.videoCount || 0} video{currentPlaylist.videoCount !== 1 ? 's' : ''}
+              </p>
+              <div className="flex items-center gap-2 bg-surface px-2.5 py-0.5 rounded-full border border-subtle">
+                <span className="text-xs text-secondary font-medium">
+                  {completedVideos.length} / {currentPlaylist.videos?.length || 0} completed ({progress}%)
+                </span>
+                {progress >= 100 && (
+                  <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                    <IoCheckmarkCircle size={12} /> Finished
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Playlist Progress bar */}
+            <div className="w-full max-w-sm mt-2">
+              <div className="w-full h-1.5 rounded-full bg-surface border border-subtle overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#ff5722] to-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, progress || 0))}%` }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -322,6 +366,20 @@ const YouTubePlaylistDetailPage = () => {
                     </span>
                   )}
                   <button
+                    onClick={() => handleToggleVideoComplete(activeVideoId)}
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                      completedVideos.includes(activeVideoId)
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                        : 'bg-surface text-secondary hover:text-primary border-subtle'
+                    }`}
+                  >
+                    <IoCheckmarkCircle
+                      size={14}
+                      className={completedVideos.includes(activeVideoId) ? 'text-emerald-400' : 'text-muted'}
+                    />
+                    {completedVideos.includes(activeVideoId) ? 'Completed' : 'Mark Completed'}
+                  </button>
+                  <button
                     onClick={handleSaveNotes}
                     className="btn-secondary flex items-center gap-1.5 text-xs cursor-pointer"
                     disabled={isSavingNotes}
@@ -412,10 +470,26 @@ const YouTubePlaylistDetailPage = () => {
                           <span className="text-[10px] text-muted">{video.duration}</span>
                         )}
                         {hasNotes && (
-                          <IoCheckmarkCircle size={12} className="text-emerald-500" title="Has notes" />
+                          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            Notes
+                          </span>
                         )}
                       </div>
                     </div>
+
+                    {/* Completion button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleVideoComplete(video.videoId, e)}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        completedVideos.includes(video.videoId)
+                          ? 'text-emerald-400 hover:bg-emerald-500/20'
+                          : 'text-muted/40 hover:text-secondary hover:bg-surface'
+                      }`}
+                      title={completedVideos.includes(video.videoId) ? 'Mark as unwatched' : 'Mark as completed'}
+                    >
+                      <IoCheckmarkCircle size={18} />
+                    </button>
                   </button>
                 );
               })}

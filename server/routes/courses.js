@@ -11,6 +11,8 @@ const {
   getCategories,
   createCategory,
   deleteCategory,
+  getCourseProgress,
+  updateCourseProgress,
 } = require("../controllers/courseController");
 const { protect, adminOnly } = require("../middleware/auth");
 const {
@@ -35,6 +37,8 @@ router.delete("/categories/:id", protect, adminOnly, deleteCategory);
 // Course routes
 router.get("/", protect, getCourses);
 router.get("/:id", protect, getCourse);
+router.get("/:id/progress", protect, getCourseProgress);
+router.put("/:id/progress", protect, updateCourseProgress);
 router.post(
   "/",
   protect,

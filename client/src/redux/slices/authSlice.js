@@ -6,9 +6,26 @@ const storedUser = localStorage.getItem("user");
 
 const initialState = {
   user: storedUser ? JSON.parse(storedUser) : null,
+  stats: null,
+  notes: [],
   isLoading: false,
+  isStatsLoading: false,
   error: null,
 };
+
+export const fetchUserStats = createAsyncThunk(
+  "auth/fetchUserStats",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/auth/stats");
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch stats",
+      );
+    }
+  },
+);
 
 export const register = createAsyncThunk(
   "auth/register",
@@ -149,6 +166,20 @@ const authSlice = createSlice({
       // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
+        state.stats = null;
+        state.notes = [];
+      })
+      // Fetch User Stats
+      .addCase(fetchUserStats.pending, (state) => {
+        state.isStatsLoading = true;
+      })
+      .addCase(fetchUserStats.fulfilled, (state, action) => {
+        state.isStatsLoading = false;
+        state.stats = action.payload.stats;
+        state.notes = action.payload.notes;
+      })
+      .addCase(fetchUserStats.rejected, (state) => {
+        state.isStatsLoading = false;
       });
   },
 });

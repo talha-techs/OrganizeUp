@@ -9,6 +9,7 @@ const {
   saveVideoNotes,
   getCombinedNotes,
   refreshPlaylist,
+  updatePlaylistVideoProgress,
 } = require("../controllers/youtubePlaylistController");
 const { protect } = require("../middleware/auth");
 
@@ -18,7 +19,8 @@ router.post("/", protect, addPlaylist);
 router.put("/:id", protect, updatePlaylist);
 router.delete("/:id", protect, deletePlaylist);
 
-// Notes
+// Video Progress & Notes
+router.put("/:id/videos/:videoId/progress", protect, updatePlaylistVideoProgress);
 router.put("/:id/videos/:videoId/notes", protect, saveVideoNotes);
 router.get("/:id/notes", protect, getCombinedNotes);
 

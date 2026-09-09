@@ -10,6 +10,7 @@ const {
   updateProfile,
   markNotificationsRead,
   setCookie,
+  getUserStats,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
@@ -42,6 +43,7 @@ router.get(
 
 // Protected routes
 router.get("/me", protect, getMe);
+router.get("/stats", protect, getUserStats);
 router.put("/profile", protect, upload.single("avatar"), updateProfile);
 router.put("/notifications/mark-read", protect, markNotificationsRead);
 

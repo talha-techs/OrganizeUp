@@ -1,4 +1,8 @@
 const User = require("../models/User");
+const Book = require("../models/Book");
+const Course = require("../models/Course");
+const YoutubePlaylist = require("../models/YoutubePlaylist");
+const SubSection = require("../models/SubSection");
 const { generateToken } = require("../middleware/auth");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
@@ -150,8 +154,10 @@ const getMe = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
-        videoProgress: user.videoProgress,
-        readingProgress: user.readingProgress,
+        videoProgress: user.videoProgress || [],
+        readingProgress: user.readingProgress || [],
+        courseProgress: user.courseProgress || [],
+        playlistProgress: user.playlistProgress || [],
         notifications: user.notifications || [],
         createdAt: user.createdAt,
       },
@@ -235,6 +241,191 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Get user profile learning statistics & aggregated notes
+// @route   GET /api/auth/stats
+const getUserStats = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 1. Completed Videos:
+    // Gather distinct completed videos from:
+    // - user.videoProgress where completed is true
+    // - completed videos in user.playlistProgress
+    // - completed video files in user.courseProgress
+    const completedVideosSet = new Set();
+
+    (user.videoProgress || []).forEach((vp) => {
+      if (vp.completed) {
+        const key = vp.videoId
+          ? `${vp.contentType || "video"}_${vp.videoId}`
+          : `book_${vp.bookId}_${vp.videoIndex}`;
+        completedVideosSet.add(key);
+      }
+    });
+
+    (user.playlistProgress || []).forEach((pp) => {
+      (pp.completedVideos || []).forEach((vId) => {
+        completedVideosSet.add(`youtube_${vId}`);
+      });
+    });
+
+    const videosCompleted = completedVideosSet.size;
+
+    // 2. Books Stats:
+    // Fetch books referenced in user's reading/video progress or created by user
+    const bookIds = [
+      ...(user.videoProgress || []).map((vp) => vp.bookId).filter(Boolean),
+      ...(user.readingProgress || []).map((rp) => rp.bookId).filter(Boolean),
+    ];
+
+    const books = await Book.find({
+      $or: [{ _id: { $in: bookIds } }, { addedBy: user._id }],
+    }).lean();
+
+    const bookMap = new Map(books.map((b) => [b._id.toString(), b]));
+
+    let booksReading = 0;
+    let booksCompleted = 0;
+
+    (user.readingProgress || []).forEach((rp) => {
+      if (
+        rp.completed ||
+        rp.progress >= 100 ||
+        (rp.totalPages > 0 && rp.currentPage >= rp.totalPages)
+      ) {
+        booksCompleted++;
+      } else if (rp.progress > 0) {
+        booksReading++;
+      }
+    });
+
+    // Check video books completion
+    const videoBooksEncountered = new Set();
+    (user.videoProgress || []).forEach((vp) => {
+      if (vp.bookId && (!vp.contentType || vp.contentType === "book")) {
+        videoBooksEncountered.add(vp.bookId.toString());
+      }
+    });
+
+    videoBooksEncountered.forEach((bId) => {
+      const book = bookMap.get(bId);
+      if (book && book.type === "video" && book.videos?.length > 0) {
+        const totalVids = book.videos.length;
+        const finishedVids = (user.videoProgress || []).filter(
+          (vp) => vp.bookId && vp.bookId.toString() === bId && vp.completed,
+        ).length;
+        if (finishedVids >= totalVids) {
+          booksCompleted++;
+        } else if (finishedVids > 0) {
+          booksReading++;
+        }
+      }
+    });
+
+    // 3. Courses Stats:
+    const coursesInProgress = (user.courseProgress || []).filter(
+      (cp) =>
+        !cp.completed &&
+        ((cp.completedFiles && cp.completedFiles.length > 0) || cp.progress > 0),
+    ).length;
+    const coursesCompleted = (user.courseProgress || []).filter(
+      (cp) => cp.completed || cp.progress >= 100,
+    ).length;
+
+    // 4. Playlists Stats:
+    const playlistsInProgress = (user.playlistProgress || []).filter(
+      (pp) =>
+        !pp.completed &&
+        ((pp.completedVideos && pp.completedVideos.length > 0) ||
+          pp.progress > 0),
+    ).length;
+    const playlistsCompleted = (user.playlistProgress || []).filter(
+      (pp) => pp.completed || pp.progress >= 100,
+    ).length;
+
+    // 5. Unified Notes Aggregation:
+    const notesList = [];
+
+    // a) Video Progress notes (books, courses, youtube)
+    (user.videoProgress || []).forEach((vp) => {
+      if (vp.note && vp.note.trim()) {
+        let sourceTitle = vp.title || "Video Reflection";
+        if (vp.bookId && bookMap.has(vp.bookId.toString())) {
+          sourceTitle = bookMap.get(vp.bookId.toString()).title;
+        }
+        notesList.push({
+          id: vp._id ? vp._id.toString() : `${vp.contentType}_${vp.videoId}`,
+          type: vp.contentType || "book",
+          sourceTitle,
+          content: vp.note.trim(),
+          date: vp.lastWatched || new Date(),
+        });
+      }
+    });
+
+    // b) YouTube Playlist video notes
+    const playlists = await YoutubePlaylist.find({ addedBy: user._id }).lean();
+    playlists.forEach((p) => {
+      (p.videos || []).forEach((v) => {
+        if (v.notes && v.notes.trim()) {
+          const alreadyInList = notesList.some(
+            (n) =>
+              n.type === "youtube" &&
+              (n.content === v.notes.trim() || n.id === v.videoId),
+          );
+          if (!alreadyInList) {
+            notesList.push({
+              id: `yt_${p._id}_${v.videoId}`,
+              type: "youtube",
+              sourceTitle: `${p.title} · ${v.title}`,
+              content: v.notes.trim(),
+              date: p.updatedAt || new Date(),
+            });
+          }
+        }
+      });
+    });
+
+    // c) SubSection Notes (custom notebook sections)
+    const subSections = await SubSection.find({
+      addedBy: user._id,
+      type: "note",
+    }).lean();
+    subSections.forEach((s) => {
+      if (s.content && s.content.trim()) {
+        notesList.push({
+          id: s._id.toString(),
+          type: "notebook",
+          sourceTitle: s.name,
+          content: s.content.trim(),
+          date: s.updatedAt || s.createdAt || new Date(),
+        });
+      }
+    });
+
+    // Sort notes descending by date
+    notesList.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json({
+      stats: {
+        videosCompleted,
+        booksReading,
+        booksCompleted,
+        coursesInProgress,
+        coursesCompleted,
+        playlistsInProgress,
+        playlistsCompleted,
+        totalNotes: notesList.length,
+      },
+      notes: notesList,
+    });
+  } catch (error) {
+    console.error("Get user stats error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -244,4 +435,5 @@ module.exports = {
   updateProfile,
   markNotificationsRead,
   setCookie,
+  getUserStats,
 };

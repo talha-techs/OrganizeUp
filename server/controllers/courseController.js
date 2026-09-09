@@ -1,5 +1,6 @@
 const Course = require("../models/Course");
 const Category = require("../models/Category");
+const User = require("../models/User");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
 // Escape special regex chars to prevent ReDoS / injection
@@ -386,6 +387,133 @@ const deleteCategory = async (req, res) => {
   }
 };
 
+// Helper to count all files in course
+const countCourseFiles = (course) => {
+  let count = course.files?.length || 0;
+  const countFolderFiles = (folders) => {
+    for (const folder of folders || []) {
+      count += folder.files?.length || 0;
+      if (folder.subfolders?.length) countFolderFiles(folder.subfolders);
+    }
+  };
+  countFolderFiles(course.folders);
+  return count;
+};
+
+// @desc    Get user progress for a course
+// @route   GET /api/courses/:id/progress
+const getCourseProgress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const courseId = req.params.id;
+
+    const progress = (user.courseProgress || []).find(
+      (cp) => cp.courseId && cp.courseId.toString() === courseId,
+    );
+
+    const videoProgress = (user.videoProgress || []).filter(
+      (vp) => vp.courseId && vp.courseId.toString() === courseId,
+    );
+
+    res.json({
+      courseProgress: progress || {
+        courseId,
+        completedFiles: [],
+        progress: 0,
+        completed: false,
+      },
+      videoProgress,
+    });
+  } catch (error) {
+    console.error("Get course progress error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Update progress for a file/video in a course
+// @route   PUT /api/courses/:id/progress
+const updateCourseProgress = async (req, res) => {
+  try {
+    const { fileId, completed, isVideo, title, note } = req.body;
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user.courseProgress) user.courseProgress = [];
+
+    let cProg = user.courseProgress.find(
+      (cp) => cp.courseId && cp.courseId.toString() === course._id.toString(),
+    );
+
+    if (!cProg) {
+      cProg = {
+        courseId: course._id,
+        completedFiles: [],
+        progress: 0,
+        completed: false,
+        lastAccessed: new Date(),
+      };
+      user.courseProgress.push(cProg);
+      cProg = user.courseProgress[user.courseProgress.length - 1];
+    }
+
+    const isMarkedCompleted = completed !== false;
+
+    if (isMarkedCompleted) {
+      if (!cProg.completedFiles.includes(fileId)) {
+        cProg.completedFiles.push(fileId);
+      }
+    } else {
+      cProg.completedFiles = cProg.completedFiles.filter((id) => id !== fileId);
+    }
+
+    const totalFiles = countCourseFiles(course);
+    cProg.progress = totalFiles > 0 ? Math.round((cProg.completedFiles.length / totalFiles) * 100) : 0;
+    cProg.completed = totalFiles > 0 && cProg.completedFiles.length >= totalFiles;
+    cProg.lastAccessed = new Date();
+
+    // If it's a video file, also sync with universal videoProgress
+    if (isVideo) {
+      if (!user.videoProgress) user.videoProgress = [];
+      let vProg = user.videoProgress.find(
+        (vp) => vp.contentType === "course" && vp.videoId === fileId,
+      );
+
+      if (vProg) {
+        vProg.completed = isMarkedCompleted;
+        vProg.progress = isMarkedCompleted ? 100 : 0;
+        if (title) vProg.title = title;
+        if (note !== undefined) vProg.note = note;
+        vProg.lastWatched = new Date();
+      } else {
+        user.videoProgress.push({
+          courseId: course._id,
+          contentType: "course",
+          videoId: fileId,
+          title: title || "Course Video",
+          progress: isMarkedCompleted ? 100 : 0,
+          completed: isMarkedCompleted,
+          note: note || "",
+          lastWatched: new Date(),
+        });
+      }
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Course progress updated",
+      courseProgress: cProg,
+      videoProgress: user.videoProgress,
+    });
+  } catch (error) {
+    console.error("Update course progress error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getCourses,
   getCourse,
@@ -397,4 +525,6 @@ module.exports = {
   getCategories,
   createCategory,
   deleteCategory,
+  getCourseProgress,
+  updateCourseProgress,
 };

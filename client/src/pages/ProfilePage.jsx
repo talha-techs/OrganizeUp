@@ -22,8 +22,11 @@ import {
   IoTimeOutline,
   IoLinkOutline,
   IoWarningOutline,
-  IoBookmarkOutline,} from 'react-icons/io5';
-import { updateProfile } from '../redux/slices/authSlice';
+  IoBookmarkOutline,
+  IoCheckmarkDoneCircleOutline,
+  IoCheckmarkCircle,
+} from 'react-icons/io5';
+import { updateProfile, getMe, fetchUserStats } from '../redux/slices/authSlice';
 import { fetchBooks, deleteBook, removeVideoFromBook } from '../redux/slices/bookSlice';
 import { fetchCourses, deleteCourse, removeFileFromCourse } from '../redux/slices/courseSlice';
 import { fetchTools, deleteTool, removeFileFromTool } from '../redux/slices/toolSlice';
@@ -152,7 +155,7 @@ const SubRow = ({ name, onDelete }) => {
 /* ── main component ─────────────────────────────────────── */
 const ProfilePage = () => {
   useDocumentTitle('Profile');
-  const { user } = useSelector((state) => state.auth);
+  const { user, stats, notes = [], isStatsLoading } = useSelector((state) => state.auth);
   const { books } = useSelector((state) => state.books);
   const { courses } = useSelector((state) => state.courses);
   const { tools } = useSelector((state) => state.tools);
@@ -167,6 +170,12 @@ const ProfilePage = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [tab, setTab] = useState('profile'); // profile | work
+  const [noteFilter, setNoteFilter] = useState('all');
+
+  useEffect(() => {
+    dispatch(getMe());
+    dispatch(fetchUserStats());
+  }, [dispatch]);
 
   useEffect(() => {
     if (tab === 'work') {
@@ -250,8 +259,23 @@ const ProfilePage = () => {
     else toast.error(result.payload || `Failed to remove ${label}`);
   };
 
-  const completedVideos = user?.videoProgress?.filter((vp) => vp.completed)?.length || 0;
-  const totalNotes = user?.videoProgress?.filter((vp) => vp.note)?.length || 0;
+  const allNotes =
+    notes?.length > 0
+      ? notes
+      : (user?.videoProgress || [])
+          .filter((vp) => vp.note)
+          .map((vp, i) => ({
+            id: vp._id || i,
+            type: vp.contentType || 'book',
+            sourceTitle: vp.title || 'Video Note',
+            content: vp.note,
+            date: vp.lastWatched || new Date(),
+          }));
+
+  const filteredNotes =
+    noteFilter === 'all'
+      ? allNotes
+      : allNotes.filter((n) => n.type === noteFilter);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -355,32 +379,141 @@ const ProfilePage = () => {
 
                 {/* Stats */}
                 <div className="border-t border-subtle pt-6">
-                  <h3 className="text-sm font-medium text-secondary mb-4">Learning Stats</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="glass-card p-4 text-center border border-subtle">
-                      <div className="text-2xl font-bold gradient-text">{completedVideos}</div>
-                      <div className="text-xs text-muted mt-1">Videos Completed</div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-secondary flex items-center gap-2">
+                      <IoBulbOutline className="text-accent" /> Learning Stats & Progress
+                    </h3>
+                    {isStatsLoading && (
+                      <span className="text-xs text-muted animate-pulse">Syncing stats...</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                    {/* 1. Videos Completed */}
+                    <div className="glass-card p-4 text-center border border-subtle relative overflow-hidden group hover:border-accent/40 transition-all">
+                      <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center mx-auto mb-2">
+                        <IoVideocamOutline size={18} />
+                      </div>
+                      <div className="text-2xl font-bold gradient-text">
+                        {stats?.videosCompleted ?? (user?.videoProgress?.filter((vp) => vp.completed)?.length || 0)}
+                      </div>
+                      <div className="text-xs font-medium text-primary mt-1">Videos Completed</div>
+                      <div className="text-[10px] text-muted mt-0.5">Books, Courses & YT</div>
                     </div>
-                    <div className="glass-card p-4 text-center border border-subtle">
-                      <div className="text-2xl font-bold gradient-text">{totalNotes}</div>
-                      <div className="text-xs text-muted mt-1">Notes Written</div>
+
+                    {/* 2. Books Reading */}
+                    <div className="glass-card p-4 text-center border border-subtle relative overflow-hidden group hover:border-amber-400/40 transition-all">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto mb-2">
+                        <IoBookOutline size={18} />
+                      </div>
+                      <div className="text-2xl font-bold text-amber-400">
+                        {stats?.booksReading ?? 0}
+                      </div>
+                      <div className="text-xs font-medium text-primary mt-1">Books Reading</div>
+                      <div className="text-[10px] text-muted mt-0.5">In Progress</div>
                     </div>
-                    <div className="glass-card p-4 text-center border border-subtle">
-                      <div className="text-2xl font-bold gradient-text">{user?.readingProgress?.length || 0}</div>
-                      <div className="text-xs text-muted mt-1">Books Reading</div>
+
+                    {/* 3. Books Completed */}
+                    <div className="glass-card p-4 text-center border border-subtle relative overflow-hidden group hover:border-emerald-400/40 transition-all">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                        <IoCheckmarkDoneCircleOutline size={18} />
+                      </div>
+                      <div className="text-2xl font-bold text-emerald-400">
+                        {stats?.booksCompleted ?? 0}
+                      </div>
+                      <div className="text-xs font-medium text-primary mt-1">Books Completed</div>
+                      <div className="text-[10px] text-muted mt-0.5">Finished 100%</div>
+                    </div>
+
+                    {/* 4. Courses Completed */}
+                    <div className="glass-card p-4 text-center border border-subtle relative overflow-hidden group hover:border-purple-400/40 transition-all">
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto mb-2">
+                        <IoSchoolOutline size={18} />
+                      </div>
+                      <div className="text-2xl font-bold text-purple-400">
+                        {stats?.coursesCompleted ?? 0}
+                      </div>
+                      <div className="text-xs font-medium text-primary mt-1">Courses Completed</div>
+                      <div className="text-[10px] text-muted mt-0.5">
+                        {stats?.coursesInProgress || 0} in progress
+                      </div>
+                    </div>
+
+                    {/* 5. Notes Written */}
+                    <div className="glass-card p-4 text-center border border-subtle relative overflow-hidden group hover:border-sky-400/40 transition-all col-span-2 sm:col-span-1">
+                      <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mx-auto mb-2">
+                        <IoDocumentTextOutline size={18} />
+                      </div>
+                      <div className="text-2xl font-bold text-sky-400">
+                        {stats?.totalNotes ?? (notes?.length || user?.videoProgress?.filter((vp) => vp.note)?.length || 0)}
+                      </div>
+                      <div className="text-xs font-medium text-primary mt-1">Notes Written</div>
+                      <div className="text-[10px] text-muted mt-0.5">All Resources</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Learning Notes */}
-                {user?.videoProgress?.filter((vp) => vp.note)?.length > 0 && (
+                {(allNotes.length > 0) && (
                   <div className="border-t border-subtle pt-6 mt-6">
-                    <h3 className="text-sm font-medium text-secondary mb-4">Your Learning Notes</h3>
-                    <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {user.videoProgress.filter((vp) => vp.note).map((vp, i) => (
-                        <div key={i} className="p-3 rounded-xl bg-surface border border-subtle">
-                          <p className="text-sm text-secondary">{vp.note}</p>
-                          <p className="text-xs text-muted mt-1.5">{new Date(vp.lastWatched).toLocaleDateString()}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <h3 className="text-sm font-semibold text-secondary flex items-center gap-2">
+                        <IoDocumentTextOutline className="text-sky-400" /> Your Learning Notes & Reflections ({allNotes.length})
+                      </h3>
+                      {/* Note source filters */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                        {['all', 'youtube', 'book', 'course', 'notebook'].map((f) => {
+                          const count = f === 'all' ? allNotes.length : allNotes.filter((n) => n.type === f).length;
+                          if (f !== 'all' && count === 0) return null;
+                          return (
+                            <button
+                              key={f}
+                              onClick={() => setNoteFilter(f)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer capitalize ${
+                                noteFilter === f
+                                  ? 'bg-accent-subtle text-accent border border-accent/30 font-semibold'
+                                  : 'bg-surface text-secondary hover:text-primary border border-subtle'
+                              }`}
+                            >
+                              {f} ({count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
+                      {filteredNotes.map((n, i) => (
+                        <div key={n.id || i} className="p-4 rounded-xl bg-surface border border-subtle hover:border-accent/30 transition-all">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                  n.type === 'youtube'
+                                    ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                    : n.type === 'book'
+                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    : n.type === 'course'
+                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                                    : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                                }`}
+                              >
+                                {n.type === 'youtube' && <IoLogoYoutube size={10} />}
+                                {n.type === 'book' && <IoBookOutline size={10} />}
+                                {n.type === 'course' && <IoSchoolOutline size={10} />}
+                                {n.type === 'notebook' && <IoDocumentTextOutline size={10} />}
+                                <span className="capitalize">{n.type}</span>
+                              </span>
+                              <span className="text-xs font-semibold text-primary truncate max-w-[280px] sm:max-w-md">
+                                {n.sourceTitle}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-muted flex-shrink-0">
+                              {new Date(n.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-secondary leading-relaxed whitespace-pre-line pl-2 border-l-2 border-accent/40">
+                            {n.content}
+                          </p>
                         </div>
                       ))}
                     </div>

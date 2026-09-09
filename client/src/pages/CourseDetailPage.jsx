@@ -22,7 +22,10 @@ import {
   importToCourse,
   removeFileFromCourse,
   clearCurrentCourse,
+  fetchCourseProgress,
+  updateCourseFileProgress,
 } from '../redux/slices/courseSlice';
+import { IoCheckmarkCircle } from 'react-icons/io5';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
@@ -41,7 +44,7 @@ const FILE_ICONS = {
   other: <IoDocumentOutline size={16} className="text-muted" />,
 };
 
-const FolderTree = ({ folder, onFileClick, depth = 0 }) => {
+const FolderTree = ({ folder, onFileClick, completedFiles = [], onToggleComplete, depth = 0 }) => {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -59,23 +62,35 @@ const FolderTree = ({ folder, onFileClick, depth = 0 }) => {
 
       {expanded && (
         <div>
-          {folder.files?.map((file) => (
-            <button
-              key={file._id || file.driveFileId}
-              onClick={() => onFileClick(file)}
-              className="flex items-center gap-2 py-2 px-3 w-full rounded-lg hover:bg-surface-raised transition-colors cursor-pointer"
-              style={{ paddingLeft: `${(depth + 1) * 16 + 24}px` }}
-            >
-              {FILE_ICONS[file.fileType] || FILE_ICONS.other}
-              <span className="text-sm text-secondary truncate">{file.name}</span>
-            </button>
-          ))}
+          {folder.files?.map((file) => {
+            const isDone = completedFiles.includes(file.driveFileId || file._id);
+            return (
+              <button
+                key={file._id || file.driveFileId}
+                onClick={() => onFileClick(file)}
+                className="flex items-center gap-2 py-2 px-3 w-full rounded-lg hover:bg-surface-raised transition-colors cursor-pointer group"
+                style={{ paddingLeft: `${(depth + 1) * 16 + 24}px` }}
+              >
+                {FILE_ICONS[file.fileType] || FILE_ICONS.other}
+                <span className={`text-sm truncate flex-1 text-left ${isDone ? 'line-through text-muted' : 'text-secondary group-hover:text-primary'}`}>
+                  {file.name}
+                </span>
+                {isDone && (
+                  <span className="text-emerald-400 text-[11px] font-semibold flex items-center gap-1 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                    <IoCheckmarkCircle size={12} /> Completed
+                  </span>
+                )}
+              </button>
+            );
+          })}
 
           {folder.subfolders?.map((sub, i) => (
             <FolderTree
               key={sub.driveFileId || i}
               folder={sub}
               onFileClick={onFileClick}
+              completedFiles={completedFiles}
+              onToggleComplete={onToggleComplete}
               depth={depth + 1}
             />
           ))}
@@ -89,7 +104,7 @@ const CourseDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { currentCourse, isLoading, categories } = useSelector((state) => state.courses);
+  const { currentCourse, isLoading, categories, progress } = useSelector((state) => state.courses);
   const { user } = useSelector((state) => state.auth);
   useDocumentTitle(currentCourse?.title || 'Course');
   const isAdmin = user?.role === 'admin';
@@ -99,11 +114,34 @@ const CourseDetailPage = () => {
   useEffect(() => {
     dispatch(fetchCourse(id));
     dispatch(fetchCategories());
+    dispatch(fetchCourseProgress(id));
 
     return () => {
       dispatch(clearCurrentCourse());
     };
   }, [dispatch, id]);
+
+  const courseProgress = progress[id] || { completedFiles: [], progress: 0, completed: false };
+  const completedFiles = courseProgress.completedFiles || [];
+
+  const handleToggleComplete = async (file) => {
+    const fileId = file.driveFileId || file._id;
+    const isCompleted = completedFiles.includes(fileId);
+    try {
+      await dispatch(
+        updateCourseFileProgress({
+          courseId: id,
+          fileId,
+          completed: !isCompleted,
+          isVideo: file.fileType === 'video',
+          title: file.name,
+        })
+      ).unwrap();
+      toast.success(!isCompleted ? 'File marked as completed' : 'Marked as incomplete');
+    } catch (err) {
+      toast.error(err || 'Failed to update progress');
+    }
+  };
 
   const handleImport = async (importData) => {
     try {
@@ -150,10 +188,13 @@ const CourseDetailPage = () => {
 
   // Full-Screen Dedicated File Viewer
   if (selectedFile) {
+    const isFileCompleted = completedFiles.includes(selectedFile.driveFileId || selectedFile._id);
     return (
       <div className="h-[calc(100vh-64px)] flex flex-col p-3 sm:p-6 max-w-7xl mx-auto w-full">
         <FileViewer
           file={selectedFile}
+          isCompleted={isFileCompleted}
+          onToggleComplete={handleToggleComplete}
           onBack={() => setSelectedFile(null)}
           onClose={() => setSelectedFile(null)}
         />
@@ -202,10 +243,33 @@ const CourseDetailPage = () => {
             {currentCourse.description && (
               <p className="text-secondary text-sm mt-2">{currentCourse.description}</p>
             )}
-            <p className="text-xs text-muted mt-1">
-              {currentCourse.files?.length || 0} files
-              {currentCourse.addedBy?.name && ` · by ${currentCourse.addedBy.name}`}
-            </p>
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              <span className="text-xs text-muted">
+                {currentCourse.files?.length || 0} top files
+                {currentCourse.addedBy?.name && ` · by ${currentCourse.addedBy.name}`}
+              </span>
+              {/* Progress pill */}
+              <div className="flex items-center gap-2 bg-surface px-3 py-1 rounded-full border border-subtle">
+                <span className="text-xs text-secondary font-medium">
+                  {completedFiles.length} completed ({courseProgress.progress}%)
+                </span>
+                {courseProgress.completed && (
+                  <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                    <IoCheckmarkCircle size={12} /> Finished
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Course Progress bar */}
+            <div className="w-full max-w-md mt-3">
+              <div className="w-full h-2 rounded-full bg-surface border border-subtle overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#ff5722] to-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, courseProgress.progress || 0))}%` }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -264,6 +328,8 @@ const CourseDetailPage = () => {
                 <FolderTree
                   key={folder.driveFileId || i}
                   folder={folder}
+                  completedFiles={completedFiles}
+                  onToggleComplete={handleToggleComplete}
                   onFileClick={setSelectedFile}
                 />
               ))}
@@ -277,37 +343,47 @@ const CourseDetailPage = () => {
                 {hasFolders ? 'All Files' : 'Files'}
               </h4>
               <div className="space-y-0.5">
-                {currentCourse.files.map((file) => (
-                  <div
-                    key={file._id}
-                    className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-surface-raised transition-colors group cursor-pointer"
-                    onClick={() => setSelectedFile(file)}
-                  >
-                    {FILE_ICONS[file.fileType] || FILE_ICONS.other}
-                    <span className="text-sm text-primary truncate flex-1">{file.name}</span>
-                    {file.path && file.path.includes('/') && (
-                      <span className="text-xs text-muted truncate max-w-[200px]">{file.path}</span>
-                    )}
-                    {file.size && (
-                      <span className="text-xs text-muted">
-                        {file.size > 1048576
-                          ? `${(file.size / 1048576).toFixed(1)} MB`
-                          : `${(file.size / 1024).toFixed(0)} KB`}
+                {currentCourse.files.map((file) => {
+                  const isDone = completedFiles.includes(file.driveFileId || file._id);
+                  return (
+                    <div
+                      key={file._id}
+                      className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-surface-raised transition-colors group cursor-pointer"
+                      onClick={() => setSelectedFile(file)}
+                    >
+                      {FILE_ICONS[file.fileType] || FILE_ICONS.other}
+                      <span className={`text-sm truncate flex-1 ${isDone ? 'line-through text-muted' : 'text-primary'}`}>
+                        {file.name}
                       </span>
-                    )}
-                    {canManage && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveFile(file._id);
-                        }}
-                        className="p-1 rounded hover:bg-red-500/10 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                      >
-                        <IoTrashOutline size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      {isDone && (
+                        <span className="text-emerald-400 text-xs font-semibold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                          <IoCheckmarkCircle size={13} /> Done
+                        </span>
+                      )}
+                      {file.path && file.path.includes('/') && (
+                        <span className="text-xs text-muted truncate max-w-[200px]">{file.path}</span>
+                      )}
+                      {file.size && (
+                        <span className="text-xs text-muted">
+                          {file.size > 1048576
+                            ? `${(file.size / 1048576).toFixed(1)} MB`
+                            : `${(file.size / 1024).toFixed(0)} KB`}
+                        </span>
+                      )}
+                      {canManage && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveFile(file._id);
+                          }}
+                          className="p-1 rounded hover:bg-red-500/10 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                        >
+                          <IoTrashOutline size={14} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

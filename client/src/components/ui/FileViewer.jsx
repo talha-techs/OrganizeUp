@@ -12,6 +12,7 @@ import {
   IoCodeSlashOutline,
   IoTextOutline,
   IoEyeOutline,
+  IoCheckmarkCircle,
 } from 'react-icons/io5';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -26,7 +27,7 @@ const TEXT_EXTENSIONS = [
  * Universal file viewer that dynamically renders files based on type.
  * Supports: Text/Code files, Images, PDF, Video, Google Docs/Sheets/Slides, and more.
  */
-const FileViewer = ({ file, onBack, onClose }) => {
+const FileViewer = ({ file, onBack, onClose, isCompleted = false, onToggleComplete = null }) => {
   const [iframeLoading, setIframeLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [imageSrcIndex, setImageSrcIndex] = useState(0);
@@ -245,25 +246,49 @@ const FileViewer = ({ file, onBack, onClose }) => {
     // 3. Videos
     if (file.fileType === 'video') {
       return (
-        <div className="relative w-full h-full min-h-[550px] lg:min-h-[75vh] flex-1 bg-black rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center border border-subtle">
-          {iframeLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 backdrop-blur-sm z-10 text-white">
-              <div className="w-10 h-10 border-3 border-accent/20 border-t-accent rounded-full animate-spin" />
-              <p className="text-xs text-zinc-400 font-medium">Loading video player…</p>
+        <div className="flex flex-col h-full gap-3">
+          <div className="relative w-full h-full min-h-[500px] lg:min-h-[70vh] flex-1 bg-black rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center border border-subtle">
+            {iframeLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 backdrop-blur-sm z-10 text-white">
+                <div className="w-10 h-10 border-3 border-accent/20 border-t-accent rounded-full animate-spin" />
+                <p className="text-xs text-zinc-400 font-medium">Loading video player…</p>
+              </div>
+            )}
+            <iframe
+              src={drivePreviewUrl}
+              className="w-full h-full min-h-[500px] lg:min-h-[70vh] border-0 bg-black"
+              title={file.name}
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              allowFullScreen
+              onLoad={() => setIframeLoading(false)}
+              onError={() => {
+                setIframeLoading(false);
+                setLoadError(true);
+              }}
+            />
+          </div>
+          {onToggleComplete && (
+            <div className="glass-card px-4 py-3 flex items-center justify-between border border-subtle">
+              <div className="flex items-center gap-2 text-xs text-secondary">
+                <span className="font-medium text-primary truncate max-w-xs">{file.name}</span>
+                <span>·</span>
+                <span className={isCompleted ? 'text-emerald-400 font-semibold flex items-center gap-1' : 'text-muted'}>
+                  {isCompleted ? '✓ Completed' : 'Unfinished'}
+                </span>
+              </div>
+              <button
+                onClick={() => onToggleComplete(file)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isCompleted
+                    ? 'bg-surface border border-subtle text-secondary hover:text-primary'
+                    : 'btn-primary'
+                }`}
+              >
+                <IoCheckmarkCircle size={14} />
+                {isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+              </button>
             </div>
           )}
-          <iframe
-            src={drivePreviewUrl}
-            className="w-full h-full min-h-[550px] lg:min-h-[75vh] border-0 bg-black"
-            title={file.name}
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            allowFullScreen
-            onLoad={() => setIframeLoading(false)}
-            onError={() => {
-              setIframeLoading(false);
-              setLoadError(true);
-            }}
-          />
         </div>
       );
     }
@@ -343,6 +368,20 @@ const FileViewer = ({ file, onBack, onClose }) => {
         </div>
 
         <div className="flex items-center gap-2">
+          {onToggleComplete && (
+            <button
+              onClick={() => onToggleComplete(file)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                isCompleted
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30'
+                  : 'btn-secondary hover:text-primary'
+              }`}
+              title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+            >
+              <IoCheckmarkCircle size={15} className={isCompleted ? 'text-emerald-400' : 'text-muted'} />
+              <span className="hidden sm:inline">{isCompleted ? 'Completed' : 'Mark Complete'}</span>
+            </button>
+          )}
           <a
             href={driveViewUrl}
             target="_blank"

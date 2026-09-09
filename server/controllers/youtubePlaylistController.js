@@ -1,4 +1,5 @@
 const YoutubePlaylist = require("../models/YoutubePlaylist");
+const User = require("../models/User");
 const {
   fetchPlaylistDetails,
   fetchPlaylistVideos,
@@ -69,7 +70,16 @@ const getPlaylist = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    res.json({ playlist });
+    const user = await User.findById(req.user._id);
+    const userProgress = (user?.playlistProgress || []).find(
+      (pp) => pp.playlistId && pp.playlistId.toString() === playlist._id.toString(),
+    );
+
+    res.json({
+      playlist,
+      completedVideos: userProgress?.completedVideos || [],
+      progress: userProgress?.progress || 0,
+    });
   } catch (error) {
     console.error("Get playlist error:", error);
     res.status(500).json({ message: "Server error" });
@@ -219,6 +229,32 @@ const saveVideoNotes = async (req, res) => {
     video.notes = req.body.notes || "";
     await playlist.save();
 
+    // Also sync note into User.videoProgress
+    const user = await User.findById(req.user._id);
+    if (user) {
+      if (!user.videoProgress) user.videoProgress = [];
+      let vProg = user.videoProgress.find(
+        (vp) => vp.contentType === "youtube" && vp.videoId === req.params.videoId,
+      );
+      if (vProg) {
+        vProg.note = video.notes;
+        vProg.title = video.title;
+        vProg.lastWatched = new Date();
+      } else {
+        user.videoProgress.push({
+          playlistId: playlist._id,
+          contentType: "youtube",
+          videoId: req.params.videoId,
+          title: video.title,
+          progress: 100,
+          completed: true,
+          note: video.notes,
+          lastWatched: new Date(),
+        });
+      }
+      await user.save();
+    }
+
     res.json({ message: "Notes saved", video });
   } catch (error) {
     console.error("Save video notes error:", error);
@@ -338,6 +374,99 @@ const deletePlaylist = async (req, res) => {
   }
 };
 
+// @desc    Toggle or update completion status for a video in a playlist
+// @route   PUT /api/youtube-playlists/:id/videos/:videoId/progress
+const updatePlaylistVideoProgress = async (req, res) => {
+  try {
+    const { completed, note } = req.body;
+    const playlist = await YoutubePlaylist.findById(req.params.id);
+    if (!playlist) {
+      return res.status(404).json({ message: "Playlist not found" });
+    }
+
+    const video = playlist.videos.find((v) => v.videoId === req.params.videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found in playlist" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user.playlistProgress) user.playlistProgress = [];
+
+    let pProg = user.playlistProgress.find(
+      (pp) => pp.playlistId && pp.playlistId.toString() === playlist._id.toString(),
+    );
+
+    if (!pProg) {
+      pProg = {
+        playlistId: playlist._id,
+        completedVideos: [],
+        progress: 0,
+        completed: false,
+        lastWatched: new Date(),
+      };
+      user.playlistProgress.push(pProg);
+      pProg = user.playlistProgress[user.playlistProgress.length - 1];
+    }
+
+    const isMarkedCompleted = completed !== false;
+
+    if (isMarkedCompleted) {
+      if (!pProg.completedVideos.includes(req.params.videoId)) {
+        pProg.completedVideos.push(req.params.videoId);
+      }
+    } else {
+      pProg.completedVideos = pProg.completedVideos.filter(
+        (id) => id !== req.params.videoId,
+      );
+    }
+
+    const totalVideos = playlist.videos?.length || 0;
+    pProg.progress =
+      totalVideos > 0
+        ? Math.round((pProg.completedVideos.length / totalVideos) * 100)
+        : 0;
+    pProg.completed = totalVideos > 0 && pProg.completedVideos.length >= totalVideos;
+    pProg.lastWatched = new Date();
+
+    // Universal videoProgress sync
+    if (!user.videoProgress) user.videoProgress = [];
+    let vProg = user.videoProgress.find(
+      (vp) => vp.contentType === "youtube" && vp.videoId === req.params.videoId,
+    );
+
+    if (vProg) {
+      vProg.completed = isMarkedCompleted;
+      vProg.progress = isMarkedCompleted ? 100 : 0;
+      if (note !== undefined) vProg.note = note;
+      vProg.title = video.title;
+      vProg.lastWatched = new Date();
+    } else {
+      user.videoProgress.push({
+        playlistId: playlist._id,
+        contentType: "youtube",
+        videoId: req.params.videoId,
+        title: video.title,
+        progress: isMarkedCompleted ? 100 : 0,
+        completed: isMarkedCompleted,
+        note: note || video.notes || "",
+        lastWatched: new Date(),
+      });
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Playlist video progress updated",
+      playlistProgress: pProg,
+      completedVideos: pProg.completedVideos,
+      videoProgress: user.videoProgress,
+    });
+  } catch (error) {
+    console.error("Update playlist video progress error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   getPlaylists,
   getPlaylist,
@@ -347,4 +476,5 @@ module.exports = {
   saveVideoNotes,
   getCombinedNotes,
   refreshPlaylist,
+  updatePlaylistVideoProgress,
 };

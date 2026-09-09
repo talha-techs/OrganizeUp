@@ -117,11 +117,30 @@ export const refreshPlaylist = createAsyncThunk(
   },
 );
 
+export const updatePlaylistVideoProgress = createAsyncThunk(
+  "playlists/updatePlaylistVideoProgress",
+  async ({ playlistId, videoId, completed, note }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(
+        `/youtube-playlists/${playlistId}/videos/${videoId}/progress`,
+        { completed, note },
+      );
+      return { playlistId, videoId, completed, ...data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update video progress",
+      );
+    }
+  },
+);
+
 const youtubePlaylistSlice = createSlice({
   name: "playlists",
   initialState: {
     playlists: [],
     currentPlaylist: null,
+    completedVideos: [],
+    progress: 0,
     combinedNotes: "",
     isLoading: false,
     isSavingNotes: false,
@@ -133,6 +152,8 @@ const youtubePlaylistSlice = createSlice({
     },
     clearCurrentPlaylist: (state) => {
       state.currentPlaylist = null;
+      state.completedVideos = [];
+      state.progress = 0;
       state.combinedNotes = "";
     },
   },
@@ -155,6 +176,8 @@ const youtubePlaylistSlice = createSlice({
       .addCase(fetchPlaylist.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentPlaylist = action.payload.playlist;
+        state.completedVideos = action.payload.completedVideos || [];
+        state.progress = action.payload.progress || 0;
       })
       .addCase(fetchPlaylist.rejected, (state, action) => {
         state.isLoading = false;
@@ -206,6 +229,10 @@ const youtubePlaylistSlice = createSlice({
         if (state.currentPlaylist?._id === action.payload.playlist._id) {
           state.currentPlaylist = action.payload.playlist;
         }
+      })
+      .addCase(updatePlaylistVideoProgress.fulfilled, (state, action) => {
+        state.completedVideos = action.payload.completedVideos || [];
+        state.progress = action.payload.playlistProgress?.progress || 0;
       });
   },
 });

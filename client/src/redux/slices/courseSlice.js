@@ -154,12 +154,50 @@ export const deleteCategory = createAsyncThunk(
   },
 );
 
+export const fetchCourseProgress = createAsyncThunk(
+  "courses/fetchCourseProgress",
+  async (courseId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/courses/${courseId}/progress`);
+      return { courseId, ...data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch course progress",
+      );
+    }
+  },
+);
+
+export const updateCourseFileProgress = createAsyncThunk(
+  "courses/updateCourseFileProgress",
+  async (
+    { courseId, fileId, completed, isVideo, title, note },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.put(`/courses/${courseId}/progress`, {
+        fileId,
+        completed,
+        isVideo,
+        title,
+        note,
+      });
+      return { courseId, ...data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update course progress",
+      );
+    }
+  },
+);
+
 const courseSlice = createSlice({
   name: "courses",
   initialState: {
     courses: [],
     currentCourse: null,
     categories: [],
+    progress: {},
     isLoading: false,
     error: null,
   },
@@ -243,6 +281,12 @@ const courseSlice = createSlice({
         state.categories = state.categories.filter(
           (c) => c._id !== action.payload,
         );
+      })
+      .addCase(fetchCourseProgress.fulfilled, (state, action) => {
+        state.progress[action.payload.courseId] = action.payload.courseProgress;
+      })
+      .addCase(updateCourseFileProgress.fulfilled, (state, action) => {
+        state.progress[action.payload.courseId] = action.payload.courseProgress;
       });
   },
 });
