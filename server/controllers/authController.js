@@ -155,6 +155,7 @@ const getMe = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        whatsappPhoneNumber: user.whatsappPhoneNumber || "",
         videoProgress: user.videoProgress || [],
         readingProgress: user.readingProgress || [],
         courseProgress: user.courseProgress || [],
@@ -196,10 +197,13 @@ const logout = (req, res) => {
 // @route   PUT /api/auth/profile
 const updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, whatsappPhoneNumber } = req.body;
     const user = await User.findById(req.user._id);
 
     if (name) user.name = name;
+    if (whatsappPhoneNumber !== undefined) {
+      user.whatsappPhoneNumber = whatsappPhoneNumber.trim();
+    }
 
     // Handle avatar image upload
     if (req.file) {
@@ -234,6 +238,7 @@ const updateProfile = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        whatsappPhoneNumber: user.whatsappPhoneNumber || "",
       },
     });
   } catch (error) {
