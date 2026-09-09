@@ -9,17 +9,18 @@ import {
   FaLinkedin,
   FaYoutube,
   FaGlobe,
-  FaPaste,
-  FaChevronDown,
-  FaChevronUp,
+  FaRegCopy,
+  FaCheck,
 } from 'react-icons/fa';
 import {
   IoClose,
   IoImageOutline,
-  IoFlashOutline,
+  IoLinkOutline,
   IoTimeOutline,
-  IoCheckmarkCircle,
+  IoDocumentTextOutline,
   IoCloudUploadOutline,
+  IoFlashOutline,
+  IoCheckmarkCircleOutline,
 } from 'react-icons/io5';
 import {
   closeQuickCapture,
@@ -27,63 +28,69 @@ import {
   scrapeMetadata,
   clearScrapedData,
 } from '../../redux/slices/captureSlice';
-import { parseWhatsAppText } from '../../utils/whatsappParser';
 
 const QuickCaptureModal = () => {
   const dispatch = useDispatch();
   const { isQuickCaptureOpen, initialData, scrapeLoading, scrapedData } =
     useSelector((state) => state.captures);
 
-  // Main input
-  const [inputText, setInputText] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  // Tab mode: 'link', 'whatsapp', 'image'
+  const [activeTab, setActiveTab] = useState('link');
 
-  // Auto-detected state
-  const [detectedType, setDetectedType] = useState('text'); // 'whatsapp', 'url', 'image', 'text'
-  const [detectedSender, setDetectedSender] = useState('');
-  const [cleanContent, setCleanContent] = useState('');
-  const [extractedUrl, setExtractedUrl] = useState('');
-
-  // Power-user optional drawer (hidden by default)
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [customTitle, setCustomTitle] = useState('');
-  const [customNote, setCustomNote] = useState('');
-  const [customRemindAt, setCustomRemindAt] = useState('');
+  // Form fields
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState('');
   const [priority, setPriority] = useState('medium');
 
+  // WhatsApp specific
+  const [whatsappSender, setWhatsappSender] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+
+  // Image specific
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [webImageUrl, setWebImageUrl] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Reminder
+  const [reminderPreset, setReminderPreset] = useState('none');
+  const [customRemindAt, setCustomRemindAt] = useState('');
+
   const [saving, setSaving] = useState(false);
-  const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Reset and prefill on open
+  // Reset form when modal opens or closes
   useEffect(() => {
     if (isQuickCaptureOpen) {
       if (initialData) {
-        if (initialData.url) setInputText(initialData.url);
-        else if (initialData.text) setInputText(initialData.text);
-        if (initialData.title) setCustomTitle(initialData.title);
-        if (initialData.notes) setCustomNote(initialData.notes);
+        if (initialData.tab) setActiveTab(initialData.tab);
+        if (initialData.url) {
+          setUrl(initialData.url);
+          dispatch(scrapeMetadata(initialData.url));
+        }
+        if (initialData.title) setTitle(initialData.title);
+        if (initialData.notes) setNotes(initialData.notes);
       }
-      setTimeout(() => textareaRef.current?.focus(), 80);
     } else {
-      setInputText('');
+      setUrl('');
+      setTitle('');
+      setNotes('');
+      setTags('');
+      setPriority('medium');
+      setWhatsappSender('');
+      setWhatsappMessage('');
       setImageFile(null);
       setImagePreview('');
-      setDetectedType('text');
-      setDetectedSender('');
-      setCleanContent('');
-      setExtractedUrl('');
-      setShowAdvanced(false);
-      setCustomTitle('');
-      setCustomNote('');
+      setWebImageUrl('');
+      setReminderPreset('none');
       setCustomRemindAt('');
-      setPriority('medium');
       dispatch(clearScrapedData());
     }
   }, [isQuickCaptureOpen, initialData, dispatch]);
 
-  // Global Ctrl+V listener for instant clipboard paste
+  // Global Ctrl+V listener for instant clipboard image paste
   useEffect(() => {
     const handlePaste = (e) => {
       if (!isQuickCaptureOpen) return;
@@ -94,11 +101,11 @@ const QuickCaptureModal = () => {
         if (items[i].type.indexOf('image') !== -1) {
           const blob = items[i].getAsFile();
           if (blob) {
+            setActiveTab('image');
             setImageFile(blob);
             const previewUrl = URL.createObjectURL(blob);
             setImagePreview(previewUrl);
-            setDetectedType('image');
-            toast.success('Screenshot pasted!', { duration: 1500 });
+            toast.success('Screenshot pasted from clipboard!');
             break;
           }
         }
@@ -109,188 +116,196 @@ const QuickCaptureModal = () => {
     return () => window.removeEventListener('paste', handlePaste);
   }, [isQuickCaptureOpen]);
 
-  // Auto-detect content as user types or pastes
+  // Auto-fill title from scraped metadata
   useEffect(() => {
-    if (imageFile) {
-      setDetectedType('image');
-      return;
-    }
-
-    const trimmed = inputText.trim();
-    if (!trimmed) {
-      setDetectedType('text');
-      setDetectedSender('');
-      setCleanContent('');
-      setExtractedUrl('');
-      return;
-    }
-
-    // 1. Check WhatsApp format
-    const wa = parseWhatsAppText(trimmed);
-    if (wa.isWhatsApp) {
-      setDetectedType('whatsapp');
-      setDetectedSender(wa.sender);
-      setCleanContent(wa.cleanText);
-      setExtractedUrl(wa.extractedUrl);
-      if (wa.extractedUrl && !scrapedData) {
-        dispatch(scrapeMetadata(wa.extractedUrl));
+    if (scrapedData) {
+      if (!title && scrapedData.title) {
+        setTitle(scrapedData.title);
       }
-      return;
     }
+  }, [scrapedData, title]);
 
-    // 2. Check if text is or contains a URL
-    const urlMatch = trimmed.match(/(https?:\/\/[^\s]+)/i);
-    if (urlMatch) {
-      setDetectedType('url');
-      setExtractedUrl(urlMatch[0]);
-      setCleanContent(trimmed);
-      if (!scrapedData || scrapedData.url !== urlMatch[0]) {
-        dispatch(scrapeMetadata(urlMatch[0]));
-      }
-      return;
-    }
-
-    // 3. Fallback: regular quick note/thought
-    setDetectedType('text');
-    setCleanContent(trimmed);
-  }, [inputText, imageFile, dispatch]);
-
-  // Fast paste from clipboard button
-  const handlePasteFromClipboard = async () => {
-    try {
-      if (navigator.clipboard?.readText) {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          setInputText(text);
-          toast.success('Pasted from clipboard!', { duration: 1500 });
-          return;
-        }
-      }
-      toast.error('Clipboard is empty or permission denied. Use Ctrl+V');
-    } catch {
-      toast.error('Use Ctrl+V to paste');
+  // Handle URL change with auto scrape
+  const handleUrlBlur = () => {
+    if (url.trim() && (!scrapedData || scrapedData.url !== url.trim())) {
+      dispatch(scrapeMetadata(url.trim()));
     }
   };
 
-  // Helper for computing reminder date from preset
-  const getPresetDate = (preset) => {
+  // Helper for computing reminder date
+  const computeRemindAt = () => {
     const now = new Date();
-    if (preset === '2h') {
+    if (reminderPreset === '2h') {
       return new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
     }
-    if (preset === 'tonight') {
+    if (reminderPreset === 'tonight') {
       const d = new Date();
       d.setHours(20, 0, 0, 0);
       if (d <= now) d.setDate(d.getDate() + 1);
       return d.toISOString();
     }
-    if (preset === 'tomorrow') {
+    if (reminderPreset === 'tomorrow') {
       const d = new Date();
       d.setDate(d.getDate() + 1);
       d.setHours(9, 0, 0, 0);
       return d.toISOString();
     }
-    if (preset === 'custom' && customRemindAt) {
+    if (reminderPreset === 'weekend') {
+      const d = new Date();
+      const day = d.getDay();
+      const daysUntilSat = (6 - day + 7) % 7 || 7;
+      d.setDate(d.getDate() + daysUntilSat);
+      d.setHours(10, 0, 0, 0);
+      return d.toISOString();
+    }
+    if (reminderPreset === 'custom' && customRemindAt) {
       return new Date(customRemindAt).toISOString();
     }
     return null;
   };
 
-  // 1-Click Unified Save Handler
-  const handleFastSave = async (reminderPreset = 'none') => {
-    if (!inputText.trim() && !imageFile) {
-      toast.error('Please paste a link, message, or screenshot first');
-      return;
+  // Handle file drop
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+      } else {
+        toast.error('Please drop an image file (PNG, JPG, WebP, etc.)');
+      }
     }
+  };
 
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Platform icon helper
+  const renderDetectedIcon = () => {
+    if (activeTab === 'whatsapp') {
+      return <FaWhatsapp className="text-emerald-500" size={18} />;
+    }
+    if (activeTab === 'image') {
+      return <IoImageOutline className="text-purple-400" size={18} />;
+    }
+    if (scrapedData?.platform === 'instagram' || /instagram\.com/i.test(url)) {
+      return <FaInstagram className="text-pink-500" size={18} />;
+    }
+    if (scrapedData?.platform === 'facebook' || /facebook\.com|fb\.watch/i.test(url)) {
+      return <FaFacebook className="text-blue-500" size={18} />;
+    }
+    if (scrapedData?.platform === 'linkedin' || /(?:linkedin\.com|lnkd\.in)/i.test(url)) {
+      return <FaLinkedin className="text-sky-400" size={18} />;
+    }
+    if (scrapedData?.platform === 'youtube' || /youtube\.com|youtu\.be/i.test(url)) {
+      return <FaYoutube className="text-red-500" size={18} />;
+    }
+    return <FaGlobe className="text-accent" size={18} />;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setSaving(true);
-    try {
-      const remindAt = getPresetDate(reminderPreset);
 
-      if (imageFile) {
-        // Upload image file
+    try {
+      const remindAt = computeRemindAt();
+
+      if (activeTab === 'image' && imageFile) {
+        // Multipart upload for direct image file
         const formData = new FormData();
         formData.append('image', imageFile);
-        formData.append('title', customTitle || imageFile.name || 'Pasted Image');
-        formData.append('notes', customNote || cleanContent || '');
+        formData.append('title', title || imageFile.name || 'Uploaded Image');
+        formData.append('notes', notes);
+        formData.append('tags', tags);
         formData.append('priority', priority);
         if (remindAt) formData.append('remindAt', remindAt);
 
         await dispatch(createCapture(formData)).unwrap();
-      } else if (detectedType === 'whatsapp') {
-        // WhatsApp message
+      } else if (activeTab === 'image' && webImageUrl) {
+        // Web image URL
         await dispatch(
           createCapture({
-            platform: 'whatsapp',
-            mediaType: 'message',
-            title: customTitle || (detectedSender ? `WhatsApp from ${detectedSender}` : 'WhatsApp Message'),
-            authorName: detectedSender,
-            rawContent: cleanContent || inputText,
-            sourceUrl: extractedUrl || '',
-            notes: customNote,
+            platform: 'web_image',
+            mediaType: 'image',
+            mediaUrl: webImageUrl,
+            title: title || 'Web Image',
+            notes,
+            tags,
             priority,
             remindAt,
           }),
         ).unwrap();
-      } else if (detectedType === 'url') {
-        // Social Reel or Web link
-        const finalUrl = extractedUrl || inputText.trim();
-        const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(finalUrl);
-        const platform = isLinkedIn ? 'linkedin' : scrapedData?.platform;
-
+      } else if (activeTab === 'whatsapp') {
+        if (!whatsappMessage.trim()) {
+          toast.error('Please enter or paste WhatsApp message text');
+          setSaving(false);
+          return;
+        }
         await dispatch(
           createCapture({
-            sourceUrl: finalUrl,
-            platform,
-            rawContent: scrapedData?.rawContent || scrapedData?.description || (cleanContent !== extractedUrl ? cleanContent : ''),
-            mediaUrl: scrapedData?.mediaUrl || scrapedData?.thumbnailUrl,
-            title: customTitle || scrapedData?.title || 'Saved Link',
-            notes: customNote || (cleanContent !== extractedUrl && cleanContent !== scrapedData?.rawContent ? cleanContent : ''),
-            embedId: scrapedData?.embedId,
-            embedUrl: scrapedData?.embedUrl,
-            thumbnailUrl: scrapedData?.thumbnailUrl,
-            authorName: scrapedData?.authorName,
+            platform: 'whatsapp',
+            mediaType: 'message',
+            title: title || (whatsappSender ? `WhatsApp from ${whatsappSender}` : 'WhatsApp Message'),
+            authorName: whatsappSender,
+            rawContent: whatsappMessage,
+            notes,
+            tags,
             priority,
             remindAt,
           }),
         ).unwrap();
       } else {
-        // Quick text / thought
+        // Link / Social / Reel
+        if (!url.trim()) {
+          toast.error('Please enter a URL or link to save');
+          setSaving(false);
+          return;
+        }
+
+        const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
+        const platform = isLinkedIn ? 'linkedin' : scrapedData?.platform;
+
         await dispatch(
           createCapture({
-            platform: 'other',
-            mediaType: 'article',
-            title: customTitle || inputText.trim().slice(0, 40) + '...',
-            rawContent: inputText.trim(),
-            notes: customNote,
+            sourceUrl: url.trim(),
+            platform,
+            title: title || scrapedData?.title || 'Saved Link',
+            notes,
+            tags,
             priority,
             remindAt,
+            rawContent: scrapedData?.rawContent || scrapedData?.description || notes,
+            mediaUrl: scrapedData?.mediaUrl || scrapedData?.thumbnailUrl,
+            thumbnailUrl: scrapedData?.thumbnailUrl,
+            embedId: scrapedData?.embedId,
+            embedUrl: scrapedData?.embedUrl,
+            authorName: scrapedData?.authorName,
           }),
         ).unwrap();
       }
 
-      toast.success(remindAt ? 'Saved with reminder!' : 'Saved to Vault!', {
-        icon: remindAt ? '⏰' : '⚡',
+      toast.success('Saved to your Vault!', {
+        icon: '⚡',
         style: {
           borderRadius: '12px',
           background: '#18181b',
           color: '#fff',
+          border: '1px solid rgba(255,255,255,0.1)',
         },
       });
 
       dispatch(closeQuickCapture());
     } catch (err) {
-      toast.error(typeof err === 'string' ? err : 'Failed to save');
+      toast.error(typeof err === 'string' ? err : 'Failed to save resource');
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Keyboard shortcut: Ctrl+Enter to save immediately
-  const handleKeyDown = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleFastSave('none');
     }
   };
 
@@ -305,33 +320,36 @@ const QuickCaptureModal = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => dispatch(closeQuickCapture())}
-          className="fixed inset-0 bg-black/75 backdrop-blur-md transition-opacity"
+          className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity"
         />
 
         {/* Modal Window */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          transition={{ duration: 0.2 }}
-          className="relative w-full max-w-xl bg-surface-raised border border-strong rounded-3xl shadow-2xl shadow-black/70 overflow-hidden flex flex-col my-auto"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ type: 'spring', duration: 0.3, bounce: 0.1 }}
+          className="relative w-full max-w-2xl bg-surface-raised/95 border border-strong rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col my-auto max-h-[90vh]"
         >
-          {/* Top glowing gradient accent */}
-          <div className="h-1.5 w-full bg-gradient-to-r from-accent via-emerald-500 to-purple-500" />
+          {/* Top glowing gradient border */}
+          <div className="h-1 w-full bg-gradient-to-r from-accent via-pink-500 to-emerald-500" />
 
-          {/* Header Bar */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-subtle">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl bg-accent-subtle text-accent">
-                <IoFlashOutline size={18} />
+          {/* Modal Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-accent-subtle text-accent">
+                <IoFlashOutline size={20} />
               </div>
               <div>
-                <h2 className="text-sm font-bold font-display text-primary flex items-center gap-2">
-                  <span>Lightning Capture</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface text-secondary border border-subtle">
-                    Ctrl+V anywhere
+                <h2 className="text-base sm:text-lg font-bold font-display text-primary flex items-center gap-2">
+                  <span>Quick Capture to Vault</span>
+                  <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-surface text-secondary border border-subtle">
+                    Ctrl+V to Paste Image
                   </span>
                 </h2>
+                <p className="text-xs text-muted">
+                  Inspect & save Reels, LinkedIn posts, WhatsApp messages, images & web clips
+                </p>
               </div>
             </div>
 
@@ -343,276 +361,452 @@ const QuickCaptureModal = () => {
             </button>
           </div>
 
-          {/* Main Omni-Dump Area */}
-          <div className="p-5 space-y-3.5">
-            {/* Input Container */}
-            <div className="relative rounded-2xl bg-surface border border-subtle focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all p-3">
-              <textarea
-                ref={textareaRef}
-                rows={3}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Paste anything here: WhatsApp chat, Instagram Reel link, Facebook video, screenshot, or quick thought..."
-                className="w-full bg-transparent text-sm text-primary placeholder:text-muted focus:outline-none resize-none leading-relaxed"
-              />
+          {/* Tabs Navigation */}
+          <div className="flex items-center gap-1 px-5 pt-3 pb-2 border-b border-subtle bg-surface/50">
+            <button
+              type="button"
+              onClick={() => setActiveTab('link')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'link'
+                  ? 'bg-accent text-white shadow-md shadow-accent/20'
+                  : 'text-secondary hover:text-primary hover:bg-surface'
+              }`}
+            >
+              <IoLinkOutline size={16} />
+              <span>Link & Social Reel</span>
+            </button>
 
-              {/* Action Bar inside textarea */}
-              <div className="flex items-center justify-between pt-2 border-t border-subtle/40 mt-1">
-                {/* Auto-detected pill */}
-                <div className="flex items-center gap-1.5">
-                  {detectedType === 'whatsapp' && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20 animate-pulse">
-                      <FaWhatsapp size={13} />
-                      <span>WhatsApp {detectedSender ? `from ${detectedSender}` : 'Detected'}</span>
-                    </span>
-                  )}
-                  {detectedType === 'url' && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent bg-accent-subtle px-2.5 py-0.5 rounded-lg border border-accent/20">
-                      {scrapedData?.platform === 'instagram' ? <FaInstagram size={13} className="text-pink-500" /> :
-                       scrapedData?.platform === 'facebook' ? <FaFacebook size={13} className="text-blue-500" /> :
-                       scrapedData?.platform === 'youtube' ? <FaYoutube size={13} className="text-red-500" /> :
-                       (scrapedData?.platform === 'linkedin' || /(?:linkedin\.com|lnkd\.in)/i.test(extractedUrl)) ? <FaLinkedin size={13} className="text-sky-400" /> :
-                       <FaGlobe size={13} />}
-                      <span>
-                        {(scrapedData?.platform === 'linkedin' || /(?:linkedin\.com|lnkd\.in)/i.test(extractedUrl))
-                          ? 'LINKEDIN'
-                          : scrapedData?.platform
-                            ? scrapedData.platform.toUpperCase()
-                            : 'Link Detected'}
-                      </span>
-                    </span>
-                  )}
-                  {detectedType === 'image' && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/20">
-                      <IoImageOutline size={13} />
-                      <span>Image Ready</span>
-                    </span>
-                  )}
-                </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('whatsapp')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'whatsapp'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'text-secondary hover:text-primary hover:bg-surface'
+              }`}
+            >
+              <FaWhatsapp size={15} />
+              <span>WhatsApp Message</span>
+            </button>
 
-                {/* Paste from clipboard and browse buttons */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-raised hover:bg-surface border border-subtle text-[11px] font-medium text-secondary hover:text-primary transition-all cursor-pointer"
-                    title="Upload image file"
-                  >
-                    <IoCloudUploadOutline size={14} />
-                    <span>Upload</span>
-                  </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('image')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'image'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                  : 'text-secondary hover:text-primary hover:bg-surface'
+              }`}
+            >
+              <IoImageOutline size={16} />
+              <span>Image & Screenshots</span>
+            </button>
+          </div>
 
-                  <button
-                    type="button"
-                    onClick={handlePasteFromClipboard}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-raised hover:bg-surface border border-subtle text-[11px] font-semibold text-accent hover:text-accent-hover transition-all cursor-pointer"
-                  >
-                    <FaPaste size={12} />
-                    <span>Paste Clipboard</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  const file = e.target.files[0];
-                  setImageFile(file);
-                  setImagePreview(URL.createObjectURL(file));
-                }
-              }}
-              className="hidden"
-            />
-
-            {/* Image Preview Thumbnail if attached */}
-            {imagePreview && (
-              <div className="relative inline-block max-h-36 rounded-xl overflow-hidden border border-subtle">
-                <img src={imagePreview} alt="Screenshot" className="max-h-36 object-contain rounded-xl" />
-                <button
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview('');
-                  }}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-black/70 text-white hover:bg-black"
-                >
-                  <IoClose size={14} />
-                </button>
-              </div>
-            )}
-
-            {/* Scraped Live Preview (Instagram Reel / Link) */}
-            {scrapedData && (
-              <div className="flex items-center gap-3 p-2.5 rounded-xl bg-surface border border-subtle">
-                {scrapedData.thumbnailUrl && (
-                  <img
-                    src={scrapedData.thumbnailUrl}
-                    alt="Preview"
-                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-surface border border-subtle"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-xs font-semibold text-primary truncate">
-                    {scrapedData.title}
-                  </h4>
-                  <p className="text-[10px] text-muted truncate">
-                    {scrapedData.description || scrapedData.url}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ONE-CLICK INSTANT SAVE BUTTONS (Zero Friction!) */}
-            <div className="space-y-2 pt-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted font-display block">
-                1-Click Save & Remind:
-              </span>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {/* 1. Just Save */}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => handleFastSave('none')}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-surface hover:bg-surface-raised border border-subtle hover:border-accent text-primary transition-all cursor-pointer group active:scale-95"
-                >
-                  <IoFlashOutline size={18} className="text-accent mb-1 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-bold">Just Save</span>
-                  <span className="text-[10px] text-muted">Inbox (Ctrl+↵)</span>
-                </button>
-
-                {/* 2. Tonight 8 PM */}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => handleFastSave('tonight')}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-accent-subtle/50 hover:bg-accent-subtle border border-accent/30 text-accent transition-all cursor-pointer group active:scale-95 shadow-sm"
-                >
-                  <span className="text-base mb-0.5">🌙</span>
-                  <span className="text-xs font-bold">Tonight</span>
-                  <span className="text-[10px] text-accent/80 font-medium">8:00 PM</span>
-                </button>
-
-                {/* 3. Tomorrow 9 AM */}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => handleFastSave('tomorrow')}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 transition-all cursor-pointer group active:scale-95 shadow-sm"
-                >
-                  <span className="text-base mb-0.5">☀️</span>
-                  <span className="text-xs font-bold">Tomorrow</span>
-                  <span className="text-[10px] text-emerald-400/80 font-medium">9:00 AM</span>
-                </button>
-
-                {/* 4. In 2 Hours */}
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => handleFastSave('2h')}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 transition-all cursor-pointer group active:scale-95 shadow-sm"
-                >
-                  <span className="text-base mb-0.5">⏱️</span>
-                  <span className="text-xs font-bold">In 2 Hours</span>
-                  <span className="text-[10px] text-purple-300/80 font-medium">Quick Review</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Collapsible Power User Drawer (Optional Details) */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1.5 text-xs text-muted hover:text-primary transition-colors cursor-pointer"
-              >
-                {showAdvanced ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
-                <span>{showAdvanced ? 'Hide extra details' : '+ Add custom note, title, or exact calendar time...'}</span>
-              </button>
-
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="pt-3 space-y-3 overflow-hidden"
-                  >
-                    <div>
-                      <label className="block text-[11px] font-semibold text-secondary mb-1">
-                        Custom Title (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={customTitle}
-                        onChange={(e) => setCustomTitle(e.target.value)}
-                        placeholder="Give this resource a name..."
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent"
-                      />
+          {/* Form Content */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+            {/* TAB 1: Link & Social Media */}
+            {activeTab === 'link' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-secondary mb-1.5">
+                    Resource Link (Instagram Reel, Facebook, LinkedIn, YouTube, Web URL)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onBlur={handleUrlBlur}
+                      placeholder="https://www.instagram.com/reel/... or https://lnkd.in/... or https://..."
+                      required
+                      className="w-full pl-10 pr-24 py-2.5 rounded-xl bg-surface border border-subtle text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                      {renderDetectedIcon()}
                     </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-secondary mb-1">
-                        Personal Note / Reflection
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={customNote}
-                        onChange={(e) => setCustomNote(e.target.value)}
-                        placeholder="Add why you saved this..."
-                        className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent resize-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-secondary mb-1">
-                          Exact Reminder Date & Time
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={customRemindAt}
-                          onChange={(e) => setCustomRemindAt(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-secondary mb-1">
-                          Priority
-                        </label>
-                        <select
-                          value={priority}
-                          onChange={(e) => setPriority(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-xl bg-surface border border-subtle text-xs font-semibold text-primary focus:outline-none focus:border-accent cursor-pointer"
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="urgent">Urgent</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {customRemindAt && (
+                    {url && (
                       <button
                         type="button"
-                        onClick={() => handleFastSave('custom')}
-                        disabled={saving}
-                        className="w-full py-2 rounded-xl bg-accent text-white font-bold text-xs shadow-md shadow-accent/20 cursor-pointer"
+                        onClick={() => dispatch(scrapeMetadata(url.trim()))}
+                        disabled={scrapeLoading}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-surface-raised hover:bg-surface border border-subtle text-[11px] font-semibold text-primary transition-all cursor-pointer"
                       >
-                        Save with Custom Schedule
+                        {scrapeLoading ? 'Inspecting...' : 'Inspect / Preview'}
                       </button>
                     )}
+                  </div>
+                </div>
+
+                {/* Scraped Preview Card for Careful Inspection */}
+                {scrapedData && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-3 p-3 rounded-xl bg-surface/70 border border-subtle"
+                  >
+                    {scrapedData.thumbnailUrl ? (
+                      <img
+                        src={scrapedData.thumbnailUrl}
+                        alt="Preview"
+                        className="w-20 h-20 object-cover rounded-lg flex-shrink-0 bg-surface border border-subtle"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-accent-subtle flex items-center justify-center text-accent flex-shrink-0">
+                        {renderDetectedIcon()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-surface border border-subtle text-accent">
+                          {scrapedData.platform || 'WEB'}
+                        </span>
+                        {scrapedData.authorName && (
+                          <span className="text-xs font-semibold text-primary truncate">
+                            · {scrapedData.authorName}
+                          </span>
+                        )}
+                        {scrapedData.siteName && !scrapedData.authorName && (
+                          <span className="text-xs text-muted truncate">
+                            · {scrapedData.siteName}
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-xs font-semibold text-primary line-clamp-1">
+                        {scrapedData.title}
+                      </h4>
+                      {scrapedData.description && (
+                        <p className="text-[11px] text-secondary line-clamp-2 mt-0.5 leading-relaxed">
+                          {scrapedData.description}
+                        </p>
+                      )}
+                    </div>
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </div>
+            )}
+
+            {/* TAB 2: WhatsApp Message */}
+            {activeTab === 'whatsapp' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-secondary mb-1.5">
+                      Sender Name / Group
+                    </label>
+                    <input
+                      type="text"
+                      value={whatsappSender}
+                      onChange={(e) => setWhatsappSender(e.target.value)}
+                      placeholder="e.g. David Miller, AI Masterclass"
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-subtle text-sm text-primary placeholder:text-muted focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-secondary mb-1.5">
+                      Subject / Topic (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Key advice from chat"
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-subtle text-sm text-primary placeholder:text-muted focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-secondary mb-1.5">
+                    WhatsApp Message Text
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={whatsappMessage}
+                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    placeholder="Paste the WhatsApp message, recommendations, key insights, or link here..."
+                    required
+                    className="w-full p-3 rounded-xl bg-surface border border-subtle text-sm text-primary placeholder:text-muted focus:outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+
+                {/* WhatsApp Chat Preview Bubble */}
+                {whatsappMessage && (
+                  <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-900/30">
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider mb-1 block">
+                      Preview
+                    </span>
+                    <div className="bg-emerald-900/40 text-emerald-100 p-3 rounded-2xl rounded-tl-none border border-emerald-700/40 max-w-md text-xs leading-relaxed">
+                      {whatsappSender && (
+                        <div className="font-bold text-[11px] text-emerald-300 mb-1">
+                          ~ {whatsappSender}
+                        </div>
+                      )}
+                      <div className="whitespace-pre-wrap">{whatsappMessage}</div>
+                      <div className="text-[9px] text-emerald-300/70 text-right mt-1.5 flex items-center justify-end gap-1 font-mono">
+                        <span>Just now</span>
+                        <span>✓✓</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: Image & Screenshots */}
+            {activeTab === 'image' && (
+              <div className="space-y-3">
+                {/* Drag and Drop Zone */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-subtle hover:border-purple-400/50 bg-surface/50'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  {imagePreview ? (
+                    <div className="relative group max-h-56 overflow-hidden rounded-xl">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-h-52 object-contain rounded-xl"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                        <span className="text-xs font-semibold text-white bg-purple-600 px-3 py-1.5 rounded-lg shadow">
+                          Click to Change Image
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 mb-2">
+                        <IoCloudUploadOutline size={28} />
+                      </div>
+                      <p className="text-xs font-semibold text-primary">
+                        Drop image here or click to browse
+                      </p>
+                      <p className="text-[11px] text-muted mt-1">
+                        Or press <kbd className="px-1.5 py-0.5 rounded bg-surface border border-subtle text-primary font-mono text-[10px]">Ctrl+V</kbd> anywhere to paste a screenshot directly!
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Direct Image URL input */}
+                <div>
+                  <label className="block text-xs font-semibold text-secondary mb-1">
+                    Or save image from web URL
+                  </label>
+                  <input
+                    type="url"
+                    value={webImageUrl}
+                    onChange={(e) => {
+                      setWebImageUrl(e.target.value);
+                      if (e.target.value) setImagePreview(e.target.value);
+                    }}
+                    placeholder="https://images.unsplash.com/... or https://...jpg"
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-subtle text-xs text-primary placeholder:text-muted focus:outline-none focus:border-purple-500 transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Common: Title (if not already entered) */}
+            {activeTab !== 'whatsapp' && (
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Title / Headline
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Give this saved resource a quick meaningful title..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-subtle text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent transition-all"
+                />
+              </div>
+            )}
+
+            {/* Common: Personal Notes & Reflections */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-secondary flex items-center gap-1.5">
+                  <IoDocumentTextOutline size={14} className="text-accent" />
+                  <span>Personal Notes & Reflections</span>
+                </label>
+                <span className="text-[11px] text-muted">Why is this important?</span>
+              </div>
+              <textarea
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Write your thoughts, key takeaways, action steps, or why you wanted to save this..."
+                className="w-full p-3 rounded-xl bg-surface border border-subtle text-xs text-primary placeholder:text-muted focus:outline-none focus:border-accent transition-all resize-none"
+              />
             </div>
-          </div>
+
+            {/* Actionable Notification / Reminder */}
+            <div className="p-3.5 rounded-2xl bg-surface/70 border border-subtle space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-accent-subtle text-accent">
+                    <IoTimeOutline size={16} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-primary block">
+                      Remind Me to View This
+                    </span>
+                    <span className="text-[11px] text-muted block">
+                      Get an in-app notification when it's time to review
+                    </span>
+                  </div>
+                </div>
+
+                {reminderPreset !== 'none' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReminderPreset('none');
+                      setCustomRemindAt('');
+                    }}
+                    className="text-[11px] text-muted hover:text-red-400 transition-colors cursor-pointer"
+                  >
+                    Clear Reminder
+                  </button>
+                )}
+              </div>
+
+              {/* Reminder Presets Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'none', label: 'No Reminder' },
+                  { id: '2h', label: 'In 2 Hours' },
+                  { id: 'tonight', label: 'Tonight (8:00 PM)' },
+                  { id: 'tomorrow', label: 'Tomorrow (9:00 AM)' },
+                  { id: 'weekend', label: 'This Weekend' },
+                  { id: 'custom', label: 'Custom Date & Time...' },
+                ].map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setReminderPreset(chip.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                      reminderPreset === chip.id
+                        ? 'bg-accent text-white shadow-sm font-semibold'
+                        : 'bg-surface hover:bg-surface-raised text-secondary hover:text-primary border border-subtle'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom DateTime picker */}
+              {reminderPreset === 'custom' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="pt-1"
+                >
+                  <input
+                    type="datetime-local"
+                    value={customRemindAt}
+                    onChange={(e) => setCustomRemindAt(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent transition-all"
+                  />
+                </motion.div>
+              )}
+            </div>
+
+            {/* Tags & Priority Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Tags (comma separated)
+                </label>
+                <input
+                  type="text"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="marketing, reels, ai-tools"
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-subtle text-xs text-primary placeholder:text-muted focus:outline-none focus:border-accent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Priority
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {['low', 'medium', 'high', 'urgent'].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPriority(p)}
+                      className={`flex-1 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                        priority === p
+                          ? p === 'urgent'
+                            ? 'bg-red-500 text-white shadow-sm'
+                            : p === 'high'
+                              ? 'bg-amber-500 text-white shadow-sm'
+                              : p === 'medium'
+                                ? 'bg-accent text-white shadow-sm'
+                                : 'bg-surface-raised text-primary border border-subtle'
+                          : 'bg-surface text-muted hover:text-primary border border-subtle'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Actions */}
+            <div className="pt-2 flex items-center justify-end gap-3 border-t border-subtle">
+              <button
+                type="button"
+                onClick={() => dispatch(closeQuickCapture())}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-secondary hover:text-primary hover:bg-surface transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent to-accent-hover text-white text-xs font-bold shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <IoCheckmarkCircleOutline size={17} />
+                    <span>Save to Vault</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </motion.div>
       </div>
     </AnimatePresence>

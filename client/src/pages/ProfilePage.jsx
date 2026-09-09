@@ -21,12 +21,9 @@ import {
   IoLockClosedOutline,
   IoTimeOutline,
   IoLinkOutline,
-  IoWarningOutline,
   IoCheckmarkDoneCircleOutline,
   IoCheckmarkCircle,
-  IoCopyOutline,
 } from 'react-icons/io5';
-import { FaWhatsapp } from 'react-icons/fa';
 import { updateProfile, getMe, fetchUserStats } from '../redux/slices/authSlice';
 import { fetchBooks, deleteBook, removeVideoFromBook } from '../redux/slices/bookSlice';
 import { fetchCourses, deleteCourse, removeFileFromCourse } from '../redux/slices/courseSlice';
@@ -165,9 +162,6 @@ const ProfilePage = () => {
   const dispatch = useDispatch();
 
   const [name, setName] = useState(user?.name || '');
-  const [whatsappPhone, setWhatsappPhone] = useState(user?.whatsappPhoneNumber || '');
-  const [savingPhone, setSavingPhone] = useState(false);
-  const [showWebhookGuide, setShowWebhookGuide] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
@@ -182,10 +176,7 @@ const ProfilePage = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (user) {
-      if (user.name) setName(user.name);
-      if (user.whatsappPhoneNumber !== undefined) setWhatsappPhone(user.whatsappPhoneNumber || '');
-    }
+    if (user?.name) setName(user.name);
   }, [user]);
 
   useEffect(() => {
@@ -255,19 +246,6 @@ const ProfilePage = () => {
     formData.append('name', name);
     const result = await dispatch(updateProfile(formData));
     if (result.meta.requestStatus === 'fulfilled') { toast.success('Profile updated'); setIsEditing(false); }
-  };
-
-  const handleSavePhone = async () => {
-    setSavingPhone(true);
-    const formData = new FormData();
-    formData.append('whatsappPhoneNumber', whatsappPhone);
-    const result = await dispatch(updateProfile(formData));
-    setSavingPhone(false);
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('WhatsApp phone number linked!');
-    } else {
-      toast.error(result.payload || 'Failed to update phone number');
-    }
   };
 
   /* delete helpers */
@@ -398,105 +376,6 @@ const ProfilePage = () => {
                       <span className="text-primary">{user?.name}</span>
                       <button onClick={() => setIsEditing(true)} className="btn-secondary text-sm py-1.5 px-4 cursor-pointer">Edit</button>
                     </div>
-                  )}
-                </div>
-
-                {/* WhatsApp Direct Ingestion */}
-                <div className="border-t border-subtle pt-6 mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
-                        <FaWhatsapp size={16} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-primary">WhatsApp Ingestion</h3>
-                        <p className="text-[11px] text-muted">Forward chats, links, and Reels from WhatsApp straight into your Vault</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowWebhookGuide(!showWebhookGuide)}
-                      className="text-xs text-accent hover:underline cursor-pointer"
-                    >
-                      {showWebhookGuide ? 'Hide Guide' : 'Setup Guide'}
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={whatsappPhone}
-                        onChange={(e) => setWhatsappPhone(e.target.value)}
-                        placeholder="Your WhatsApp phone number (e.g. +923001234567)"
-                        className="input-dark w-full text-xs"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      disabled={savingPhone}
-                      onClick={handleSavePhone}
-                      className="btn-primary text-xs py-2 px-4 cursor-pointer whitespace-nowrap"
-                    >
-                      {savingPhone ? 'Saving...' : 'Link Number'}
-                    </button>
-                  </div>
-
-                  {showWebhookGuide && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-4 p-4 rounded-2xl bg-surface border border-subtle space-y-3 text-xs"
-                    >
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted block">
-                          Your Live Webhook Endpoint:
-                        </span>
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-raised border border-subtle font-mono text-[11px] text-emerald-400">
-                          <span className="select-all break-all">https://organizeup.onrender.com/api/whatsapp/webhook</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText('https://organizeup.onrender.com/api/whatsapp/webhook');
-                              toast.success('Webhook URL copied!');
-                            }}
-                            className="text-muted hover:text-primary ml-2 p-1 cursor-pointer"
-                            title="Copy URL"
-                          >
-                            <IoCopyOutline size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted block">
-                          Verify Token:
-                        </span>
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-raised border border-subtle font-mono text-[11px] text-accent">
-                          <span className="select-all">organizeup_whatsapp_verify_token</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText('organizeup_whatsapp_verify_token');
-                              toast.success('Verify Token copied!');
-                            }}
-                            className="text-muted hover:text-primary ml-2 p-1 cursor-pointer"
-                            title="Copy Token"
-                          >
-                            <IoCopyOutline size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-accent-subtle/40 border border-accent/20 text-secondary space-y-1">
-                        <p className="font-semibold text-primary">Easy 3-Step Setup (Meta WhatsApp Cloud API):</p>
-                        <ol className="list-decimal list-inside space-y-0.5 text-muted">
-                          <li>Go to <strong className="text-primary">developers.facebook.com</strong> &gt; Create a Free App &gt; Add <strong>WhatsApp</strong>.</li>
-                          <li>In <strong>Configuration</strong>, paste the Webhook URL and Verify Token above, and subscribe to <strong>messages</strong>.</li>
-                          <li>Send a message from your linked WhatsApp phone number to the test bot — it appears in OrganizeUp instantly!</li>
-                        </ol>
-                      </div>
-                    </motion.div>
                   )}
                 </div>
 
