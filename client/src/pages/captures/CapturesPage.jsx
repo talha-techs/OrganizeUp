@@ -465,14 +465,14 @@ const CapturesPage = () => {
                   </div>
                 )}
 
-                {/* 4. Web Image or Uploaded Screenshot */}
-                {['web_image', 'web'].includes(capture.platform) && capture.mediaUrl && (
+                {/* 4. Web Image, Article Banner, or Uploaded Screenshot */}
+                {['web_image', 'web', 'other'].includes(capture.platform) && (capture.mediaUrl || capture.thumbnailUrl) && (
                   <div
-                    onClick={() => setLightboxImage(capture.mediaUrl)}
-                    className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center"
+                    onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                    className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                   >
                     <img
-                      src={capture.mediaUrl}
+                      src={capture.mediaUrl || capture.thumbnailUrl}
                       alt={capture.title}
                       className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                     />
@@ -509,18 +509,58 @@ const CapturesPage = () => {
                   </div>
                 )}
 
-                {/* 6. LinkedIn / Web Post Card Fallback */}
+                {/* 6. LinkedIn Interactive Embed or Image Card */}
+                {capture.platform === 'linkedin' && capture.embedUrl && (
+                  <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
+                    <iframe
+                      src={capture.embedUrl}
+                      className="w-full h-full border-0"
+                      allowFullScreen={true}
+                      title={capture.title || 'LinkedIn Post'}
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+
+                {capture.platform === 'linkedin' && !capture.embedUrl && (capture.mediaUrl || capture.thumbnailUrl) && (
+                  <div
+                    onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                    className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                  >
+                    <img
+                      src={capture.mediaUrl || capture.thumbnailUrl}
+                      alt={capture.title}
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
+                      Click to Enlarge
+                    </div>
+                  </div>
+                )}
+
                 {capture.platform === 'linkedin' && (
                   <div className="p-4 bg-sky-950/20 border-b border-subtle">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FaLinkedin size={18} className="text-sky-400" />
-                      <span className="text-xs font-bold text-sky-200">
-                        {capture.authorName || 'LinkedIn Post'}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <FaLinkedin size={18} className="text-sky-400" />
+                        <span className="text-xs font-bold text-sky-200">
+                          {capture.authorName || 'LinkedIn Post'}
+                        </span>
+                      </div>
+                      {capture.rawContent && (
+                        <button
+                          onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                          className="text-[10px] text-sky-400 hover:text-sky-200 transition-colors cursor-pointer flex items-center gap-1"
+                          title="Copy post content"
+                        >
+                          {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
+                          <span>Copy</span>
+                        </button>
+                      )}
                     </div>
                     {capture.rawContent && (
-                      <p className="text-xs text-secondary line-clamp-3 italic">
-                        "{capture.rawContent}"
+                      <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
+                        {capture.rawContent}
                       </p>
                     )}
                   </div>

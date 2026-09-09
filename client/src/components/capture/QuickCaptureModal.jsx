@@ -234,11 +234,18 @@ const QuickCaptureModal = () => {
         ).unwrap();
       } else if (detectedType === 'url') {
         // Social Reel or Web link
+        const finalUrl = extractedUrl || inputText.trim();
+        const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(finalUrl);
+        const platform = isLinkedIn ? 'linkedin' : scrapedData?.platform;
+
         await dispatch(
           createCapture({
-            sourceUrl: extractedUrl || inputText.trim(),
+            sourceUrl: finalUrl,
+            platform,
+            rawContent: scrapedData?.rawContent || scrapedData?.description || (cleanContent !== extractedUrl ? cleanContent : ''),
+            mediaUrl: scrapedData?.mediaUrl || scrapedData?.thumbnailUrl,
             title: customTitle || scrapedData?.title || 'Saved Link',
-            notes: customNote || (cleanContent !== extractedUrl ? cleanContent : ''),
+            notes: customNote || (cleanContent !== extractedUrl && cleanContent !== scrapedData?.rawContent ? cleanContent : ''),
             embedId: scrapedData?.embedId,
             embedUrl: scrapedData?.embedUrl,
             thumbnailUrl: scrapedData?.thumbnailUrl,
@@ -365,8 +372,15 @@ const QuickCaptureModal = () => {
                       {scrapedData?.platform === 'instagram' ? <FaInstagram size={13} className="text-pink-500" /> :
                        scrapedData?.platform === 'facebook' ? <FaFacebook size={13} className="text-blue-500" /> :
                        scrapedData?.platform === 'youtube' ? <FaYoutube size={13} className="text-red-500" /> :
+                       (scrapedData?.platform === 'linkedin' || /(?:linkedin\.com|lnkd\.in)/i.test(extractedUrl)) ? <FaLinkedin size={13} className="text-sky-400" /> :
                        <FaGlobe size={13} />}
-                      <span>{scrapedData?.platform ? scrapedData.platform.toUpperCase() : 'Link Detected'}</span>
+                      <span>
+                        {(scrapedData?.platform === 'linkedin' || /(?:linkedin\.com|lnkd\.in)/i.test(extractedUrl))
+                          ? 'LINKEDIN'
+                          : scrapedData?.platform
+                            ? scrapedData.platform.toUpperCase()
+                            : 'Link Detected'}
+                      </span>
                     </span>
                   )}
                   {detectedType === 'image' && (

@@ -29,11 +29,27 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
-  // LinkedIn Post / Article
-  if (/linkedin\.com/i.test(trimmed)) {
+  // LinkedIn Post / Article / Video / Shortlink (lnkd.in)
+  if (/(?:linkedin\.com|lnkd\.in)/i.test(trimmed)) {
+    const liMatch =
+      trimmed.match(/(?:ugcPost|share|activity)[-_](\d+)/i) ||
+      trimmed.match(/(?:urn:li:(?:ugcPost|share|activity):)(\d+)/i);
+    let embedId = "";
+    let embedUrl = "";
+    if (liMatch) {
+      embedId = liMatch[1];
+      const type = trimmed.includes("ugcPost")
+        ? "ugcPost"
+        : trimmed.includes("share")
+        ? "share"
+        : "activity";
+      embedUrl = `https://www.linkedin.com/embed/feed/update/urn:li:${type}:${embedId}`;
+    }
     return {
       platform: "linkedin",
       mediaType: "post",
+      embedId,
+      embedUrl,
     };
   }
 
@@ -76,7 +92,7 @@ const scrapeMetadata = async (req, res) => {
       return res.status(400).json({ message: "A valid URL is required" });
     }
 
-    const detected = detectPlatformAndEmbed(url);
+    let detected = detectPlatformAndEmbed(url);
 
     let html = "";
     let finalTitle = "";
@@ -84,17 +100,28 @@ const scrapeMetadata = async (req, res) => {
     let finalImage = "";
     let siteName = "";
     let author = "";
+    let finalUrl = url;
+
+    // Use facebookexternalhit or linkedin-friendly UA to prevent authwalls on social links
+    const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
+    const userAgent = isLinkedIn
+      ? "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+      : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
     try {
       const response = await fetch(url, {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "User-Agent": userAgent,
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         },
-        signal: AbortSignal.timeout(6000),
+        redirect: "follow",
+        signal: AbortSignal.timeout(7000),
       });
+
+      if (response.url) {
+        finalUrl = response.url;
+      }
 
       if (response.ok) {
         html = await response.text();
@@ -104,30 +131,43 @@ const scrapeMetadata = async (req, res) => {
         if (titleMatch) finalTitle = titleMatch[1].trim();
 
         // Extract og:title
-        const ogTitleMatch = html.match(
-          /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
-        ) || html.match(
-          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
-        );
+        const ogTitleMatch =
+          html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
         if (ogTitleMatch) finalTitle = ogTitleMatch[1].trim();
 
         // Extract og:description / meta description
-        const ogDescMatch = html.match(
-          /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i,
-        ) || html.match(
-          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i,
-        ) || html.match(
-          /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i,
-        );
+        const ogDescMatch =
+          html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i) ||
+          html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
         if (ogDescMatch) finalDescription = ogDescMatch[1].trim();
 
         // Extract og:image
-        const ogImgMatch = html.match(
-          /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
-        ) || html.match(
-          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
-        );
+        const ogImgMatch =
+          html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
         if (ogImgMatch) finalImage = ogImgMatch[1].trim();
+
+        // Extract og:url if present
+        const ogUrlMatch =
+          html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:url["']/i);
+        const ogUrl = ogUrlMatch ? ogUrlMatch[1].trim() : "";
+
+        // Re-detect on redirected or og:url for shortlinks (like lnkd.in)
+        if (ogUrl && ogUrl !== url) {
+          const reDetected = detectPlatformAndEmbed(ogUrl);
+          if (reDetected.platform !== "other" && reDetected.platform !== "web") {
+            detected = { ...detected, ...reDetected };
+          }
+        }
+        if (finalUrl !== url) {
+          const reDetected = detectPlatformAndEmbed(finalUrl);
+          if (reDetected.platform !== "other" && reDetected.platform !== "web") {
+            detected = { ...detected, ...reDetected };
+          }
+        }
 
         // Extract og:site_name
         const ogSiteMatch = html.match(
@@ -140,10 +180,24 @@ const scrapeMetadata = async (req, res) => {
           /<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']/i,
         );
         if (authorMatch) author = authorMatch[1].trim();
+
+        // Heuristics for author on LinkedIn
+        if (!author && detected.platform === "linkedin") {
+          if (finalTitle.includes("|")) {
+            const parts = finalTitle.split("|");
+            author = parts[parts.length - 1].trim();
+          } else if (finalTitle.includes("on LinkedIn:")) {
+            author = finalTitle.split("on LinkedIn:")[0].trim();
+          }
+        }
       }
     } catch (fetchErr) {
-      // If scrape fails or times out, proceed with fallback heuristics
       console.warn("Metadata scrape warning:", fetchErr.message);
+    }
+
+    // Clean up XML / HTML entities in image URL (e.g. &amp; -> &)
+    if (finalImage) {
+      finalImage = finalImage.replace(/&amp;/g, "&");
     }
 
     // Heuristics for title fallback
@@ -160,9 +214,12 @@ const scrapeMetadata = async (req, res) => {
       success: true,
       data: {
         url,
+        resolvedUrl: finalUrl,
         title: finalTitle,
         description: finalDescription,
+        rawContent: finalDescription,
         thumbnailUrl: finalImage,
+        mediaUrl: finalImage,
         siteName: siteName || detected.platform,
         authorName: author,
         ...detected,
@@ -337,6 +394,14 @@ const createCapture = async (req, res) => {
       mediaType = "image";
     }
 
+    // Force LinkedIn platform if sourceUrl matches LinkedIn or lnkd.in
+    if (sourceUrl && /(?:linkedin\.com|lnkd\.in)/i.test(sourceUrl)) {
+      platform = "linkedin";
+      const detected = detectPlatformAndEmbed(sourceUrl);
+      if (detected.embedId && !embedId) embedId = detected.embedId;
+      if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
+    }
+
     // If sourceUrl provided and platform was not manually set, auto-detect platform and embed
     if (sourceUrl && (!platform || platform === "auto")) {
       const detected = detectPlatformAndEmbed(sourceUrl);
@@ -346,6 +411,12 @@ const createCapture = async (req, res) => {
       embedUrl = detected.embedUrl || embedUrl;
       if (detected.mediaUrl) mediaUrl = detected.mediaUrl;
     }
+
+    // Ensure mediaUrl and thumbnailUrl are synced and unescaped
+    if (!mediaUrl && thumbnailUrl) mediaUrl = thumbnailUrl;
+    if (!thumbnailUrl && mediaUrl) thumbnailUrl = mediaUrl;
+    if (typeof mediaUrl === "string") mediaUrl = mediaUrl.replace(/&amp;/g, "&");
+    if (typeof thumbnailUrl === "string") thumbnailUrl = thumbnailUrl.replace(/&amp;/g, "&");
 
     // Default fallback platform
     if (!platform) {

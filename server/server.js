@@ -65,6 +65,10 @@ app.use(
           "https://web.facebook.com",
           "https://www.youtube.com",
           "https://www.youtube-nocookie.com",
+          "https://www.linkedin.com",
+          "https://*.linkedin.com",
+          "https://media.licdn.com",
+          "https://*.licdn.com",
         ],
         connectSrc: [
           "'self'",
