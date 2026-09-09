@@ -3,9 +3,10 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
-import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline } from 'react-icons/io5';
+import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline, IoFlashOutline } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
+import { openQuickCapture } from '../../redux/slices/captureSlice';
 import api from '../../utils/api';
 
 const Navbar = () => {
@@ -60,6 +61,7 @@ const Navbar = () => {
 
   const navLinks = [
     { to: '/explore', label: 'Explore', icon: <IoCompassOutline size={18} /> },
+    { to: '/captures', label: 'Vault', icon: <IoFlashOutline size={18} /> },
     { to: '/books', label: 'Books', icon: <IoBookOutline size={18} /> },
     { to: '/courses', label: 'Courses', icon: <IoSchoolOutline size={18} /> },
     { to: '/youtube-playlists', label: 'Playlists', icon: <IoLogoYoutube size={18} /> },
@@ -111,6 +113,16 @@ const Navbar = () => {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {/* Quick Capture Button */}
+            <button
+              onClick={() => dispatch(openQuickCapture())}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-accent to-accent-hover text-white text-xs font-bold shadow-md shadow-accent/20 hover:shadow-lg hover:shadow-accent/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+              title="Quick Capture (Ctrl+K)"
+            >
+              <IoFlashOutline size={15} />
+              <span className="hidden sm:inline">Capture</span>
+            </button>
+
             {/* Notification Bell */}
             <div ref={notifRef} className="relative">
               <button

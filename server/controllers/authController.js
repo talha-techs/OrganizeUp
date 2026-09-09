@@ -3,6 +3,7 @@ const Book = require("../models/Book");
 const Course = require("../models/Course");
 const YoutubePlaylist = require("../models/YoutubePlaylist");
 const SubSection = require("../models/SubSection");
+const CapturedResource = require("../models/CapturedResource");
 const { generateToken } = require("../middleware/auth");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
@@ -404,6 +405,24 @@ const getUserStats = async (req, res) => {
       }
     });
 
+    // d) Captured Resources notes
+    const capturedItems = await CapturedResource.find({
+      user: user._id,
+      status: { $ne: "archived" },
+    }).lean();
+
+    capturedItems.forEach((c) => {
+      if (c.notes && c.notes.trim()) {
+        notesList.push({
+          id: c._id.toString(),
+          type: c.platform,
+          sourceTitle: c.title || `${c.platform.toUpperCase()} Capture`,
+          content: c.notes.trim(),
+          date: c.updatedAt || c.createdAt || new Date(),
+        });
+      }
+    });
+
     // Sort notes descending by date
     notesList.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -416,6 +435,8 @@ const getUserStats = async (req, res) => {
         coursesCompleted,
         playlistsInProgress,
         playlistsCompleted,
+        capturesSaved: capturedItems.length,
+        capturesCompleted: capturedItems.filter((c) => c.status === "completed").length,
         totalNotes: notesList.length,
       },
       notes: notesList,

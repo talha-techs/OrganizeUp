@@ -9,6 +9,7 @@ import exploreReducer from "./slices/exploreSlice";
 import libraryReducer from "./slices/librarySlice";
 import sectionReducer from "./slices/sectionSlice";
 import playlistReducer from "./slices/youtubePlaylistSlice";
+import captureReducer from "./slices/captureSlice";
 
 export const store = configureStore({
   reducer: {
@@ -22,5 +23,6 @@ export const store = configureStore({
     library: libraryReducer,
     sections: sectionReducer,
     playlists: playlistReducer,
+    captures: captureReducer,
   },
 });

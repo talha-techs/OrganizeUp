@@ -61,6 +61,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // WhatsApp Integration
+    whatsappPhoneNumber: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
     // Universal video progress - stores progress for videos across books, courses, YouTube playlists, etc.
     videoProgress: [
       {
@@ -112,17 +118,18 @@ const userSchema = new mongoose.Schema(
         lastRead: { type: Date, default: Date.now },
       },
     ],
-    // In-app notifications (e.g. publish request rejection)
+    // In-app notifications (e.g. reminders, publish request rejection)
     notifications: [
       {
         type: {
           type: String,
-          enum: ["rejection", "approval", "info"],
+          enum: ["rejection", "approval", "info", "reminder"],
           default: "info",
         },
         message: { type: String, default: "" },
         contentTitle: { type: String, default: "" },
         adminNote: { type: String, default: "" },
+        link: { type: String, default: "" },
         read: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now },
       },

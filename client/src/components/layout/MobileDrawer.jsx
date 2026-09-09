@@ -16,9 +16,11 @@ import {
   IoShieldCheckmarkOutline,
   IoCloseOutline,
   IoLogOutOutline,
+  IoFlashOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout } from '../../redux/slices/authSlice';
+import { openQuickCapture } from '../../redux/slices/captureSlice';
 import ThemeToggle from '../ui/ThemeToggle';
 import api from '../../utils/api';
 
@@ -81,6 +83,11 @@ const MobileDrawer = ({ isOpen, onClose }) => {
     {
       title: 'Inboxes',
       items: [
+        {
+          to: '/captures',
+          label: 'Vault & Captures',
+          icon: IoFlashOutline,
+        },
         {
           to: '/telegram-inbox',
           label: 'Telegram Inbox',
@@ -154,8 +161,22 @@ const MobileDrawer = ({ isOpen, onClose }) => {
                   </Dialog.Close>
                 </div>
 
+                {/* Quick Capture Button */}
+                <div className="px-4 pt-3 pb-1 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      onClose();
+                      dispatch(openQuickCapture());
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-accent to-accent-hover text-white font-bold text-xs shadow-md shadow-accent/25 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <IoFlashOutline size={17} />
+                    <span>Quick Capture</span>
+                  </button>
+                </div>
+
                 {/* Navigation Items */}
-                <div className="flex-1 overflow-y-auto py-5 px-4 space-y-6">
+                <div className="flex-1 overflow-y-auto py-3 px-4 space-y-6">
                   {navGroups.map((group, groupIdx) => (
                     <div key={groupIdx} className="space-y-1.5">
                       <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted font-display">

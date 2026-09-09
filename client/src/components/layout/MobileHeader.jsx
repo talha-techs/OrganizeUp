@@ -6,8 +6,10 @@ import {
   IoMenuOutline,
   IoNotificationsOutline,
   IoCheckmarkDoneOutline,
+  IoFlashOutline,
 } from 'react-icons/io5';
 import { markNotificationsRead } from '../../redux/slices/authSlice';
+import { openQuickCapture } from '../../redux/slices/captureSlice';
 
 const MobileHeader = ({ onOpenMenu }) => {
   const dispatch = useDispatch();
@@ -47,8 +49,18 @@ const MobileHeader = ({ onOpenMenu }) => {
         </Link>
       </div>
 
-      {/* Right: Notifications & Avatar */}
+      {/* Right: Quick Capture, Notifications & Avatar */}
       <div className="flex items-center gap-2">
+        {/* Quick Capture Button */}
+        <button
+          onClick={() => dispatch(openQuickCapture())}
+          className="p-1.5 rounded-xl bg-accent-subtle text-accent hover:bg-accent hover:text-white transition-colors cursor-pointer"
+          title="Quick Capture"
+          aria-label="Quick Capture"
+        >
+          <IoFlashOutline size={19} />
+        </button>
+
         {/* Notification Button */}
         <div ref={notifRef} className="relative">
           <button

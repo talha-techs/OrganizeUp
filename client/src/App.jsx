@@ -33,9 +33,12 @@ const YouTubePlaylistDetailPage = lazy(() => import('./pages/YouTubePlaylistDeta
 const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
 const TelegramLibrary = lazy(() => import('./pages/telegram/TelegramLibrary'));
 const DiscordLibrary = lazy(() => import('./pages/discord/DiscordLibrary'));
+const CapturesPage = lazy(() => import('./pages/captures/CapturesPage'));
 
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
+import QuickCaptureModal from './components/capture/QuickCaptureModal';
+import { openQuickCapture } from './redux/slices/captureSlice';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -47,6 +50,29 @@ const App = () => {
     dispatch(getMe());
   }, [dispatch]);
 
+  // Global shortcut listeners (Ctrl+K, Ctrl+Shift+S, custom event)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || (e.shiftKey && (e.key === 's' || e.key === 'S')))) {
+        // Prevent default browser search/save
+        e.preventDefault();
+        dispatch(openQuickCapture());
+      }
+    };
+
+    const handleCustomOpen = (e) => {
+      dispatch(openQuickCapture(e.detail));
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-quick-capture', handleCustomOpen);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-quick-capture', handleCustomOpen);
+    };
+  }, [dispatch]);
+
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
@@ -54,6 +80,7 @@ const App = () => {
   return (
     <>
       <InstallPrompt />
+      <QuickCaptureModal />
       <ErrorBoundary>
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
@@ -87,6 +114,7 @@ const App = () => {
               <Route path="/saved" element={<SavedLibraryPage />} />
               <Route path="/telegram-inbox" element={<TelegramLibrary />} />
               <Route path="/discord-inbox" element={<DiscordLibrary />} />
+              <Route path="/captures" element={<CapturesPage />} />
               <Route
                 path="/admin"
                 element={

@@ -27,6 +27,10 @@ const youtubePlaylistRoutes = require("./routes/youtubePlaylists");
 const contentRoutes = require("./routes/content");
 const telegramRoutes = require("./routes/telegram");
 const discordRoutes = require("./routes/discord");
+const captureRoutes = require("./routes/captures");
+const whatsappRoutes = require("./routes/whatsapp");
+const CapturedResource = require("./models/CapturedResource");
+const User = require("./models/User");
 const { initTelegramBot } = require("./bot/telegramBot");
 const { initDiscordBot } = require("./bot/discordBot");
 const { protect } = require("./middleware/auth");
@@ -52,7 +56,16 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        frameSrc: ["'self'"],
+        frameSrc: [
+          "'self'",
+          "https://www.instagram.com",
+          "https://*.instagram.com",
+          "https://www.facebook.com",
+          "https://*.facebook.com",
+          "https://web.facebook.com",
+          "https://www.youtube.com",
+          "https://www.youtube-nocookie.com",
+        ],
         connectSrc: [
           "'self'",
           process.env.CLIENT_URL || "http://localhost:5173",
@@ -133,6 +146,8 @@ app.use("/api/youtube-playlists", apiLimiter, youtubePlaylistRoutes);
 app.use("/api/content", apiLimiter, contentRoutes);
 app.use("/api/telegram", apiLimiter, telegramRoutes);
 app.use("/api/discord", apiLimiter, discordRoutes);
+app.use("/api/captures", apiLimiter, captureRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 
 // Image serving from GridFS (authenticated)
 app.get("/api/images/:fileId", protect, serveImage);
@@ -172,6 +187,56 @@ app.listen(PORT, () => {
 
   // Initialize Discord Bot
   initDiscordBot();
+
+  // Vault Reminders background worker: checks every 60 seconds
+  const checkVaultReminders = async () => {
+    try {
+      const now = new Date();
+      const dueCaptures = await CapturedResource.find({
+        remindAt: { $lte: now },
+        reminderFired: false,
+        status: { $ne: "archived" },
+      });
+
+      if (!dueCaptures.length) return;
+
+      for (const capture of dueCaptures) {
+        try {
+          const user = await User.findById(capture.user);
+          if (user) {
+            const platformLabel =
+              capture.platform.charAt(0).toUpperCase() +
+              capture.platform.slice(1);
+            const notifTitle = `⏰ Reminder: ${capture.title || platformLabel}`;
+            const notifMsg = capture.notes
+              ? `${capture.notes.slice(0, 140)}`
+              : `Time to review your saved ${platformLabel} resource!`;
+
+            user.notifications.unshift({
+              type: "reminder",
+              contentTitle: notifTitle,
+              message: notifMsg,
+              link: `/captures?highlight=${capture._id}`,
+              read: false,
+              createdAt: new Date(),
+            });
+            await user.save();
+          }
+
+          capture.reminderFired = true;
+          await capture.save();
+          console.log(`⏰ Vault reminder triggered for capture "${capture.title}"`);
+        } catch (itemErr) {
+          console.error("Error processing individual reminder:", itemErr);
+        }
+      }
+    } catch (err) {
+      console.error("Error in vault reminder checker:", err);
+    }
+  };
+
+  setInterval(checkVaultReminders, 60 * 1000);
+  console.log("⏰ Vault reminder engine running (checked every 60s)");
 
   // Keep-alive: ping ourselves every 14 minutes to prevent Render free-tier cold starts
   if (process.env.NODE_ENV === "production" && process.env.RENDER_EXTERNAL_URL) {

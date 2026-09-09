@@ -18,9 +18,11 @@ import {
   IoChevronBackOutline,
   IoChevronForwardOutline,
   IoCheckmarkDoneOutline,
+  IoFlashOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
+import { openQuickCapture } from '../../redux/slices/captureSlice';
 import ThemeToggle from '../ui/ThemeToggle';
 import api from '../../utils/api';
 
@@ -95,6 +97,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       title: 'Inboxes',
       items: [
         {
+          to: '/captures',
+          label: 'Vault & Captures',
+          icon: IoFlashOutline,
+        },
+        {
           to: '/telegram-inbox',
           label: 'Telegram Inbox',
           icon: FaTelegramPlane,
@@ -157,6 +164,27 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? <IoChevronForwardOutline size={18} /> : <IoChevronBackOutline size={18} />}
+        </button>
+      </div>
+
+      {/* Quick Capture Button */}
+      <div className="px-3 pt-3 pb-1 flex-shrink-0">
+        <button
+          onClick={() => dispatch(openQuickCapture())}
+          title={isCollapsed ? 'Quick Capture (Ctrl+K)' : undefined}
+          className={`w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-accent-hover text-white font-bold text-xs shadow-md shadow-accent/25 hover:shadow-lg hover:shadow-accent/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer ${
+            isCollapsed ? 'py-2.5 px-0' : 'py-2.5 px-3'
+          }`}
+        >
+          <IoFlashOutline size={17} />
+          {!isCollapsed && (
+            <>
+              <span>Quick Capture</span>
+              <span className="ml-auto text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-normal">
+                ⌘K
+              </span>
+            </>
+          )}
         </button>
       </div>
 
