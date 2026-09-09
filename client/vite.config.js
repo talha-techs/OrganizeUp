@@ -12,6 +12,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
       },
       includeAssets: [
         "favicon.ico",

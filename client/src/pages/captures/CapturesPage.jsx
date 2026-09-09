@@ -54,6 +54,11 @@ const CapturesPage = () => {
   const [reminderModalItem, setReminderModalItem] = useState(null);
   const [newRemindDate, setNewRemindDate] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const [expandedEmbeds, setExpandedEmbeds] = useState({});
+
+  const toggleEmbed = (id) => {
+    setExpandedEmbeds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   useEffect(() => {
     loadCaptures();
@@ -486,60 +491,76 @@ const CapturesPage = () => {
                 )}
 
                 {/* 6. LinkedIn Interactive Embed or Image Card */}
-                {capture.platform === 'linkedin' && capture.embedUrl && (
-                  <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
-                    <iframe
-                      src={capture.embedUrl}
-                      className="w-full h-full border-0"
-                      allowFullScreen={true}
-                      title={capture.title || 'LinkedIn Post'}
-                      loading="lazy"
-                    />
-                  </div>
-                )}
-
-                {capture.platform === 'linkedin' && !capture.embedUrl && (capture.mediaUrl || capture.thumbnailUrl) && (
-                  <div
-                    onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
-                    className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
-                  >
-                    <img
-                      src={capture.mediaUrl || capture.thumbnailUrl}
-                      alt={capture.title}
-                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
-                      Click to Enlarge
-                    </div>
-                  </div>
-                )}
-
                 {capture.platform === 'linkedin' && (
-                  <div className="p-4 bg-sky-950/20 border-b border-subtle">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <FaLinkedin size={18} className="text-sky-400" />
-                        <span className="text-xs font-bold text-sky-200">
-                          {capture.authorName || 'LinkedIn Post'}
-                        </span>
+                  <>
+                    {/* Media Display: Interactive Embed if expanded/only option, else High-Res Visual Banner */}
+                    {capture.embedUrl && (expandedEmbeds[capture._id] || !(capture.mediaUrl || capture.thumbnailUrl)) ? (
+                      <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
+                        <iframe
+                          src={capture.embedUrl}
+                          className="w-full h-full border-0"
+                          allowFullScreen={true}
+                          title={capture.title || 'LinkedIn Post'}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                      <div
+                        onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                        className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                      >
+                        <img
+                          src={capture.mediaUrl || capture.thumbnailUrl}
+                          alt={capture.title || 'LinkedIn Post'}
+                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.parentElement.style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
+                          <span>Click to Enlarge</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Author & Post Excerpt Header */}
+                    <div className="p-4 bg-sky-950/20 border-b border-subtle">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <FaLinkedin size={18} className="text-sky-400 flex-shrink-0" />
+                          <span className="text-xs font-bold text-sky-200 truncate">
+                            {capture.authorName || 'LinkedIn Post'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {capture.embedUrl && (capture.mediaUrl || capture.thumbnailUrl) && (
+                            <button
+                              onClick={() => toggleEmbed(capture._id)}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/40 hover:bg-sky-800/60 text-sky-300 transition-colors cursor-pointer border border-sky-700/40"
+                              title={expandedEmbeds[capture._id] ? 'Show Image Banner' : 'View Live Interactive Post'}
+                            >
+                              {expandedEmbeds[capture._id] ? 'Show Banner' : 'Interactive'}
+                            </button>
+                          )}
+                          {capture.rawContent && (
+                            <button
+                              onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                              className="text-[10px] text-sky-400 hover:text-sky-200 transition-colors cursor-pointer flex items-center gap-1"
+                              title="Copy post content"
+                            >
+                              {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
+                              <span>Copy</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {capture.rawContent && (
-                        <button
-                          onClick={() => handleCopyText(capture.rawContent, capture._id)}
-                          className="text-[10px] text-sky-400 hover:text-sky-200 transition-colors cursor-pointer flex items-center gap-1"
-                          title="Copy post content"
-                        >
-                          {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
-                          <span>Copy</span>
-                        </button>
+                        <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
+                          {capture.rawContent}
+                        </p>
                       )}
                     </div>
-                    {capture.rawContent && (
-                      <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
-                        {capture.rawContent}
-                      </p>
-                    )}
-                  </div>
+                  </>
                 )}
 
                 {/* Card Body Details */}
