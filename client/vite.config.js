@@ -63,7 +63,16 @@ export default defineConfig({
             type: "image/png",
             form_factor: "wide"
           }
-        ]
+        ],
+        share_target: {
+          action: "/captures",
+          method: "GET",
+          params: {
+            title: "title",
+            text: "text",
+            url: "url"
+          }
+        }
       }
     })
   ],

@@ -54,6 +54,7 @@ const CapturesPage = () => {
   const [reminderModalItem, setReminderModalItem] = useState(null);
   const [newRemindDate, setNewRemindDate] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
 
   useEffect(() => {
     loadCaptures();
@@ -265,6 +266,29 @@ const CapturesPage = () => {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* WhatsApp Zero-Click Direct Forwarding Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-surface to-emerald-950/20 border border-emerald-800/30 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 flex-shrink-0">
+            <FaWhatsapp size={24} />
+          </div>
+          <div>
+            <h4 className="text-xs sm:text-sm font-bold text-emerald-300">
+              Zero-Click WhatsApp Saving: Forward directly from WhatsApp!
+            </h4>
+            <p className="text-[11px] text-emerald-400/80">
+              Instead of copy-pasting, forward any chat, reel, or link to your OrganizeUp WhatsApp Webhook. It automatically saves with an actionable reminder!
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setWhatsappModalOpen(true)}
+          className="px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-200 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex-shrink-0"
+        >
+          Setup WhatsApp Bot
+        </button>
       </div>
 
       {/* Categorized Platform Tabs & Search Toolbar */}
@@ -774,6 +798,74 @@ const CapturesPage = () => {
                     Save
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* WhatsApp Direct Forwarding Setup Modal */}
+      <AnimatePresence>
+        {whatsappModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg rounded-3xl bg-surface-raised border border-strong p-6 space-y-4 shadow-2xl shadow-black/80"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <FaWhatsapp size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-primary font-display">
+                      Direct WhatsApp Ingestion
+                    </h3>
+                    <p className="text-xs text-muted">
+                      Save without ever opening the OrganizeUp app
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setWhatsappModalOpen(false)}
+                  className="text-muted hover:text-primary p-1"
+                >
+                  <IoClose size={20} />
+                </button>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-surface border border-subtle space-y-2 text-xs text-secondary leading-relaxed">
+                <p className="font-semibold text-primary">
+                  How it works:
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-muted">
+                  <li>In WhatsApp, whenever you see a link, Reel, or message you want to remember:</li>
+                  <li>Tap <strong className="text-primary">Forward</strong> and send it to your OrganizeUp WhatsApp bot.</li>
+                  <li>OrganizeUp automatically catches it, extracts Reels/links, and schedules a reminder for <strong className="text-emerald-400">Tonight at 8:00 PM</strong>!</li>
+                </ol>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <label className="font-semibold text-secondary block">
+                  Your WhatsApp Webhook Endpoint:
+                </label>
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-surface border border-subtle font-mono text-[11px] text-accent select-all break-all">
+                  <span>/api/whatsapp/webhook</span>
+                </div>
+                <p className="text-[11px] text-muted">
+                  Supports Meta WhatsApp Cloud API, Twilio WhatsApp, or Baileys personal bot.
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setWhatsappModalOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-accent text-white text-xs font-bold shadow transition-all cursor-pointer"
+                >
+                  Got it!
+                </button>
               </div>
             </motion.div>
           </div>

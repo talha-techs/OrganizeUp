@@ -131,20 +131,54 @@ router.post("/webhook", async (req, res) => {
       }
     }
 
+    // Default actionable reminder: if user didn't specify, default to Tonight 8 PM or Tomorrow 9 AM
+    // so forwarded items are never forgotten like in native WhatsApp chat!
+    if (!parsedRemindAt) {
+      const now = new Date();
+      if (now.getHours() < 19) {
+        parsedRemindAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+      } else {
+        parsedRemindAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0, 0);
+      }
+    }
+
+    // Auto-detect Instagram, Facebook or YouTube links inside WhatsApp message
+    const { detectPlatformAndEmbed } = require("../controllers/captureController");
+    const urlMatch = messageText.match(/(https?:\/\/[^\s]+)/i);
+    let platform = "whatsapp";
+    let mediaType = "message";
+    let embedId = "";
+    let embedUrl = "";
+    let sourceUrl = "";
+
+    if (urlMatch) {
+      sourceUrl = urlMatch[0];
+      const detected = detectPlatformAndEmbed(sourceUrl);
+      if (["instagram", "facebook", "youtube"].includes(detected.platform)) {
+        platform = detected.platform;
+        mediaType = detected.mediaType;
+        embedId = detected.embedId || "";
+        embedUrl = detected.embedUrl || "";
+      }
+    }
+
     const captureTitle = senderName
       ? `WhatsApp from ${senderName}`
       : `WhatsApp from ${senderNumber || "Direct"}`;
 
     const newCapture = await CapturedResource.create({
       user: targetUser._id,
-      platform: "whatsapp",
-      mediaType: "message",
+      platform,
+      mediaType,
       title: captureTitle,
+      sourceUrl,
       rawContent: messageText.trim(),
       authorName: senderName || senderNumber || "WhatsApp",
+      embedId,
+      embedUrl,
       mediaUrl: mediaUrl || "",
       remindAt: parsedRemindAt,
-      priority: parsedRemindAt ? "high" : "medium",
+      priority: "medium",
       status: "inbox",
     });
 

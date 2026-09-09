@@ -67,6 +67,27 @@ const App = () => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('open-quick-capture', handleCustomOpen);
 
+    // Handle PWA share target query params (?text=...&url=...&title=...)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const sharedText = params.get('text');
+      const sharedUrl = params.get('url');
+      const sharedTitle = params.get('title');
+
+      if (sharedText || sharedUrl || sharedTitle) {
+        dispatch(
+          openQuickCapture({
+            text: sharedText || '',
+            url: sharedUrl || '',
+            title: sharedTitle || '',
+          })
+        );
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {
+      // Ignore if URLSearchParams is unavailable
+    }
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('open-quick-capture', handleCustomOpen);
