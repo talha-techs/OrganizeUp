@@ -332,6 +332,9 @@ const importDriveBook = async (req, res) => {
   } catch (error) {
     console.error("Import drive book error:", error);
     res.status(500).json({ message: "Failed to import book from Drive" });
+  }
+};
+
 // @desc    Get text / code content of a Drive file
 // @route   GET /api/drive/file/:fileId/content
 const getDriveFileContent = async (req, res) => {
