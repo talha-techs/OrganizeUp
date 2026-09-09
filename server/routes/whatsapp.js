@@ -184,6 +184,11 @@ router.post("/webhook", async (req, res) => {
 
     console.log(`📥 WhatsApp capture saved for user ${targetUser.email} (ID: ${newCapture._id})`);
 
+    if (body.From || req.headers["x-twilio-signature"]) {
+      res.set("Content-Type", "text/xml");
+      return res.status(200).send("<Response></Response>");
+    }
+
     return res.status(200).json({
       success: true,
       message: "WhatsApp capture ingested successfully",
