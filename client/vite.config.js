@@ -13,7 +13,18 @@ export default defineConfig({
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
       },
-      includeAssets: ["pwa-192x192.png", "pwa-512x512.png", "maskable-icon-512x512.png", "splash-screen.png"],
+      includeAssets: [
+        "favicon.ico",
+        "favicon.png",
+        "favicon-32x32.png",
+        "favicon-16x16.png",
+        "organizeup-favicon.svg",
+        "organizeup-logo.svg",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
+        "maskable-icon-512x512.png",
+        "splash-screen.png"
+      ],
       manifest: {
         name: "OrganizeUp",
         short_name: "OrganizeUp",
