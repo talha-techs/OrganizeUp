@@ -11,6 +11,8 @@ import {
   IoMusicalNotesOutline,
 } from 'react-icons/io5';
 
+import DefaultResourceCover from './DefaultResourceCover';
+
 const GENRE_COLORS = {
   Fiction: 'bg-accent-subtle text-accent border-accent/30',
   Philosophy: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
@@ -43,10 +45,10 @@ const AudiobookCard = ({
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.25 }}
-      className="glass-card group flex flex-col h-full overflow-hidden border border-subtle hover:border-strong transition-all duration-300 hover:shadow-xl hover:shadow-black/20"
+      className="relative group rounded-3xl bg-surface border border-subtle hover:border-accent/40 hover:shadow-2xl hover:shadow-black/25 transition-all duration-300 flex flex-col h-full overflow-hidden"
     >
       {/* Cover Image & Header */}
-      <div className="relative h-48 sm:h-52 bg-surface-raised overflow-hidden flex-shrink-0">
+      <div className="relative h-56 sm:h-64 bg-surface-raised overflow-hidden flex-shrink-0 border-b border-subtle">
         {book.coverImage && !imageError ? (
           <img
             src={book.coverImage}
@@ -56,14 +58,11 @@ const AudiobookCard = ({
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-surface-raised border-b border-subtle">
-            <div className="w-14 h-14 rounded-2xl bg-accent-subtle flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-              <IoMusicalNotesOutline className="text-accent" size={28} />
-            </div>
-            <p className="text-xs text-secondary font-medium line-clamp-2 px-2">
-              {book.title}
-            </p>
-          </div>
+          <DefaultResourceCover
+            contentType="book"
+            itemType="audio"
+            title={book.title}
+          />
         )}
 
         {/* Top Badges */}

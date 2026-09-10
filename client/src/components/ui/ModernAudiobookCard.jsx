@@ -10,6 +10,8 @@ import {
   IoCheckmarkCircle,
 } from 'react-icons/io5';
 
+import DefaultResourceCover from './DefaultResourceCover';
+
 const TOPIC_BADGES = {
   'Habits & Mindset': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
   'Wealth & Finance': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -39,10 +41,10 @@ const ModernAudiobookCard = ({
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.25 }}
-      className="glass-card group flex flex-col h-full overflow-hidden border border-subtle hover:border-strong transition-all duration-300 hover:shadow-xl hover:shadow-black/20"
+      className="relative group rounded-3xl bg-surface border border-subtle hover:border-accent/40 hover:shadow-2xl hover:shadow-black/25 transition-all duration-300 flex flex-col h-full overflow-hidden"
     >
       {/* Thumbnail & Badges */}
-      <div className="relative h-44 sm:h-48 bg-surface-raised overflow-hidden flex-shrink-0">
+      <div className="relative h-56 sm:h-64 bg-surface-raised overflow-hidden flex-shrink-0 border-b border-subtle">
         {book.thumbnail && !imageError ? (
           <img
             src={book.thumbnail}
@@ -52,12 +54,11 @@ const ModernAudiobookCard = ({
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-surface-raised border-b border-subtle">
-            <IoLogoYoutube className="text-red-500 mb-2" size={32} />
-            <p className="text-xs text-secondary font-medium line-clamp-2 px-2">
-              {book.title}
-            </p>
-          </div>
+          <DefaultResourceCover
+            contentType="book"
+            itemType="audio"
+            title={book.title}
+          />
         )}
 
         {/* Top Badges */}

@@ -5,6 +5,8 @@ import { HiPencil, HiTrash } from 'react-icons/hi';
 import { IoGlobeOutline, IoLockClosedOutline, IoTimeOutline, IoRocketOutline, IoEyeOutline, IoEyeOffOutline, IoChatbubbleOutline } from 'react-icons/io5';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import DefaultResourceCover from './DefaultResourceCover';
+
 const visibilityConfig = {
   public: { icon: IoGlobeOutline, label: 'Public', color: 'text-emerald-400 bg-emerald-500/10' },
   private: { icon: IoLockClosedOutline, label: 'Private', color: 'text-secondary bg-surface' },
@@ -21,6 +23,7 @@ const ResourceCard = ({
 }) => {
   const { user } = useSelector((state) => state.auth);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const menuRef = useRef(null);
 
   // Compute ownership robustly inside the component.
@@ -55,16 +58,21 @@ const ResourceCard = ({
       className="glass-card group relative overflow-hidden cursor-pointer"
     >
       {/* Image */}
-      <div onClick={onClick} className="relative">
-        {image ? (
-          <img src={image} alt={title} className="w-full h-44 object-cover rounded-t-2xl" />
+      <div onClick={onClick} className="relative h-48 sm:h-52 overflow-hidden border-b border-subtle">
+        {image && !imageError ? (
+          <>
+            <img
+              src={image}
+              alt={title}
+              onError={() => setImageError(true)}
+              className="w-full h-full object-cover rounded-t-2xl group-hover:scale-105 transition-transform duration-500"
+            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent rounded-t-2xl pointer-events-none" />
+          </>
         ) : (
-          <div className="w-full h-44 rounded-t-2xl bg-surface-raised flex items-center justify-center border-b border-subtle">
-            <span className="text-4xl font-bold text-accent/30">{title?.charAt(0)?.toUpperCase()}</span>
-          </div>
+          <DefaultResourceCover title={title} className="rounded-t-2xl" />
         )}
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent rounded-t-2xl" />
       </div>
 
       {/* Visibility badge */}
