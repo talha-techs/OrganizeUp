@@ -279,12 +279,6 @@ const ExplorePage = () => {
   const tabs = [
     { key: 'all', label: 'All', icon: <IoGridOutline size={16} /> },
     {
-      key: 'playlists',
-      label: 'Playlists',
-      icon: <IoLogoYoutube size={16} />,
-      count: totals.playlists,
-    },
-    {
       key: 'books',
       label: 'Books',
       icon: <IoBookOutline size={16} />,
@@ -307,6 +301,12 @@ const ExplorePage = () => {
       label: 'Sections',
       icon: <IoFolderOutline size={16} />,
       count: totals.sections,
+    },
+    {
+      key: 'playlists',
+      label: 'Playlists',
+      icon: <IoLogoYoutube size={16} />,
+      count: totals.playlists,
     },
   ];
 
@@ -548,17 +548,17 @@ const ExplorePage = () => {
           {/* ALL TAB */}
           {activeTab === 'all' && (
             <>
-              {renderSection('YouTube Playlists', results.playlists, 'playlist')}
               {renderSection('Books', results.books, 'book')}
               {renderSection('Courses', results.courses, 'course')}
               {renderSection('Tricks & Tools', results.tools, 'tool')}
               {renderSection('Sections', results.sections, 'section')}
+              {renderSection('YouTube Playlists', results.playlists, 'playlist')}
               {!search &&
-                (!results.playlists || results.playlists.length === 0) &&
                 results.books.length === 0 &&
                 results.courses.length === 0 &&
                 results.tools.length === 0 &&
-                results.sections.length === 0 && (
+                results.sections.length === 0 &&
+                (!results.playlists || results.playlists.length === 0) && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -866,10 +866,6 @@ const ExplorePage = () => {
             </div>
           )}
 
-          {/* PLAYLISTS TAB */}
-          {activeTab === 'playlists' &&
-            renderSection('YouTube Playlists', results.playlists, 'playlist')}
-
           {/* COURSES TAB */}
           {activeTab === 'courses' &&
             renderSection('Courses', results.courses, 'course')}
@@ -881,6 +877,10 @@ const ExplorePage = () => {
           {/* SECTIONS TAB */}
           {activeTab === 'sections' &&
             renderSection('Sections', results.sections, 'section')}
+
+          {/* PLAYLISTS TAB */}
+          {activeTab === 'playlists' &&
+            renderSection('YouTube Playlists', results.playlists, 'playlist')}
         </>
       )}
 
