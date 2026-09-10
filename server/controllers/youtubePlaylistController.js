@@ -59,22 +59,22 @@ function extractVideoId(input) {
   return null;
 }
 
-// @desc    Get all playlists and single videos (user's own + public)
+// @desc    Get all playlists and single videos (strictly user's own items)
 // @route   GET /api/youtube-playlists
 const getPlaylists = async (req, res) => {
   try {
+    const { mine, type, allUsers } = req.query;
     const isAdmin = req.user.role === "admin";
-    const { mine, type } = req.query;
 
     const baseConditions = [];
 
-    if (mine === "true") {
-      // Profile / My Uploads: return only the requesting user's own items
+    // YouTube library is strictly the scholar's own collection.
+    // Even for admin, the personal library only lists their own items
+    // unless explicitly requesting allUsers from an admin dashboard.
+    if (isAdmin && allUsers === "true") {
+      // Return all items across users only if explicitly queried
+    } else {
       baseConditions.push({ addedBy: req.user._id });
-    } else if (!isAdmin) {
-      baseConditions.push({
-        $or: [{ addedBy: req.user._id }, { visibility: "public" }],
-      });
     }
 
     if (type === "video") {
@@ -138,10 +138,26 @@ const getPlaylist = async (req, res) => {
     const playlistObj = playlist.toObject();
     if (!playlistObj.type) playlistObj.type = "playlist";
 
+    // CRITICAL PRIVACY FIX:
+    // If the viewer is NOT the owner of this document, NEVER leak the owner's notes!
+    if (!isOwner) {
+      playlistObj.videos = (playlistObj.videos || []).map((v) => {
+        // If viewer has personal notes recorded in User.videoProgress, show only their own!
+        const myVProg = (user?.videoProgress || []).find(
+          (vp) => vp.videoId === v.videoId && vp.contentType === "youtube",
+        );
+        return {
+          ...v,
+          notes: myVProg?.note || "",
+        };
+      });
+    }
+
     res.json({
       playlist: playlistObj,
       completedVideos: userProgress?.completedVideos || [],
       progress: userProgress?.progress || 0,
+      isOwner,
     });
   } catch (error) {
     console.error("Get playlist error:", error);
@@ -149,7 +165,7 @@ const getPlaylist = async (req, res) => {
   }
 };
 
-// @desc    Add a YouTube playlist or single video
+// @desc    Add a YouTube playlist or single video (strictly private by default)
 // @route   POST /api/youtube-playlists
 const addPlaylist = async (req, res) => {
   try {
@@ -200,7 +216,8 @@ const addPlaylist = async (req, res) => {
 
       // Fetch video details (Google API with zero-key oEmbed fallback)
       const details = await fetchVideoDetails(videoId);
-      const visibility = req.user.role === "admin" ? "public" : "private";
+      // All user items are strictly private
+      const visibility = "private";
 
       const playlist = await YoutubePlaylist.create({
         type: "video",
@@ -263,7 +280,8 @@ const addPlaylist = async (req, res) => {
       fetchPlaylistVideos(playlistId),
     ]);
 
-    const visibility = req.user.role === "admin" ? "public" : "private";
+    // All user playlists are strictly private
+    const visibility = "private";
 
     const playlist = await YoutubePlaylist.create({
       type: "playlist",
@@ -359,17 +377,65 @@ const updatePlaylist = async (req, res) => {
 
 // @desc    Save notes for a specific video in a playlist
 // @route   PUT /api/youtube-playlists/:id/videos/:videoId/notes
+// @desc    Save notes for a specific video in a playlist (isolated to user's copy)
+// @route   PUT /api/youtube-playlists/:id/videos/:videoId/notes
 const saveVideoNotes = async (req, res) => {
   try {
-    const playlist = await YoutubePlaylist.findById(req.params.id);
+    let playlist = await YoutubePlaylist.findById(req.params.id);
     if (!playlist) {
-      return res.status(404).json({ message: "Playlist not found" });
+      return res.status(404).json({ message: "Item not found" });
     }
 
     const isOwner = playlist.addedBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin";
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
+
+    // CRITICAL PRIVACY PROTECTION:
+    // If not the owner of this playlist, user cannot modify someone else's document!
+    if (!isOwner) {
+      if (playlist.visibility !== "public") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // If user is watching a public template, auto-fork into their own private library
+      let userPlaylist = null;
+      if (playlist.playlistId) {
+        userPlaylist = await YoutubePlaylist.findOne({
+          playlistId: playlist.playlistId,
+          addedBy: req.user._id,
+        });
+      } else if (playlist.videoId) {
+        userPlaylist = await YoutubePlaylist.findOne({
+          videoId: playlist.videoId,
+          addedBy: req.user._id,
+        });
+      }
+
+      if (!userPlaylist) {
+        // Clone into user's private library with blank notes
+        userPlaylist = await YoutubePlaylist.create({
+          type: playlist.type || "playlist",
+          title: playlist.title,
+          description: playlist.description || "",
+          playlistId: playlist.playlistId || "",
+          videoId: playlist.videoId || "",
+          url: playlist.url || playlist.playlistUrl || "",
+          playlistUrl: playlist.playlistUrl || "",
+          thumbnail: playlist.thumbnail || "",
+          channelTitle: playlist.channelTitle || "",
+          videoCount: playlist.videoCount || playlist.videos.length,
+          videos: (playlist.videos || []).map((v, i) => ({
+            title: v.title,
+            videoId: v.videoId,
+            thumbnail: v.thumbnail,
+            duration: v.duration,
+            position: i,
+            notes: "",
+          })),
+          addedBy: req.user._id,
+          visibility: "private",
+        });
+      }
+
+      playlist = userPlaylist;
     }
 
     const video = playlist.videos.find((v) => v.videoId === req.params.videoId);
@@ -406,9 +472,86 @@ const saveVideoNotes = async (req, res) => {
       await user.save();
     }
 
-    res.json({ message: "Notes saved", video });
+    res.json({
+      message: "Notes saved to your private library",
+      video,
+      playlistId: playlist._id,
+    });
   } catch (error) {
     console.error("Save video notes error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Clone an admin-published public playlist into user's private YouTube library with BLANK notes
+// @route   POST /api/youtube-playlists/save-from-explore/:id
+const saveFromExplore = async (req, res) => {
+  try {
+    const template = await YoutubePlaylist.findById(req.params.id);
+    if (!template) {
+      return res.status(404).json({ message: "Playlist not found in Explore" });
+    }
+
+    if (template.visibility !== "public") {
+      return res.status(403).json({ message: "This playlist is not published to Explore" });
+    }
+
+    // Check if user already has their own copy in their library
+    let existing = null;
+    if (template.playlistId) {
+      existing = await YoutubePlaylist.findOne({
+        playlistId: template.playlistId,
+        addedBy: req.user._id,
+      });
+    } else if (template.videoId) {
+      existing = await YoutubePlaylist.findOne({
+        videoId: template.videoId,
+        addedBy: req.user._id,
+      });
+    }
+
+    if (existing) {
+      return res.status(400).json({
+        message: "This item is already in your YouTube library",
+        playlist: existing,
+      });
+    }
+
+    // Clone playlist with GUARANTEED BLANK NOTES
+    const clone = await YoutubePlaylist.create({
+      type: template.type || "playlist",
+      title: template.title,
+      description: template.description || "",
+      playlistId: template.playlistId || "",
+      videoId: template.videoId || "",
+      url: template.url || template.playlistUrl || "",
+      playlistUrl: template.playlistUrl || "",
+      thumbnail: template.thumbnail || "",
+      channelTitle: template.channelTitle || "",
+      videoCount: template.videoCount || template.videos.length,
+      videos: (template.videos || []).map((v, i) => ({
+        title: v.title,
+        videoId: v.videoId,
+        thumbnail: v.thumbnail,
+        duration: v.duration,
+        position: i,
+        notes: "", // ALWAYS BLANK NOTES
+      })),
+      addedBy: req.user._id,
+      visibility: "private",
+    });
+
+    const populated = await YoutubePlaylist.findById(clone._id).populate(
+      "addedBy",
+      "name avatar",
+    );
+
+    res.status(201).json({
+      message: "Added to your YouTube library with fresh notes",
+      playlist: populated,
+    });
+  } catch (error) {
+    console.error("Save from explore error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -667,4 +810,5 @@ module.exports = {
   getCombinedNotes,
   refreshPlaylist,
   updatePlaylistVideoProgress,
+  saveFromExplore,
 };

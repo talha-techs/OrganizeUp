@@ -45,6 +45,13 @@ router.put("/toggle-visibility", protect, async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    // Only Admins can publish YouTube playlists/videos to Explore
+    if ((contentType === "playlist" || contentType === "video") && !isAdmin) {
+      return res.status(403).json({
+        message: "Only administrators can publish playlists or videos to Explore",
+      });
+    }
+
     doc.visibility = visibility;
     await doc.save();
 

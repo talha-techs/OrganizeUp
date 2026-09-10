@@ -14,6 +14,7 @@ const DETAIL_ROUTE_BY_TYPE = {
   course: '/courses',
   tool: '/tools',
   section: '/sections',
+  playlist: '/youtube-playlists',
 };
 
 const ExploreContentCard = React.memo(
@@ -42,7 +43,7 @@ const ExploreContentCard = React.memo(
       optimisticVote !== null ? optimisticVote : item.userVote || 0;
     const currentScore = (item.score || 0) + optimisticScoreDelta;
 
-    const hasValidImage = (item.coverImage || item.bannerImage) && !imageError;
+    const hasValidImage = (item.coverImage || item.bannerImage || item.thumbnail) && !imageError;
 
     const handleUpvote = (e) => {
       e.stopPropagation();
@@ -68,6 +69,10 @@ const ExploreContentCard = React.memo(
     };
 
     const formatBadgeText = useMemo(() => {
+      if (contentType === 'playlist') {
+        const count = item.videoCount || (item.videos ? item.videos.length : 0);
+        return `📹 Playlist${count ? ` • ${count} vids` : ''}`;
+      }
       if (contentType === 'book') {
         if (item.type === 'video') return '📹 Video Book';
         if (item.type === 'text') return '📄 PDF Book';
@@ -77,7 +82,7 @@ const ExploreContentCard = React.memo(
       if (contentType === 'course') return '🎓 Course';
       if (contentType === 'tool') return '⚡ Trick & Tool';
       return '📁 Section';
-    }, [contentType, item.type]);
+    }, [contentType, item.type, item.videoCount, item.videos]);
 
     return (
       <motion.div
@@ -92,7 +97,7 @@ const ExploreContentCard = React.memo(
         <div className="relative h-56 sm:h-64 bg-surface-raised overflow-hidden flex-shrink-0 border-b border-subtle">
           {hasValidImage ? (
             <img
-              src={item.coverImage || item.bannerImage}
+              src={item.coverImage || item.bannerImage || item.thumbnail}
               alt={item.title}
               onError={() => setImageError(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
@@ -127,9 +132,9 @@ const ExploreContentCard = React.memo(
               {item.title}
             </h3>
 
-            {item.author && (
+            {(item.author || item.channelTitle) && (
               <p className="text-xs sm:text-sm font-medium text-accent/90 truncate">
-                by {item.author}
+                by {item.author || item.channelTitle}
               </p>
             )}
 

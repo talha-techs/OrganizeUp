@@ -28,6 +28,7 @@ import {
   updatePlaylistVideoProgress,
 } from '../redux/slices/youtubePlaylistSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -43,6 +44,7 @@ const YouTubePlaylistDetailPage = () => {
     completedVideos = [],
     progress = 0,
   } = useSelector((state) => state.playlists);
+  const { user } = useSelector((state) => state.auth);
 
   useDocumentTitle(currentPlaylist?.title || 'YouTube Item');
 
@@ -50,9 +52,17 @@ const YouTubePlaylistDetailPage = () => {
   const [localNotes, setLocalNotes] = useState('');
   const [showCombinedNotes, setShowCombinedNotes] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSavingToLibrary, setIsSavingToLibrary] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const saveTimeoutRef = useRef(null);
   const notesTextareaRef = useRef(null);
+
+  const isOwner = Boolean(
+    user?._id &&
+      currentPlaylist?.addedBy &&
+      String(currentPlaylist.addedBy?._id ?? currentPlaylist.addedBy) ===
+        String(user._id),
+  );
 
   useEffect(() => {
     dispatch(fetchPlaylist(id));
@@ -107,11 +117,35 @@ const YouTubePlaylistDetailPage = () => {
       }),
     ).then((result) => {
       if (result.meta.requestStatus === 'fulfilled') {
-        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        toast.success('Notes saved');
+        setLastSavedTime(
+          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        );
+        toast.success('Notes saved to your private library');
+        const newPlId = result.payload?.data?.playlistId;
+        if (newPlId && String(newPlId) !== String(id)) {
+          navigate(`/youtube-playlists/${newPlId}`, { replace: true });
+        }
       }
     });
-  }, [dispatch, id, activeVideoId, currentPlaylist, localNotes]);
+  }, [dispatch, id, activeVideoId, currentPlaylist, localNotes, navigate]);
+
+  const handleSaveToMyLibrary = async () => {
+    if (!currentPlaylist?._id) return;
+    setIsSavingToLibrary(true);
+    try {
+      const res = await api.post(
+        `/youtube-playlists/save-from-explore/${currentPlaylist._id}`,
+      );
+      toast.success('Added to your YouTube library with fresh blank notes!');
+      if (res.data?.playlist?._id) {
+        navigate(`/youtube-playlists/${res.data.playlist._id}`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add to library');
+    } finally {
+      setIsSavingToLibrary(false);
+    }
+  };
 
   // Auto-save on Ctrl+S
   useEffect(() => {
@@ -266,6 +300,31 @@ const YouTubePlaylistDetailPage = () => {
         >
           <IoArrowBack size={14} /> Back to YouTube Library
         </button>
+
+        {/* Public Explore Preview Banner */}
+        {!isOwner && (
+          <div className="mb-4 bg-accent/10 border border-accent/20 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-accent/20 text-accent flex items-center justify-center flex-shrink-0">
+                <IoGlobeOutline size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-primary">Explore Public Preview</p>
+                <p className="text-[11px] text-secondary">
+                  Your notes are private. Add this to your library to create your personal copy with fresh blank notes.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveToMyLibrary}
+              disabled={isSavingToLibrary}
+              className="btn-primary text-xs py-1.5 px-3 flex-shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            >
+              {isSavingToLibrary ? 'Saving...' : '+ Add to My Library'}
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 border-b border-subtle pb-5">
           <div className="space-y-2">

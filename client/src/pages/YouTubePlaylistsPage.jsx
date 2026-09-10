@@ -247,22 +247,17 @@ const YouTubePlaylistsPage = () => {
               )}
             </div>
 
-            {/* Top-right Visibility Badge */}
+            {/* Top-right Privacy Badge */}
             <div className="absolute top-2.5 right-2.5">
-              <span
-                className={`px-2 py-0.5 rounded-md text-[11px] font-medium backdrop-blur-md flex items-center gap-1 shadow-sm ${
-                  item.visibility === 'public'
-                    ? 'text-emerald-300 bg-black/60 border border-emerald-500/30'
-                    : 'text-secondary bg-black/60 border border-subtle'
-                }`}
-              >
-                {item.visibility === 'public' ? (
-                  <IoGlobeOutline size={11} />
-                ) : (
-                  <IoLockClosedOutline size={11} />
-                )}
-                {item.visibility}
-              </span>
+              {isAdmin && item.visibility === 'public' ? (
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-medium backdrop-blur-md flex items-center gap-1 shadow-sm text-emerald-300 bg-black/60 border border-emerald-500/30">
+                  <IoGlobeOutline size={11} /> Published
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-medium backdrop-blur-md flex items-center gap-1 shadow-sm text-secondary bg-black/60 border border-subtle">
+                  <IoLockClosedOutline size={11} /> Private
+                </span>
+              )}
             </div>
 
             {/* Bottom-right Duration / Count Badge */}
@@ -306,7 +301,7 @@ const YouTubePlaylistsPage = () => {
         {/* Card Footer / Management Controls */}
         <div className="px-4 pb-3.5 pt-1 border-t border-subtle flex items-center justify-between text-xs text-muted">
           <span>
-            {isVideo ? 'Ready to watch' : `${item.videoCount || 0} chapters`}
+            {isVideo ? 'Personal Video' : `${item.videoCount || 0} chapters`}
           </span>
 
           {canManage && (
@@ -314,38 +309,22 @@ const YouTubePlaylistsPage = () => {
               className="flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Only Admins can publish or unpublish to Explore */}
               {isAdmin && (
                 <button
                   type="button"
                   onClick={() => handleTogglePublic(item)}
-                  className="px-2 py-0.5 rounded hover:bg-surface-raised text-secondary hover:text-primary transition-colors text-[11px] cursor-pointer"
-                  title="Toggle Public/Private"
+                  className={`px-2 py-0.5 rounded transition-colors text-[11px] font-medium cursor-pointer ${
+                    item.visibility === 'public'
+                      ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                      : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                  }`}
+                  title={item.visibility === 'public' ? 'Unpublish from Explore' : 'Publish to Explore'}
                 >
-                  {item.visibility === 'public' ? 'Make Private' : 'Make Public'}
+                  {item.visibility === 'public' ? 'Unpublish' : 'Publish'}
                 </button>
               )}
-              {!isAdmin && isOwner && item.visibility === 'public' && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await api.put('/content/toggle-visibility', {
-                        contentType: 'playlist',
-                        contentId: item._id,
-                        visibility: 'private',
-                      });
-                      toast.success('Set to private');
-                      dispatch(fetchPlaylists());
-                    } catch (err) {
-                      toast.error(err.response?.data?.message || 'Failed to update');
-                    }
-                  }}
-                  className="px-2 py-0.5 rounded hover:bg-amber-500/10 text-secondary hover:text-amber-400 transition-colors text-[11px] cursor-pointer"
-                  title="Make Private"
-                >
-                  Private
-                </button>
-              )}
+
               <button
                 type="button"
                 onClick={() => handleDelete(item._id)}
@@ -387,6 +366,13 @@ const YouTubePlaylistsPage = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => navigate('/explore?type=playlists')}
+            className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer text-secondary hover:text-primary"
+          >
+            <IoGlobeOutline size={16} className="text-accent" />
+            Explore Playlists
+          </button>
           <button
             onClick={() => handleOpenAddModal('video')}
             className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer hover:border-red-500/30"
@@ -511,9 +497,9 @@ const YouTubePlaylistsPage = () => {
             Your YouTube library is empty
           </h3>
           <p className="text-sm text-secondary max-w-md mx-auto mb-6">
-            Paste a playlist link or any single YouTube video link to start taking notes and tracking your learning progress.
+            Add your own playlist or video link, or discover admin-curated playlists in Explore to start taking notes and tracking your progress.
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             <button
               onClick={() => handleOpenAddModal('video')}
               className="btn-secondary flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
@@ -527,6 +513,13 @@ const YouTubePlaylistsPage = () => {
             >
               <IoFolderOutline size={16} />
               Add Playlist
+            </button>
+            <button
+              onClick={() => navigate('/explore?type=playlists')}
+              className="btn-secondary flex items-center gap-2 text-xs sm:text-sm cursor-pointer text-accent hover:text-accent-hover"
+            >
+              <IoGlobeOutline size={16} />
+              Explore Public Playlists
             </button>
           </div>
         </motion.div>

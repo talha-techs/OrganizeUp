@@ -4,12 +4,14 @@ const Book = require("../models/Book");
 const Course = require("../models/Course");
 const Tool = require("../models/Tool");
 const CustomSection = require("../models/CustomSection");
+const YoutubePlaylist = require("../models/YoutubePlaylist");
 
 const models = {
   book: Book,
   course: Course,
   tool: Tool,
   section: CustomSection,
+  playlist: YoutubePlaylist,
 };
 
 // @desc    Get user's library (saved public items + own private items)
@@ -103,6 +105,48 @@ const addToLibrary = async (req, res) => {
       contentId,
     });
 
+    // If saving a published playlist, also auto-create a user-isolated private copy with BLANK notes
+    if (contentType === "playlist") {
+      let existingClone = null;
+      if (content.playlistId) {
+        existingClone = await YoutubePlaylist.findOne({
+          playlistId: content.playlistId,
+          addedBy: req.user._id,
+        });
+      } else if (content.videoId) {
+        existingClone = await YoutubePlaylist.findOne({
+          videoId: content.videoId,
+          addedBy: req.user._id,
+        });
+      }
+
+      if (!existingClone) {
+        await YoutubePlaylist.create({
+          type: content.type || "playlist",
+          title: content.title,
+          description: content.description || "",
+          playlistId: content.playlistId || "",
+          videoId: content.videoId || "",
+          url: content.url || content.playlistUrl || "",
+          playlistUrl: content.playlistUrl || "",
+          thumbnail: content.thumbnail || "",
+          channelTitle: content.channelTitle || "",
+          videoCount:
+            content.videoCount || (content.videos ? content.videos.length : 0),
+          videos: (content.videos || []).map((v, i) => ({
+            title: v.title,
+            videoId: v.videoId,
+            thumbnail: v.thumbnail,
+            duration: v.duration,
+            position: i,
+            notes: "", // GUARANTEED BLANK NOTES
+          })),
+          addedBy: req.user._id,
+          visibility: "private",
+        });
+      }
+    }
+
     res.status(201).json({ message: "Added to your library", saved });
   } catch (error) {
     if (error.code === 11000) {
@@ -135,6 +179,20 @@ const removeFromLibrary = async (req, res) => {
     const deletedLibraryId = item._id;
     const contentType = item.contentType;
     await item.deleteOne();
+
+    // If removing a playlist, also clean up the user's clone from YoutubePlaylist
+    if (contentType === "playlist") {
+      const publicPl = await YoutubePlaylist.findById(deletedContentId);
+      if (publicPl) {
+        await YoutubePlaylist.deleteMany({
+          addedBy: req.user._id,
+          $or: [
+            { playlistId: publicPl.playlistId },
+            { videoId: publicPl.videoId },
+          ],
+        });
+      }
+    }
 
     res.json({
       message: "Removed from library",

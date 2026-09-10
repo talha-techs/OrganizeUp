@@ -10,12 +10,14 @@ const {
   getCombinedNotes,
   refreshPlaylist,
   updatePlaylistVideoProgress,
+  saveFromExplore,
 } = require("../controllers/youtubePlaylistController");
 const { protect } = require("../middleware/auth");
 
 router.get("/", protect, getPlaylists);
 router.get("/:id", protect, getPlaylist);
 router.post("/", protect, addPlaylist);
+router.post("/save-from-explore/:id", protect, saveFromExplore);
 router.put("/:id", protect, updatePlaylist);
 router.delete("/:id", protect, deletePlaylist);
 

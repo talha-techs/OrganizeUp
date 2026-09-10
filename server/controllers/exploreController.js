@@ -2,6 +2,7 @@ const Book = require("../models/Book");
 const Course = require("../models/Course");
 const Tool = require("../models/Tool");
 const CustomSection = require("../models/CustomSection");
+const YoutubePlaylist = require("../models/YoutubePlaylist");
 const Vote = require("../models/Vote");
 const Comment = require("../models/Comment");
 
@@ -60,7 +61,7 @@ const attachSocialCounts = async (items, contentType) => {
 };
 
 // @desc    Get all public content (explore feed)
-// @route   GET /api/explore?type=all|books|courses|tools|sections&sort=latest|popular&search=...
+// @route   GET /api/explore?type=all|books|courses|tools|sections|playlists&sort=latest|popular&search=...
 const getExploreContent = async (req, res) => {
   try {
     const {
@@ -96,6 +97,17 @@ const getExploreContent = async (req, res) => {
       ];
     }
 
+    // Playlist search includes channelTitle
+    const playlistFilter = { visibility: "public" };
+    if (search) {
+      const safe = escapeRegex(search);
+      playlistFilter.$or = [
+        { title: { $regex: safe, $options: "i" } },
+        { description: { $regex: safe, $options: "i" } },
+        { channelTitle: { $regex: safe, $options: "i" } },
+      ];
+    }
+
     const bookFilter = { ...filter };
     if (search) {
       const safe = escapeRegex(search);
@@ -105,22 +117,31 @@ const getExploreContent = async (req, res) => {
       ];
     }
 
-    // Always fetch global totals for all categories so navbar counts are always accurate
-    const [bookCount, courseCount, toolCount, sectionCount] = await Promise.all([
-      Book.countDocuments(bookFilter),
-      Course.countDocuments(filter),
-      Tool.countDocuments(filter),
-      CustomSection.countDocuments(sectionFilter),
-    ]);
+    // Always fetch global totals for all categories
+    const [bookCount, courseCount, toolCount, sectionCount, playlistCount] =
+      await Promise.all([
+        Book.countDocuments(bookFilter),
+        Course.countDocuments(filter),
+        Tool.countDocuments(filter),
+        CustomSection.countDocuments(sectionFilter),
+        YoutubePlaylist.countDocuments(playlistFilter),
+      ]);
 
     const totals = {
       books: bookCount,
       courses: courseCount,
       tools: toolCount,
       sections: sectionCount,
+      playlists: playlistCount,
     };
 
-    const results = { books: [], courses: [], tools: [], sections: [] };
+    const results = {
+      books: [],
+      courses: [],
+      tools: [],
+      sections: [],
+      playlists: [],
+    };
 
     if (type === "all" || type === "books") {
       // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
@@ -198,6 +219,31 @@ const getExploreContent = async (req, res) => {
       }
     }
 
+    if (type === "all" || type === "playlists") {
+      const dbSkip = isPopular ? 0 : type === "playlists" ? skip : 0;
+      let playlistQuery = YoutubePlaylist.find(playlistFilter)
+        .populate("addedBy", "name avatar")
+        .sort({ createdAt: -1 })
+        .lean();
+      if (!isPopular) playlistQuery = playlistQuery.skip(dbSkip).limit(perType);
+
+      const rawPlaylists = await playlistQuery;
+      // CRITICAL PRIVACY FIX:
+      // Guarantee that all notes are wiped out in public Explore feeds!
+      const sanitizedPlaylists = rawPlaylists.map((pl) => ({
+        ...pl,
+        videos: (pl.videos || []).map((v) => ({ ...v, notes: "" })),
+      }));
+
+      let scored = await attachSocialCounts(sanitizedPlaylists, "playlist");
+      if (isPopular) {
+        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        results.playlists = scored.slice(0, perType);
+      } else {
+        results.playlists = scored;
+      }
+    }
+
     res.json({ results, totals });
   } catch (error) {
     console.error("Explore error:", error);
@@ -215,6 +261,7 @@ const getExploreItem = async (req, res) => {
       course: Course,
       tool: Tool,
       section: CustomSection,
+      playlist: YoutubePlaylist,
     };
     const Model = models[contentType];
 
@@ -229,6 +276,12 @@ const getExploreItem = async (req, res) => {
 
     if (!item || item.visibility !== "public") {
       return res.status(404).json({ message: "Content not found" });
+    }
+
+    const itemObj = item.toObject();
+    // Guarantee that video notes are never leaked in public explore details
+    if (itemObj.videos && Array.isArray(itemObj.videos)) {
+      itemObj.videos = itemObj.videos.map((v) => ({ ...v, notes: "" }));
     }
 
     const [upvotes, downvotes, commentCount] = await Promise.all([
@@ -249,7 +302,7 @@ const getExploreItem = async (req, res) => {
 
     res.json({
       item: {
-        ...item.toObject(),
+        ...itemObj,
         upvotes,
         downvotes,
         score: upvotes - downvotes,

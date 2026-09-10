@@ -116,8 +116,8 @@ export const requestPublish = createAsyncThunk(
 const exploreSlice = createSlice({
   name: "explore",
   initialState: {
-    results: { books: [], courses: [], tools: [], sections: [] },
-    totals: { books: 0, courses: 0, tools: 0, sections: 0 },
+    results: { books: [], courses: [], tools: [], sections: [], playlists: [] },
+    totals: { books: 0, courses: 0, tools: 0, sections: 0, playlists: 0 },
     currentItem: null,
     comments: [],
     commentsTotal: 0,

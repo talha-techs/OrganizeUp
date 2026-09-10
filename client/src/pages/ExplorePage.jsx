@@ -279,6 +279,12 @@ const ExplorePage = () => {
   const tabs = [
     { key: 'all', label: 'All', icon: <IoGridOutline size={16} /> },
     {
+      key: 'playlists',
+      label: 'Playlists',
+      icon: <IoLogoYoutube size={16} />,
+      count: totals.playlists,
+    },
+    {
       key: 'books',
       label: 'Books',
       icon: <IoBookOutline size={16} />,
@@ -320,7 +326,9 @@ const ExplorePage = () => {
     if (!items || items.length === 0) {
       if (!search && activeTab === 'all') return null;
       const typeLabel =
-        contentType === 'book'
+        contentType === 'playlist'
+          ? 'playlists'
+          : contentType === 'book'
           ? 'books'
           : contentType === 'course'
           ? 'courses'
@@ -355,6 +363,9 @@ const ExplorePage = () => {
     return (
       <div className="mb-10">
         <h2 className="text-lg font-bold text-primary font-display mb-4 flex items-center gap-2">
+          {contentType === 'playlist' && (
+            <IoLogoYoutube className="text-red-500" size={20} />
+          )}
           {contentType === 'book' && (
             <IoBookOutline className="text-accent" size={20} />
           )}
@@ -370,7 +381,9 @@ const ExplorePage = () => {
           {title}
           <span className="text-xs text-muted font-normal ml-1">
             (
-            {contentType === 'book'
+            {contentType === 'playlist'
+              ? totals.playlists || 0
+              : contentType === 'book'
               ? totals.books
               : contentType === 'course'
               ? totals.courses
@@ -535,11 +548,13 @@ const ExplorePage = () => {
           {/* ALL TAB */}
           {activeTab === 'all' && (
             <>
+              {renderSection('YouTube Playlists', results.playlists, 'playlist')}
               {renderSection('Books', results.books, 'book')}
               {renderSection('Courses', results.courses, 'course')}
               {renderSection('Tricks & Tools', results.tools, 'tool')}
               {renderSection('Sections', results.sections, 'section')}
               {!search &&
+                (!results.playlists || results.playlists.length === 0) &&
                 results.books.length === 0 &&
                 results.courses.length === 0 &&
                 results.tools.length === 0 &&
@@ -850,6 +865,10 @@ const ExplorePage = () => {
               )}
             </div>
           )}
+
+          {/* PLAYLISTS TAB */}
+          {activeTab === 'playlists' &&
+            renderSection('YouTube Playlists', results.playlists, 'playlist')}
 
           {/* COURSES TAB */}
           {activeTab === 'courses' &&
