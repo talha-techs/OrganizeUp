@@ -5,7 +5,9 @@ export const fetchPlaylists = createAsyncThunk(
   "playlists/fetchPlaylists",
   async (arg, { rejectWithValue }) => {
     try {
-      const params = arg?.mine ? { mine: "true" } : {};
+      const params = {};
+      if (arg?.mine) params.mine = "true";
+      if (arg?.type) params.type = arg.type;
       const { data } = await api.get("/youtube-playlists", { params });
       return data;
     } catch (error) {
@@ -138,6 +140,8 @@ const youtubePlaylistSlice = createSlice({
   name: "playlists",
   initialState: {
     playlists: [],
+    totalPlaylists: 0,
+    totalVideos: 0,
     currentPlaylist: null,
     completedVideos: [],
     progress: 0,
@@ -164,7 +168,9 @@ const youtubePlaylistSlice = createSlice({
       })
       .addCase(fetchPlaylists.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.playlists = action.payload.playlists;
+        state.playlists = action.payload.playlists || [];
+        state.totalPlaylists = action.payload.totalPlaylists || 0;
+        state.totalVideos = action.payload.totalVideos || 0;
       })
       .addCase(fetchPlaylists.rejected, (state, action) => {
         state.isLoading = false;
@@ -184,7 +190,13 @@ const youtubePlaylistSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(addPlaylist.fulfilled, (state, action) => {
-        state.playlists.unshift(action.payload.playlist);
+        const item = action.payload.playlist;
+        state.playlists.unshift(item);
+        if (item.type === "video") {
+          state.totalVideos = (state.totalVideos || 0) + 1;
+        } else {
+          state.totalPlaylists = (state.totalPlaylists || 0) + 1;
+        }
       })
       .addCase(updatePlaylist.fulfilled, (state, action) => {
         const idx = state.playlists.findIndex(
@@ -196,9 +208,15 @@ const youtubePlaylistSlice = createSlice({
         }
       })
       .addCase(deletePlaylist.fulfilled, (state, action) => {
+        const deleted = state.playlists.find((p) => p._id === action.payload);
         state.playlists = state.playlists.filter(
           (p) => p._id !== action.payload,
         );
+        if (deleted?.type === "video") {
+          state.totalVideos = Math.max(0, (state.totalVideos || 1) - 1);
+        } else {
+          state.totalPlaylists = Math.max(0, (state.totalPlaylists || 1) - 1);
+        }
       })
       .addCase(saveVideoNotes.pending, (state) => {
         state.isSavingNotes = true;

@@ -11,9 +11,14 @@ const videoSchema = new mongoose.Schema({
 
 const youtubePlaylistSchema = new mongoose.Schema(
   {
+    type: {
+      type: String,
+      enum: ["playlist", "video"],
+      default: "playlist",
+    },
     title: {
       type: String,
-      required: [true, "Playlist title is required"],
+      required: [true, "Title is required"],
       trim: true,
     },
     description: {
@@ -22,7 +27,15 @@ const youtubePlaylistSchema = new mongoose.Schema(
     },
     playlistId: {
       type: String,
-      required: [true, "YouTube playlist ID is required"],
+      default: "",
+    },
+    videoId: {
+      type: String,
+      default: "",
+    },
+    url: {
+      type: String,
+      default: "",
     },
     playlistUrl: {
       type: String,
@@ -58,6 +71,7 @@ const youtubePlaylistSchema = new mongoose.Schema(
 );
 
 youtubePlaylistSchema.index({ addedBy: 1, createdAt: -1 });
+youtubePlaylistSchema.index({ addedBy: 1, type: 1, createdAt: -1 });
 youtubePlaylistSchema.index({ visibility: 1, createdAt: -1 });
 
 module.exports = mongoose.model("YoutubePlaylist", youtubePlaylistSchema);

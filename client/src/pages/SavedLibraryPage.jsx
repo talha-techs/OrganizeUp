@@ -29,6 +29,7 @@ const TYPE_META = {
   tool:     { label: 'Trick',    icon: IoBulbOutline,    color: 'text-amber-400',  bg: 'bg-amber-500/10',  route: (id) => `/tools/${id}` },
   section:  { label: 'Section',  icon: IoFolderOutline,  color: 'text-emerald-400',bg: 'bg-emerald-500/10',route: (id) => `/sections/${id}` },
   playlist: { label: 'Playlist', icon: IoLogoYoutube,    color: 'text-red-400',    bg: 'bg-red-500/10',    route: (id) => `/youtube-playlists/${id}` },
+  video:    { label: 'YouTube Video', icon: IoLogoYoutube, color: 'text-red-400',    bg: 'bg-red-500/10',    route: (id) => `/youtube-playlists/${id}` },
 };
 
 /* ── SavedItem card ─────────────────────────────── */

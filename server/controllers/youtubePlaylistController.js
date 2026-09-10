@@ -3,12 +3,14 @@ const User = require("../models/User");
 const {
   fetchPlaylistDetails,
   fetchPlaylistVideos,
+  fetchVideoDetails,
 } = require("../services/youtubeService");
 
 /**
  * Extract playlist ID from various YouTube URL formats
  */
 function extractPlaylistId(input) {
+  if (!input) return null;
   const trimmed = input.trim();
 
   // Already a raw ID (PL, UU, OL, etc.)
@@ -22,36 +24,94 @@ function extractPlaylistId(input) {
   return null;
 }
 
-// @desc    Get all playlists (user's own + public)
+/**
+ * Extract video ID from various YouTube video URL formats
+ */
+function extractVideoId(input) {
+  if (!input) return null;
+  const trimmed = input.trim();
+
+  // Already a raw 11-char ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // youtu.be/VIDEO_ID
+  const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) return shortMatch[1];
+
+  // youtube.com/shorts/VIDEO_ID
+  const shortsMatch = trimmed.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (shortsMatch) return shortsMatch[1];
+
+  // youtube.com/watch?v=VIDEO_ID
+  const vMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (vMatch) return vMatch[1];
+
+  // youtube.com/embed/VIDEO_ID
+  const embedMatch = trimmed.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (embedMatch) return embedMatch[1];
+
+  // youtube.com/v/VIDEO_ID
+  const slashVMatch = trimmed.match(/\/v\/([a-zA-Z0-9_-]{11})/);
+  if (slashVMatch) return slashVMatch[1];
+
+  return null;
+}
+
+// @desc    Get all playlists and single videos (user's own + public)
 // @route   GET /api/youtube-playlists
 const getPlaylists = async (req, res) => {
   try {
     const isAdmin = req.user.role === "admin";
+    const { mine, type } = req.query;
 
-    let filter;
-    if (req.query.mine === "true") {
-      // Profile / My Uploads: return only the requesting user's own items (all visibilities)
-      filter = { addedBy: req.user._id };
-    } else if (isAdmin) {
-      filter = {};
-    } else {
-      filter = {
+    const baseConditions = [];
+
+    if (mine === "true") {
+      // Profile / My Uploads: return only the requesting user's own items
+      baseConditions.push({ addedBy: req.user._id });
+    } else if (!isAdmin) {
+      baseConditions.push({
         $or: [{ addedBy: req.user._id }, { visibility: "public" }],
-      };
+      });
     }
 
-    const playlists = await YoutubePlaylist.find(filter)
+    if (type === "video") {
+      baseConditions.push({ type: "video" });
+    } else if (type === "playlist") {
+      baseConditions.push({
+        $or: [
+          { type: "playlist" },
+          { type: { $exists: false } },
+          { type: null },
+        ],
+      });
+    }
+
+    const filter = baseConditions.length > 0 ? { $and: baseConditions } : {};
+
+    const rawPlaylists = await YoutubePlaylist.find(filter)
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
-    res.json({ playlists });
+    const playlists = rawPlaylists.map((p) => {
+      const obj = p.toObject();
+      if (!obj.type) obj.type = "playlist";
+      return obj;
+    });
+
+    const totalPlaylists = playlists.filter((p) => p.type === "playlist").length;
+    const totalVideos = playlists.filter((p) => p.type === "video").length;
+
+    res.json({ playlists, totalPlaylists, totalVideos });
   } catch (error) {
     console.error("Get playlists error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// @desc    Get single playlist
+// @desc    Get single playlist or video
 // @route   GET /api/youtube-playlists/:id
 const getPlaylist = async (req, res) => {
   try {
@@ -61,7 +121,7 @@ const getPlaylist = async (req, res) => {
     );
 
     if (!playlist) {
-      return res.status(404).json({ message: "Playlist not found" });
+      return res.status(404).json({ message: "Item not found" });
     }
 
     const isOwner = playlist.addedBy._id.toString() === req.user._id.toString();
@@ -75,8 +135,11 @@ const getPlaylist = async (req, res) => {
       (pp) => pp.playlistId && pp.playlistId.toString() === playlist._id.toString(),
     );
 
+    const playlistObj = playlist.toObject();
+    if (!playlistObj.type) playlistObj.type = "playlist";
+
     res.json({
-      playlist,
+      playlist: playlistObj,
       completedVideos: userProgress?.completedVideos || [],
       progress: userProgress?.progress || 0,
     });
@@ -86,25 +149,107 @@ const getPlaylist = async (req, res) => {
   }
 };
 
-// @desc    Add a YouTube playlist (auto-fetches metadata + videos from YouTube API)
+// @desc    Add a YouTube playlist or single video
 // @route   POST /api/youtube-playlists
 const addPlaylist = async (req, res) => {
   try {
-    const { playlistUrl } = req.body;
+    const { playlistUrl, url, type } = req.body;
+    const targetUrl = (url || playlistUrl || "").trim();
 
-    if (!playlistUrl) {
-      return res.status(400).json({ message: "Playlist URL is required" });
+    if (!targetUrl) {
+      return res.status(400).json({ message: "YouTube URL is required" });
     }
 
-    const playlistId = extractPlaylistId(playlistUrl);
+    // Determine target type (explicit type or auto-detect)
+    let itemType = type;
+    const extractedPlaylistId = extractPlaylistId(targetUrl);
+    const extractedVideoId = extractVideoId(targetUrl);
+
+    if (!itemType) {
+      if (extractedPlaylistId && (!extractedVideoId || targetUrl.includes("/playlist?"))) {
+        itemType = "playlist";
+      } else if (extractedVideoId) {
+        itemType = "video";
+      } else if (extractedPlaylistId) {
+        itemType = "playlist";
+      }
+    }
+
+    // ──────────────────────────────────────────────
+    // 1. ADD SINGLE VIDEO
+    // ──────────────────────────────────────────────
+    if (itemType === "video") {
+      const videoId = extractedVideoId;
+      if (!videoId) {
+        return res
+          .status(400)
+          .json({ message: "Invalid YouTube video URL or ID" });
+      }
+
+      // Check duplicate
+      const existing = await YoutubePlaylist.findOne({
+        $or: [{ videoId }, { playlistId: videoId }],
+        addedBy: req.user._id,
+        type: "video",
+      });
+      if (existing) {
+        return res
+          .status(400)
+          .json({ message: "You have already saved this video" });
+      }
+
+      // Fetch video details (Google API with zero-key oEmbed fallback)
+      const details = await fetchVideoDetails(videoId);
+      const visibility = req.user.role === "admin" ? "public" : "private";
+
+      const playlist = await YoutubePlaylist.create({
+        type: "video",
+        title: details.title,
+        description: details.description || "",
+        videoId,
+        playlistId: "",
+        url: targetUrl,
+        playlistUrl: targetUrl,
+        thumbnail: details.thumbnail,
+        channelTitle: details.channelTitle,
+        videoCount: 1,
+        videos: [
+          {
+            title: details.title,
+            videoId,
+            thumbnail: details.thumbnail,
+            duration: details.duration || "",
+            position: 0,
+            notes: "",
+          },
+        ],
+        addedBy: req.user._id,
+        visibility,
+      });
+
+      const populated = await YoutubePlaylist.findById(playlist._id).populate(
+        "addedBy",
+        "name avatar",
+      );
+
+      return res.status(201).json({ playlist: populated });
+    }
+
+    // ──────────────────────────────────────────────
+    // 2. ADD PLAYLIST
+    // ──────────────────────────────────────────────
+    const playlistId = extractedPlaylistId;
     if (!playlistId) {
-      return res.status(400).json({ message: "Invalid YouTube playlist URL" });
+      return res
+        .status(400)
+        .json({ message: "Invalid YouTube playlist URL or ID" });
     }
 
     // Check for duplicate
     const existing = await YoutubePlaylist.findOne({
       playlistId,
       addedBy: req.user._id,
+      $or: [{ type: "playlist" }, { type: { $exists: false } }],
     });
     if (existing) {
       return res
@@ -121,10 +266,13 @@ const addPlaylist = async (req, res) => {
     const visibility = req.user.role === "admin" ? "public" : "private";
 
     const playlist = await YoutubePlaylist.create({
+      type: "playlist",
       title: details.title,
       description: details.description,
       playlistId,
-      playlistUrl,
+      videoId: "",
+      url: targetUrl,
+      playlistUrl: targetUrl,
       thumbnail: details.thumbnail,
       channelTitle: details.channelTitle,
       videoCount: videos.length,
@@ -145,11 +293,14 @@ const addPlaylist = async (req, res) => {
       "name avatar",
     );
 
-    res.status(201).json({ playlist: populated });
+    return res.status(201).json({ playlist: populated });
   } catch (error) {
-    console.error("Add playlist error:", error);
-    if (error.message === "Playlist not found on YouTube") {
-      return res.status(404).json({ message: "Playlist not found on YouTube" });
+    console.error("Add YouTube item error:", error);
+    if (
+      error.message === "Playlist not found on YouTube" ||
+      error.message === "Video not found on YouTube"
+    ) {
+      return res.status(404).json({ message: error.message });
     }
     if (error.code === 403 || error.status === 403) {
       return res.status(403).json({
@@ -296,12 +447,13 @@ const getCombinedNotes = async (req, res) => {
 };
 
 // @desc    Re-sync videos from YouTube (refresh)
+// @desc    Re-sync item from YouTube (refresh)
 // @route   POST /api/youtube-playlists/:id/refresh
 const refreshPlaylist = async (req, res) => {
   try {
     const playlist = await YoutubePlaylist.findById(req.params.id);
     if (!playlist) {
-      return res.status(404).json({ message: "Playlist not found" });
+      return res.status(404).json({ message: "Item not found" });
     }
 
     const isOwner = playlist.addedBy.toString() === req.user._id.toString();
@@ -310,7 +462,45 @@ const refreshPlaylist = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Build a map of existing notes by videoId
+    // ──────────────────────────────────────────────
+    // 1. REFRESH SINGLE VIDEO
+    // ──────────────────────────────────────────────
+    if (playlist.type === "video") {
+      const vId = playlist.videoId || playlist.videos?.[0]?.videoId;
+      if (!vId) {
+        return res.status(400).json({ message: "Missing video ID" });
+      }
+
+      const existingNotes = playlist.videos?.[0]?.notes || "";
+      const details = await fetchVideoDetails(vId);
+
+      playlist.title = details.title;
+      playlist.thumbnail = details.thumbnail;
+      playlist.channelTitle = details.channelTitle;
+      playlist.videos = [
+        {
+          title: details.title,
+          videoId: vId,
+          thumbnail: details.thumbnail,
+          duration: details.duration || playlist.videos?.[0]?.duration || "",
+          position: 0,
+          notes: existingNotes,
+        },
+      ];
+
+      await playlist.save();
+
+      const populated = await YoutubePlaylist.findById(playlist._id).populate(
+        "addedBy",
+        "name avatar",
+      );
+
+      return res.json({ playlist: populated });
+    }
+
+    // ──────────────────────────────────────────────
+    // 2. REFRESH PLAYLIST
+    // ──────────────────────────────────────────────
     const existingNotesMap = {};
     for (const v of playlist.videos) {
       if (v.notes) existingNotesMap[v.videoId] = v.notes;
@@ -344,7 +534,7 @@ const refreshPlaylist = async (req, res) => {
 
     res.json({ playlist: populated });
   } catch (error) {
-    console.error("Refresh playlist error:", error);
+    console.error("Refresh item error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

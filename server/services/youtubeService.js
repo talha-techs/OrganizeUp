@@ -103,7 +103,85 @@ async function fetchPlaylistVideos(playlistId) {
   return videos;
 }
 
+/**
+ * Fetch metadata for a single YouTube video.
+ * Uses Google YouTube Data API v3 if GOOGLE_API_KEY is available,
+ * with immediate fallback to YouTube oEmbed API for zero-config reliability.
+ */
+async function fetchVideoDetails(videoId) {
+  if (!videoId) {
+    throw new Error("Video ID is required");
+  }
+
+  // 1. Try Google YouTube Data API v3 if API key exists
+  if (process.env.GOOGLE_API_KEY) {
+    try {
+      const response = await youtube.videos.list({
+        part: "snippet,contentDetails",
+        id: videoId,
+      });
+
+      const item = response.data.items?.[0];
+      if (item) {
+        return {
+          title: item.snippet.title || "YouTube Video",
+          description: item.snippet.description || "",
+          channelTitle: item.snippet.channelTitle || "",
+          thumbnail:
+            item.snippet.thumbnails?.maxres?.url ||
+            item.snippet.thumbnails?.high?.url ||
+            item.snippet.thumbnails?.medium?.url ||
+            item.snippet.thumbnails?.default?.url ||
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          duration: formatDuration(item.contentDetails?.duration),
+        };
+      }
+    } catch (apiErr) {
+      console.warn(
+        "YouTube Data API fetchVideoDetails error, falling back to oEmbed:",
+        apiErr.message,
+      );
+    }
+  }
+
+  // 2. Fallback to YouTube oEmbed (Free, official, zero-key required)
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const res = await fetch(oembedUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        title: data.title || "YouTube Video",
+        description: "",
+        channelTitle: data.author_name || "YouTube",
+        thumbnail:
+          data.thumbnail_url ||
+          `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        duration: "",
+      };
+    }
+  } catch (oembedErr) {
+    console.warn("YouTube oEmbed fetch error:", oembedErr.message);
+  }
+
+  // 3. Last fallback
+  return {
+    title: `YouTube Video (${videoId})`,
+    description: "",
+    channelTitle: "YouTube",
+    thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    duration: "",
+  };
+}
+
 module.exports = {
   fetchPlaylistDetails,
   fetchPlaylistVideos,
+  fetchVideoDetails,
 };
