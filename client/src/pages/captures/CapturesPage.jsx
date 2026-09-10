@@ -29,6 +29,7 @@ import {
   IoCalendarOutline,
   IoDocumentTextOutline,
   IoAddOutline,
+  IoPlayCircleOutline,
 } from 'react-icons/io5';
 import {
   fetchCaptures,
@@ -462,33 +463,114 @@ const CapturesPage = () => {
                   ) : null
                 )}
 
-                {/* 2. Facebook Video Player (Playable in-app) */}
+                {/* 2. Facebook Video / Reel / Post */}
                 {capture.platform === 'facebook' && (
-                  isVideoUrl(capture.mediaUrl) ? (
-                    <div className="w-full bg-black relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
-                      <video
-                        src={getVideoSrc(capture.mediaUrl)}
-                        poster={capture.thumbnailUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain"
-                      />
+                  <>
+                    {/* Media Display: Interactive Embed if expanded, else Direct Video if video file, else Visual Poster with Play Button */}
+                    {expandedEmbeds[capture._id] ? (
+                      <div className="w-full bg-black/60 relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
+                        <iframe
+                          src={capture.embedUrl}
+                          className="w-full h-full border-0"
+                          scrolling="no"
+                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                          allowFullScreen={true}
+                          title={capture.title || 'Facebook Video'}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && isVideoUrl(capture.mediaUrl) ? (
+                      <div className="w-full bg-black relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
+                        <video
+                          src={getVideoSrc(capture.mediaUrl)}
+                          poster={capture.thumbnailUrl}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                      <div
+                        onClick={() => {
+                          if (capture.embedUrl) {
+                            toggleEmbed(capture._id);
+                          } else {
+                            setLightboxImage(capture.mediaUrl || capture.thumbnailUrl);
+                          }
+                        }}
+                        className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-pointer group/img flex items-center justify-center border-b border-subtle"
+                      >
+                        <img
+                          src={capture.mediaUrl || capture.thumbnailUrl}
+                          alt={capture.title || 'Facebook Video'}
+                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.parentElement.style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col items-center justify-center transition-all group-hover/img:bg-black/40">
+                          <div className="w-12 h-12 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-lg transform group-hover/img:scale-110 transition-transform">
+                            <IoPlayCircleOutline size={30} />
+                          </div>
+                          <span className="mt-2 text-[11px] font-semibold text-white/90 drop-shadow">
+                            {capture.embedUrl ? 'Click to Play Embed' : 'View Media'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : capture.embedUrl ? (
+                      <div className="w-full bg-black/40 relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
+                        <iframe
+                          src={capture.embedUrl}
+                          className="w-full h-full border-0"
+                          scrolling="no"
+                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                          allowFullScreen={true}
+                          title={capture.title || 'Facebook Video'}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
+
+                    {/* Author & Post Excerpt Header */}
+                    <div className="p-4 bg-blue-950/20 border-b border-subtle">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FaFacebook size={16} className="text-blue-500 flex-shrink-0" />
+                          <span className="text-xs font-bold text-blue-200 truncate">
+                            {capture.authorName || 'Facebook Video'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {capture.embedUrl && (
+                            <button
+                              onClick={() => toggleEmbed(capture._id)}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-blue-900/40 hover:bg-blue-800/60 text-blue-300 transition-colors cursor-pointer border border-blue-700/40"
+                              title={expandedEmbeds[capture._id] ? 'Show Video Thumbnail' : 'Play Live Interactive Video'}
+                            >
+                              {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
+                            </button>
+                          )}
+                          {capture.rawContent && (
+                            <button
+                              onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                              className="text-[10px] text-blue-400 hover:text-blue-200 transition-colors cursor-pointer flex items-center gap-1"
+                              title="Copy post content"
+                            >
+                              {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
+                              <span>Copy</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {capture.rawContent && (
+                        <p className="text-xs text-secondary line-clamp-3 leading-relaxed whitespace-pre-wrap font-sans">
+                          {capture.rawContent}
+                        </p>
+                      )}
                     </div>
-                  ) : capture.embedUrl ? (
-                    <div className="w-full bg-black/40 relative aspect-video overflow-hidden flex items-center justify-center">
-                      <iframe
-                        src={capture.embedUrl}
-                        className="w-full h-full border-0"
-                        scrolling="no"
-                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                        allowFullScreen={true}
-                        title={capture.title || 'Facebook Video'}
-                        loading="lazy"
-                      />
-                    </div>
-                  ) : null
+                  </>
                 )}
 
                 {/* 3. YouTube Embed Video (Playable in-app) */}

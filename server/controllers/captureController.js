@@ -1,6 +1,28 @@
 const CapturedResource = require("../models/CapturedResource");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
+// Helper to decode HTML/XML entities and strip zero-width chars
+const decodeHtmlEntities = (str) => {
+  if (!str || typeof str !== "string") return "";
+  return str
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+      try {
+        return String.fromCodePoint(parseInt(hex, 16));
+      } catch {
+        return "";
+      }
+    })
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/[\u200B-\u200D\uFEFF\u200E\u200F]/g, "")
+    .trim();
+};
+
 // Helper to auto-detect platform, media type, and embed details from URL
 const detectPlatformAndEmbed = (url = "") => {
   const trimmed = url.trim();
@@ -20,12 +42,21 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
-  // Facebook Video / Watch / Post
-  if (/(?:facebook\.com|fb\.watch)/i.test(trimmed)) {
+  // Facebook Video / Watch / Post / Reel
+  if (/(?:facebook\.com|fb\.watch|fb\.me)/i.test(trimmed)) {
+    let cleanUrl = trimmed;
+    try {
+      const u = new URL(trimmed);
+      if (u.pathname.includes("/reel/")) {
+        cleanUrl = `${u.origin}${u.pathname}`;
+      } else if (u.pathname.includes("/watch") && u.searchParams.has("v")) {
+        cleanUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get("v")}`;
+      }
+    } catch {}
     return {
       platform: "facebook",
       mediaType: "video",
-      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(trimmed)}&show_text=false&t=0`,
+      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=false&t=0`,
     };
   }
 
@@ -152,15 +183,11 @@ const detectPlatformAndEmbed = (url = "") => {
   };
 };
 
-// @desc    Scrape OpenGraph metadata from given URL for live preview
-// @route   POST /api/captures/scrape
-const scrapeMetadata = async (req, res) => {
-  try {
-    const { url } = req.body;
-    if (!url || typeof url !== "string") {
-      return res.status(400).json({ message: "A valid URL is required" });
-    }
+// Internal helper to scrape OpenGraph & social metadata from a URL
+const fetchUrlMetadata = async (url) => {
+  if (!url || typeof url !== "string") return null;
 
+  try {
     let detected = detectPlatformAndEmbed(url);
 
     let html = "";
@@ -254,8 +281,8 @@ const scrapeMetadata = async (req, res) => {
     }
 
     // Use facebookexternalhit or linkedin-friendly UA to prevent authwalls on social links
-    const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
-    const userAgent = isLinkedIn
+    const isSocialLink = /(?:linkedin\.com|lnkd\.in|facebook\.com|fb\.watch|fb\.me|instagram\.com)/i.test(url);
+    const userAgent = isSocialLink
       ? "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
@@ -379,6 +406,49 @@ const scrapeMetadata = async (req, res) => {
             author = finalTitle.split("on LinkedIn:")[0].trim();
           }
         }
+
+        // Facebook specific author, title and canonical embed handling
+        if (detected.platform === "facebook" || /(?:facebook\.com|fb\.watch|fb\.me)/i.test(url)) {
+          const canonicalFb = ogUrl || finalUrl || url;
+          let cleanFbUrl = canonicalFb;
+          try {
+            const u = new URL(canonicalFb);
+            if (u.pathname.includes("/reel/")) {
+              cleanFbUrl = `${u.origin}${u.pathname}`;
+            } else if (u.pathname.includes("/watch") && u.searchParams.has("v")) {
+              cleanFbUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get("v")}`;
+            }
+          } catch {}
+
+          detected.embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanFbUrl)}&show_text=false&t=0`;
+          detected.platform = "facebook";
+          detected.mediaType = "video";
+
+          finalTitle = decodeHtmlEntities(finalTitle);
+          finalDescription = decodeHtmlEntities(finalDescription);
+
+          if (finalTitle.includes(" | ")) {
+            const parts = finalTitle.split(" | ").map((p) => p.trim()).filter(Boolean);
+            if (parts.length > 1) {
+              if (!author) author = parts[parts.length - 1];
+              const nonStatsPart =
+                parts
+                  .slice(0, -1)
+                  .find(
+                    (p) =>
+                      !p.includes("ویوز") &&
+                      !p.includes("views") &&
+                      !p.includes("ردعمل") &&
+                      !p.includes("reactions"),
+                  ) || parts[0];
+              const lines = nonStatsPart
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter(Boolean);
+              finalTitle = lines[0] || nonStatsPart;
+            }
+          }
+        }
       }
     } catch (fetchErr) {
       console.warn("Metadata scrape warning:", fetchErr.message);
@@ -405,26 +475,46 @@ const scrapeMetadata = async (req, res) => {
       }
     }
 
+    finalTitle = decodeHtmlEntities(finalTitle);
+    finalDescription = decodeHtmlEntities(finalDescription);
+
     const resolvedMediaType =
       detected.mediaType === "video" || directVideoUrl || detected.embedUrl
         ? "video"
         : detected.mediaType || "article";
 
+    return {
+      url,
+      resolvedUrl: finalUrl,
+      title: finalTitle,
+      description: finalDescription,
+      rawContent: finalDescription,
+      thumbnailUrl: directPosterUrl || finalImage,
+      mediaUrl: directVideoUrl || detected.mediaUrl || finalImage,
+      siteName: siteName || detected.platform,
+      authorName: author,
+      ...detected,
+      mediaType: resolvedMediaType,
+    };
+  } catch (error) {
+    console.error("Fetch URL metadata error:", error);
+    return null;
+  }
+};
+
+// @desc    Scrape OpenGraph metadata from given URL for live preview
+// @route   POST /api/captures/scrape
+const scrapeMetadata = async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ message: "A valid URL is required" });
+    }
+
+    const data = await fetchUrlMetadata(url);
     return res.json({
       success: true,
-      data: {
-        url,
-        resolvedUrl: finalUrl,
-        title: finalTitle,
-        description: finalDescription,
-        rawContent: finalDescription,
-        thumbnailUrl: directPosterUrl || finalImage,
-        mediaUrl: directVideoUrl || detected.mediaUrl || finalImage,
-        siteName: siteName || detected.platform,
-        authorName: author,
-        ...detected,
-        mediaType: resolvedMediaType,
-      },
+      data,
     });
   } catch (error) {
     console.error("Scrape metadata error:", error);
@@ -614,6 +704,14 @@ const createCapture = async (req, res) => {
       if (detected.authorName && !authorName) authorName = detected.authorName;
     }
 
+    // Force Facebook platform if sourceUrl matches facebook.com, fb.watch, or fb.me
+    if (sourceUrl && /(?:facebook\.com|fb\.watch|fb\.me)/i.test(sourceUrl)) {
+      platform = "facebook";
+      mediaType = "video";
+      const detected = detectPlatformAndEmbed(sourceUrl);
+      if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
+    }
+
     // If sourceUrl provided and platform was not manually set, auto-detect platform and embed
     if (sourceUrl && (!platform || platform === "auto")) {
       const detected = detectPlatformAndEmbed(sourceUrl);
@@ -622,6 +720,28 @@ const createCapture = async (req, res) => {
       embedId = detected.embedId || embedId;
       embedUrl = detected.embedUrl || embedUrl;
       if (detected.mediaUrl) mediaUrl = detected.mediaUrl;
+    }
+
+    // Auto-enrich metadata from sourceUrl if thumbnail/author/content missing, or for Facebook/LinkedIn
+    if (sourceUrl && (!thumbnailUrl || !authorName || !rawContent || platform === "facebook" || platform === "linkedin")) {
+      try {
+        const meta = await fetchUrlMetadata(sourceUrl);
+        if (meta) {
+          if (!thumbnailUrl && meta.thumbnailUrl) thumbnailUrl = meta.thumbnailUrl;
+          if (!mediaUrl && meta.mediaUrl) mediaUrl = meta.mediaUrl;
+          if (!authorName && meta.authorName) authorName = meta.authorName;
+          if (!rawContent && (meta.rawContent || meta.description)) rawContent = meta.rawContent || meta.description;
+          if (!title || title === "Saved Link" || title === "Saved Resource" || title === "Facebook Video" || title === "LinkedIn Post") {
+            if (meta.title) title = meta.title;
+          }
+          if (platform === "facebook" && meta.embedUrl) {
+            embedUrl = meta.embedUrl;
+          }
+          if (!embedId && meta.embedId) embedId = meta.embedId;
+        }
+      } catch (autoErr) {
+        console.warn("createCapture auto-scrape error:", autoErr.message);
+      }
     }
 
     // Auto-promote mediaType to "video" if video stream, video URL, or video platform detected

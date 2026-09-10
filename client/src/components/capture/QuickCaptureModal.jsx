@@ -275,10 +275,16 @@ const QuickCaptureModal = () => {
 
         const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
         const isTwitter = /(?:twitter\.com|x\.com)/i.test(url);
+        const isFacebook = /(?:facebook\.com|fb\.watch|fb\.me)/i.test(url);
+        const isInstagram = /(?:instagram\.com)/i.test(url);
         const platform = isTwitter
           ? 'twitter'
           : isLinkedIn
           ? 'linkedin'
+          : isFacebook
+          ? 'facebook'
+          : isInstagram
+          ? 'instagram'
           : scrapedData?.platform;
 
         const mediaType =
