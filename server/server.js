@@ -69,6 +69,11 @@ app.use(
           "https://*.linkedin.com",
           "https://media.licdn.com",
           "https://*.licdn.com",
+          "https://platform.twitter.com",
+          "https://*.twitter.com",
+          "https://twitter.com",
+          "https://x.com",
+          "https://*.x.com",
         ],
         connectSrc: [
           "'self'",

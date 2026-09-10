@@ -76,6 +76,30 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
+  // Twitter / X (x.com, twitter.com)
+  const twitterMatch = trimmed.match(
+    /(?:https?:\/\/)?(?:www\.|mobile\.)?(?:twitter\.com|x\.com)\/(?:#!\/)?([a-zA-Z0-9_]+)\/status(?:es)?\/(\d+)/i,
+  );
+  if (twitterMatch) {
+    const username = twitterMatch[1];
+    const tweetId = twitterMatch[2];
+    return {
+      platform: "twitter",
+      mediaType: "post",
+      embedId: tweetId,
+      authorName: `@${username}`,
+      embedUrl: `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`,
+    };
+  }
+
+  // Generic X.com / Twitter link (profile, etc.)
+  if (/(?:twitter\.com|x\.com)/i.test(trimmed)) {
+    return {
+      platform: "twitter",
+      mediaType: "post",
+    };
+  }
+
   // Default web article/page
   return {
     platform: "web",
@@ -101,6 +125,71 @@ const scrapeMetadata = async (req, res) => {
     let siteName = "";
     let author = "";
     let finalUrl = url;
+
+    // Special scraper for X.com / Twitter links
+    if (detected.platform === "twitter" && detected.embedId) {
+      try {
+        const username = (detected.authorName || "").replace(/^@/, "");
+        const vxtwitterUrl = username
+          ? `https://api.vxtwitter.com/${username}/status/${detected.embedId}`
+          : `https://api.vxtwitter.com/status/${detected.embedId}`;
+
+        const vxRes = await fetch(vxtwitterUrl, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (vxRes.ok) {
+          const vxData = await vxRes.json();
+          if (vxData && vxData.text) {
+            finalTitle = `${vxData.user_name || username} (@${vxData.user_screen_name || username}) on X`;
+            finalDescription = vxData.text;
+            author = `${vxData.user_name || username} (@${vxData.user_screen_name || username})`;
+            siteName = "X (Twitter)";
+            if (vxData.media_extended && vxData.media_extended.length > 0) {
+              finalImage =
+                vxData.media_extended[0].thumbnail_url ||
+                vxData.media_extended[0].url;
+            } else if (vxData.mediaURLs && vxData.mediaURLs.length > 0) {
+              finalImage = vxData.mediaURLs[0];
+            } else if (vxData.user_profile_image_url) {
+              finalImage = vxData.user_profile_image_url;
+            }
+          }
+        }
+      } catch (twErr) {
+        console.warn("vxtwitter fetch error, falling back to oEmbed:", twErr.message);
+      }
+
+      // Fallback to publish.twitter.com/oembed if description is still empty
+      if (!finalDescription) {
+        try {
+          const oembedRes = await fetch(
+            `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`,
+            {
+              headers: { "User-Agent": "Mozilla/5.0" },
+              signal: AbortSignal.timeout(4000),
+            },
+          );
+          if (oembedRes.ok) {
+            const oembedData = await oembedRes.json();
+            if (oembedData) {
+              if (oembedData.author_name && !author) author = oembedData.author_name;
+              if (oembedData.author_name && !finalTitle) finalTitle = `${oembedData.author_name} on X`;
+              siteName = "X (Twitter)";
+              if (oembedData.html) {
+                const textMatch = oembedData.html.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+                if (textMatch) {
+                  finalDescription = textMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+                }
+              }
+            }
+          }
+        } catch (oembedErr) {
+          console.warn("oembed fetch error:", oembedErr.message);
+        }
+      }
+    }
 
     // Use facebookexternalhit or linkedin-friendly UA to prevent authwalls on social links
     const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
@@ -315,6 +404,7 @@ const getCaptures = async (req, res) => {
         instagram: allUserCaptures.filter((c) => c.platform === "instagram").length,
         facebook: allUserCaptures.filter((c) => c.platform === "facebook").length,
         linkedin: allUserCaptures.filter((c) => c.platform === "linkedin").length,
+        twitter: allUserCaptures.filter((c) => c.platform === "twitter").length,
         web_image: allUserCaptures.filter((c) =>
           ["web_image", "web"].includes(c.platform),
         ).length,
@@ -401,6 +491,15 @@ const createCapture = async (req, res) => {
       const detected = detectPlatformAndEmbed(sourceUrl);
       if (detected.embedId && !embedId) embedId = detected.embedId;
       if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
+    }
+
+    // Force Twitter/X platform if sourceUrl matches twitter.com or x.com
+    if (sourceUrl && /(?:twitter\.com|x\.com)/i.test(sourceUrl)) {
+      platform = "twitter";
+      const detected = detectPlatformAndEmbed(sourceUrl);
+      if (detected.embedId && !embedId) embedId = detected.embedId;
+      if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
+      if (detected.authorName && !authorName) authorName = detected.authorName;
     }
 
     // If sourceUrl provided and platform was not manually set, auto-detect platform and embed

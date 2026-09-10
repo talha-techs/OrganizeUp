@@ -12,6 +12,7 @@ import {
   FaRegCopy,
   FaCheck,
 } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 import {
   IoClose,
   IoImageOutline,
@@ -204,6 +205,9 @@ const QuickCaptureModal = () => {
     if (scrapedData?.platform === 'linkedin' || /(?:linkedin\.com|lnkd\.in)/i.test(url)) {
       return <FaLinkedin className="text-sky-400" size={18} />;
     }
+    if (scrapedData?.platform === 'twitter' || /(?:twitter\.com|x\.com)/i.test(url)) {
+      return <FaXTwitter className="text-white" size={18} />;
+    }
     if (scrapedData?.platform === 'youtube' || /youtube\.com|youtu\.be/i.test(url)) {
       return <FaYoutube className="text-red-500" size={18} />;
     }
@@ -270,7 +274,12 @@ const QuickCaptureModal = () => {
         }
 
         const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
-        const platform = isLinkedIn ? 'linkedin' : scrapedData?.platform;
+        const isTwitter = /(?:twitter\.com|x\.com)/i.test(url);
+        const platform = isTwitter
+          ? 'twitter'
+          : isLinkedIn
+          ? 'linkedin'
+          : scrapedData?.platform;
 
         await dispatch(
           createCapture({

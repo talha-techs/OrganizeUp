@@ -16,6 +16,7 @@ import {
   FaTrashAlt,
   FaEdit,
 } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 import {
   IoFlashOutline,
   IoImageOutline,
@@ -168,6 +169,12 @@ const CapturesPage = () => {
           icon: <FaLinkedin size={15} className="text-sky-500" />,
           bg: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
         };
+      case 'twitter':
+        return {
+          label: 'X (Twitter)',
+          icon: <FaXTwitter size={14} className="text-white" />,
+          bg: 'bg-zinc-800 text-white border-zinc-700',
+        };
       case 'web_image':
       case 'web':
         return {
@@ -205,6 +212,7 @@ const CapturesPage = () => {
     { id: 'instagram', label: 'Instagram Reels', icon: FaInstagram },
     { id: 'facebook', label: 'Facebook', icon: FaFacebook },
     { id: 'linkedin', label: 'LinkedIn', icon: FaLinkedin },
+    { id: 'twitter', label: 'X (Twitter)', icon: FaXTwitter },
     { id: 'web_image', label: 'Web & Images', icon: IoImageOutline },
     { id: 'reminders', label: '⏰ Reminders', icon: IoTimeOutline },
   ];
@@ -556,6 +564,79 @@ const CapturesPage = () => {
                       </div>
                       {capture.rawContent && (
                         <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
+                          {capture.rawContent}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* 7. Twitter / X Interactive Embed or Image Card */}
+                {capture.platform === 'twitter' && (
+                  <>
+                    {/* Media Display: Interactive Embed if expanded/only option, else High-Res Visual Banner */}
+                    {capture.embedUrl && (expandedEmbeds[capture._id] || !(capture.mediaUrl || capture.thumbnailUrl)) ? (
+                      <div className="w-full bg-[#000000] relative h-[480px] overflow-hidden border-b border-subtle flex items-center justify-center">
+                        <iframe
+                          src={capture.embedUrl}
+                          className="w-full h-full border-0"
+                          allowFullScreen={true}
+                          title={capture.title || 'X Post'}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                      <div
+                        onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                        className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                      >
+                        <img
+                          src={capture.mediaUrl || capture.thumbnailUrl}
+                          alt={capture.title || 'X Post'}
+                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.parentElement.style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
+                          <span>Click to Enlarge</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Author & Post Excerpt Header */}
+                    <div className="p-4 bg-zinc-950/40 border-b border-subtle">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FaXTwitter size={16} className="text-white flex-shrink-0" />
+                          <span className="text-xs font-bold text-white truncate">
+                            {capture.authorName || 'Post on X'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {capture.embedUrl && (capture.mediaUrl || capture.thumbnailUrl) && (
+                            <button
+                              onClick={() => toggleEmbed(capture._id)}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors cursor-pointer border border-zinc-700/50"
+                              title={expandedEmbeds[capture._id] ? 'Show Image Banner' : 'View Live Interactive Post'}
+                            >
+                              {expandedEmbeds[capture._id] ? 'Show Banner' : 'Interactive'}
+                            </button>
+                          )}
+                          {capture.rawContent && (
+                            <button
+                              onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                              className="text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                              title="Copy tweet text"
+                            >
+                              {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
+                              <span>Copy</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {capture.rawContent && (
+                        <p className="text-xs text-secondary line-clamp-4 leading-relaxed whitespace-pre-wrap font-sans">
                           {capture.rawContent}
                         </p>
                       )}
