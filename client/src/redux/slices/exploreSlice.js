@@ -121,6 +121,7 @@ const exploreSlice = createSlice({
     currentItem: null,
     comments: [],
     commentsTotal: 0,
+    commentsLoading: false,
     isLoading: false,
     isVoting: false,
     error: null,
@@ -173,9 +174,16 @@ const exploreSlice = createSlice({
           state.currentItem.userVote = userVote;
         }
       })
+      .addCase(fetchComments.pending, (state) => {
+        state.commentsLoading = true;
+      })
       .addCase(fetchComments.fulfilled, (state, action) => {
+        state.commentsLoading = false;
         state.comments = action.payload.comments;
         state.commentsTotal = action.payload.total;
+      })
+      .addCase(fetchComments.rejected, (state) => {
+        state.commentsLoading = false;
       })
       .addCase(addComment.fulfilled, (state, action) => {
         state.comments.unshift(action.payload.comment);

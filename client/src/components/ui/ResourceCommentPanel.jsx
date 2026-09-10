@@ -27,7 +27,11 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
   const inputRef = useRef(null);
   const dispatch = useDispatch();
 
-  const { comments, commentsTotal, isLoading } = useSelector((s) => s.explore);
+  const { comments, commentsTotal, commentsLoading, isLoading } = useSelector(
+    (s) => s.explore,
+  );
+  const isCommentsBusy =
+    commentsLoading !== undefined ? commentsLoading : isLoading;
   const { user } = useSelector((s) => s.auth);
 
   // Load comments when the panel mounts / resource changes
@@ -187,7 +191,7 @@ const ResourceCommentPanel = ({ resource, contentType, onClose }) => {
                 {commentsTotal} comment{commentsTotal !== 1 ? 's' : ''}
               </div>
 
-              {isLoading ? (
+              {isCommentsBusy ? (
                 <p className="text-center text-sm text-muted py-10">Loading…</p>
               ) : comments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">

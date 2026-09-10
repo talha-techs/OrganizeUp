@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExploreContentCard from '../components/ui/ExploreContentCard';
 import {
   IoSearchOutline,
   IoBookOutline,
@@ -118,6 +119,11 @@ const ExplorePage = () => {
     return map;
   }, [saved]);
 
+  const savedMapRef = useRef(savedMap);
+  useEffect(() => {
+    savedMapRef.current = savedMap;
+  }, [savedMap]);
+
   useEffect(() => {
     dispatch(fetchExploreContent({ type: activeTab, sort: sortBy, search }));
   }, [dispatch, activeTab, sortBy, search]);
@@ -174,29 +180,45 @@ const ExplorePage = () => {
     }
   };
 
-  const handleVote = async (contentType, contentId, value) => {
-    await dispatch(voteContent({ contentType, contentId, value }));
-  };
+  const handleVote = useCallback(
+    async (contentType, contentId, value) => {
+      await dispatch(voteContent({ contentType, contentId, value }));
+    },
+    [dispatch],
+  );
 
-  const handleAddToLibrary = async (contentType, contentId) => {
-    const result = await dispatch(addToLibrary({ contentType, contentId }));
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Added to your library!');
-    } else {
-      toast.error(result.payload || 'Failed to add');
-    }
-  };
+  const handleAddToLibrary = useCallback(
+    async (contentType, contentId) => {
+      const result = await dispatch(addToLibrary({ contentType, contentId }));
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Added to your library!');
+      } else {
+        toast.error(result.payload || 'Failed to add');
+      }
+    },
+    [dispatch],
+  );
 
-  const handleRemoveFromLibrary = async (contentId) => {
-    const libraryEntryId = savedMap[String(contentId)];
-    if (!libraryEntryId) return;
-    const result = await dispatch(removeFromLibrary(libraryEntryId));
-    if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Removed from library');
-    } else {
-      toast.error(result.payload || 'Failed to remove');
-    }
-  };
+  const handleRemoveFromLibrary = useCallback(
+    async (contentId) => {
+      const libraryEntryId = savedMapRef.current[String(contentId)];
+      if (!libraryEntryId) return;
+      const result = await dispatch(removeFromLibrary(libraryEntryId));
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Removed from library');
+      } else {
+        toast.error(result.payload || 'Failed to remove');
+      }
+    },
+    [dispatch],
+  );
+
+  const handleNavigate = useCallback(
+    (path) => {
+      navigate(path);
+    },
+    [navigate],
+  );
 
   const handleSaveAudiobook = async (book) => {
     setSavingAudioId(book.id);
@@ -249,11 +271,11 @@ const ExplorePage = () => {
     dispatch(setSelectedTopic(topic));
   };
 
-  const openComments = (item, contentType) => {
+  const openComments = useCallback((item, contentType) => {
     setCommentResource((prev) =>
       prev?._id === item._id ? null : { ...item, contentType },
     );
-  };
+  }, []);
 
   const tabs = [
     { key: 'all', label: 'All', icon: <IoGridOutline size={16} /> },
@@ -294,218 +316,6 @@ const ExplorePage = () => {
     { key: 'video', label: '📹 Video Books', icon: <IoVideocamOutline size={14} /> },
     { key: 'text', label: '📄 Text Books (PDF)', icon: <IoDocumentTextOutline size={14} /> },
   ];
-
-  const detailRouteByType = {
-    book: '/books',
-    course: '/courses',
-    tool: '/tools',
-    section: '/sections',
-  };
-
-  const ContentCard = ({ item, contentType }) => {
-    const isOwn = user?._id && String(item.addedBy?._id) === String(user._id);
-    const [imageError, setImageError] = useState(false);
-
-    const hasValidImage = (item.coverImage || item.bannerImage) && !imageError;
-
-    return (
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="relative group rounded-3xl bg-surface border border-subtle hover:border-accent/40 hover:shadow-2xl hover:shadow-black/25 transition-all duration-300 flex flex-col overflow-hidden h-full"
-      >
-        {/* Top Media / Cover Area - Large, cinematic & responsive */}
-        <div className="relative h-56 sm:h-64 bg-surface-raised overflow-hidden flex-shrink-0 border-b border-subtle">
-          {hasValidImage ? (
-            <img
-              src={item.coverImage || item.bannerImage}
-              alt={item.title}
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
-              onClick={() =>
-                navigate(`${detailRouteByType[contentType]}/${item._id}`)
-              }
-              loading="lazy"
-            />
-          ) : (
-            <div
-              className="w-full h-full cursor-pointer"
-              onClick={() =>
-                navigate(`${detailRouteByType[contentType]}/${item._id}`)
-              }
-            >
-              <DefaultResourceCover
-                contentType={contentType}
-                itemType={item.type}
-                title={item.title}
-              />
-            </div>
-          )}
-
-          {/* Floating Platform / Format Badge */}
-          <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider backdrop-blur-md bg-black/65 text-white border border-white/15 shadow-md">
-              {contentType === 'book'
-                ? item.type === 'video'
-                  ? '📹 Video Book'
-                  : item.type === 'text'
-                  ? '📄 PDF Book'
-                  : item.type === 'audio'
-                  ? '🎧 Audio Book'
-                  : '📖 Book'
-                : contentType === 'course'
-                ? '🎓 Course'
-                : contentType === 'tool'
-                ? '⚡ Trick & Tool'
-                : '📁 Section'}
-            </span>
-          </div>
-        </div>
-
-        {/* Card Body Details */}
-        <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-          <div className="space-y-2">
-            <h3
-              className="text-base sm:text-lg font-bold text-primary group-hover:text-accent transition-colors line-clamp-2 leading-snug cursor-pointer"
-              onClick={() =>
-                navigate(`${detailRouteByType[contentType]}/${item._id}`)
-              }
-            >
-              {item.title}
-            </h3>
-
-            {item.author && (
-              <p className="text-xs sm:text-sm font-medium text-accent/90 truncate">
-                by {item.author}
-              </p>
-            )}
-
-            {item.description && (
-              <p className="text-xs sm:text-sm text-secondary line-clamp-2 leading-relaxed">
-                {item.description}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-3 pt-2">
-            {/* Added By & Date row */}
-            <div className="flex items-center gap-2 pt-3 border-t border-subtle">
-              {item.addedBy?.avatar ? (
-                <img
-                  src={item.addedBy.avatar}
-                  alt={item.addedBy.name}
-                  className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff5722] to-[#f4511e] flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-white">
-                    {item.addedBy?.name?.[0]?.toUpperCase() || '?'}
-                  </span>
-                </div>
-              )}
-              <span className="text-xs text-secondary truncate flex-1 font-medium">
-                {item.addedBy?.name || 'Community'}
-              </span>
-              {item.createdAt && (
-                <span className="text-[11px] text-muted flex-shrink-0">
-                  {new Date(item.createdAt).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-              )}
-            </div>
-
-            {/* Voting, Comments & Save Library Footer */}
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-1 bg-surface-raised/60 px-1.5 py-1 rounded-xl border border-subtle">
-                <button
-                  onClick={() =>
-                    handleVote(
-                      contentType,
-                      item._id,
-                      item.userVote === 1 ? 0 : 1,
-                    )
-                  }
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                    item.userVote === 1
-                      ? 'text-emerald-400 bg-emerald-500/10'
-                      : 'text-muted hover:text-emerald-400 hover:bg-emerald-500/5'
-                  }`}
-                  title="Upvote"
-                >
-                  <IoArrowUpOutline size={15} />
-                </button>
-                <span
-                  className={`text-xs font-bold min-w-[20px] text-center ${
-                    (item.score || 0) > 0
-                      ? 'text-emerald-400'
-                      : (item.score || 0) < 0
-                      ? 'text-red-400'
-                      : 'text-muted'
-                  }`}
-                >
-                  {item.score || 0}
-                </span>
-                <button
-                  onClick={() =>
-                    handleVote(
-                      contentType,
-                      item._id,
-                      item.userVote === -1 ? 0 : -1,
-                    )
-                  }
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                    item.userVote === -1
-                      ? 'text-red-400 bg-red-500/10'
-                      : 'text-muted hover:text-red-400 hover:bg-red-500/5'
-                  }`}
-                  title="Downvote"
-                >
-                  <IoArrowDownOutline size={15} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openComments(item, contentType)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-raised/60 border border-subtle text-muted hover:text-accent transition-colors cursor-pointer"
-                  title="Open comments"
-                >
-                  <IoChatbubbleOutline size={14} />
-                  <span className="text-xs font-semibold">{item.commentCount || 0}</span>
-                </button>
-
-                {!isOwn &&
-                  (savedMap[String(item._id)] ? (
-                    <button
-                      onClick={() => handleRemoveFromLibrary(item._id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 hover:text-red-400 hover:bg-red-500/10 border border-emerald-500/20 transition-colors cursor-pointer"
-                      title="Remove from library"
-                    >
-                      <IoRemoveCircleOutline size={15} />
-                      <span>Saved</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleAddToLibrary(contentType, item._id)}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-accent hover:opacity-90 shadow-sm shadow-accent/20 transition-all cursor-pointer"
-                      title="Add to my library"
-                    >
-                      <IoAddCircleOutline size={15} />
-                      <span>Save</span>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    );
-  };
 
   const renderSection = (title, items, contentType) => {
     if (!items || items.length === 0) {
@@ -572,15 +382,20 @@ const ExplorePage = () => {
           </span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence>
-            {items.map((item) => (
-              <ContentCard
-                key={item._id}
-                item={item}
-                contentType={contentType}
-              />
-            ))}
-          </AnimatePresence>
+          {items.map((item) => (
+            <ExploreContentCard
+              key={item._id}
+              item={item}
+              contentType={contentType}
+              isSaved={!!savedMap[String(item._id)]}
+              isOwn={!!(user?._id && String(item.addedBy?._id) === String(user._id))}
+              onVote={handleVote}
+              onOpenComments={openComments}
+              onAddToLibrary={handleAddToLibrary}
+              onRemoveFromLibrary={handleRemoveFromLibrary}
+              onNavigate={handleNavigate}
+            />
+          ))}
         </div>
       </div>
     );
@@ -1018,15 +833,20 @@ const ExplorePage = () => {
                 </motion.div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <AnimatePresence>
-                    {filteredBooks.map((item) => (
-                      <ContentCard
-                        key={item._id}
-                        item={item}
-                        contentType="book"
-                      />
-                    ))}
-                  </AnimatePresence>
+                  {filteredBooks.map((item) => (
+                    <ExploreContentCard
+                      key={item._id}
+                      item={item}
+                      contentType="book"
+                      isSaved={!!savedMap[String(item._id)]}
+                      isOwn={!!(user?._id && String(item.addedBy?._id) === String(user._id))}
+                      onVote={handleVote}
+                      onOpenComments={openComments}
+                      onAddToLibrary={handleAddToLibrary}
+                      onRemoveFromLibrary={handleRemoveFromLibrary}
+                      onNavigate={handleNavigate}
+                    />
+                  ))}
                 </div>
               )}
             </div>
