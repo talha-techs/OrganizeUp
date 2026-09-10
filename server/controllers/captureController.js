@@ -367,7 +367,7 @@ const createCapture = async (req, res) => {
       embedId: rawEmbedId,
       embedUrl: rawEmbedUrl,
       mediaUrl: rawMediaUrl,
-      thumbnailUrl,
+      thumbnailUrl: rawThumbnailUrl,
       notes,
       tags,
       priority,
@@ -379,6 +379,7 @@ const createCapture = async (req, res) => {
     let embedId = rawEmbedId || "";
     let embedUrl = rawEmbedUrl || "";
     let mediaUrl = rawMediaUrl || "";
+    let thumbnailUrl = rawThumbnailUrl || "";
     let mediaGridFsId = null;
 
     // Handle uploaded file (image file or clipboard paste)
