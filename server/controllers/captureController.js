@@ -877,6 +877,70 @@ const deleteCapture = async (req, res) => {
   }
 };
 
+// @desc    Proxy video stream with Range support to bypass CDN hotlinking / 403 referer blocks
+// @route   GET /api/captures/stream
+const streamVideo = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url || typeof url !== "string" || !/^https?:\/\//i.test(url)) {
+      return res.status(400).send("A valid video URL is required");
+    }
+
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      Accept: "*/*",
+      "Accept-Encoding": "identity",
+    };
+
+    if (req.headers.range) {
+      headers["Range"] = req.headers.range;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok && response.status !== 206) {
+      return res
+        .status(response.status)
+        .send(`Failed to stream video: ${response.statusText}`);
+    }
+
+    const resHeaders = {
+      "Content-Type": response.headers.get("content-type") || "video/mp4",
+      "Accept-Ranges": "bytes",
+      "Access-Control-Allow-Origin": "*",
+    };
+
+    if (response.headers.get("content-length")) {
+      resHeaders["Content-Length"] = response.headers.get("content-length");
+    }
+    if (response.headers.get("content-range")) {
+      resHeaders["Content-Range"] = response.headers.get("content-range");
+    }
+
+    res.writeHead(response.status, resHeaders);
+
+    const { Readable } = require("stream");
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(response.body);
+      nodeStream.pipe(res);
+      req.on("close", () => {
+        nodeStream.destroy();
+      });
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    console.error("Stream video error:", err.message);
+    if (!res.headersSent) {
+      res.status(500).send("Video streaming error");
+    }
+  }
+};
+
 module.exports = {
   scrapeMetadata,
   getCaptures,
@@ -886,4 +950,6 @@ module.exports = {
   toggleCaptureComplete,
   deleteCapture,
   detectPlatformAndEmbed,
+  streamVideo,
 };
+

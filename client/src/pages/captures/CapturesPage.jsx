@@ -40,7 +40,18 @@ import {
 
 const isVideoUrl = (url) =>
   typeof url === 'string' &&
-  (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url) || url.includes('video.twimg.com'));
+  (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url) || url.includes('video.twimg.com') || url.includes('twimg.com'));
+
+const getVideoSrc = (url) => {
+  if (!url) return '';
+  // Twitter/X video CDN returns 403 if a foreign Referer header is present.
+  // Route through our backend Range-supporting stream proxy to ensure instant in-app playback.
+  if (url.includes('twimg.com') || url.includes('video.twimg.com')) {
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    return `${apiBase}/api/captures/stream?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
 
 const CapturesPage = () => {
   const dispatch = useDispatch();
@@ -421,11 +432,12 @@ const CapturesPage = () => {
                   isVideoUrl(capture.mediaUrl) ? (
                     <div className="w-full bg-black relative aspect-[9/16] max-h-[440px] overflow-hidden flex items-center justify-center border-b border-subtle">
                       <video
-                        src={capture.mediaUrl}
+                        src={getVideoSrc(capture.mediaUrl)}
                         poster={capture.thumbnailUrl}
                         controls
                         playsInline
                         preload="metadata"
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-contain"
                       />
                     </div>
@@ -448,11 +460,12 @@ const CapturesPage = () => {
                   isVideoUrl(capture.mediaUrl) ? (
                     <div className="w-full bg-black relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
                       <video
-                        src={capture.mediaUrl}
+                        src={getVideoSrc(capture.mediaUrl)}
                         poster={capture.thumbnailUrl}
                         controls
                         playsInline
                         preload="metadata"
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-contain"
                       />
                     </div>
@@ -489,11 +502,20 @@ const CapturesPage = () => {
                   (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
                     <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
                       <video
-                        src={capture.mediaUrl}
+                        src={getVideoSrc(capture.mediaUrl)}
                         poster={capture.thumbnailUrl}
                         controls
                         playsInline
                         preload="metadata"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const apiBase = import.meta.env.VITE_API_URL || '';
+                          const currentSrc = e.currentTarget.src || '';
+                          if (!currentSrc.includes('/api/captures/stream') && capture.mediaUrl) {
+                            e.currentTarget.src = `${apiBase}/api/captures/stream?url=${encodeURIComponent(capture.mediaUrl)}`;
+                            e.currentTarget.load();
+                          }
+                        }}
                         className="w-full h-full object-contain"
                       />
                     </div>
@@ -568,11 +590,20 @@ const CapturesPage = () => {
                     ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
                       <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
                         <video
-                          src={capture.mediaUrl}
+                          src={getVideoSrc(capture.mediaUrl)}
                           poster={capture.thumbnailUrl}
                           controls
                           playsInline
                           preload="metadata"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const apiBase = import.meta.env.VITE_API_URL || '';
+                            const currentSrc = e.currentTarget.src || '';
+                            if (!currentSrc.includes('/api/captures/stream') && capture.mediaUrl) {
+                              e.currentTarget.src = `${apiBase}/api/captures/stream?url=${encodeURIComponent(capture.mediaUrl)}`;
+                              e.currentTarget.load();
+                            }
+                          }}
                           className="w-full h-full object-contain"
                         />
                       </div>
@@ -615,7 +646,7 @@ const CapturesPage = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {capture.embedUrl && (capture.mediaUrl || capture.thumbnailUrl) && (
+                          {capture.embedUrl && (
                             <button
                               onClick={() => toggleEmbed(capture._id)}
                               className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/40 hover:bg-sky-800/60 text-sky-300 transition-colors cursor-pointer border border-sky-700/40"
@@ -662,11 +693,20 @@ const CapturesPage = () => {
                     ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
                       <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
                         <video
-                          src={capture.mediaUrl}
+                          src={getVideoSrc(capture.mediaUrl)}
                           poster={capture.thumbnailUrl}
                           controls
                           playsInline
                           preload="metadata"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const apiBase = import.meta.env.VITE_API_URL || '';
+                            const currentSrc = e.currentTarget.src || '';
+                            if (!currentSrc.includes('/api/captures/stream') && capture.mediaUrl) {
+                              e.currentTarget.src = `${apiBase}/api/captures/stream?url=${encodeURIComponent(capture.mediaUrl)}`;
+                              e.currentTarget.load();
+                            }
+                          }}
                           className="w-full h-full object-contain"
                         />
                       </div>
