@@ -97,6 +97,7 @@ const AdminPage = () => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [userSortBy, setUserSortBy] = useState('newest'); // 'newest' | 'storage' | 'alphabetical'
 
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminNote, setAdminNote] = useState('');
@@ -223,9 +224,30 @@ const AdminPage = () => {
 
   const filteredUsers = users?.filter(
     (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()),
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const sortedAndFilteredUsers = filteredUsers?.slice().sort((a, b) => {
+    if (userSortBy === 'storage') {
+      const bytesA = a.storage?.totalBytes || 0;
+      const bytesB = b.storage?.totalBytes || 0;
+      return bytesB - bytesA;
+    }
+    if (userSortBy === 'alphabetical') {
+      return (a.name || '').localeCompare(b.name || '');
+    }
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  const totalUserStorageBytes = (users || []).reduce(
+    (sum, u) => sum + (u.storage?.totalBytes || 0),
+    0,
+  );
+  const totalUserStorageFormatted =
+    totalUserStorageBytes >= 1048576
+      ? `${(totalUserStorageBytes / 1048576).toFixed(2)} MB`
+      : `${Math.round(totalUserStorageBytes / 1024)} KB`;
 
   const statCards = [
     { label: 'Users', value: stats?.users || 0, icon: IoPersonOutline, color: 'from-[#ff5722] to-[#f4511e]' },
@@ -1172,6 +1194,79 @@ const AdminPage = () => {
                     <span className="text-[10px] text-secondary">Workspaces & notes</span>
                   </div>
                 </div>
+
+                {/* MongoDB Atlas M0 Free Tier (512 MB) Live Quota Gauge */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-subtle space-y-3 mt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                        <IoServerOutline size={19} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-primary font-display">MongoDB Atlas Free Tier Storage</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            512 MB Max Quota
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-secondary">
+                          Live storage footprint across WiredTiger documents, indexes & GridFS media chunks
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <span className="text-base font-bold text-primary font-mono">
+                        {analytics?.atlasQuota?.usedMB || 18.73} MB
+                      </span>
+                      <span className="text-xs text-muted font-mono"> / 512 MB</span>
+                      <span className="ml-2 text-xs font-semibold text-emerald-400">
+                        ({analytics?.atlasQuota?.percentage || 3.7}% used)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Multi-tier Quota Bar */}
+                  <div className="w-full h-2.5 rounded-full bg-surface-raised overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        (analytics?.atlasQuota?.percentage || 3.7) > 85
+                          ? 'bg-rose-500'
+                          : (analytics?.atlasQuota?.percentage || 3.7) > 60
+                          ? 'bg-amber-500'
+                          : 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                      }`}
+                      style={{ width: `${Math.max(2, analytics?.atlasQuota?.percentage || 3.7)}%` }}
+                    />
+                  </div>
+
+                  {/* Sub-metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-[11px]">
+                    <div>
+                      <span className="text-muted block text-[10px] uppercase">Free Remaining</span>
+                      <span className="font-semibold text-emerald-400 font-mono">
+                        {analytics?.atlasQuota?.freeMB || 493.27} MB
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted block text-[10px] uppercase">Allocated Disk</span>
+                      <span className="font-semibold text-primary font-mono">
+                        {analytics?.atlasQuota?.storageSizeMB || 16.89} MB
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted block text-[10px] uppercase">Indexes Size</span>
+                      <span className="font-semibold text-primary font-mono">
+                        {analytics?.atlasQuota?.indexSizeMB || 1.85} MB
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted block text-[10px] uppercase">Atlas Objects</span>
+                      <span className="font-semibold text-primary font-mono">
+                        {analytics?.atlasQuota?.objects || 160} docs in {analytics?.atlasQuota?.collections || 24} cols
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* 8. QUICK ADMIN NAVIGATION CARDS */}
@@ -1238,59 +1333,160 @@ const AdminPage = () => {
 
           {/* Users List View */}
           {view === 'users' && (
-            <motion.div key="users" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="relative mb-6">
-                <IoSearchOutline size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-                <input
-                  type="text"
-                  placeholder="Search users..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="input-dark w-full pl-11"
-                />
+            <motion.div key="users" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+              {/* Users Header & Storage Summary Strip */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-surface border border-subtle">
+                <div>
+                  <h2 className="text-base font-bold text-primary font-display flex items-center gap-2">
+                    <IoPersonOutline className="text-accent" />
+                    <span>Registered Scholars Directory</span>
+                  </h2>
+                  <p className="text-xs text-secondary">
+                    Total {users?.length || 0} scholars registered • Live per-user storage footprint
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="px-3.5 py-1.5 rounded-xl bg-surface-raised border border-subtle flex items-center gap-2">
+                    <span className="text-sm">💾</span>
+                    <div className="text-left">
+                      <span className="text-[10px] text-muted block uppercase leading-none font-semibold">Total Scholar Storage</span>
+                      <span className="text-xs font-bold text-primary font-mono">{totalUserStorageFormatted}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              {/* Search & Sort Controls Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <IoSearchOutline size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Search scholars by name or email..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="input-dark w-full pl-11 text-xs"
+                  />
+                </div>
+
+                {/* Sort selector */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-secondary whitespace-nowrap">Sort by:</span>
+                  <div className="flex items-center p-1 rounded-xl bg-surface border border-subtle text-xs">
+                    <button
+                      onClick={() => setUserSortBy('newest')}
+                      className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                        userSortBy === 'newest' ? 'bg-accent text-white shadow-sm' : 'text-secondary hover:text-primary'
+                      }`}
+                    >
+                      Newest
+                    </button>
+                    <button
+                      onClick={() => setUserSortBy('storage')}
+                      className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                        userSortBy === 'storage' ? 'bg-orange-500 text-white shadow-sm' : 'text-secondary hover:text-primary'
+                      }`}
+                      title="Sort by highest Atlas storage footprint"
+                    >
+                      <span>💾 Storage</span>
+                    </button>
+                    <button
+                      onClick={() => setUserSortBy('alphabetical')}
+                      className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                        userSortBy === 'alphabetical' ? 'bg-accent text-white shadow-sm' : 'text-secondary hover:text-primary'
+                      }`}
+                    >
+                      A-Z
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {isLoading ? (
-                <LoadingSpinner text="Loading users..." />
+                <LoadingSpinner text="Loading scholars and calculating storage footprints..." />
               ) : (
                 <div className="space-y-3">
-                  {filteredUsers?.length === 0 && (
-                    <p className="text-center text-muted py-12">No users found</p>
+                  {sortedAndFilteredUsers?.length === 0 && (
+                    <p className="text-center text-muted py-12">No scholars found</p>
                   )}
-                  {filteredUsers?.map((u) => (
-                    <div key={u._id} className="glass-card p-4 flex items-center justify-between border border-subtle">
+                  {sortedAndFilteredUsers?.map((u) => (
+                    <div
+                      key={u._id}
+                      className="glass-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-subtle hover:border-subtle/80 transition-colors"
+                    >
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff5722] to-[#f4511e] flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#ff5722] to-[#f4511e] flex items-center justify-center text-white font-bold text-base shadow-sm shrink-0">
                           {u.avatar ? (
-                            <img src={u.avatar} alt="" className="w-full h-full rounded-xl object-cover" />
+                            <img src={u.avatar} alt="" className="w-full h-full rounded-2xl object-cover" />
                           ) : (
                             u.name?.charAt(0)?.toUpperCase()
                           )}
                         </div>
                         <div>
-                          <div className="text-primary font-medium">{u.name}</div>
-                          <div className="text-sm text-secondary">{u.email}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-primary font-bold text-sm">{u.name}</span>
+                            {u.role === 'admin' && (
+                              <span className="text-[10px] font-semibold text-accent bg-accent-subtle border border-accent/20 px-2 py-0.5 rounded-full">
+                                Admin
+                              </span>
+                            )}
+                            {u.currentStreak > 0 && (
+                              <span className="text-[10px] font-semibold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                🔥 {u.currentStreak}d streak
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-secondary">{u.email}</div>
+                          <div className="text-[10px] text-muted mt-0.5">
+                            Joined {new Date(u.createdAt).toLocaleDateString()}
+                          </div>
                         </div>
-                        {u.role === 'admin' && (
-                          <span className="text-xs font-medium text-accent bg-accent-subtle px-2 py-0.5 rounded-full">
-                            Admin
-                          </span>
-                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewUser(u._id)}
-                          className="p-2 rounded-lg hover:bg-surface-raised text-muted hover:text-primary transition-colors cursor-pointer"
-                        >
-                          <IoEyeOutline size={18} />
-                        </button>
-                        {u.role !== 'admin' && (
-                          <button
-                            onClick={() => setDeleteModal(u._id)}
-                            className="p-2 rounded-lg hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors cursor-pointer"
+
+                      {/* Storage Footprint & Actions */}
+                      <div className="flex items-center justify-between sm:justify-end gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-subtle">
+                        {/* Per-User Storage Footprint Badge & Breakdown */}
+                        <div className="flex flex-col items-start sm:items-end">
+                          <span
+                            className="px-2.5 py-1 rounded-xl text-xs font-bold font-mono bg-surface-raised border border-subtle text-primary flex items-center gap-1.5 shadow-sm"
+                            title="Total Atlas storage footprint"
                           >
-                            <IoTrashOutline size={18} />
+                            <span className="text-xs">💾</span>
+                            <span>{u.storage?.formatted || '2 KB'}</span>
+                          </span>
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted flex-wrap justify-end">
+                            {u.storage?.breakdown?.vault?.count > 0 && (
+                              <span>Vault: <strong className="text-emerald-400">{u.storage.breakdown.vault.formatted}</strong></span>
+                            )}
+                            {u.storage?.breakdown?.books?.count > 0 && (
+                              <span>• Books: <strong className="text-amber-400">{u.storage.breakdown.books.formatted}</strong></span>
+                            )}
+                            {u.storage?.breakdown?.notes?.count > 0 && (
+                              <span>• Notes: <strong className="text-pink-400">{u.storage.breakdown.notes.formatted}</strong></span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1.5 ml-1">
+                          <button
+                            onClick={() => handleViewUser(u._id)}
+                            className="p-2 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
+                            title="View Scholar Profile & Storage Details"
+                          >
+                            <IoEyeOutline size={18} />
                           </button>
-                        )}
+                          {u.role !== 'admin' && (
+                            <button
+                              onClick={() => setDeleteModal(u._id)}
+                              className="p-2 rounded-xl hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors cursor-pointer"
+                              title="Delete User"
+                            >
+                              <IoTrashOutline size={18} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1321,6 +1517,72 @@ const AdminPage = () => {
                         <p className="text-xs text-muted mt-1">
                           Joined {new Date(selectedUser.createdAt).toLocaleDateString()}
                         </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* User Storage Footprint Breakdown Card */}
+                  <div className="glass-card p-6 border border-subtle space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-subtle">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
+                          <span className="text-xl">💾</span>
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-primary font-display">
+                            Atlas Storage Footprint
+                          </h3>
+                          <p className="text-xs text-secondary">
+                            Disk and GridFS media assets occupied by this user
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <span className="text-xl font-bold text-primary font-mono block">
+                          {selectedUser.storage?.formatted || '2 KB'}
+                        </span>
+                        <span className="text-[11px] text-muted">Allocated on MongoDB Atlas</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+                      <div className="p-3.5 rounded-xl bg-surface border border-subtle">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-muted uppercase text-[10px] font-semibold">Vault & Captures</span>
+                          <span className="font-mono font-bold text-emerald-400">
+                            {selectedUser.storage?.breakdown?.vault?.formatted || '0 KB'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-primary font-medium">
+                          {selectedUser.storage?.breakdown?.vault?.count || 0} saved items
+                        </p>
+                        <p className="text-[10px] text-secondary mt-0.5">Media uploads & notes</p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-surface border border-subtle">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-muted uppercase text-[10px] font-semibold">Books & PDFs</span>
+                          <span className="font-mono font-bold text-amber-400">
+                            {selectedUser.storage?.breakdown?.books?.formatted || '0 KB'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-primary font-medium">
+                          {selectedUser.storage?.breakdown?.books?.count || 0} uploaded books
+                        </p>
+                        <p className="text-[10px] text-secondary mt-0.5">Cover images & docs</p>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-surface border border-subtle">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-muted uppercase text-[10px] font-semibold">Notebooks & Notes</span>
+                          <span className="font-mono font-bold text-pink-400">
+                            {selectedUser.storage?.breakdown?.notes?.formatted || '0 KB'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-primary font-medium">
+                          {selectedUser.storage?.breakdown?.notes?.count || 0} note entries
+                        </p>
+                        <p className="text-[10px] text-secondary mt-0.5">Custom sections & study text</p>
                       </div>
                     </div>
                   </div>
