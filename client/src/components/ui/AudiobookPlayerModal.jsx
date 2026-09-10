@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   IoClose,
@@ -14,6 +15,7 @@ import {
   IoSparklesOutline,
   IoTimeOutline,
 } from 'react-icons/io5';
+import { fetchAudiobookById } from '../../redux/slices/audiobookSlice';
 
 const BAR_HEIGHTS = [
   6, 12, 18, 26, 32, 22, 14, 8, 12, 20, 30, 36, 26, 18, 10, 8, 14, 24, 32,
@@ -29,7 +31,10 @@ const AudiobookPlayerModal = ({
   onSave,
   onUnsave,
 }) => {
+  const dispatch = useDispatch();
   const audioRef = useRef(null);
+  const [loadedBook, setLoadedBook] = useState(null);
+  const [isLoadingTracks, setIsLoadingTracks] = useState(false);
   const [currentTrackIdx, setCurrentTrackIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -39,9 +44,39 @@ const AudiobookPlayerModal = ({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
 
-  const sections = book?.sections || [];
+  // Auto-fetch complete chapter tracks if book doesn't have sections yet
+  useEffect(() => {
+    if (!isOpen || !book?.id) {
+      setLoadedBook(null);
+      setIsLoadingTracks(false);
+      return;
+    }
+    if (book.sections && book.sections.length > 0) {
+      setLoadedBook(book);
+      setIsLoadingTracks(false);
+      return;
+    }
+
+    setIsLoadingTracks(true);
+    dispatch(fetchAudiobookById(book.id))
+      .unwrap()
+      .then((res) => {
+        if (res?.book) {
+          setLoadedBook(res.book);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load chapters for audiobook:', err);
+      })
+      .finally(() => {
+        setIsLoadingTracks(false);
+      });
+  }, [isOpen, book?.id, dispatch]);
+
+  const activeBook = loadedBook || book;
+  const sections = activeBook?.sections || [];
   const currentTrack = sections[currentTrackIdx] || null;
-  const isSaved = !!book?.isSaved;
+  const isSaved = !!(activeBook?.isSaved ?? book?.isSaved);
 
   // Format seconds to mm:ss or hh:mm:ss
   const fmtTime = (s) => {
@@ -233,10 +268,10 @@ const AudiobookPlayerModal = ({
           <div className="flex items-center justify-between px-6 py-4 border-b border-subtle bg-surface-raised/40">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-surface-raised flex-shrink-0 flex items-center justify-center border border-subtle">
-                {book.coverImage ? (
+                {activeBook?.coverImage && !activeBook.coverImage.includes('notfound.png') ? (
                   <img
-                    src={book.coverImage}
-                    alt={book.title}
+                    src={activeBook.coverImage}
+                    alt={activeBook.title}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -245,10 +280,10 @@ const AudiobookPlayerModal = ({
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-bold text-primary truncate">
-                  {book.title}
+                  {activeBook?.title || 'Audiobook'}
                 </h2>
                 <p className="text-xs text-accent truncate">
-                  {book.author} {book.copyrightYear ? `· (${book.copyrightYear})` : ''}
+                  {activeBook?.author || 'Classic'} {activeBook?.copyrightYear ? `· (${activeBook.copyrightYear})` : ''}
                 </p>
               </div>
             </div>
@@ -380,10 +415,10 @@ const AudiobookPlayerModal = ({
                   {/* Play / Pause Large Glow Button */}
                   <button
                     onClick={togglePlay}
-                    disabled={isAudioLoading}
-                    className="w-16 h-16 rounded-full bg-accent hover:bg-accent/90 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-accent/30 transition-all cursor-pointer"
+                    disabled={!currentTrack?.listenUrl || isAudioLoading || isLoadingTracks}
+                    className="w-16 h-16 rounded-full bg-accent hover:bg-accent/90 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-accent/30 transition-all cursor-pointer disabled:opacity-40"
                   >
-                    {isAudioLoading ? (
+                    {isAudioLoading || isLoadingTracks ? (
                       <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : isPlaying ? (
                       <IoPauseCircle size={40} />
@@ -469,55 +504,66 @@ const AudiobookPlayerModal = ({
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
                   <IoMusicalNotesOutline className="text-accent" size={15} />
-                  Chapters ({sections.length})
+                  Chapters ({isLoadingTracks ? '...' : sections.length})
                 </h4>
-                {book.durationFormatted && (
+                {(activeBook?.durationFormatted || activeBook?.totalTime) && (
                   <span className="text-xs text-muted flex items-center gap-1 font-mono">
-                    <IoTimeOutline size={13} /> {book.durationFormatted}
+                    <IoTimeOutline size={13} /> {activeBook.durationFormatted || activeBook.totalTime}
                   </span>
                 )}
               </div>
 
               <div className="space-y-1.5 overflow-y-auto flex-1 pr-1.5 max-h-[380px] lg:max-h-[480px]">
-                {sections.map((track, i) => {
-                  const isCurrent = currentTrackIdx === i;
-                  return (
-                    <button
-                      key={track.id || i}
-                      onClick={() => setCurrentTrackIdx(i)}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                        isCurrent
-                          ? 'bg-accent-subtle text-primary border border-accent/30 font-medium'
-                          : 'hover:bg-surface-raised text-secondary border border-transparent'
-                      }`}
-                    >
-                      <span
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                {isLoadingTracks ? (
+                  <div className="py-20 flex flex-col items-center justify-center gap-3 text-secondary">
+                    <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                    <span className="text-xs font-medium">Loading chapter tracks...</span>
+                  </div>
+                ) : sections.length === 0 ? (
+                  <div className="py-20 text-center text-xs text-secondary">
+                    No chapters available for this audiobook.
+                  </div>
+                ) : (
+                  sections.map((track, i) => {
+                    const isCurrent = currentTrackIdx === i;
+                    return (
+                      <button
+                        key={track.id || i}
+                        onClick={() => setCurrentTrackIdx(i)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
                           isCurrent
-                            ? 'bg-accent text-white shadow-sm'
-                            : 'bg-surface text-muted border border-subtle'
+                            ? 'bg-accent-subtle text-primary border border-accent/30 font-medium'
+                            : 'hover:bg-surface-raised text-secondary border border-transparent'
                         }`}
                       >
-                        {isCurrent && isPlaying ? '▶' : i + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium truncate">
-                          {track.title || `Chapter ${i + 1}`}
-                        </p>
-                        {track.readers?.length > 0 && (
-                          <p className="text-[10px] text-muted truncate">
-                            {track.readers.join(', ')}
-                          </p>
-                        )}
-                      </div>
-                      {track.playtimeFormatted && (
-                        <span className="text-[11px] text-muted font-mono flex-shrink-0">
-                          {track.playtimeFormatted}
+                        <span
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                            isCurrent
+                              ? 'bg-accent text-white shadow-sm'
+                              : 'bg-surface text-muted border border-subtle'
+                          }`}
+                        >
+                          {isCurrent && isPlaying ? '▶' : i + 1}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">
+                            {track.title || `Chapter ${i + 1}`}
+                          </p>
+                          {track.readers?.length > 0 && (
+                            <p className="text-[10px] text-muted truncate">
+                              {track.readers.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        {track.playtimeFormatted && (
+                          <span className="text-[11px] text-muted font-mono flex-shrink-0">
+                            {track.playtimeFormatted}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

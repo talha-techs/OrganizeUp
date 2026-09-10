@@ -49,7 +49,7 @@ const AudiobookCard = ({
     >
       {/* Cover Image & Header */}
       <div className="relative h-56 sm:h-64 bg-surface-raised overflow-hidden flex-shrink-0 border-b border-subtle">
-        {book.coverImage && !imageError ? (
+        {book.coverImage && !imageError && !book.coverImage.includes('notfound.png') ? (
           <img
             src={book.coverImage}
             alt={book.title}
