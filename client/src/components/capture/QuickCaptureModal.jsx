@@ -281,10 +281,19 @@ const QuickCaptureModal = () => {
           ? 'linkedin'
           : scrapedData?.platform;
 
+        const mediaType =
+          scrapedData?.mediaType ||
+          (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(scrapedData?.mediaUrl || url) ||
+          scrapedData?.embedUrl ||
+          ['youtube', 'instagram', 'facebook'].includes(platform)
+            ? 'video'
+            : 'post');
+
         await dispatch(
           createCapture({
             sourceUrl: url.trim(),
             platform,
+            mediaType,
             title: title || scrapedData?.title || 'Saved Link',
             notes,
             tags,
@@ -455,11 +464,20 @@ const QuickCaptureModal = () => {
                     className="flex gap-3 p-3 rounded-xl bg-surface/70 border border-subtle"
                   >
                     {scrapedData.thumbnailUrl ? (
-                      <img
-                        src={scrapedData.thumbnailUrl}
-                        alt="Preview"
-                        className="w-20 h-20 object-cover rounded-lg flex-shrink-0 bg-surface border border-subtle"
-                      />
+                      <div className="relative w-20 h-20 flex-shrink-0">
+                        <img
+                          src={scrapedData.thumbnailUrl}
+                          alt="Preview"
+                          className="w-20 h-20 object-cover rounded-lg bg-surface border border-subtle"
+                        />
+                        {(scrapedData.mediaType === 'video' || scrapedData.embedUrl) && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
+                            <span className="w-6 h-6 rounded-full bg-accent/90 text-white flex items-center justify-center text-[10px] pl-0.5 shadow-md">
+                              ▶
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="w-20 h-20 rounded-lg bg-accent-subtle flex items-center justify-center text-accent flex-shrink-0">
                         {renderDetectedIcon()}
@@ -470,6 +488,11 @@ const QuickCaptureModal = () => {
                         <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-surface border border-subtle text-accent">
                           {scrapedData.platform || 'WEB'}
                         </span>
+                        {(scrapedData.mediaType === 'video' || scrapedData.embedUrl) && (
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            VIDEO
+                          </span>
+                        )}
                         {scrapedData.authorName && (
                           <span className="text-xs font-semibold text-primary truncate">
                             · {scrapedData.authorName}

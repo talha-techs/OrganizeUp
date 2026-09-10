@@ -67,6 +67,51 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
+  // Direct Video URLs (.mp4, .webm, .ogg, .mov, .m4v)
+  if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(trimmed)) {
+    return {
+      platform: "web",
+      mediaType: "video",
+      mediaUrl: trimmed,
+    };
+  }
+
+  // Vimeo Video
+  const vimeoMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/i);
+  if (vimeoMatch) {
+    const videoId = vimeoMatch[1];
+    return {
+      platform: "web",
+      mediaType: "video",
+      embedId: videoId,
+      embedUrl: `https://player.vimeo.com/video/${videoId}`,
+    };
+  }
+
+  // Loom Video
+  const loomMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?loom\.com\/share\/([a-zA-Z0-9]+)/i);
+  if (loomMatch) {
+    const videoId = loomMatch[1];
+    return {
+      platform: "web",
+      mediaType: "video",
+      embedId: videoId,
+      embedUrl: `https://www.loom.com/embed/${videoId}`,
+    };
+  }
+
+  // TikTok Video
+  const tiktokMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^/]+\/video\/(\d+)/i);
+  if (tiktokMatch) {
+    const videoId = tiktokMatch[1];
+    return {
+      platform: "web",
+      mediaType: "video",
+      embedId: videoId,
+      embedUrl: `https://www.tiktok.com/embed/v2/${videoId}`,
+    };
+  }
+
   // Direct Image URLs
   if (/\.(jpeg|jpg|gif|png|webp|svg)(\?.*)?$/i.test(trimmed)) {
     return {
@@ -122,6 +167,8 @@ const scrapeMetadata = async (req, res) => {
     let finalTitle = "";
     let finalDescription = "";
     let finalImage = "";
+    let directVideoUrl = "";
+    let directPosterUrl = "";
     let siteName = "";
     let author = "";
     let finalUrl = url;
@@ -147,10 +194,25 @@ const scrapeMetadata = async (req, res) => {
             author = `${vxData.user_name || username} (@${vxData.user_screen_name || username})`;
             siteName = "X (Twitter)";
             if (vxData.media_extended && vxData.media_extended.length > 0) {
-              finalImage =
-                vxData.media_extended[0].thumbnail_url ||
-                vxData.media_extended[0].url;
+              const videoItem = vxData.media_extended.find(
+                (m) => m.type === "video" || m.type === "gif",
+              );
+              if (videoItem) {
+                detected.mediaType = "video";
+                directVideoUrl = videoItem.url;
+                directPosterUrl = videoItem.thumbnail_url || "";
+                finalImage = directPosterUrl || directVideoUrl;
+              } else {
+                finalImage =
+                  vxData.media_extended[0].thumbnail_url ||
+                  vxData.media_extended[0].url;
+              }
             } else if (vxData.mediaURLs && vxData.mediaURLs.length > 0) {
+              const mp4Url = vxData.mediaURLs.find((u) => /\.(mp4|webm|m4v)/i.test(u));
+              if (mp4Url) {
+                detected.mediaType = "video";
+                directVideoUrl = mp4Url;
+              }
               finalImage = vxData.mediaURLs[0];
             } else if (vxData.user_profile_image_url) {
               finalImage = vxData.user_profile_image_url;
@@ -238,6 +300,44 @@ const scrapeMetadata = async (req, res) => {
           html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
         if (ogImgMatch) finalImage = ogImgMatch[1].trim();
 
+        // Extract og:video / og:video:url / og:video:secure_url / twitter:player:stream
+        const ogVideoMatch =
+          html.match(/<meta[^>]+property=["']og:video(?:(?::secure)?_url)?["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?:(?::secure)?_url)?["']/i) ||
+          html.match(/<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/i);
+        if (ogVideoMatch && !directVideoUrl) {
+          const ogVid = ogVideoMatch[1].trim().replace(/&amp;/g, "&");
+          if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(ogVid) || ogVid.includes("video")) {
+            directVideoUrl = ogVid;
+            detected.mediaType = "video";
+            if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
+          }
+        }
+
+        // Extract twitter:player or og:video embed iframe
+        const ogPlayerMatch =
+          html.match(/<meta[^>]+name=["']twitter:player["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+property=["']twitter:player["'][^>]+content=["']([^"']+)["']/i);
+        if (ogPlayerMatch && !detected.embedUrl && !directVideoUrl) {
+          const playerUrl = ogPlayerMatch[1].trim().replace(/&amp;/g, "&");
+          if (/^https?:\/\//i.test(playerUrl)) {
+            detected.embedUrl = playerUrl;
+            detected.mediaType = "video";
+          }
+        }
+
+        // Extract HTML5 <video><source src="..."> if available
+        if (!directVideoUrl) {
+          const videoTagMatch =
+            html.match(/<video[^>]*>[\s\S]*?<source[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v)[^"']*)["']/i) ||
+            html.match(/<video[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v)[^"']*)["']/i);
+          if (videoTagMatch) {
+            directVideoUrl = videoTagMatch[1].trim().replace(/&amp;/g, "&");
+            detected.mediaType = "video";
+            if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
+          }
+        }
+
         // Extract og:url if present
         const ogUrlMatch =
           html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i) ||
@@ -288,6 +388,12 @@ const scrapeMetadata = async (req, res) => {
     if (finalImage) {
       finalImage = finalImage.replace(/&amp;/g, "&");
     }
+    if (directPosterUrl) {
+      directPosterUrl = directPosterUrl.replace(/&amp;/g, "&");
+    }
+    if (directVideoUrl) {
+      directVideoUrl = directVideoUrl.replace(/&amp;/g, "&");
+    }
 
     // Heuristics for title fallback
     if (!finalTitle) {
@@ -299,6 +405,11 @@ const scrapeMetadata = async (req, res) => {
       }
     }
 
+    const resolvedMediaType =
+      detected.mediaType === "video" || directVideoUrl || detected.embedUrl
+        ? "video"
+        : detected.mediaType || "article";
+
     return res.json({
       success: true,
       data: {
@@ -307,11 +418,12 @@ const scrapeMetadata = async (req, res) => {
         title: finalTitle,
         description: finalDescription,
         rawContent: finalDescription,
-        thumbnailUrl: finalImage,
-        mediaUrl: finalImage,
+        thumbnailUrl: directPosterUrl || finalImage,
+        mediaUrl: directVideoUrl || detected.mediaUrl || finalImage,
         siteName: siteName || detected.platform,
         authorName: author,
         ...detected,
+        mediaType: resolvedMediaType,
       },
     });
   } catch (error) {
@@ -512,11 +624,32 @@ const createCapture = async (req, res) => {
       if (detected.mediaUrl) mediaUrl = detected.mediaUrl;
     }
 
+    // Auto-promote mediaType to "video" if video stream, video URL, or video platform detected
+    const isVideoFile =
+      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(mediaUrl) ||
+      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(sourceUrl) ||
+      (typeof mediaUrl === "string" && mediaUrl.includes("video.twimg.com"));
+
+    if (isVideoFile || ["youtube"].includes(platform) || rawMediaType === "video") {
+      mediaType = "video";
+    }
+
     // Ensure mediaUrl and thumbnailUrl are synced and unescaped
-    if (!mediaUrl && thumbnailUrl) mediaUrl = thumbnailUrl;
-    if (!thumbnailUrl && mediaUrl) thumbnailUrl = mediaUrl;
     if (typeof mediaUrl === "string") mediaUrl = mediaUrl.replace(/&amp;/g, "&");
     if (typeof thumbnailUrl === "string") thumbnailUrl = thumbnailUrl.replace(/&amp;/g, "&");
+
+    // Clean up if an mp4 file was passed as thumbnailUrl
+    if (thumbnailUrl && /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(thumbnailUrl)) {
+      if (!mediaUrl) mediaUrl = thumbnailUrl;
+      thumbnailUrl = "";
+    }
+
+    if (!mediaUrl && thumbnailUrl) {
+      mediaUrl = thumbnailUrl;
+    }
+    if (!thumbnailUrl && mediaUrl && !isVideoFile) {
+      thumbnailUrl = mediaUrl;
+    }
 
     // Default fallback platform
     if (!platform) {
@@ -622,6 +755,10 @@ const updateCapture = async (req, res) => {
       status,
       authorName,
       rawContent,
+      mediaUrl,
+      thumbnailUrl,
+      mediaType: updateMediaType,
+      embedUrl,
     } = req.body;
 
     if (title !== undefined) capture.title = title.trim();
@@ -630,6 +767,10 @@ const updateCapture = async (req, res) => {
     if (rawContent !== undefined) capture.rawContent = rawContent.trim();
     if (priority !== undefined) capture.priority = priority;
     if (status !== undefined) capture.status = status;
+    if (mediaUrl !== undefined) capture.mediaUrl = mediaUrl;
+    if (thumbnailUrl !== undefined) capture.thumbnailUrl = thumbnailUrl;
+    if (updateMediaType !== undefined) capture.mediaType = updateMediaType;
+    if (embedUrl !== undefined) capture.embedUrl = embedUrl;
 
     if (tags !== undefined) {
       if (Array.isArray(tags)) {

@@ -38,6 +38,10 @@ import {
   openQuickCapture,
 } from '../../redux/slices/captureSlice';
 
+const isVideoUrl = (url) =>
+  typeof url === 'string' &&
+  (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url) || url.includes('video.twimg.com'));
+
 const CapturesPage = () => {
   const dispatch = useDispatch();
   const { captures, stats, loading } = useSelector((state) => state.captures);
@@ -413,32 +417,58 @@ const CapturesPage = () => {
                 {/* Top Media / Player / Preview Area */}
 
                 {/* 1. Instagram Reel Embed Player (Playable in-app) */}
-                {capture.platform === 'instagram' && capture.embedUrl && (
-                  <div className="w-full bg-black/40 relative aspect-[9/14] max-h-96 overflow-hidden flex items-center justify-center">
-                    <iframe
-                      src={capture.embedUrl}
-                      className="w-full h-full border-0"
-                      allowTransparency="true"
-                      allow="encrypted-media"
-                      title={capture.title || 'Instagram Reel'}
-                      loading="lazy"
-                    />
-                  </div>
+                {capture.platform === 'instagram' && (
+                  isVideoUrl(capture.mediaUrl) ? (
+                    <div className="w-full bg-black relative aspect-[9/16] max-h-[440px] overflow-hidden flex items-center justify-center border-b border-subtle">
+                      <video
+                        src={capture.mediaUrl}
+                        poster={capture.thumbnailUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : capture.embedUrl ? (
+                    <div className="w-full bg-black/40 relative aspect-[9/14] max-h-96 overflow-hidden flex items-center justify-center">
+                      <iframe
+                        src={capture.embedUrl}
+                        className="w-full h-full border-0"
+                        allowTransparency="true"
+                        allow="encrypted-media"
+                        title={capture.title || 'Instagram Reel'}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null
                 )}
 
                 {/* 2. Facebook Video Player (Playable in-app) */}
-                {capture.platform === 'facebook' && capture.embedUrl && (
-                  <div className="w-full bg-black/40 relative aspect-video overflow-hidden flex items-center justify-center">
-                    <iframe
-                      src={capture.embedUrl}
-                      className="w-full h-full border-0"
-                      scrolling="no"
-                      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                      allowFullScreen={true}
-                      title={capture.title || 'Facebook Video'}
-                      loading="lazy"
-                    />
-                  </div>
+                {capture.platform === 'facebook' && (
+                  isVideoUrl(capture.mediaUrl) ? (
+                    <div className="w-full bg-black relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
+                      <video
+                        src={capture.mediaUrl}
+                        poster={capture.thumbnailUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : capture.embedUrl ? (
+                    <div className="w-full bg-black/40 relative aspect-video overflow-hidden flex items-center justify-center">
+                      <iframe
+                        src={capture.embedUrl}
+                        className="w-full h-full border-0"
+                        scrolling="no"
+                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                        allowFullScreen={true}
+                        title={capture.title || 'Facebook Video'}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null
                 )}
 
                 {/* 3. YouTube Embed Video (Playable in-app) */}
@@ -454,21 +484,44 @@ const CapturesPage = () => {
                   </div>
                 )}
 
-                {/* 4. Web Image, Article Banner, or Uploaded Screenshot */}
-                {['web_image', 'web', 'other'].includes(capture.platform) && (capture.mediaUrl || capture.thumbnailUrl) && (
-                  <div
-                    onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
-                    className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
-                  >
-                    <img
-                      src={capture.mediaUrl || capture.thumbnailUrl}
-                      alt={capture.title}
-                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
-                      Click to Enlarge Image
+                {/* 4. Web Image, Article Banner, or Direct Video Player */}
+                {['web_image', 'web', 'other'].includes(capture.platform) && (
+                  (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                    <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
+                      <video
+                        src={capture.mediaUrl}
+                        poster={capture.thumbnailUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-contain"
+                      />
                     </div>
-                  </div>
+                  ) : capture.embedUrl ? (
+                    <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle">
+                      <iframe
+                        src={capture.embedUrl}
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                        title={capture.title || 'Embedded Video'}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                    <div
+                      onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                      className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                    >
+                      <img
+                        src={capture.mediaUrl || capture.thumbnailUrl}
+                        alt={capture.title}
+                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
+                        Click to Enlarge Image
+                      </div>
+                    </div>
+                  ) : null
                 )}
 
                 {/* 5. WhatsApp Chat Bubble Card */}
@@ -501,8 +554,29 @@ const CapturesPage = () => {
                 {/* 6. LinkedIn Interactive Embed or Image Card */}
                 {capture.platform === 'linkedin' && (
                   <>
-                    {/* Media Display: Interactive Embed if expanded/only option, else High-Res Visual Banner */}
-                    {capture.embedUrl && (expandedEmbeds[capture._id] || !(capture.mediaUrl || capture.thumbnailUrl)) ? (
+                    {/* Media Display: Interactive Embed if expanded, else Direct Video if video stream, else High-Res Visual Banner */}
+                    {expandedEmbeds[capture._id] ? (
+                      <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
+                        <iframe
+                          src={capture.embedUrl}
+                          className="w-full h-full border-0"
+                          allowFullScreen={true}
+                          title={capture.title || 'LinkedIn Post'}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                      <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
+                        <video
+                          src={capture.mediaUrl}
+                          poster={capture.thumbnailUrl}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
                       <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
                         <iframe
                           src={capture.embedUrl}
@@ -545,9 +619,9 @@ const CapturesPage = () => {
                             <button
                               onClick={() => toggleEmbed(capture._id)}
                               className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/40 hover:bg-sky-800/60 text-sky-300 transition-colors cursor-pointer border border-sky-700/40"
-                              title={expandedEmbeds[capture._id] ? 'Show Image Banner' : 'View Live Interactive Post'}
+                              title={expandedEmbeds[capture._id] ? 'Show Video/Banner' : 'View Live Interactive Post'}
                             >
-                              {expandedEmbeds[capture._id] ? 'Show Banner' : 'Interactive'}
+                              {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
                             </button>
                           )}
                           {capture.rawContent && (
@@ -571,11 +645,32 @@ const CapturesPage = () => {
                   </>
                 )}
 
-                {/* 7. Twitter / X Interactive Embed or Image Card */}
+                {/* 7. Twitter / X Interactive Embed, Direct Video Player, or Image Card */}
                 {capture.platform === 'twitter' && (
                   <>
-                    {/* Media Display: Interactive Embed if expanded/only option, else High-Res Visual Banner */}
-                    {capture.embedUrl && (expandedEmbeds[capture._id] || !(capture.mediaUrl || capture.thumbnailUrl)) ? (
+                    {/* Media Display: Direct Video Player, Interactive Embed, or High-Res Image */}
+                    {expandedEmbeds[capture._id] ? (
+                      <div className="w-full bg-[#000000] relative h-[480px] overflow-hidden border-b border-subtle flex items-center justify-center">
+                        <iframe
+                          src={capture.embedUrl}
+                          className="w-full h-full border-0"
+                          allowFullScreen={true}
+                          title={capture.title || 'X Post'}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                      <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
+                        <video
+                          src={capture.mediaUrl}
+                          poster={capture.thumbnailUrl}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
                       <div className="w-full bg-[#000000] relative h-[480px] overflow-hidden border-b border-subtle flex items-center justify-center">
                         <iframe
                           src={capture.embedUrl}
@@ -614,13 +709,13 @@ const CapturesPage = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {capture.embedUrl && (capture.mediaUrl || capture.thumbnailUrl) && (
+                          {capture.embedUrl && (
                             <button
                               onClick={() => toggleEmbed(capture._id)}
                               className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors cursor-pointer border border-zinc-700/50"
-                              title={expandedEmbeds[capture._id] ? 'Show Image Banner' : 'View Live Interactive Post'}
+                              title={expandedEmbeds[capture._id] ? 'Show Video/Banner' : 'View Live Interactive Post'}
                             >
-                              {expandedEmbeds[capture._id] ? 'Show Banner' : 'Interactive'}
+                              {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
                             </button>
                           )}
                           {capture.rawContent && (
@@ -649,12 +744,19 @@ const CapturesPage = () => {
                   <div className="space-y-2">
                     {/* Platform Tag & Priority */}
                     <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider border ${meta.bg}`}
-                      >
-                        {meta.icon}
-                        <span>{meta.label}</span>
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider border ${meta.bg}`}
+                        >
+                          {meta.icon}
+                          <span>{meta.label}</span>
+                        </span>
+                        {(capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            Video
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-1.5">
                         {/* Priority Badge */}
