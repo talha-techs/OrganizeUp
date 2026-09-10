@@ -4,8 +4,98 @@ const Course = require("../models/Course");
 const YoutubePlaylist = require("../models/YoutubePlaylist");
 const SubSection = require("../models/SubSection");
 const CapturedResource = require("../models/CapturedResource");
+const CustomSection = require("../models/CustomSection");
 const { generateToken } = require("../middleware/auth");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+
+// Calculate consecutive streak statistics from a set of YYYY-MM-DD date strings
+function calculateStreaks(daysSet) {
+  const days = Array.from(daysSet).sort();
+  if (days.length === 0) return { currentStreak: 0, maxStreak: 0 };
+
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  let maxStreak = 0;
+  let running = 0;
+  let prevDate = null;
+
+  for (const dayStr of days) {
+    const cur = new Date(dayStr + "T00:00:00Z");
+    if (prevDate) {
+      const diffDays = Math.round((cur - prevDate) / 86400000);
+      if (diffDays === 1) {
+        running++;
+      } else if (diffDays > 1) {
+        running = 1;
+      }
+    } else {
+      running = 1;
+    }
+    prevDate = cur;
+    if (running > maxStreak) maxStreak = running;
+  }
+
+  // Current streak (must terminate on today or yesterday)
+  let currentStreak = 0;
+  const lastDay = days[days.length - 1];
+  if (lastDay === today || lastDay === yesterday) {
+    let checkDate = new Date(lastDay + "T00:00:00Z");
+    currentStreak = 1;
+    for (let i = days.length - 2; i >= 0; i--) {
+      const prev = new Date(days[i] + "T00:00:00Z");
+      const diffDays = Math.round((checkDate - prev) / 86400000);
+      if (diffDays === 1) {
+        currentStreak++;
+        checkDate = prev;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { currentStreak, maxStreak: Math.max(maxStreak, currentStreak) };
+}
+
+// Record today's login / activity and backfill any historical activity timestamps
+async function recordUserActivity(userId) {
+  try {
+    const user = await User.findById(userId);
+    if (!user) return null;
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const daysSet = new Set(user.activityDays || []);
+    daysSet.add(todayStr);
+
+    // Backfill historical activity dates if activityDays was empty or small
+    if (daysSet.size <= 2) {
+      (user.videoProgress || []).forEach((vp) => {
+        if (vp.lastWatched) daysSet.add(new Date(vp.lastWatched).toISOString().split("T")[0]);
+      });
+      (user.readingProgress || []).forEach((rp) => {
+        if (rp.lastRead) daysSet.add(new Date(rp.lastRead).toISOString().split("T")[0]);
+      });
+      (user.courseProgress || []).forEach((cp) => {
+        if (cp.lastAccessed) daysSet.add(new Date(cp.lastAccessed).toISOString().split("T")[0]);
+      });
+      if (user.createdAt) {
+        daysSet.add(new Date(user.createdAt).toISOString().split("T")[0]);
+      }
+    }
+
+    const { currentStreak, maxStreak } = calculateStreaks(daysSet);
+    user.activityDays = Array.from(daysSet).sort();
+    user.currentStreak = currentStreak;
+    user.maxStreak = Math.max(user.maxStreak || 0, maxStreak);
+
+    await user.save();
+    return user;
+  } catch (err) {
+    console.error("recordUserActivity error:", err.message);
+    return null;
+  }
+}
+
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -148,6 +238,9 @@ const setCookie = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    // Asynchronously ensure today's activity is marked
+    recordUserActivity(req.user._id).catch(() => {});
+
     res.json({
       user: {
         _id: user._id,
@@ -155,6 +248,9 @@ const getMe = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        activityDays: user.activityDays || [],
+        currentStreak: user.currentStreak || 0,
+        maxStreak: user.maxStreak || 0,
         whatsappPhoneNumber: user.whatsappPhoneNumber || "",
         videoProgress: user.videoProgress || [],
         readingProgress: user.readingProgress || [],
@@ -452,6 +548,171 @@ const getUserStats = async (req, res) => {
   }
 };
 
+// @desc    Get user dashboard hub data, streak calendar, and in-progress shelf
+// @route   GET /api/auth/dashboard
+const getDashboardData = async (req, res) => {
+  try {
+    // 1. Record activity for today and update streaks
+    const user = await recordUserActivity(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 2. Counts for the 4 core pillars
+    const [booksCount, coursesCount, capturesCount, sectionsCount] = await Promise.all([
+      Book.countDocuments({
+        $or: [{ addedBy: user._id }, { visibility: "public" }],
+      }),
+      Course.countDocuments({
+        $or: [{ addedBy: user._id }, { visibility: "public" }],
+      }),
+      CapturedResource.countDocuments({
+        user: user._id,
+        status: { $ne: "archived" },
+      }),
+      CustomSection.countDocuments({
+        addedBy: user._id,
+      }),
+    ]);
+
+    // 3. Continue Learning Shelf
+    // In-progress books:
+    const inProgressBookIds = (user.readingProgress || [])
+      .filter((rp) => !rp.completed && rp.progress > 0 && rp.progress < 100)
+      .sort((a, b) => new Date(b.lastRead) - new Date(a.lastRead))
+      .slice(0, 4)
+      .map((rp) => rp.bookId);
+
+    const inProgressBooks = await Book.find({ _id: { $in: inProgressBookIds } })
+      .select("title author type coverImage coverImageId totalPages")
+      .lean();
+
+    const continueBooks = inProgressBooks.map((b) => {
+      const rp = (user.readingProgress || []).find(
+        (r) => r.bookId && r.bookId.toString() === b._id.toString(),
+      );
+      return {
+        _id: b._id,
+        title: b.title,
+        author: b.author,
+        type: b.type,
+        coverImage: b.coverImage,
+        coverImageId: b.coverImageId,
+        progress: rp ? rp.progress : 0,
+        currentPage: rp ? rp.currentPage : 1,
+        totalPages: rp?.totalPages || b.totalPages || 0,
+        lastActive: rp?.lastRead || new Date(),
+        link: `/books/${b._id}`,
+      };
+    });
+
+    // In-progress courses:
+    const inProgressCourseIds = (user.courseProgress || [])
+      .filter((cp) => !cp.completed && cp.progress > 0 && cp.progress < 100)
+      .sort((a, b) => new Date(b.lastAccessed) - new Date(a.lastAccessed))
+      .slice(0, 3)
+      .map((cp) => cp.courseId);
+
+    const inProgressCourses = await Course.find({ _id: { $in: inProgressCourseIds } })
+      .select("title category driveLink")
+      .populate("category", "name")
+      .lean();
+
+    const continueCourses = inProgressCourses.map((c) => {
+      const cp = (user.courseProgress || []).find(
+        (p) => p.courseId && p.courseId.toString() === c._id.toString(),
+      );
+      return {
+        _id: c._id,
+        title: c.title,
+        category: c.category?.name || "Course",
+        progress: cp ? cp.progress : 0,
+        lastActive: cp?.lastAccessed || new Date(),
+        link: `/courses/${c._id}`,
+      };
+    });
+
+    // 4. Actionable Reminders:
+    const dueReminders = await CapturedResource.find({
+      user: user._id,
+      reminderAt: { $ne: null },
+      status: { $nin: ["archived", "completed"] },
+    })
+      .sort({ reminderAt: 1 })
+      .limit(4)
+      .select("title platform reminderAt url isPriority notes")
+      .lean();
+
+    // 5. Recent Learning Reflections:
+    const recentNotes = [];
+    (user.videoProgress || []).forEach((vp) => {
+      if (vp.note && vp.note.trim()) {
+        recentNotes.push({
+          id: vp._id ? vp._id.toString() : `${vp.contentType}_${vp.videoId}`,
+          sourceTitle: vp.title || "Video Reflection",
+          type: vp.contentType || "book",
+          content: vp.note.trim(),
+          date: vp.lastWatched || new Date(),
+        });
+      }
+    });
+
+    const subSections = await SubSection.find({ addedBy: user._id, type: "note" })
+      .sort({ updatedAt: -1 })
+      .limit(3)
+      .lean();
+
+    subSections.forEach((s) => {
+      if (s.content && s.content.trim()) {
+        recentNotes.push({
+          id: s._id.toString(),
+          sourceTitle: s.name,
+          type: "notebook",
+          content: s.content.trim(),
+          date: s.updatedAt || s.createdAt || new Date(),
+        });
+      }
+    });
+
+    recentNotes.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // 6. Active days this month:
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const activeDaysThisMonth = (user.activityDays || []).filter((d) =>
+      d.startsWith(currentYearMonth),
+    ).length;
+
+    res.json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+      activity: {
+        activityDays: user.activityDays || [],
+        currentStreak: user.currentStreak || 0,
+        maxStreak: user.maxStreak || 0,
+        activeDaysThisMonth,
+      },
+      counts: {
+        books: booksCount,
+        courses: coursesCount,
+        captures: capturesCount,
+        sections: sectionsCount,
+      },
+      continueLearning: {
+        books: continueBooks,
+        courses: continueCourses,
+      },
+      dueReminders,
+      recentNotes: recentNotes.slice(0, 4),
+    });
+  } catch (error) {
+    console.error("Get dashboard data error:", error);
+    res.status(500).json({ message: "Failed to load dashboard data" });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -462,4 +723,5 @@ module.exports = {
   markNotificationsRead,
   setCookie,
   getUserStats,
+  getDashboardData,
 };

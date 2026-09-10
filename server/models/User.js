@@ -134,6 +134,10 @@ const userSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+    // Activity tracking & daily streaks (stored as YYYY-MM-DD strings)
+    activityDays: [{ type: String }],
+    currentStreak: { type: Number, default: 0 },
+    maxStreak: { type: Number, default: 0 },
   },
   {
     timestamps: true,
