@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IoSchoolOutline, IoAdd, IoArrowBack, IoOpenOutline, IoGridOutline, IoGlobeOutline, IoCloudDownloadOutline } from 'react-icons/io5';
 import { fetchCourses, fetchCategories, createCourse, deleteCourse, deleteCategory, createCategory, importToCourse } from '../redux/slices/courseSlice';
+import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
 import api from '../utils/api';
@@ -20,6 +21,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 const CoursesPage = () => {
   useDocumentTitle('Courses');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [viewMode, setViewMode] = useState('category'); // 'category' | 'all'
   const [showForm, setShowForm] = useState(false);
   const [editCourse, setEditCourse] = useState(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -61,6 +63,16 @@ const CoursesPage = () => {
       setDeleteCourseId(null);
     } else {
       toast.error(result.payload || 'Failed to delete course');
+    }
+  };
+
+  const handleUnsaveCourse = async (courseId) => {
+    const result = await dispatch(removeFromLibrary(courseId));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Removed from your courses');
+      dispatch(fetchCourses());
+    } else {
+      toast.error(result.payload || 'Failed to remove from library');
     }
   };
 
@@ -130,8 +142,104 @@ const CoursesPage = () => {
         </div>
       </motion.div>
 
-      {/* Category View (when no category selected) */}
+      {/* Category / All Courses toggle tabs */}
+      {!selectedCategory && (
+        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
+          <button
+            onClick={() => setViewMode('category')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
+              viewMode === 'category'
+                ? 'bg-accent-subtle text-accent border border-accent/20'
+                : 'text-secondary hover:text-primary hover:bg-surface-raised'
+            }`}
+          >
+            <IoGridOutline size={16} /> By Category
+          </button>
+          <button
+            onClick={() => setViewMode('all')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
+              viewMode === 'all'
+                ? 'bg-accent-subtle text-accent border border-accent/20'
+                : 'text-secondary hover:text-primary hover:bg-surface-raised'
+            }`}
+          >
+            <IoSchoolOutline size={16} /> All Courses ({courses.length})
+          </button>
+        </div>
+      )}
+
+      {/* Category View or All Courses View (when no category selected) */}
       {!selectedCategory ? (
+        viewMode === 'all' ? (
+          <div>
+            {isLoading ? (
+              <LoadingSpinner text="Loading courses..." />
+            ) : courses.length === 0 ? (
+              <div className="text-center py-20">
+                <IoSchoolOutline className="mx-auto text-muted mb-4" size={48} />
+                <h3 className="text-lg text-secondary mb-2">No courses yet</h3>
+                <p className="text-sm text-muted">
+                  {isAdmin ? 'Click "Add Course" to create a course' : 'Add your own courses or save courses from Explore'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <AnimatePresence>
+                  {courses.map((course) => (
+                    <ResourceCard
+                      key={course._id}
+                      title={course.title}
+                      subtitle={course.category?.name}
+                      image={course.bannerImage}
+                      description={course.description}
+                      isAdmin={isAdmin}
+                      ownerId={course.addedBy}
+                      visibility={course.visibility}
+                      isSaved={course.isSaved}
+                      onUnsave={() => handleUnsaveCourse(course._id)}
+                      onEdit={() => { setEditCourse(course); setShowForm(true); }}
+                      onDelete={() => handleDeleteCourse(course._id)}
+                      onClick={() => navigate(`/courses/${course._id}`)}
+                      onComment={() => openComments(course)}
+                      commentCount={course.commentCount}
+                      onRequestPublish={async () => {
+                        const result = await dispatch(requestPublish({ contentType: 'course', contentId: course._id }));
+                        if (result.meta.requestStatus === 'fulfilled') {
+                          toast.success('Publish request sent!');
+                          dispatch(fetchCourses());
+                        } else {
+                          toast.error(result.payload || 'Failed to request publish');
+                        }
+                      }}
+                      onToggleVisibility={isAdmin ? async () => {
+                        const newVis = course.visibility === 'public' ? 'private' : 'public';
+                        const result = await dispatch(toggleVisibility({ contentType: 'course', contentId: course._id, visibility: newVis }));
+                        if (result.meta.requestStatus === 'fulfilled') {
+                          toast.success(`Course set to ${newVis}`);
+                          dispatch(fetchCourses());
+                        }
+                      } : undefined}
+                      onMakePrivate={async () => {
+                        try {
+                          await api.put('/content/toggle-visibility', { contentType: 'course', contentId: course._id, visibility: 'private' });
+                          toast.success('Course set to private');
+                          dispatch(fetchCourses());
+                        } catch (err) {
+                          toast.error(err.response?.data?.message || 'Failed to update');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5 mt-3 text-xs text-accent">
+                        <IoOpenOutline size={12} />
+                        <span>View Course</span>
+                      </div>
+                    </ResourceCard>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        ) : (
         <div>
           {isLoading ? (
             <LoadingSpinner text="Loading categories..." />
@@ -178,6 +286,7 @@ const CoursesPage = () => {
             </div>
           )}
         </div>
+        )
       ) : (
         /* Courses in selected category */
         <div>
@@ -201,6 +310,8 @@ const CoursesPage = () => {
                     isAdmin={isAdmin}
                     ownerId={course.addedBy}
                     visibility={course.visibility}
+                    isSaved={course.isSaved}
+                    onUnsave={() => handleUnsaveCourse(course._id)}
                     onEdit={() => { setEditCourse(course); setShowForm(true); }}
                     onDelete={() => handleDeleteCourse(course._id)}
                     onClick={() => navigate(`/courses/${course._id}`)}

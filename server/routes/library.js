@@ -13,6 +13,7 @@ router.get("/", protect, getLibrary);
 router.get("/check/:contentType/:contentId", protect, checkInLibrary);
 router.post("/:contentType/:contentId", protect, addToLibrary);
 router.put("/:id/notes", protect, updateNotes);
+router.delete("/:contentType/:contentId", protect, removeFromLibrary);
 router.delete("/:id", protect, removeFromLibrary);
 
 module.exports = router;

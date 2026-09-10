@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IoConstructOutline, IoAdd, IoOpenOutline, IoGlobeOutline, IoCloudDownloadOutline } from 'react-icons/io5';
 import { fetchTools, createTool, deleteTool, importToTool } from '../redux/slices/toolSlice';
+import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
 import api from '../utils/api';
@@ -56,6 +57,16 @@ const ToolsPage = () => {
     }
   };
 
+  const handleUnsaveTool = async (toolId) => {
+    const result = await dispatch(removeFromLibrary(toolId));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Removed from your tricks');
+      dispatch(fetchTools());
+    } else {
+      toast.error(result.payload || 'Failed to remove from library');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <motion.div
@@ -99,6 +110,8 @@ const ToolsPage = () => {
                 isAdmin={isAdmin}
                 ownerId={tool.addedBy}
                 visibility={tool.visibility}
+                isSaved={tool.isSaved}
+                onUnsave={() => handleUnsaveTool(tool._id)}
                 onEdit={() => { setEditTool(tool); setShowForm(true); }}
                 onDelete={() => handleDelete(tool._id)}
                 onClick={() => navigate(`/tools/${tool._id}`)}

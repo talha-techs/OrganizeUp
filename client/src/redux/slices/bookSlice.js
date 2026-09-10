@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+import { removeFromLibrary } from "./librarySlice";
 
 export const fetchBooks = createAsyncThunk(
   "books/fetchBooks",
@@ -297,6 +298,14 @@ const bookSlice = createSlice({
       .addCase(importDriveBook.rejected, (state, action) => {
         state.isImporting = false;
         state.error = action.payload;
+      })
+      .addCase(removeFromLibrary.fulfilled, (state, action) => {
+        const id = action.payload?.contentId || action.payload?.id || action.payload;
+        if (id) {
+          state.books = state.books.filter(
+            (b) => !(b.isSaved && (String(b._id) === String(id) || String(b.libraryEntryId) === String(id)))
+          );
+        }
       });
   },
 });

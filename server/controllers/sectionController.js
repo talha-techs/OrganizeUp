@@ -1,25 +1,56 @@
 const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
+const UserLibrary = require("../models/UserLibrary");
 
-// @desc    Get all custom sections for current user (+ public ones)
-// @route   GET /api/sections
+// @desc    Get all custom sections for current user (+ saved from library; admin sees all)
+// @route   GET /api/sections?mine=true
 const getSections = async (req, res) => {
   try {
     const isAdmin = req.user.role === "admin";
+    const savedSectionIdMap = new Map();
 
     let filter;
-    if (isAdmin) {
-      filter = {};
-    } else {
-      // Non-admin users only see their own sections
+    if (req.query.mine === "true") {
       filter = { addedBy: req.user._id };
+    } else if (isAdmin) {
+      filter = {};
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "section",
+      }).select("contentId _id");
+      saved.forEach((s) => savedSectionIdMap.set(s.contentId.toString(), s._id));
+    } else {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "section",
+      }).select("contentId _id");
+      const savedIds = saved.map((s) => s.contentId);
+      saved.forEach((s) => savedSectionIdMap.set(s.contentId.toString(), s._id));
+
+      filter = {
+        $or: [{ addedBy: req.user._id }, { _id: { $in: savedIds } }],
+      };
     }
 
     const sections = await CustomSection.find(filter)
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
-    res.json({ sections });
+    const sectionsWithSaved = sections.map((s) => {
+      const obj = s.toObject();
+      const sIdStr = s._id.toString();
+      const isOwner = s.addedBy && String(s.addedBy._id || s.addedBy) === String(req.user._id);
+      if (savedSectionIdMap.has(sIdStr)) {
+        obj.isSaved = true;
+        obj.libraryEntryId = savedSectionIdMap.get(sIdStr);
+      } else {
+        obj.isSaved = false;
+      }
+      obj.isOwner = isOwner;
+      return obj;
+    });
+
+    res.json({ sections: sectionsWithSaved });
   } catch (error) {
     console.error("Get sections error:", error);
     res.status(500).json({ message: "Server error" });
@@ -39,14 +70,24 @@ const getSection = async (req, res) => {
       return res.status(404).json({ message: "Section not found" });
     }
 
-    // Authorization check
-    const isOwner = section.addedBy._id.toString() === req.user._id.toString();
+    const isOwner = section.addedBy && String(section.addedBy._id || section.addedBy) === String(req.user._id);
     const isAdmin = req.user.role === "admin";
-    if (!isOwner && !isAdmin && section.visibility !== "public") {
+    const savedEntry = await UserLibrary.findOne({
+      user: req.user._id,
+      contentType: "section",
+      contentId: section._id,
+    });
+
+    if (!isOwner && !isAdmin && section.visibility !== "public" && !savedEntry) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    res.json({ section });
+    const sectionObj = section.toObject();
+    sectionObj.isSaved = !!savedEntry;
+    sectionObj.libraryEntryId = savedEntry?._id || null;
+    sectionObj.isOwner = isOwner;
+
+    res.json({ section: sectionObj });
   } catch (error) {
     console.error("Get section error:", error);
     res.status(500).json({ message: "Server error" });

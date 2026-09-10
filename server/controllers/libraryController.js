@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const UserLibrary = require("../models/UserLibrary");
 const Book = require("../models/Book");
 const Course = require("../models/Course");
@@ -113,20 +114,34 @@ const addToLibrary = async (req, res) => {
 };
 
 // @desc    Remove an item from user's library
-// @route   DELETE /api/library/:id
+// @route   DELETE /api/library/:id or DELETE /api/library/:contentType/:contentId
 const removeFromLibrary = async (req, res) => {
   try {
+    const targetId = req.params.contentId || req.params.id;
+    if (!mongoose.isValidObjectId(targetId)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+
     const item = await UserLibrary.findOne({
-      _id: req.params.id,
       user: req.user._id,
+      $or: [{ _id: targetId }, { contentId: targetId }],
     });
 
     if (!item) {
       return res.status(404).json({ message: "Item not found in library" });
     }
 
+    const deletedContentId = item.contentId;
+    const deletedLibraryId = item._id;
+    const contentType = item.contentType;
     await item.deleteOne();
-    res.json({ message: "Removed from library" });
+
+    res.json({
+      message: "Removed from library",
+      id: deletedLibraryId,
+      contentId: deletedContentId,
+      contentType,
+    });
   } catch (error) {
     console.error("Remove from library error:", error);
     res.status(500).json({ message: "Server error" });

@@ -1,13 +1,14 @@
 const Course = require("../models/Course");
 const Category = require("../models/Category");
 const User = require("../models/User");
+const UserLibrary = require("../models/UserLibrary");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
 // Escape special regex chars to prevent ReDoS / injection
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// @desc    Get courses (user sees own + public; admin sees all)
-// @route   GET /api/courses?category=categoryId
+// @desc    Get courses (user sees own + saved from library; admin sees all)
+// @route   GET /api/courses?category=categoryId&mine=true
 const getCourses = async (req, res) => {
   try {
     const filter = {};
@@ -15,18 +16,50 @@ const getCourses = async (req, res) => {
       filter.category = req.query.category;
     }
 
-    if (req.user.role !== "admin") {
-      // Non-admin users only see their own courses
+    const savedCourseIdMap = new Map();
+
+    if (req.query.mine === "true") {
       filter.addedBy = req.user._id;
+    } else if (req.user.role === "admin") {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "course",
+      }).select("contentId _id");
+      saved.forEach((s) => savedCourseIdMap.set(s.contentId.toString(), s._id));
+    } else {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "course",
+      }).select("contentId _id");
+      const savedIds = saved.map((s) => s.contentId);
+      saved.forEach((s) => savedCourseIdMap.set(s.contentId.toString(), s._id));
+
+      filter.$or = [
+        { addedBy: req.user._id },
+        { _id: { $in: savedIds } },
+      ];
     }
-    // Admin with no filter sees all courses
 
     const courses = await Course.find(filter)
       .populate("category", "name")
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
-    res.json({ courses });
+    const coursesWithSaved = courses.map((c) => {
+      const obj = c.toObject();
+      const cIdStr = c._id.toString();
+      const isOwner = c.addedBy && String(c.addedBy._id || c.addedBy) === String(req.user._id);
+      if (savedCourseIdMap.has(cIdStr)) {
+        obj.isSaved = true;
+        obj.libraryEntryId = savedCourseIdMap.get(cIdStr);
+      } else {
+        obj.isSaved = false;
+      }
+      obj.isOwner = isOwner;
+      return obj;
+    });
+
+    res.json({ courses: coursesWithSaved });
   } catch (error) {
     console.error("Get courses error:", error);
     res.status(500).json({ message: "Server error" });
@@ -45,15 +78,28 @@ const getCourse = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
+    const isOwner = course.addedBy && String(course.addedBy._id || course.addedBy) === String(req.user._id);
+    const savedEntry = await UserLibrary.findOne({
+      user: req.user._id,
+      contentType: "course",
+      contentId: course._id,
+    });
+
     if (
       req.user.role !== "admin" &&
-      course.addedBy._id.toString() !== req.user._id.toString() &&
-      course.visibility !== "public"
+      !isOwner &&
+      course.visibility !== "public" &&
+      !savedEntry
     ) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    res.json({ course });
+    const courseObj = course.toObject();
+    courseObj.isSaved = !!savedEntry;
+    courseObj.libraryEntryId = savedEntry?._id || null;
+    courseObj.isOwner = isOwner;
+
+    res.json({ course: courseObj });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }

@@ -8,6 +8,8 @@ import {
   IoCloudDownloadOutline,
   IoTrashOutline,
   IoCreateOutline,
+  IoBookmark,
+  IoCloseOutline,
 } from 'react-icons/io5';
 import {
   fetchSections,
@@ -15,6 +17,7 @@ import {
   deleteSection,
   updateSection,
 } from '../redux/slices/sectionSlice';
+import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
 import api from '../utils/api';
@@ -144,6 +147,16 @@ const SectionsPage = () => {
     }
   };
 
+  const handleUnsaveSection = async (sectionId) => {
+    const result = await dispatch(removeFromLibrary(sectionId));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Removed from your sections');
+      dispatch(fetchSections());
+    } else {
+      toast.error(result.payload || 'Failed to remove from library');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -215,6 +228,26 @@ const SectionsPage = () => {
                     >
                       {section.visibility}
                     </div>
+
+                    {/* Saved / Unsave button */}
+                    {section.isSaved && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnsaveSection(section._id);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-400 bg-surface/90 hover:text-red-400 hover:bg-red-500/15 border border-emerald-500/30 hover:border-red-500/30 backdrop-blur-md shadow-md transition-all cursor-pointer group/unsave"
+                          title="Click to unsave from your library"
+                        >
+                          <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={13} />
+                          <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={14} />
+                          <span className="group-hover/unsave:hidden">Saved</span>
+                          <span className="hidden group-hover/unsave:inline">Unsave</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Content */}

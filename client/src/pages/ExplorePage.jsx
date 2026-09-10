@@ -201,8 +201,7 @@ const ExplorePage = () => {
 
   const handleRemoveFromLibrary = useCallback(
     async (contentId) => {
-      const libraryEntryId = savedMapRef.current[String(contentId)];
-      if (!libraryEntryId) return;
+      const libraryEntryId = savedMapRef.current[String(contentId)] || contentId;
       const result = await dispatch(removeFromLibrary(libraryEntryId));
       if (result.meta.requestStatus === 'fulfilled') {
         toast.success('Removed from library');

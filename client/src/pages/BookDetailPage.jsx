@@ -6,8 +6,10 @@ import {
   IoArrowBack, IoPlayCircle, IoPauseCircle, IoCheckmarkCircle,
   IoBookOutline, IoSaveOutline, IoMusicalNote,
   IoPlaySkipBack, IoPlaySkipForward, IoVolumeMediumOutline, IoTrashOutline,
+  IoBookmark, IoBookmarkOutline, IoCloseOutline,
 } from 'react-icons/io5';
 import { fetchBook, fetchBookProgress, updateVideoProgress, updateReadingProgress, clearCurrentBook, removeAudioFromBook } from '../redux/slices/bookSlice';
+import { addToLibrary, removeFromLibrary } from '../redux/slices/librarySlice';
 import { getMe } from '../redux/slices/authSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -254,6 +256,28 @@ const BookDetailPage = () => {
   const isAdmin = user?.role === 'admin';
   const isOwner = user?._id && String(currentBook.addedBy?._id || currentBook.addedBy) === String(user._id);
 
+  const isSavedInLibrary = Boolean(currentBook.isSaved);
+
+  const handleToggleLibrary = async () => {
+    if (isSavedInLibrary) {
+      const result = await dispatch(removeFromLibrary(id));
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Removed from your books');
+        dispatch(fetchBook(id));
+      } else {
+        toast.error(result.payload || 'Failed to remove from library');
+      }
+    } else {
+      const result = await dispatch(addToLibrary({ contentType: 'book', contentId: id }));
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Saved to your books!');
+        dispatch(fetchBook(id));
+      } else {
+        toast.error(result.payload || 'Failed to save to library');
+      }
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Back button */}
@@ -266,16 +290,43 @@ const BookDetailPage = () => {
         <IoArrowBack size={18} /> Back to Books
       </motion.button>
 
-      {/* Book Title */}
+      {/* Book Title & Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8"
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-primary font-display">{currentBook.title}</h1>
-        <p className="text-accent mt-1">{currentBook.author}</p>
-        {currentBook.description && (
-          <p className="text-secondary text-sm mt-3 max-w-2xl">{currentBook.description}</p>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary font-display">{currentBook.title}</h1>
+          <p className="text-accent mt-1">{currentBook.author}</p>
+          {currentBook.description && (
+            <p className="text-secondary text-sm mt-3 max-w-2xl">{currentBook.description}</p>
+          )}
+        </div>
+
+        {!isOwner && (
+          <div className="flex-shrink-0">
+            {isSavedInLibrary ? (
+              <button
+                onClick={handleToggleLibrary}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 bg-surface border border-emerald-500/30 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group/unsave shadow-sm"
+                title="Click to unsave from your books"
+              >
+                <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={14} />
+                <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={15} />
+                <span className="group-hover/unsave:hidden">Saved</span>
+                <span className="hidden group-hover/unsave:inline">Unsave</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleToggleLibrary}
+                className="btn-primary flex items-center gap-1.5 text-xs py-1.5 px-3.5 shadow-sm cursor-pointer"
+              >
+                <IoBookmarkOutline size={14} />
+                <span>Save to Books</span>
+              </button>
+            )}
+          </div>
         )}
       </motion.div>
 

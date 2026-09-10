@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IoBookOutline, IoVideocamOutline, IoDocumentTextOutline, IoMusicalNotesOutline, IoAdd, IoCloudDownloadOutline, IoGlobeOutline } from 'react-icons/io5';
 import { fetchBooks, deleteBook } from '../redux/slices/bookSlice';
+import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
 import api from '../utils/api';
@@ -59,6 +60,16 @@ const BooksPage = () => {
       setDeleteBookId(null);
     } else {
       toast.error(result.payload || 'Failed to delete book');
+    }
+  };
+
+  const handleUnsaveBook = async (bookId) => {
+    const result = await dispatch(removeFromLibrary(bookId));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Removed from your books');
+      dispatch(fetchBooks());
+    } else {
+      toast.error(result.payload || 'Failed to remove from library');
     }
   };
 
@@ -167,6 +178,8 @@ const BooksPage = () => {
                 isAdmin={isAdmin}
                 ownerId={book.addedBy}
                 visibility={book.visibility}
+                isSaved={book.isSaved}
+                onUnsave={() => handleUnsaveBook(book._id)}
                 onEdit={() => handleEdit(book)}
                 onDelete={() => handleDelete(book._id)}
                 onClick={() => navigate(`/books/${book._id}`)}

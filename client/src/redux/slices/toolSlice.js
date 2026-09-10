@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+import { removeFromLibrary } from "./librarySlice";
 
 export const fetchTools = createAsyncThunk(
   "tools/fetchTools",
@@ -180,6 +181,14 @@ const toolSlice = createSlice({
           if (state.currentTool?._id === action.payload.tool._id) {
             state.currentTool = action.payload.tool;
           }
+        }
+      })
+      .addCase(removeFromLibrary.fulfilled, (state, action) => {
+        const id = action.payload?.contentId || action.payload?.id || action.payload;
+        if (id) {
+          state.tools = state.tools.filter(
+            (t) => !(t.isSaved && (String(t._id) === String(id) || String(t.libraryEntryId) === String(id)))
+          );
         }
       });
   },

@@ -1,22 +1,55 @@
 const Tool = require("../models/Tool");
+const UserLibrary = require("../models/UserLibrary");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
-// @desc    Get tools (user sees own + public; admin sees all)
-// @route   GET /api/tools
+// @desc    Get tools (user sees own + saved from library; admin sees all)
+// @route   GET /api/tools?mine=true
 const getTools = async (req, res) => {
   try {
     const filter = {};
-    if (req.user.role !== "admin") {
-      // Non-admin users only see their own tools
+    const savedToolIdMap = new Map();
+
+    if (req.query.mine === "true") {
       filter.addedBy = req.user._id;
+    } else if (req.user.role === "admin") {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "tool",
+      }).select("contentId _id");
+      saved.forEach((s) => savedToolIdMap.set(s.contentId.toString(), s._id));
+    } else {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "tool",
+      }).select("contentId _id");
+      const savedIds = saved.map((s) => s.contentId);
+      saved.forEach((s) => savedToolIdMap.set(s.contentId.toString(), s._id));
+
+      filter.$or = [
+        { addedBy: req.user._id },
+        { _id: { $in: savedIds } },
+      ];
     }
-    // Admin with no filter sees all tools
 
     const tools = await Tool.find(filter)
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
-    res.json({ tools });
+    const toolsWithSaved = tools.map((t) => {
+      const obj = t.toObject();
+      const tIdStr = t._id.toString();
+      const isOwner = t.addedBy && String(t.addedBy._id || t.addedBy) === String(req.user._id);
+      if (savedToolIdMap.has(tIdStr)) {
+        obj.isSaved = true;
+        obj.libraryEntryId = savedToolIdMap.get(tIdStr);
+      } else {
+        obj.isSaved = false;
+      }
+      obj.isOwner = isOwner;
+      return obj;
+    });
+
+    res.json({ tools: toolsWithSaved });
   } catch (error) {
     console.error("Get tools error:", error);
     res.status(500).json({ message: "Server error" });
@@ -35,15 +68,28 @@ const getTool = async (req, res) => {
       return res.status(404).json({ message: "Tool not found" });
     }
 
+    const isOwner = tool.addedBy && String(tool.addedBy._id || tool.addedBy) === String(req.user._id);
+    const savedEntry = await UserLibrary.findOne({
+      user: req.user._id,
+      contentType: "tool",
+      contentId: tool._id,
+    });
+
     if (
       req.user.role !== "admin" &&
-      tool.addedBy._id.toString() !== req.user._id.toString() &&
-      tool.visibility !== "public"
+      !isOwner &&
+      tool.visibility !== "public" &&
+      !savedEntry
     ) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    res.json({ tool });
+    const toolObj = tool.toObject();
+    toolObj.isSaved = !!savedEntry;
+    toolObj.libraryEntryId = savedEntry?._id || null;
+    toolObj.isOwner = isOwner;
+
+    res.json({ tool: toolObj });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }

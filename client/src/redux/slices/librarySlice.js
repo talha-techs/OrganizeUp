@@ -34,8 +34,8 @@ export const removeFromLibrary = createAsyncThunk(
   "library/removeFromLibrary",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/library/${id}`);
-      return id;
+      const { data } = await api.delete(`/library/${id}`);
+      return data && data.id ? data : { id, contentId: id };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to remove from library",
@@ -106,7 +106,13 @@ const librarySlice = createSlice({
         state.error = action.payload;
       })
       .addCase(removeFromLibrary.fulfilled, (state, action) => {
-        state.saved = state.saved.filter((s) => s._id !== action.payload);
+        const removedId = action.payload?.id || (typeof action.payload === 'string' ? action.payload : null);
+        const removedContentId = action.payload?.contentId || null;
+        state.saved = state.saved.filter((s) => {
+          if (removedId && (String(s._id) === String(removedId) || String(s.contentId) === String(removedId))) return false;
+          if (removedContentId && String(s.contentId) === String(removedContentId)) return false;
+          return true;
+        });
       })
       .addCase(addToLibrary.fulfilled, (state, action) => {
         // action.payload = { message, saved } — saved is the raw UserLibrary doc

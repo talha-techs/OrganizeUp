@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { HiPencil, HiTrash } from 'react-icons/hi';
-import { IoGlobeOutline, IoLockClosedOutline, IoTimeOutline, IoRocketOutline, IoEyeOutline, IoEyeOffOutline, IoChatbubbleOutline } from 'react-icons/io5';
+import { IoGlobeOutline, IoLockClosedOutline, IoTimeOutline, IoRocketOutline, IoEyeOutline, IoEyeOffOutline, IoChatbubbleOutline, IoBookmark, IoCloseOutline } from 'react-icons/io5';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import DefaultResourceCover from './DefaultResourceCover';
@@ -16,6 +16,7 @@ const visibilityConfig = {
 const ResourceCard = ({
   title, subtitle, image, description, onEdit, onDelete, onClick,
   isAdmin, isOwner: isOwnerProp, ownerId, visibility,
+  isSaved, onUnsave,
   onRequestPublish, onToggleVisibility, onMakePrivate,
   onComment, commentCount,
   commentSection,  // React node rendered inline at the bottom of the card
@@ -83,15 +84,33 @@ const ResourceCard = ({
         </div>
       )}
 
-      {/* Three dots menu */}
-      {canManage && (
-        <div ref={menuRef} className="absolute top-3 right-3 z-10">
+      {/* Top right actions (Saved / Unsave button + Three dots menu) */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+        {isSaved && onUnsave && (
           <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-            className="p-2 rounded-xl bg-surface/80 backdrop-blur-sm text-secondary hover:text-primary hover:bg-surface-raised transition-all cursor-pointer"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnsave();
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-400 bg-surface/90 hover:text-red-400 hover:bg-red-500/15 border border-emerald-500/30 hover:border-red-500/30 backdrop-blur-md shadow-md transition-all cursor-pointer group/unsave"
+            title="Click to unsave from your library"
           >
-            <BsThreeDotsVertical size={14} />
+            <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={13} />
+            <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={14} />
+            <span className="group-hover/unsave:hidden">Saved</span>
+            <span className="hidden group-hover/unsave:inline">Unsave</span>
           </button>
+        )}
+
+        {canManage && (
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+              className="p-2 rounded-xl bg-surface/80 backdrop-blur-sm text-secondary hover:text-primary hover:bg-surface-raised transition-all cursor-pointer"
+            >
+              <BsThreeDotsVertical size={14} />
+            </button>
 
           <AnimatePresence>
             {menuOpen && (
@@ -143,6 +162,7 @@ const ResourceCard = ({
           </AnimatePresence>
         </div>
       )}
+      </div>
 
       {/* Content */}
       <div onClick={onClick} className="p-4 pb-2">

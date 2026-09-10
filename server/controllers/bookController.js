@@ -1,5 +1,6 @@
 const Book = require("../models/Book");
 const User = require("../models/User");
+const UserLibrary = require("../models/UserLibrary");
 const {
   uploadToGridFS,
   streamFromGridFS,
@@ -7,8 +8,8 @@ const {
   deleteFromGridFS,
 } = require("../config/gridfs");
 
-// @desc    Get books (user sees own + public; admin sees all)
-// @route   GET /api/books?type=video|text|audio
+// @desc    Get books (user sees own + saved from library; admin sees all)
+// @route   GET /api/books?type=video|text|audio&mine=true
 const getBooks = async (req, res) => {
   try {
     const filter = {};
@@ -16,16 +17,49 @@ const getBooks = async (req, res) => {
       filter.type = req.query.type;
     }
 
-    if (req.user.role !== "admin") {
-      // Non-admin users only see their own books
+    const savedBookIdMap = new Map();
+
+    if (req.query.mine === "true") {
       filter.addedBy = req.user._id;
+    } else if (req.user.role === "admin") {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "book",
+      }).select("contentId _id");
+      saved.forEach((s) => savedBookIdMap.set(s.contentId.toString(), s._id));
+    } else {
+      const saved = await UserLibrary.find({
+        user: req.user._id,
+        contentType: "book",
+      }).select("contentId _id");
+      const savedIds = saved.map((s) => s.contentId);
+      saved.forEach((s) => savedBookIdMap.set(s.contentId.toString(), s._id));
+
+      filter.$or = [
+        { addedBy: req.user._id },
+        { _id: { $in: savedIds } },
+      ];
     }
-    // Admin with no filter sees all books
+
     const books = await Book.find(filter)
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
 
-    res.json({ books });
+    const booksWithSaved = books.map((b) => {
+      const obj = b.toObject();
+      const bIdStr = b._id.toString();
+      const isOwner = b.addedBy && String(b.addedBy._id || b.addedBy) === String(req.user._id);
+      if (savedBookIdMap.has(bIdStr)) {
+        obj.isSaved = true;
+        obj.libraryEntryId = savedBookIdMap.get(bIdStr);
+      } else {
+        obj.isSaved = false;
+      }
+      obj.isOwner = isOwner;
+      return obj;
+    });
+
+    res.json({ books: booksWithSaved });
   } catch (error) {
     console.error("Get books error:", error);
     res.status(500).json({ message: "Server error" });
@@ -43,15 +77,30 @@ const getBook = async (req, res) => {
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
-    // Users can only view their own or public content
+
+    const isOwner = book.addedBy && String(book.addedBy._id || book.addedBy) === String(req.user._id);
+    const savedEntry = await UserLibrary.findOne({
+      user: req.user._id,
+      contentType: "book",
+      contentId: book._id,
+    });
+
+    // Users can only view their own or public content, or content saved in their library
     if (
       req.user.role !== "admin" &&
-      book.addedBy._id.toString() !== req.user._id.toString() &&
-      book.visibility !== "public"
+      !isOwner &&
+      book.visibility !== "public" &&
+      !savedEntry
     ) {
       return res.status(403).json({ message: "Not authorized" });
     }
-    res.json({ book });
+
+    const bookObj = book.toObject();
+    bookObj.isSaved = !!savedEntry;
+    bookObj.libraryEntryId = savedEntry?._id || null;
+    bookObj.isOwner = isOwner;
+
+    res.json({ book: bookObj });
   } catch (error) {
     console.error("Get book error:", error);
     res.status(500).json({ message: "Server error" });

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+import { removeFromLibrary } from "./librarySlice";
 
 // Universal drive scan
 export const scanDriveUniversal = createAsyncThunk(
@@ -472,6 +473,15 @@ const sectionSlice = createSlice({
       removeLink,
     ].forEach((thunk) => {
       builder.addCase(thunk.fulfilled, mergeSubSection);
+    });
+
+    builder.addCase(removeFromLibrary.fulfilled, (state, action) => {
+      const id = action.payload?.contentId || action.payload?.id || action.payload;
+      if (id) {
+        state.sections = state.sections.filter(
+          (s) => !(s.isSaved && (String(s._id) === String(id) || String(s.libraryEntryId) === String(id)))
+        );
+      }
     });
   },
 });

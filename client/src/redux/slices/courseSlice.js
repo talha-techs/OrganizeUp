@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+import { removeFromLibrary } from "./librarySlice";
 
 export const fetchCourses = createAsyncThunk(
   "courses/fetchCourses",
@@ -287,6 +288,14 @@ const courseSlice = createSlice({
       })
       .addCase(updateCourseFileProgress.fulfilled, (state, action) => {
         state.progress[action.payload.courseId] = action.payload.courseProgress;
+      })
+      .addCase(removeFromLibrary.fulfilled, (state, action) => {
+        const id = action.payload?.contentId || action.payload?.id || action.payload;
+        if (id) {
+          state.courses = state.courses.filter(
+            (c) => !(c.isSaved && (String(c._id) === String(id) || String(c.libraryEntryId) === String(id)))
+          );
+        }
       });
   },
 });

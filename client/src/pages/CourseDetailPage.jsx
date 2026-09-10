@@ -15,6 +15,10 @@ import {
   IoTrashOutline,
   IoOpenOutline,
   IoSchoolOutline,
+  IoCheckmarkCircle,
+  IoBookmark,
+  IoBookmarkOutline,
+  IoCloseOutline,
 } from 'react-icons/io5';
 import {
   fetchCourse,
@@ -25,7 +29,7 @@ import {
   fetchCourseProgress,
   updateCourseFileProgress,
 } from '../redux/slices/courseSlice';
-import { IoCheckmarkCircle } from 'react-icons/io5';
+import { addToLibrary, removeFromLibrary } from '../redux/slices/librarySlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
@@ -169,7 +173,29 @@ const CourseDetailPage = () => {
     }
   };
 
-  const canManage = isAdmin || (user?._id && currentCourse?.addedBy && String(currentCourse.addedBy._id || currentCourse.addedBy) === String(user._id));
+  const isOwner = user?._id && currentCourse?.addedBy && String(currentCourse.addedBy._id || currentCourse.addedBy) === String(user._id);
+  const canManage = isAdmin || isOwner;
+  const isSavedInLibrary = Boolean(currentCourse?.isSaved);
+
+  const handleToggleLibrary = async () => {
+    if (isSavedInLibrary) {
+      const result = await dispatch(removeFromLibrary(id));
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Removed from your courses');
+        dispatch(fetchCourse(id));
+      } else {
+        toast.error(result.payload || 'Failed to remove from library');
+      }
+    } else {
+      const result = await dispatch(addToLibrary({ contentType: 'course', contentId: id }));
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success('Saved to your courses!');
+        dispatch(fetchCourse(id));
+      } else {
+        toast.error(result.payload || 'Failed to save to library');
+      }
+    }
+  };
 
   if (isLoading) {
     return <LoadingSpinner text="Loading course..." />;
@@ -273,6 +299,28 @@ const CourseDetailPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {!isOwner && (
+              isSavedInLibrary ? (
+                <button
+                  onClick={handleToggleLibrary}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 bg-surface border border-emerald-500/30 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group/unsave shadow-sm"
+                  title="Click to unsave from your courses"
+                >
+                  <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={14} />
+                  <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={15} />
+                  <span className="group-hover/unsave:hidden">Saved</span>
+                  <span className="hidden group-hover/unsave:inline">Unsave</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleToggleLibrary}
+                  className="btn-primary flex items-center gap-1.5 text-xs py-2 px-3.5 shadow-sm cursor-pointer"
+                >
+                  <IoBookmarkOutline size={14} />
+                  <span>Save to Courses</span>
+                </button>
+              )
+            )}
             {currentCourse.driveLink && (
               <a
                 href={currentCourse.driveLink}
