@@ -37,6 +37,7 @@ import {
   updateCapture,
   openQuickCapture,
 } from '../../redux/slices/captureSlice';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 const isVideoUrl = (url) =>
   typeof url === 'string' &&
@@ -71,6 +72,8 @@ const CapturesPage = () => {
   const [newRemindDate, setNewRemindDate] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [expandedEmbeds, setExpandedEmbeds] = useState({});
+  const [deleteCaptureItem, setDeleteCaptureItem] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const toggleEmbed = (id) => {
     setExpandedEmbeds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -121,13 +124,17 @@ const CapturesPage = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this from your Vault?')) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteCaptureItem) return;
+    setIsDeleting(true);
     try {
-      await dispatch(deleteCapture(id)).unwrap();
+      await dispatch(deleteCapture(deleteCaptureItem._id)).unwrap();
       toast.success('Removed from Vault');
+      setDeleteCaptureItem(null);
     } catch (err) {
-      toast.error('Failed to delete capture');
+      toast.error('Failed to remove from Vault');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -951,9 +958,9 @@ const CapturesPage = () => {
 
                     {/* Delete action */}
                     <button
-                      onClick={() => handleDelete(capture._id)}
+                      onClick={() => setDeleteCaptureItem(capture)}
                       className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Delete capture"
+                      title="Remove from Vault"
                     >
                       <FaTrashAlt size={13} />
                     </button>
@@ -1063,6 +1070,45 @@ const CapturesPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Remove from Vault Confirmation Popup */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteCaptureItem)}
+        title="Remove from Vault"
+        message={
+          deleteCaptureItem ? (
+            <div className="space-y-3">
+              <p className="text-secondary text-sm">
+                Are you sure you want to remove this item from your Vault? This action cannot be undone.
+              </p>
+              <div className="p-3 rounded-xl bg-surface border border-subtle flex items-center gap-3">
+                {deleteCaptureItem.thumbnailUrl && (
+                  <img
+                    src={deleteCaptureItem.thumbnailUrl}
+                    alt=""
+                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0 border border-subtle"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-bold text-primary truncate">
+                    {deleteCaptureItem.title || 'Untitled Resource'}
+                  </h4>
+                  <p className="text-[11px] text-muted truncate mt-0.5">
+                    {deleteCaptureItem.authorName || deleteCaptureItem.platform?.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            'Are you sure you want to remove this item from your Vault?'
+          )
+        }
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteCaptureItem(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };
