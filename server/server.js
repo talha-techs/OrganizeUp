@@ -35,6 +35,7 @@ const { initTelegramBot } = require("./bot/telegramBot");
 const { initDiscordBot } = require("./bot/discordBot");
 const { protect } = require("./middleware/auth");
 const { serveImage } = require("./controllers/bookController");
+const { trafficTracker } = require("./middleware/trafficTracker");
 
 const app = express();
 
@@ -90,6 +91,7 @@ app.use(
     },
   }),
 );
+app.use(trafficTracker);
 app.use(morgan("dev"));
 app.use(
   cors({

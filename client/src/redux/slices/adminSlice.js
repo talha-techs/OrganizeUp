@@ -15,6 +15,20 @@ export const fetchStats = createAsyncThunk(
   },
 );
 
+export const fetchAnalytics = createAsyncThunk(
+  "admin/fetchAnalytics",
+  async (timeRange = "24h", { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/admin/analytics?timeRange=${timeRange}`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch analytics",
+      );
+    }
+  },
+);
+
 export const fetchUsers = createAsyncThunk(
   "admin/fetchUsers",
   async (_, { rejectWithValue }) => {
@@ -165,6 +179,9 @@ const adminSlice = createSlice({
   name: "admin",
   initialState: {
     stats: null,
+    analytics: null,
+    analyticsLoading: false,
+    analyticsError: null,
     users: [],
     selectedUser: null,
     publishRequests: [],
@@ -186,6 +203,28 @@ const adminSlice = createSlice({
     builder
       .addCase(fetchStats.fulfilled, (state, action) => {
         state.stats = action.payload.stats;
+      })
+      .addCase(fetchAnalytics.pending, (state) => {
+        state.analyticsLoading = true;
+        state.analyticsError = null;
+      })
+      .addCase(fetchAnalytics.fulfilled, (state, action) => {
+        state.analyticsLoading = false;
+        state.analytics = action.payload;
+        if (action.payload?.database?.content) {
+          state.stats = {
+            users: action.payload.database.users?.total || 0,
+            books: action.payload.database.content.books?.total || 0,
+            courses: action.payload.database.content.courses?.total || 0,
+            tools: action.payload.database.content.tools?.total || 0,
+            categories: action.payload.database.content.categories || 0,
+            pendingRequests: action.payload.database.content.pendingRequests || 0,
+          };
+        }
+      })
+      .addCase(fetchAnalytics.rejected, (state, action) => {
+        state.analyticsLoading = false;
+        state.analyticsError = action.payload;
       })
       .addCase(fetchUsers.pending, (state) => {
         state.isLoading = true;

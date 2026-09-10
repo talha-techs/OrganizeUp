@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   getStats,
+  getAnalytics,
   getUsers,
   getUserDetail,
   deleteUser,
@@ -14,6 +15,7 @@ const { protect, adminOnly } = require("../middleware/auth");
 router.use(protect, adminOnly);
 
 router.get("/stats", getStats);
+router.get("/analytics", getAnalytics);
 router.get("/users", getUsers);
 router.get("/users/:id", getUserDetail);
 router.delete("/users/:id", deleteUser);
