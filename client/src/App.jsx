@@ -14,6 +14,7 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage'));
 const GoogleSuccess = lazy(() => import('./pages/auth/GoogleSuccess'));
+const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
 
 // Protected pages (lazy-loaded — excluded from initial bundle)
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -94,6 +95,24 @@ const App = () => {
     };
   }, [dispatch]);
 
+  // Check if current hostname is the docs subdomain
+  const isDocsSubdomain = typeof window !== 'undefined' && (
+    window.location.hostname === 'docs.organizeup.app' ||
+    window.location.hostname.startsWith('docs.')
+  );
+
+  if (isDocsSubdomain) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingSpinner text="Loading documentation..." />}>
+          <Routes>
+            <Route path="/*" element={<DocsPage />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
@@ -107,6 +126,8 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/docs/*" element={<DocsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/auth/google/success" element={<GoogleSuccess />} />

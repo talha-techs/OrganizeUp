@@ -19,6 +19,7 @@ import {
   IoChevronForwardOutline,
   IoCheckmarkDoneOutline,
   IoFlashOutline,
+  IoHelpCircleOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
@@ -119,6 +120,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       title: 'Account',
       items: [
         { to: '/profile', label: 'My Profile', icon: IoPersonOutline },
+        { to: '/docs', label: 'Documentation', icon: IoHelpCircleOutline },
         ...(user?.role === 'admin'
           ? [{ to: '/admin', label: 'Admin Panel', icon: IoShieldCheckmarkOutline }]
           : []),

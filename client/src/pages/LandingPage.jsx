@@ -49,6 +49,12 @@ const Navbar = () => (
         </div>
         <div className="flex items-center gap-4">
           <Link 
+            to="/docs" 
+            className="text-sm font-medium text-secondary hover:text-primary transition-colors hidden sm:block"
+          >
+            Docs
+          </Link>
+          <Link 
             to="/login" 
             className="text-sm font-medium text-secondary hover:text-primary transition-colors hidden sm:block"
           >

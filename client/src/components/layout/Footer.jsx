@@ -25,6 +25,7 @@ const Footer = () => {
               <Link to="/courses" className="hover:text-primary transition-colors">Courses</Link>
               <Link to="/tools" className="hover:text-primary transition-colors">Tools</Link>
               <Link to="/youtube-playlists" className="hover:text-primary transition-colors">Playlists</Link>
+              <Link to="/docs" className="hover:text-primary transition-colors text-cyan-500 font-medium">Docs</Link>
             </div>
           </div>
 
