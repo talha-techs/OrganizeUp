@@ -301,7 +301,7 @@ Inside your Section, you can click **+ Add Block** to add:
 - **Markdown Notes**: Rich formatted documentation with headers, bullet points, and tables.
 - **Interactive Checklists**: Checkboxes to track project milestones and reading goals.
 - **Syntax-Highlighted Code Blocks**: Formatted snippets for JavaScript, Python, Bash, HTML, CSS, and SQL with 1-click copy.
-- **File Attachments**: Upload supplementary documents directly to MongoDB GridFS.
+- **File Attachments**: Upload supplementary documents directly to your private cloud storage.
         `,
       },
       {
@@ -359,22 +359,23 @@ Step 2: Ingesting Links
       },
       {
         id: 'social-embeds',
-        title: 'Social Video Embeds & Scraper',
+        title: 'Social Video Embeds & Media',
         summary: 'Embedded video player support for X, Instagram, Facebook Reels, and YouTube.',
         badge: 'Media',
         readTime: '3 min read',
         content: `
 ### Rich Embeds for Modern Media
-OrganizeUp features a server-side metadata resolver and streaming proxy.
+
+OrganizeUp automatically renders rich, interactive video players for your saved social links.
 
 Step 1: Supported Platforms
-- **X (Twitter)**: Resolves tweet text, author handle, and embeds video or images.
-- **Instagram**: Renders native embed cards for posts, carousels, and Reels.
-- **Facebook**: Resolves canonical post URLs using specialized \`facebookexternalhit\` user agents to bypass security walls and embed videos.
+- **X (Twitter)**: Clean embeds for tweets, articles, and video clips.
+- **Instagram**: Native player cards for posts and Reels.
+- **Facebook**: Embeds public videos and Facebook Reels directly in your Vault.
 - **YouTube**: Displays responsive video embeds with duration and channel details.
 
-Step 2: Streaming Proxy
-When external CDNs enforce strict CORS or hotlink protection, OrganizeUp routes media through a secure backend proxy with HTTP Range support for seamless seeking.
+Step 2: Distraction-Free Playback
+Watch and study captured videos directly inside your Vault without getting pulled into algorithmic social media feeds.
         `,
       },
     ],
@@ -393,6 +394,7 @@ When external CDNs enforce strict CORS or hotlink protection, OrganizeUp routes 
         readTime: '4 min read',
         content: `
 ### Zero-Friction Chat Ingestion
+
 Never lose an educational PDF, audio file, or article shared in Telegram channels.
 
 Step 1: Link Your Telegram Account
@@ -405,7 +407,7 @@ Step 1: Link Your Telegram Account
 Step 2: Forwarding Resources to the Bot
 1. Whenever you find a useful message, link, PDF document, or audio file in any Telegram group or channel:
 2. Simply **forward the message directly to @OrganizeUpBot**.
-3. The bot downloads media attachments to MongoDB GridFS and pushes the resource into your **Telegram Inbox** with unread notification badges.
+3. The bot securely saves media attachments to your private vault and pushes the resource into your **Telegram Inbox** with unread notification badges.
 
 Step 3: Triaging Your Inbox
 1. Inside OrganizeUp, open your **Telegram Inbox**.
@@ -435,10 +437,10 @@ Step 2: Capturing Messages
     ],
   },
   {
-    id: 'community-admin',
-    title: 'Community & Admin Cockpit',
+    id: 'community',
+    title: 'Community & Explore',
     icon: 'IoGlobeOutline',
-    description: 'Explore community content, nested discussions, and administrative operations.',
+    description: 'Explore community content, vote on top resources, and join nested discussions.',
     items: [
       {
         id: 'community-explore',
@@ -448,68 +450,21 @@ Step 2: Capturing Messages
         readTime: '3 min read',
         content: `
 ### Collaborative Knowledge Sharing
+
 OrganizeUp features a curated public directory where learners share high-yield resources.
 
 Step 1: Browsing by Category
 Use the top navigation bar in Explore to filter by:
-- **Books**: Public domain and curated text books.
+- **Books**: Public domain audiobooks and curated textbooks.
 - **Courses**: Community-reviewed video lecture series.
 - **Tricks & Tools**: Developer cheat sheets and utility links.
 - **Sections**: Curated project wikis and study blueprints.
 - **Playlists**: Curated YouTube playlists.
 
 Step 2: Upvoting & Discussions
-1. Click the **Upvote (▲)** button on any resource card to boost its visibility.
-2. Click the **Comments** icon to open the nested discussion drawer to ask questions or share insights with fellow learners.
-        `,
-      },
-      {
-        id: 'admin-cockpit',
-        title: 'Admin Operations & Atlas Quota',
-        summary: 'Monitor web traffic, operations analytics, and MongoDB Atlas 512MB storage quotas.',
-        badge: 'Admin',
-        readTime: '4 min read',
-        content: `
-### Operations Cockpit (Admin Only)
-Administrators have access to a real-time operations console at \`/admin\`.
-
-Step 1: MongoDB Atlas 512MB Quota Monitoring
-1. The Atlas Storage Gauge calculates real-time disk consumption against the 512MB free tier limit.
-2. Displays visual color-coded warnings (Green < 60%, Amber 60-80%, Red > 80%).
-3. Inspects GridFS file chunks and database indexes.
-
-Step 2: User Storage Footprint Breakdown
-1. The User Management section displays exact storage usage per user.
-2. Sort users by storage consumption to identify heavy uploaders.
-3. Moderate uploaded files and approve or reject community public submissions.
-        `,
-      },
-      {
-        id: 'namecom-setup',
-        title: 'Subdomain DNS Guide (docs.organizeup.app)',
-        summary: 'How to route docs.organizeup.app to your hosting provider via CNAME.',
-        badge: 'DNS',
-        readTime: '3 min read',
-        content: `
-### Subdomain Architecture
-OrganizeUp uses subdomain-aware routing in the frontend client. Visitors navigating to \`https://docs.organizeup.app\` automatically see this Documentation Portal as the home view.
-
-Step 1: Configure CNAME on Name.com
-1. Log into your [Name.com](https://www.name.com) account.
-2. Navigate to **My Domains** ➔ Click **\`organizeup.app\`**.
-3. Click **DNS Records** (or Manage DNS).
-4. Add a new record:
-   - **Type**: \`CNAME\`
-   - **Host**: \`docs\`
-   - **Answer / Target**: \`cname.vercel-dns.com.\`
-   - **TTL**: \`300\`
-5. Save the record.
-
-Step 2: Add Subdomain in Vercel
-1. Open your **Vercel Project Dashboard**.
-2. Go to **Settings** ➔ **Domains**.
-3. Enter **\`docs.organizeup.app\`** and click **Add**.
-4. Vercel automatically detects the Name.com CNAME record, displays a green checkmark, and issues a free Let's Encrypt SSL certificate!
+1. Click the **Upvote (▲)** button on any resource card to boost its visibility for other learners.
+2. Click the **Comments** icon to open the discussion drawer to ask questions or share insights.
+3. Click **Add to Library** on any public resource to bookmark or clone it into your own workspace!
         `,
       },
     ],

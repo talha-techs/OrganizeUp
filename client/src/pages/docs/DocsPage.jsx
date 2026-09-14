@@ -245,7 +245,6 @@ const DocsPage = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
-  const [showDomainModal, setShowDomainModal] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(null);
 
   // Search input focus ref
@@ -262,7 +261,6 @@ const DocsPage = () => {
         setIsSearchOpen(true);
       } else if (e.key === 'Escape') {
         setIsSearchOpen(false);
-        setShowDomainModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -391,14 +389,6 @@ const DocsPage = () => {
 
         {/* Right Action Links */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowDomainModal(true)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-[#30363d] text-xs font-medium text-cyan-400 border border-cyan-800/40 transition-colors"
-          >
-            <IoGlobeOutline size={14} />
-            <span>Name.com DNS Setup</span>
-          </button>
-
           <a
             href="https://t.me/OrganizeUpBot"
             target="_blank"
@@ -973,97 +963,6 @@ const DocsPage = () => {
                     Type to quickly jump to any feature, procedure, or bot documentation.
                   </div>
                 )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Name.com & Subdomain Setup Guide Modal */}
-      <AnimatePresence>
-        {showDomainModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-[#161b22] border border-[#30363d] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-[#30363d]">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">
-                    <IoGlobeOutline size={22} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">docs.organizeup.app DNS Setup</h3>
-                    <p className="text-xs text-[#8b949e]">Step-by-step configuration for Name.com and Vercel</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowDomainModal(false)}
-                  className="p-2 rounded-lg text-[#8b949e] hover:text-white cursor-pointer"
-                >
-                  <IoCloseOutline size={22} />
-                </button>
-              </div>
-
-              {/* Status Banner */}
-              <div className="p-4 rounded-xl bg-[#21262d] border border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <IoShieldCheckmarkOutline className="text-green-400 shrink-0" size={20} />
-                  <span className="text-sm font-medium text-white">
-                    Subdomain Routing is Enabled in OrganizeUp Frontend
-                  </span>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded bg-green-950 text-green-400 border border-green-800">
-                  Ready
-                </span>
-              </div>
-
-              {/* Step 1 */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center">1</span>
-                  <h4 className="text-sm font-semibold text-white">Name.com DNS Record</h4>
-                </div>
-                <div className="p-3 bg-[#0d1117] rounded-xl border border-[#30363d] text-xs font-mono space-y-1">
-                  <div className="flex justify-between py-1 border-b border-[#21262d]">
-                    <span className="text-[#8b949e]">Record Type:</span>
-                    <span className="text-cyan-400 font-bold">CNAME</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-[#21262d]">
-                    <span className="text-[#8b949e]">Host:</span>
-                    <span className="text-white font-bold">docs</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-[#21262d]">
-                    <span className="text-[#8b949e]">Target / Answer:</span>
-                    <span className="text-green-400 font-bold">cname.vercel-dns.com.</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-[#8b949e]">TTL:</span>
-                    <span className="text-white">300 (or default)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center">2</span>
-                  <h4 className="text-sm font-semibold text-white">Vercel Domain Mapping</h4>
-                </div>
-                <p className="text-xs text-[#8b949e] leading-relaxed">
-                  In your Vercel Dashboard for the OrganizeUp project: Go to <strong>Settings</strong> ➔ <strong>Domains</strong> ➔ Add <code className="text-cyan-300 bg-[#0d1117] px-1.5 py-0.5 rounded">docs.organizeup.app</code>. Vercel will automatically verify the CNAME record and provision free SSL.
-                </p>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => setShowDomainModal(false)}
-                  className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] font-semibold text-sm transition-all cursor-pointer"
-                >
-                  Got It!
-                </button>
               </div>
             </motion.div>
           </div>
