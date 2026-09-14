@@ -20,8 +20,10 @@ import {
   IoOpenOutline,
   IoShieldCheckmarkOutline,
   IoSparklesOutline,
-  IoBookmarkOutline,
   IoTimeOutline,
+  IoThumbsUpOutline,
+  IoThumbsDownOutline,
+  IoListOutline,
 } from 'react-icons/io5';
 import { DOCS_SECTIONS } from './docsData';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
@@ -38,7 +40,7 @@ const iconMap = {
 };
 
 const DocsPage = () => {
-  useDocumentTitle('Documentation — OrganizeUp');
+  useDocumentTitle('Documentation & Procedures — OrganizeUp');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Find all items flat
@@ -69,6 +71,7 @@ const DocsPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
   const [showDomainModal, setShowDomainModal] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState(null);
 
   // Search input focus ref
   const searchInputRef = useRef(null);
@@ -102,6 +105,7 @@ const DocsPage = () => {
     setSearchParams({ topic: id });
     setMobileMenuOpen(false);
     setIsSearchOpen(false);
+    setFeedbackGiven(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -127,6 +131,73 @@ const DocsPage = () => {
     navigator.clipboard.writeText(text);
     setCopiedCode(key);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  // Extract On This Page headings from activeItem content
+  const pageHeadings = useMemo(() => {
+    if (!activeItem?.content) return [];
+    const lines = activeItem.content.split('\n');
+    const headings = [];
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('### ')) {
+        const title = trimmed.replace('### ', '');
+        const anchor = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        headings.push({ title, anchor, type: 'h3' });
+      } else if (trimmed.startsWith('Step ')) {
+        const match = trimmed.match(/^Step \d+: (.*)/);
+        if (match) {
+          const title = trimmed;
+          const anchor = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          headings.push({ title, anchor, type: 'step' });
+        }
+      }
+    });
+    return headings;
+  }, [activeItem]);
+
+  const scrollToHeading = (anchor) => {
+    const el = document.getElementById(anchor);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Format inline markdown (bold, code, kbd)
+  const renderInlineText = (text) => {
+    // Process <kbd>...</kbd>
+    const parts = text.split(/(<kbd>.*?<\/kbd>|`.*?`|\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('<kbd>') && part.endsWith('</kbd>')) {
+        const kbdText = part.replace('<kbd>', '').replace('</kbd>', '');
+        return (
+          <kbd
+            key={i}
+            className="px-2 py-0.5 mx-0.5 text-xs font-mono font-semibold rounded-md bg-[#21262d] text-cyan-300 border border-[#30363d] shadow-[0_2px_0_0_#30363d]"
+          >
+            {kbdText}
+          </kbd>
+        );
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code
+            key={i}
+            className="px-1.5 py-0.5 mx-0.5 text-xs font-mono rounded bg-[#161b22] text-cyan-400 border border-[#30363d]"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <strong key={i} className="font-semibold text-white">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
   };
 
   // Determine App URL (support subdomain or main domain)
@@ -157,7 +228,7 @@ const DocsPage = () => {
                 Organize<span className="text-cyan-400">Up</span>
               </span>
               <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-950/80 text-cyan-300 border border-cyan-800/50">
-                Docs
+                Docs & Procedures
               </span>
             </div>
           </a>
@@ -171,7 +242,7 @@ const DocsPage = () => {
           >
             <span className="flex items-center gap-2">
               <IoSearchOutline size={16} />
-              <span>Search docs, guides & shortcuts...</span>
+              <span>Search features, procedures & shortcuts...</span>
             </span>
             <kbd className="px-2 py-0.5 rounded bg-[#21262d] text-xs text-[#8b949e] border border-[#30363d]">
               Ctrl K
@@ -194,7 +265,7 @@ const DocsPage = () => {
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-lg text-[#8b949e] hover:text-[#24A1DE] hover:bg-[#21262d] transition-colors"
-            title="Telegram Bot"
+            title="Telegram Bot (@OrganizeUpBot)"
           >
             <IoPaperPlaneOutline size={18} />
           </a>
@@ -219,9 +290,9 @@ const DocsPage = () => {
         </div>
       </header>
 
-      {/* Main Container */}
-      <div className="max-w-[1440px] mx-auto flex">
-        {/* Desktop Left Sidebar */}
+      {/* Main Container with Two/Three-Column Layout */}
+      <div className="max-w-[1480px] mx-auto flex">
+        {/* Desktop Left Navigation Sidebar */}
         <aside className="hidden md:block w-72 shrink-0 border-r border-[#30363d] p-6 h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto custom-scrollbar">
           <div className="space-y-6">
             {DOCS_SECTIONS.map((section) => (
@@ -324,7 +395,7 @@ const DocsPage = () => {
           )}
         </AnimatePresence>
 
-        {/* Center Content Canvas */}
+        {/* Center Content Area */}
         <main className="flex-1 min-w-0 px-6 sm:px-12 py-8 max-w-4xl">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs text-[#8b949e] mb-4">
@@ -368,7 +439,7 @@ const DocsPage = () => {
           {activeItem?.callouts?.map((callout, idx) => (
             <div
               key={idx}
-              className="p-4 mb-8 rounded-xl bg-cyan-950/40 border border-cyan-800/40 flex items-start gap-3"
+              className="p-4 mb-8 rounded-xl bg-cyan-950/40 border border-cyan-800/40 flex items-start gap-3 shadow-lg shadow-cyan-950/20"
             >
               <IoSparklesOutline className="text-cyan-400 shrink-0 mt-0.5" size={18} />
               <div>
@@ -380,47 +451,145 @@ const DocsPage = () => {
             </div>
           ))}
 
-          {/* Render Markdown Content Blocks */}
-          <div className="prose prose-invert max-w-none space-y-6 text-[#c9d1d9] leading-relaxed text-sm sm:text-base">
+          {/* Render Content Blocks with Rich Step Cards & Tables */}
+          <div className="space-y-6 text-[#c9d1d9] leading-relaxed text-sm sm:text-base">
             {activeItem?.content.split('\n\n').map((block, idx) => {
               const trimmed = block.trim();
               if (!trimmed) return null;
 
-              // Header 3
+              // Step Cards (Step 1:, Step 2:, etc.)
+              if (trimmed.startsWith('Step ')) {
+                const lines = trimmed.split('\n');
+                const headerLine = lines[0];
+                const bodyLines = lines.slice(1);
+                const stepMatch = headerLine.match(/^(Step \d+): (.*)/);
+                const stepBadge = stepMatch ? stepMatch[1] : 'Step';
+                const stepTitle = stepMatch ? stepMatch[2] : headerLine;
+                const anchor = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+                return (
+                  <div
+                    key={idx}
+                    id={anchor}
+                    className="p-5 sm:p-6 rounded-2xl bg-[#161b22] border border-[#30363d] hover:border-cyan-500/40 transition-colors my-6 shadow-md"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                        {stepBadge}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-bold text-white">
+                        {renderInlineText(stepTitle)}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-2 text-[#8b949e] text-sm">
+                      {bodyLines.map((bLine, bIdx) => {
+                        const bTrimmed = bLine.trim();
+                        if (bTrimmed.startsWith('- ') || bTrimmed.startsWith('* ')) {
+                          return (
+                            <div key={bIdx} className="flex items-start gap-2 pl-2">
+                              <span className="text-cyan-400 mt-1">•</span>
+                              <span className="text-[#c9d1d9]">{renderInlineText(bTrimmed.replace(/^[-*]\s+/, ''))}</span>
+                            </div>
+                          );
+                        }
+                        if (/^\d+\.\s/.test(bTrimmed)) {
+                          const num = bTrimmed.match(/^(\d+)\.\s/)[1];
+                          return (
+                            <div key={bIdx} className="flex items-start gap-2 pl-2">
+                              <span className="text-cyan-400 font-mono text-xs mt-0.5">{num}.</span>
+                              <span className="text-[#c9d1d9]">{renderInlineText(bTrimmed.replace(/^\d+\.\s+/, ''))}</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <p key={bIdx} className="leading-relaxed">
+                            {renderInlineText(bLine)}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
+              // Section Header 3
               if (trimmed.startsWith('### ')) {
+                const title = trimmed.replace('### ', '');
+                const anchor = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                 return (
                   <h3
                     key={idx}
-                    className="text-xl font-bold text-white pt-4 pb-2 border-b border-[#21262d] flex items-center gap-2"
+                    id={anchor}
+                    className="text-xl font-bold text-white pt-6 pb-2 border-b border-[#21262d] flex items-center gap-2"
                   >
-                    <span>{trimmed.replace('### ', '')}</span>
+                    <span>{title}</span>
                   </h3>
                 );
               }
 
-              // Header 4
+              // Section Header 4
               if (trimmed.startsWith('#### ')) {
                 return (
-                  <h4 key={idx} className="text-lg font-semibold text-cyan-300 pt-2">
+                  <h4 key={idx} className="text-lg font-semibold text-cyan-300 pt-3">
                     {trimmed.replace('#### ', '')}
                   </h4>
+                );
+              }
+
+              // Markdown Tables
+              if (trimmed.includes('|') && trimmed.split('\n').length >= 3) {
+                const lines = trimmed.split('\n');
+                const headers = lines[0]
+                  .split('|')
+                  .filter(Boolean)
+                  .map((h) => h.trim());
+                const rows = lines
+                  .slice(2)
+                  .map((r) => r.split('|').filter(Boolean).map((c) => c.trim()));
+
+                return (
+                  <div key={idx} className="overflow-x-auto rounded-xl border border-[#30363d] my-4 shadow-sm">
+                    <table className="w-full text-left text-xs sm:text-sm">
+                      <thead className="bg-[#21262d] text-white border-b border-[#30363d]">
+                        <tr>
+                          {headers.map((h, hIdx) => (
+                            <th key={hIdx} className="p-3 font-semibold">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#21262d] bg-[#161b22]">
+                        {rows.map((row, rIdx) => (
+                          <tr key={rIdx} className="hover:bg-[#21262d]/50 transition-colors">
+                            {row.map((cell, cIdx) => (
+                              <td key={cIdx} className="p-3 text-[#c9d1d9]">
+                                {renderInlineText(cell)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 );
               }
 
               // Code block
               if (trimmed.startsWith('```')) {
                 const lines = trimmed.split('\n');
-                const codeLang = lines[0].replace('```', '') || 'text';
+                const codeLang = lines[0].replace('```', '') || 'bash';
                 const codeBody = lines.slice(1, -1).join('\n');
                 const codeKey = `code-${idx}`;
 
                 return (
-                  <div key={idx} className="relative rounded-xl overflow-hidden border border-[#30363d] bg-[#161b22] my-4">
+                  <div key={idx} className="relative rounded-xl overflow-hidden border border-[#30363d] bg-[#161b22] my-4 shadow-md">
                     <div className="flex items-center justify-between px-4 py-2 bg-[#21262d] text-xs font-mono text-[#8b949e] border-b border-[#30363d]">
                       <span>{codeLang}</span>
                       <button
                         onClick={() => handleCopy(codeBody, codeKey)}
-                        className="flex items-center gap-1 hover:text-white transition-colors"
+                        className="flex items-center gap-1 text-cyan-400 hover:text-white transition-colors"
                       >
                         {copiedCode === codeKey ? (
                           <>
@@ -451,7 +620,7 @@ const DocsPage = () => {
                       const text = li.replace(/^[-*]\s+/, '');
                       return (
                         <li key={liIdx} className="leading-relaxed">
-                          <span className="text-[#c9d1d9]">{text}</span>
+                          <span className="text-[#c9d1d9]">{renderInlineText(text)}</span>
                         </li>
                       );
                     })}
@@ -468,7 +637,7 @@ const DocsPage = () => {
                       const text = li.replace(/^\d+\.\s+/, '');
                       return (
                         <li key={liIdx} className="leading-relaxed">
-                          <span className="text-[#c9d1d9]">{text}</span>
+                          <span className="text-[#c9d1d9]">{renderInlineText(text)}</span>
                         </li>
                       );
                     })}
@@ -479,17 +648,17 @@ const DocsPage = () => {
               // Standard Paragraph
               return (
                 <p key={idx} className="text-[#8b949e] leading-relaxed">
-                  {trimmed}
+                  {renderInlineText(trimmed)}
                 </p>
               );
             })}
           </div>
 
-          {/* Quick Links inside the topic if any */}
+          {/* Quick Links inside topic if any */}
           {activeItem?.quickLinks && (
             <div className="mt-8 p-4 rounded-xl bg-[#161b22] border border-[#30363d] space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-[#8b949e]">
-                Related Topics
+                Related Guides
               </h4>
               <div className="flex flex-wrap gap-2">
                 {activeItem.quickLinks.map((ql, qlIdx) => (
@@ -506,8 +675,39 @@ const DocsPage = () => {
             </div>
           )}
 
+          {/* Helpful Feedback Widget */}
+          <div className="mt-10 p-5 rounded-2xl bg-[#161b22] border border-[#30363d] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-semibold text-white">Was this procedure helpful?</h4>
+              <p className="text-xs text-[#8b949e]">Your feedback helps us refine OrganizeUp's documentation.</p>
+            </div>
+            {feedbackGiven ? (
+              <span className="text-xs font-semibold text-green-400 flex items-center gap-1.5 bg-green-950/60 px-3 py-1.5 rounded-xl border border-green-800/60">
+                <IoCheckmarkOutline size={16} />
+                Thank you for your feedback!
+              </span>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFeedbackGiven('yes')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-cyan-500/20 text-xs font-medium text-[#c9d1d9] hover:text-cyan-300 border border-[#30363d] transition-colors"
+                >
+                  <IoThumbsUpOutline size={14} />
+                  Yes
+                </button>
+                <button
+                  onClick={() => setFeedbackGiven('no')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-red-500/20 text-xs font-medium text-[#c9d1d9] hover:text-red-300 border border-[#30363d] transition-colors"
+                >
+                  <IoThumbsDownOutline size={14} />
+                  No
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Next / Previous Article Pagination */}
-          <div className="mt-12 pt-6 border-t border-[#30363d] grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="mt-8 pt-6 border-t border-[#30363d] grid grid-cols-1 sm:grid-cols-2 gap-4">
             {prevItem ? (
               <button
                 onClick={() => handleSelectTopic(prevItem.id)}
@@ -516,7 +716,7 @@ const DocsPage = () => {
                 <IoChevronBackOutline className="text-[#8b949e] group-hover:text-cyan-400 shrink-0" size={20} />
                 <div className="overflow-hidden">
                   <span className="text-[11px] uppercase tracking-wider text-[#8b949e] block font-semibold">
-                    Previous
+                    Previous Guide
                   </span>
                   <span className="text-sm font-medium text-white truncate block">
                     {prevItem.title}
@@ -532,7 +732,7 @@ const DocsPage = () => {
               >
                 <div className="overflow-hidden">
                   <span className="text-[11px] uppercase tracking-wider text-[#8b949e] block font-semibold">
-                    Next
+                    Next Guide
                   </span>
                   <span className="text-sm font-medium text-white truncate block">
                     {nextItem.title}
@@ -543,6 +743,34 @@ const DocsPage = () => {
             ) : <div />}
           </div>
         </main>
+
+        {/* Desktop Right Sidebar: On This Page Table of Contents */}
+        <aside className="hidden xl:block w-64 shrink-0 p-6 h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
+          {pageHeadings.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+                <IoListOutline className="text-cyan-400" size={16} />
+                <span>On This Page</span>
+              </div>
+              <ul className="space-y-1 text-xs border-l border-[#30363d]">
+                {pageHeadings.map((h, hIdx) => (
+                  <li key={hIdx}>
+                    <button
+                      onClick={() => scrollToHeading(h.anchor)}
+                      className={`block text-left w-full pl-3 py-1 transition-colors truncate ${
+                        h.type === 'step'
+                          ? 'text-[#8b949e] hover:text-cyan-300 font-medium'
+                          : 'text-[#c9d1d9] hover:text-white font-semibold'
+                      }`}
+                    >
+                      {h.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </aside>
       </div>
 
       {/* Interactive Search Modal (Ctrl+K) */}
@@ -562,7 +790,7 @@ const DocsPage = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search articles, guides, shortcuts..."
+                  placeholder="Search features, procedures, shortcuts..."
                   className="w-full bg-transparent text-white placeholder-[#8b949e] outline-none text-sm"
                 />
                 <button
@@ -597,11 +825,11 @@ const DocsPage = () => {
                   ))
                 ) : searchQuery.trim() ? (
                   <div className="p-8 text-center text-[#8b949e] text-sm">
-                    No matching articles found for "{searchQuery}".
+                    No matching procedures found for "{searchQuery}".
                   </div>
                 ) : (
                   <div className="p-6 text-center text-[#8b949e] text-xs">
-                    Type to quickly jump to any feature, guide, or bot documentation.
+                    Type to quickly jump to any feature, procedure, or bot documentation.
                   </div>
                 )}
               </div>

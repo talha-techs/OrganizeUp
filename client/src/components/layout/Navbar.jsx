@@ -282,6 +282,15 @@ const Navbar = () => {
                         Discord Library
                       </Link>
 
+                      <Link
+                        to="/docs"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all font-medium"
+                      >
+                        <IoBookOutline size={16} />
+                        Documentation & Guides
+                      </Link>
+
                       {user?.role === 'admin' && (
                         <Link
                           to="/admin"

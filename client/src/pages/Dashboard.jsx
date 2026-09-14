@@ -252,6 +252,16 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Docs & Guides Button */}
+          <Link
+            to="/docs"
+            className="py-2.5 px-4 text-xs font-bold rounded-2xl bg-surface-raised border border-subtle hover:border-cyan-500/40 text-primary hover:text-cyan-400 transition-all shadow-md flex items-center gap-2"
+            title="Open Documentation & Procedures"
+          >
+            <IoBookOutline size={16} className="text-cyan-400" />
+            <span>Docs & Guides</span>
+          </Link>
+
           {/* Quick Capture Button */}
           <button
             onClick={() => dispatch(openQuickCapture())}
@@ -318,6 +328,66 @@ const Dashboard = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* FEATURE GUIDES & KNOWLEDGE BASE BANNER */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-cyan-950/40 via-surface to-accent/5 border border-cyan-500/20 shadow-lg relative overflow-hidden"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                Help & Documentation
+              </span>
+              <span className="text-xs text-muted">docs.organizeup.app</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold text-primary font-display">
+              Master OrganizeUp: Step-by-Step Feature Guides
+            </h3>
+            <p className="text-xs sm:text-sm text-secondary leading-relaxed">
+              Learn how to link the Telegram & Discord capture bots, take timestamped notes on YouTube videos, upload WaveSurfer audiobooks, and use PDF reading position memory.
+            </p>
+          </div>
+
+          {/* Quick Jump Pills */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              to="/docs?topic=telegram-bot"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-[#24A1DE]/15 border border-subtle hover:border-[#24A1DE]/40 text-xs font-medium text-secondary hover:text-[#24A1DE] transition-all flex items-center gap-1.5"
+            >
+              <span>🤖 Telegram Bot</span>
+            </Link>
+            <Link
+              to="/docs?topic=yt-notes"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-red-500/15 border border-subtle hover:border-red-500/40 text-xs font-medium text-secondary hover:text-red-400 transition-all flex items-center gap-1.5"
+            >
+              <span>🎬 YouTube Studio</span>
+            </Link>
+            <Link
+              to="/docs?topic=audiobooks"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-cyan-500/15 border border-subtle hover:border-cyan-500/40 text-xs font-medium text-secondary hover:text-cyan-400 transition-all flex items-center gap-1.5"
+            >
+              <span>🎧 WaveSurfer Audio</span>
+            </Link>
+            <Link
+              to="/docs?topic=shortcuts"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-amber-500/15 border border-subtle hover:border-amber-500/40 text-xs font-medium text-secondary hover:text-amber-400 transition-all flex items-center gap-1.5"
+            >
+              <span>⚡ Shortcuts</span>
+            </Link>
+            <Link
+              to="/docs"
+              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] text-xs font-bold transition-all shadow-md shadow-cyan-500/25 flex items-center gap-1.5"
+            >
+              <span>Browse All Docs</span>
+              <IoArrowForward size={13} />
+            </Link>
+          </div>
+        </div>
+      </motion.div>
 
       {/* 3. MONTHLY LOGIN & STREAK CALENDAR */}
       <motion.div
