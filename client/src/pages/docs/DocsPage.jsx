@@ -39,6 +39,181 @@ const iconMap = {
   IoGlobeOutline: <IoGlobeOutline className="w-4 h-4" />,
 };
 
+// Robust inline markdown renderer: bold, code, kbd, links, italic
+const renderInlineText = (text) => {
+  if (!text) return null;
+
+  // Split by supported inline tokens
+  const tokenRegex = /(<kbd>[\s\S]*?<\/kbd>|`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|\*[^*]+\*)/g;
+  const parts = text.split(tokenRegex);
+
+  return parts.map((part, i) => {
+    if (!part) return null;
+
+    // Keyboard shortcut <kbd>
+    if (part.startsWith('<kbd>') && part.endsWith('</kbd>')) {
+      const kbdText = part.replace('<kbd>', '').replace('</kbd>', '');
+      return (
+        <kbd
+          key={i}
+          className="px-2 py-0.5 mx-0.5 text-xs font-mono font-semibold rounded-md bg-[#21262d] text-cyan-300 border border-[#30363d] shadow-[0_2px_0_0_#30363d]"
+        >
+          {kbdText}
+        </kbd>
+      );
+    }
+
+    // Inline code `code`
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code
+          key={i}
+          className="px-1.5 py-0.5 mx-0.5 text-xs font-mono rounded bg-[#161b22] text-cyan-400 border border-[#30363d]"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // Bold **text**
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-semibold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    // Italic *text*
+    if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+      return (
+        <em key={i} className="text-[#c9d1d9] italic">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+
+    // Markdown link [text](url)
+    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+      const match = part.match(/^\[(.*?)\]\((.*?)\)$/);
+      if (match) {
+        const isExternal = match[2].startsWith('http');
+        return (
+          <a
+            key={i}
+            href={match[2]}
+            target={isExternal ? '_blank' : '_self'}
+            rel={isExternal ? 'noopener noreferrer' : ''}
+            className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 transition-colors font-medium"
+          >
+            {match[1]}
+          </a>
+        );
+      }
+    }
+
+    return part;
+  });
+};
+
+// Robust Markdown Block Parser
+const parseMarkdownBlocks = (rawContent) => {
+  if (!rawContent) return [];
+
+  // Protect code blocks from regex alteration
+  const codeBlocks = [];
+  let processed = rawContent.replace(/```[\s\S]*?```/g, (match) => {
+    codeBlocks.push(match);
+    return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+  });
+
+  // Ensure headings (###, ####) and Steps have blank lines before and after
+  processed = processed.replace(/^(#{1,6}\s+[^\n]+)/gm, '\n\n$1\n\n');
+  processed = processed.replace(/^(Step\s+\d+:)/gm, '\n\n$1');
+
+  // Restore code blocks
+  processed = processed.replace(/__CODE_BLOCK_(\d+)__/g, (_, idx) => {
+    return codeBlocks[parseInt(idx, 10)];
+  });
+
+  // Split by 2 or more newlines into discrete blocks
+  const rawBlocks = processed.split(/\n\s*\n/);
+  const parsed = [];
+
+  rawBlocks.forEach((block) => {
+    const trimmed = block.trim();
+    if (!trimmed) return;
+
+    // Code block
+    if (trimmed.startsWith('```')) {
+      parsed.push({ type: 'code', raw: trimmed });
+      return;
+    }
+
+    // Step card
+    if (trimmed.startsWith('Step ')) {
+      parsed.push({ type: 'step', raw: trimmed });
+      return;
+    }
+
+    // Heading 3
+    if (trimmed.startsWith('### ')) {
+      const lines = trimmed.split('\n');
+      const title = lines[0].replace('### ', '').trim();
+      parsed.push({ type: 'h3', title });
+      const rest = lines.slice(1).join('\n').trim();
+      if (rest) {
+        // Parse the leftover lines
+        parseSubBlock(rest, parsed);
+      }
+      return;
+    }
+
+    // Heading 4
+    if (trimmed.startsWith('#### ')) {
+      const lines = trimmed.split('\n');
+      const title = lines[0].replace('#### ', '').trim();
+      parsed.push({ type: 'h4', title });
+      const rest = lines.slice(1).join('\n').trim();
+      if (rest) {
+        parseSubBlock(rest, parsed);
+      }
+      return;
+    }
+
+    // Table
+    if (trimmed.includes('|') && trimmed.split('\n').length >= 3) {
+      parsed.push({ type: 'table', raw: trimmed });
+      return;
+    }
+
+    parseSubBlock(trimmed, parsed);
+  });
+
+  return parsed;
+};
+
+// Helper to categorize list vs text
+const parseSubBlock = (text, targetArray) => {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+
+  const isOrdered = lines.every((l) => /^\d+\.\s/.test(l));
+  if (isOrdered) {
+    targetArray.push({ type: 'ol', items: lines });
+    return;
+  }
+
+  const isUnordered = lines.every((l) => /^[-*]\s/.test(l));
+  if (isUnordered) {
+    targetArray.push({ type: 'ul', items: lines });
+    return;
+  }
+
+  // Mixed or pure paragraph
+  targetArray.push({ type: 'p', raw: text });
+};
+
 const DocsPage = () => {
   useDocumentTitle('Documentation & Procedures — OrganizeUp');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -133,71 +308,35 @@ const DocsPage = () => {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  // Extract On This Page headings from activeItem content
+  // Parsed blocks for the current article
+  const parsedContentBlocks = useMemo(() => {
+    return parseMarkdownBlocks(activeItem?.content || '');
+  }, [activeItem]);
+
+  // Extract On This Page headings from parsed blocks
   const pageHeadings = useMemo(() => {
-    if (!activeItem?.content) return [];
-    const lines = activeItem.content.split('\n');
     const headings = [];
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('### ')) {
-        const title = trimmed.replace('### ', '');
-        const anchor = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        headings.push({ title, anchor, type: 'h3' });
-      } else if (trimmed.startsWith('Step ')) {
-        const match = trimmed.match(/^Step \d+: (.*)/);
-        if (match) {
-          const title = trimmed;
-          const anchor = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          headings.push({ title, anchor, type: 'step' });
-        }
+    parsedContentBlocks.forEach((b) => {
+      if (b.type === 'h3') {
+        const anchor = b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        headings.push({ title: b.title, anchor, type: 'h3' });
+      } else if (b.type === 'step') {
+        const lines = b.raw.split('\n');
+        const headerLine = lines[0];
+        const stepMatch = headerLine.match(/^(Step \d+): (.*)/);
+        const title = stepMatch ? `${stepMatch[1]}: ${stepMatch[2]}` : headerLine;
+        const anchor = b.raw.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        headings.push({ title, anchor, type: 'step' });
       }
     });
     return headings;
-  }, [activeItem]);
+  }, [parsedContentBlocks]);
 
   const scrollToHeading = (anchor) => {
     const el = document.getElementById(anchor);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  };
-
-  // Format inline markdown (bold, code, kbd)
-  const renderInlineText = (text) => {
-    // Process <kbd>...</kbd>
-    const parts = text.split(/(<kbd>.*?<\/kbd>|`.*?`|\*\*.*?\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('<kbd>') && part.endsWith('</kbd>')) {
-        const kbdText = part.replace('<kbd>', '').replace('</kbd>', '');
-        return (
-          <kbd
-            key={i}
-            className="px-2 py-0.5 mx-0.5 text-xs font-mono font-semibold rounded-md bg-[#21262d] text-cyan-300 border border-[#30363d] shadow-[0_2px_0_0_#30363d]"
-          >
-            {kbdText}
-          </kbd>
-        );
-      }
-      if (part.startsWith('`') && part.endsWith('`')) {
-        return (
-          <code
-            key={i}
-            className="px-1.5 py-0.5 mx-0.5 text-xs font-mono rounded bg-[#161b22] text-cyan-400 border border-[#30363d]"
-          >
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return (
-          <strong key={i} className="font-semibold text-white">
-            {part.slice(2, -2)}
-          </strong>
-        );
-      }
-      return part;
-    });
   };
 
   // Determine App URL (support subdomain or main domain)
@@ -451,21 +590,41 @@ const DocsPage = () => {
             </div>
           ))}
 
-          {/* Render Content Blocks with Rich Step Cards & Tables */}
-          <div className="space-y-6 text-[#c9d1d9] leading-relaxed text-sm sm:text-base">
-            {activeItem?.content.split('\n\n').map((block, idx) => {
-              const trimmed = block.trim();
-              if (!trimmed) return null;
+          {/* Render Parsed Blocks */}
+          <div className="space-y-5 text-[#c9d1d9] leading-relaxed text-sm sm:text-base">
+            {parsedContentBlocks.map((block, idx) => {
+              // Heading 3
+              if (block.type === 'h3') {
+                const anchor = block.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                return (
+                  <h3
+                    key={idx}
+                    id={anchor}
+                    className="text-xl sm:text-2xl font-bold text-white pt-6 pb-2.5 border-b border-[#21262d] flex items-center gap-2 tracking-tight"
+                  >
+                    <span>{renderInlineText(block.title)}</span>
+                  </h3>
+                );
+              }
 
-              // Step Cards (Step 1:, Step 2:, etc.)
-              if (trimmed.startsWith('Step ')) {
-                const lines = trimmed.split('\n');
+              // Heading 4
+              if (block.type === 'h4') {
+                return (
+                  <h4 key={idx} className="text-lg font-semibold text-cyan-300 pt-3">
+                    {renderInlineText(block.title)}
+                  </h4>
+                );
+              }
+
+              // Step Card
+              if (block.type === 'step') {
+                const lines = block.raw.split('\n');
                 const headerLine = lines[0];
                 const bodyLines = lines.slice(1);
                 const stepMatch = headerLine.match(/^(Step \d+): (.*)/);
                 const stepBadge = stepMatch ? stepMatch[1] : 'Step';
                 const stepTitle = stepMatch ? stepMatch[2] : headerLine;
-                const anchor = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                const anchor = block.raw.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
                 return (
                   <div
@@ -513,33 +672,84 @@ const DocsPage = () => {
                 );
               }
 
-              // Section Header 3
-              if (trimmed.startsWith('### ')) {
-                const title = trimmed.replace('### ', '');
-                const anchor = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              // Ordered List (ol)
+              if (block.type === 'ol') {
                 return (
-                  <h3
-                    key={idx}
-                    id={anchor}
-                    className="text-xl font-bold text-white pt-6 pb-2 border-b border-[#21262d] flex items-center gap-2"
-                  >
-                    <span>{title}</span>
-                  </h3>
+                  <ol key={idx} className="space-y-3 my-4">
+                    {block.items.map((item, i) => {
+                      const text = item.replace(/^\s*\d+\.\s*/, '');
+                      return (
+                        <li key={i} className="flex items-start gap-3 pl-1">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/15 text-cyan-400 font-mono text-xs font-bold flex items-center justify-center border border-cyan-500/25 mt-0.5">
+                            {i + 1}
+                          </span>
+                          <div className="text-[#c9d1d9] leading-relaxed flex-1">
+                            {renderInlineText(text)}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
                 );
               }
 
-              // Section Header 4
-              if (trimmed.startsWith('#### ')) {
+              // Unordered List (ul)
+              if (block.type === 'ul') {
                 return (
-                  <h4 key={idx} className="text-lg font-semibold text-cyan-300 pt-3">
-                    {trimmed.replace('#### ', '')}
-                  </h4>
+                  <ul key={idx} className="space-y-2.5 my-3 pl-2">
+                    {block.items.map((item, i) => {
+                      const text = item.replace(/^\s*[-*]\s*/, '');
+                      return (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <span className="text-cyan-400 mt-1.5">•</span>
+                          <span className="text-[#c9d1d9] leading-relaxed flex-1">
+                            {renderInlineText(text)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 );
               }
 
-              // Markdown Tables
-              if (trimmed.includes('|') && trimmed.split('\n').length >= 3) {
-                const lines = trimmed.split('\n');
+              // Code block
+              if (block.type === 'code') {
+                const lines = block.raw.split('\n');
+                const codeLang = lines[0].replace('```', '') || 'bash';
+                const codeBody = lines.slice(1, -1).join('\n');
+                const codeKey = `code-${idx}`;
+
+                return (
+                  <div key={idx} className="relative rounded-xl overflow-hidden border border-[#30363d] bg-[#161b22] my-4 shadow-md">
+                    <div className="flex items-center justify-between px-4 py-2 bg-[#21262d] text-xs font-mono text-[#8b949e] border-b border-[#30363d]">
+                      <span>{codeLang}</span>
+                      <button
+                        onClick={() => handleCopy(codeBody, codeKey)}
+                        className="flex items-center gap-1 text-cyan-400 hover:text-white transition-colors"
+                      >
+                        {copiedCode === codeKey ? (
+                          <>
+                            <IoCheckmarkOutline className="text-green-400" size={14} />
+                            <span className="text-green-400">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <IoCopyOutline size={14} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <pre className="p-4 text-xs sm:text-sm font-mono text-[#e6edf3] overflow-x-auto">
+                      <code>{codeBody}</code>
+                    </pre>
+                  </div>
+                );
+              }
+
+              // Table
+              if (block.type === 'table') {
+                const lines = block.raw.split('\n');
                 const headers = lines[0]
                   .split('|')
                   .filter(Boolean)
@@ -576,79 +786,10 @@ const DocsPage = () => {
                 );
               }
 
-              // Code block
-              if (trimmed.startsWith('```')) {
-                const lines = trimmed.split('\n');
-                const codeLang = lines[0].replace('```', '') || 'bash';
-                const codeBody = lines.slice(1, -1).join('\n');
-                const codeKey = `code-${idx}`;
-
-                return (
-                  <div key={idx} className="relative rounded-xl overflow-hidden border border-[#30363d] bg-[#161b22] my-4 shadow-md">
-                    <div className="flex items-center justify-between px-4 py-2 bg-[#21262d] text-xs font-mono text-[#8b949e] border-b border-[#30363d]">
-                      <span>{codeLang}</span>
-                      <button
-                        onClick={() => handleCopy(codeBody, codeKey)}
-                        className="flex items-center gap-1 text-cyan-400 hover:text-white transition-colors"
-                      >
-                        {copiedCode === codeKey ? (
-                          <>
-                            <IoCheckmarkOutline className="text-green-400" size={14} />
-                            <span className="text-green-400">Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <IoCopyOutline size={14} />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <pre className="p-4 text-xs sm:text-sm font-mono text-[#e6edf3] overflow-x-auto">
-                      <code>{codeBody}</code>
-                    </pre>
-                  </div>
-                );
-              }
-
-              // Unordered List
-              if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-                const listItems = trimmed.split('\n');
-                return (
-                  <ul key={idx} className="space-y-2 list-disc list-inside my-3 text-[#8b949e]">
-                    {listItems.map((li, liIdx) => {
-                      const text = li.replace(/^[-*]\s+/, '');
-                      return (
-                        <li key={liIdx} className="leading-relaxed">
-                          <span className="text-[#c9d1d9]">{renderInlineText(text)}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                );
-              }
-
-              // Numbered List
-              if (/^\d+\.\s/.test(trimmed)) {
-                const numItems = trimmed.split('\n');
-                return (
-                  <ol key={idx} className="space-y-2 list-decimal list-inside my-3 text-[#8b949e]">
-                    {numItems.map((li, liIdx) => {
-                      const text = li.replace(/^\d+\.\s+/, '');
-                      return (
-                        <li key={liIdx} className="leading-relaxed">
-                          <span className="text-[#c9d1d9]">{renderInlineText(text)}</span>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                );
-              }
-
               // Standard Paragraph
               return (
-                <p key={idx} className="text-[#8b949e] leading-relaxed">
-                  {renderInlineText(trimmed)}
+                <p key={idx} className="text-[#8b949e] leading-relaxed my-3">
+                  {renderInlineText(block.raw)}
                 </p>
               );
             })}
@@ -690,14 +831,14 @@ const DocsPage = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setFeedbackGiven('yes')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-cyan-500/20 text-xs font-medium text-[#c9d1d9] hover:text-cyan-300 border border-[#30363d] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-cyan-500/20 text-xs font-medium text-[#c9d1d9] hover:text-cyan-300 border border-[#30363d] transition-colors cursor-pointer"
                 >
                   <IoThumbsUpOutline size={14} />
                   Yes
                 </button>
                 <button
                   onClick={() => setFeedbackGiven('no')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-red-500/20 text-xs font-medium text-[#c9d1d9] hover:text-red-300 border border-[#30363d] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#21262d] hover:bg-red-500/20 text-xs font-medium text-[#c9d1d9] hover:text-red-300 border border-[#30363d] transition-colors cursor-pointer"
                 >
                   <IoThumbsDownOutline size={14} />
                   No
@@ -711,7 +852,7 @@ const DocsPage = () => {
             {prevItem ? (
               <button
                 onClick={() => handleSelectTopic(prevItem.id)}
-                className="flex items-center gap-3 p-4 rounded-xl border border-[#30363d] hover:border-cyan-500/40 bg-[#161b22] hover:bg-[#21262d] transition-all text-left group"
+                className="flex items-center gap-3 p-4 rounded-xl border border-[#30363d] hover:border-cyan-500/40 bg-[#161b22] hover:bg-[#21262d] transition-all text-left group cursor-pointer"
               >
                 <IoChevronBackOutline className="text-[#8b949e] group-hover:text-cyan-400 shrink-0" size={20} />
                 <div className="overflow-hidden">
@@ -728,7 +869,7 @@ const DocsPage = () => {
             {nextItem ? (
               <button
                 onClick={() => handleSelectTopic(nextItem.id)}
-                className="flex items-center justify-between p-4 rounded-xl border border-[#30363d] hover:border-cyan-500/40 bg-[#161b22] hover:bg-[#21262d] transition-all text-right group"
+                className="flex items-center justify-between p-4 rounded-xl border border-[#30363d] hover:border-cyan-500/40 bg-[#161b22] hover:bg-[#21262d] transition-all text-right group cursor-pointer"
               >
                 <div className="overflow-hidden">
                   <span className="text-[11px] uppercase tracking-wider text-[#8b949e] block font-semibold">
@@ -757,7 +898,7 @@ const DocsPage = () => {
                   <li key={hIdx}>
                     <button
                       onClick={() => scrollToHeading(h.anchor)}
-                      className={`block text-left w-full pl-3 py-1 transition-colors truncate ${
+                      className={`block text-left w-full pl-3 py-1 transition-colors truncate cursor-pointer ${
                         h.type === 'step'
                           ? 'text-[#8b949e] hover:text-cyan-300 font-medium'
                           : 'text-[#c9d1d9] hover:text-white font-semibold'
@@ -795,7 +936,7 @@ const DocsPage = () => {
                 />
                 <button
                   onClick={() => setIsSearchOpen(false)}
-                  className="px-2 py-0.5 text-xs text-[#8b949e] hover:text-white rounded bg-[#21262d]"
+                  className="px-2 py-0.5 text-xs text-[#8b949e] hover:text-white rounded bg-[#21262d] cursor-pointer"
                 >
                   ESC
                 </button>
@@ -807,7 +948,7 @@ const DocsPage = () => {
                     <button
                       key={it.id}
                       onClick={() => handleSelectTopic(it.id)}
-                      className="w-full text-left p-3 rounded-lg hover:bg-[#21262d] transition-colors group flex items-start justify-between gap-3"
+                      className="w-full text-left p-3 rounded-lg hover:bg-[#21262d] transition-colors group flex items-start justify-between gap-3 cursor-pointer"
                     >
                       <div>
                         <div className="text-xs text-cyan-400 font-medium mb-1">
@@ -860,7 +1001,7 @@ const DocsPage = () => {
                 </div>
                 <button
                   onClick={() => setShowDomainModal(false)}
-                  className="p-2 rounded-lg text-[#8b949e] hover:text-white"
+                  className="p-2 rounded-lg text-[#8b949e] hover:text-white cursor-pointer"
                 >
                   <IoCloseOutline size={22} />
                 </button>
@@ -919,7 +1060,7 @@ const DocsPage = () => {
               <div className="pt-2">
                 <button
                   onClick={() => setShowDomainModal(false)}
-                  className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] font-semibold text-sm transition-all"
+                  className="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] font-semibold text-sm transition-all cursor-pointer"
                 >
                   Got It!
                 </button>

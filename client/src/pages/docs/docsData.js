@@ -13,9 +13,11 @@ export const DOCS_SECTIONS = [
         readTime: '3 min read',
         content: `
 ### What is OrganizeUp?
+
 **OrganizeUp** is a high-performance personal knowledge engine designed for self-learners, developers, and knowledge workers. It solves the fragmentation problem where valuable learning materials get lost across Telegram channels, Discord servers, YouTube playlists, Google Drives, and browser bookmarks.
 
 ### The 5 Core Pillars
+
 1. **Universal Multi-Format Vault**: Ingest PDFs, audiobooks with waveforms, Google Drive videos, YouTube playlists, and developer tools in a unified, distraction-free interface.
 2. **Instant Capture Pipes**: Capture links and media without opening the app via the **Telegram Bot** (\`@OrganizeUpBot\`) and **Discord Context Menu App**.
 3. **Deep Study Workspaces**: High-focus study tools with memory — PDF reading position persistence, video watch progress with reflection prompts, and time-stamped video note taking.
