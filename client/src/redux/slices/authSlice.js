@@ -33,6 +33,9 @@ export const register = createAsyncThunk(
     try {
       const { data } = await api.post("/auth/register", userData);
       localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       return data;
     } catch (error) {
       return rejectWithValue(
@@ -48,6 +51,9 @@ export const login = createAsyncThunk(
     try {
       const { data } = await api.post("/auth/login", userData);
       localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       return data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
@@ -98,8 +104,13 @@ export const markNotificationsRead = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk("auth/logout", async () => {
-  await api.post("/auth/logout");
+  try {
+    await api.post("/auth/logout");
+  } catch (err) {
+    console.warn("Logout request error:", err.message);
+  }
   localStorage.removeItem("user");
+  localStorage.removeItem("token");
 });
 
 const authSlice = createSlice({
@@ -112,6 +123,9 @@ const authSlice = createSlice({
     setCredentials: (state, action) => {
       state.user = action.payload.user;
       localStorage.setItem("user", JSON.stringify(action.payload.user));
+      if (action.payload.token) {
+        localStorage.setItem("token", action.payload.token);
+      }
     },
   },
   extraReducers: (builder) => {
@@ -149,6 +163,7 @@ const authSlice = createSlice({
       .addCase(getMe.rejected, (state) => {
         state.user = null;
         localStorage.removeItem("user");
+        localStorage.removeItem("token");
       })
       // Update Profile
       .addCase(updateProfile.fulfilled, (state, action) => {

@@ -35,10 +35,16 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login?error=google_oauth_rejected",
-    session: false,
-  }),
+  (req, res, next) => {
+    let clientUrl = process.env.CLIENT_URL || "https://organizeup.app";
+    if (clientUrl.endsWith("/")) {
+      clientUrl = clientUrl.slice(0, -1);
+    }
+    passport.authenticate("google", {
+      failureRedirect: `${clientUrl}/login?error=google_oauth_rejected`,
+      session: false,
+    })(req, res, next);
+  },
   googleCallback,
 );
 

@@ -135,6 +135,7 @@ const register = async (req, res) => {
 
     res.status(201).json({
       message: "Registration successful",
+      token,
       user: {
         _id: user._id,
         name: user.name,
@@ -182,6 +183,7 @@ const login = async (req, res) => {
 
     res.json({
       message: "Login successful",
+      token,
       user: {
         _id: user._id,
         name: user.name,
@@ -208,8 +210,16 @@ const googleCallback = async (req, res) => {
   try {
     const token = generateToken(req.user._id);
 
+    // Also set cookie on callback response for browsers that support it
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
     // Redirect to frontend with token in URL parameter so the frontend can set the cookie via AJAX
-    // This avoids Safari/Chrome cross-site 302 cookie dropping.
+    // and store in localStorage for Bearer authorization.
     res.redirect(`${clientUrl}/auth/google/success?token=${token}`);
   } catch (error) {
     console.error("Google callback error:", error);

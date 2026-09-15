@@ -93,9 +93,31 @@ app.use(
 );
 app.use(trafficTracker);
 app.use(morgan("dev"));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://organizeup.app",
+  "https://www.organizeup.app",
+  "https://docs.organizeup.app",
+];
+if (process.env.CLIENT_URL) {
+  const envOrigin = process.env.CLIENT_URL.replace(/\/$/, "");
+  if (!allowedOrigins.includes(envOrigin)) allowedOrigins.push(envOrigin);
+}
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".organizeup.app") ||
+        origin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
     credentials: true,
   }),
 );

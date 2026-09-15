@@ -10,8 +10,27 @@ const api = axios.create({
   },
 });
 
-// Auth is handled by httpOnly cookies (withCredentials: true above)
-// No token attachment needed — cookies are sent automatically
+// Request interceptor: Attach JWT token from localStorage if present
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Public paths where a 401 should NEVER trigger an automatic hard redirect to /login
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/signup",
+  "/auth/google/success",
+  "/docs",
+  "/explore",
+];
 
 // Handle 401 responses
 api.interceptors.response.use(
@@ -19,10 +38,15 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("user");
-      if (
-        window.location.pathname !== "/" &&
-        window.location.pathname !== "/login"
-      ) {
+      localStorage.removeItem("token");
+
+      const currentPath = window.location.pathname;
+      const isPublicPath = PUBLIC_PATHS.some(
+        (path) => currentPath === path || currentPath.startsWith("/docs")
+      );
+
+      // Only redirect if the user is on a protected route that requires authentication
+      if (!isPublicPath) {
         window.location.href = "/login";
       }
     }

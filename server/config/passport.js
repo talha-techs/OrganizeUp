@@ -32,22 +32,42 @@ passport.use(
           return done(null, user);
         }
 
+        // Extract email safely
+        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+        if (!email) {
+          return done(new Error("No email associated with this Google account"), null);
+        }
+
         // Check if user exists with same email
-        user = await User.findOne({ email: profile.emails[0].value });
+        user = await User.findOne({ email });
 
         if (user) {
           user.googleId = profile.id;
-          user.avatar = user.avatar || profile.photos[0]?.value;
+          user.avatar = user.avatar || profile.photos?.[0]?.value || "";
           await user.save();
           return done(null, user);
         }
 
+        // Fallback for displayName to avoid validation errors
+        const displayName =
+          profile.displayName ||
+          (profile.name
+            ? `${profile.name.givenName || ""} ${profile.name.familyName || ""}`.trim()
+            : "") ||
+          email.split("@")[0] ||
+          "User";
+
+        const isAdmin =
+          process.env.ADMIN_EMAIL &&
+          email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
+
         // Create new user
         user = await User.create({
-          name: profile.displayName,
-          email: profile.emails[0].value,
+          name: displayName,
+          email: email,
           googleId: profile.id,
-          avatar: profile.photos[0]?.value,
+          avatar: profile.photos?.[0]?.value || "",
+          role: isAdmin ? "admin" : "user",
           isVerified: true,
         });
 
