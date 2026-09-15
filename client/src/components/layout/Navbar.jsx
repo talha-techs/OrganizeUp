@@ -3,11 +3,12 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
-import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline, IoFlashOutline } from 'react-icons/io5';
+import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline, IoFlashOutline, IoOpenOutline } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
 import api from '../../utils/api';
+import { getDocsUrl } from '../../utils/docs';
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -282,14 +283,19 @@ const Navbar = () => {
                         Discord Library
                       </Link>
 
-                      <Link
-                        to="/docs"
+                      <a
+                        href={getDocsUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all font-medium"
+                        className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all font-medium cursor-pointer"
                       >
-                        <IoBookOutline size={16} />
-                        Documentation & Guides
-                      </Link>
+                        <div className="flex items-center gap-3">
+                          <IoBookOutline size={16} />
+                          Documentation & Guides
+                        </div>
+                        <IoOpenOutline size={14} className="opacity-70" />
+                      </a>
 
                       {user?.role === 'admin' && (
                         <Link

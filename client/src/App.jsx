@@ -9,12 +9,28 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
+import { getDocsUrl } from './utils/docs';
+
 // Public pages (lazy-loaded)
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage'));
 const GoogleSuccess = lazy(() => import('./pages/auth/GoogleSuccess'));
 const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
+
+const DocsRedirect = () => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const topic = params.get('topic') || '';
+    window.location.replace(getDocsUrl(topic));
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-canvas flex items-center justify-center">
+      <LoadingSpinner size="lg" text="Redirecting to documentation..." />
+    </div>
+  );
+};
 
 // Protected pages (lazy-loaded — excluded from initial bundle)
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -98,6 +114,7 @@ const App = () => {
   // Check if current hostname is the docs subdomain
   const isDocsSubdomain = typeof window !== 'undefined' && (
     window.location.hostname === 'docs.organizeup.app' ||
+    window.location.hostname === 'docs.organizeup.com' ||
     window.location.hostname.startsWith('docs.')
   );
 
@@ -126,8 +143,8 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/docs" element={<DocsPage />} />
-            <Route path="/docs/*" element={<DocsPage />} />
+            <Route path="/docs" element={<DocsRedirect />} />
+            <Route path="/docs/*" element={<DocsRedirect />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/auth/google/success" element={<GoogleSuccess />} />

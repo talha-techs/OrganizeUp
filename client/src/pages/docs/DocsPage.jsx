@@ -339,7 +339,10 @@ const DocsPage = () => {
 
   // Determine App URL (support subdomain or main domain)
   const isSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('docs.');
-  const appBaseUrl = isSubdomain ? 'https://organizeup.app' : '/';
+  const isCom = typeof window !== 'undefined' && window.location.hostname.endsWith('organizeup.com');
+  const appBaseUrl = isSubdomain 
+    ? (isCom ? 'https://organizeup.com' : 'https://organizeup.app') 
+    : '/';
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] selection:bg-cyan-500/30 font-sans">

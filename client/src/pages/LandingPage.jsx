@@ -14,6 +14,7 @@ import {
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import Footer from '../components/layout/Footer';
 import TiltCard from '../components/ui/TiltCard';
+import { getDocsUrl } from '../utils/docs';
 
 const LandingHero3D = lazy(() => import('../components/landing/LandingHero3D'));
 
@@ -48,12 +49,14 @@ const Navbar = () => (
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <Link 
-            to="/docs" 
+          <a 
+            href={getDocsUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-sm font-medium text-secondary hover:text-primary transition-colors hidden sm:block"
           >
             Docs
-          </Link>
+          </a>
           <Link 
             to="/login" 
             className="text-sm font-medium text-secondary hover:text-primary transition-colors hidden sm:block"

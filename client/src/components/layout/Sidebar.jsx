@@ -20,12 +20,14 @@ import {
   IoCheckmarkDoneOutline,
   IoFlashOutline,
   IoHelpCircleOutline,
+  IoOpenOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
 import ThemeToggle from '../ui/ThemeToggle';
 import api from '../../utils/api';
+import { getDocsUrl } from '../../utils/docs';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const dispatch = useDispatch();
@@ -120,7 +122,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       title: 'Account',
       items: [
         { to: '/profile', label: 'My Profile', icon: IoPersonOutline },
-        { to: '/docs', label: 'Documentation', icon: IoHelpCircleOutline },
+        { href: getDocsUrl(), label: 'Documentation', icon: IoHelpCircleOutline, isExternal: true },
         ...(user?.role === 'admin'
           ? [{ to: '/admin', label: 'Admin Panel', icon: IoShieldCheckmarkOutline }]
           : []),
@@ -201,6 +203,34 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             )}
             {group.items.map((item) => {
               const Icon = item.icon;
+
+              if (item.isExternal) {
+                return (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={isCollapsed ? `${item.label} (opens in new tab)` : undefined}
+                    className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer text-secondary hover:text-cyan-400 hover:bg-cyan-500/10 ${
+                      isCollapsed ? 'justify-center' : ''
+                    }`}
+                  >
+                    <div className="relative flex-shrink-0 flex items-center justify-center">
+                      <Icon size={19} className="text-secondary group-hover:text-cyan-400 transition-colors" />
+                    </div>
+
+                    {!isCollapsed && (
+                      <span className="truncate flex-1">{item.label}</span>
+                    )}
+
+                    {!isCollapsed && (
+                      <IoOpenOutline size={13} className="text-muted group-hover:text-cyan-400 opacity-60 flex-shrink-0" />
+                    )}
+                  </a>
+                );
+              }
+
               const isActive =
                 location.pathname === item.to ||
                 (item.to !== '/dashboard' && location.pathname.startsWith(item.to));

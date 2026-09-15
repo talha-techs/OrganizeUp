@@ -22,8 +22,10 @@ import {
   IoPlayOutline,
   IoCompassOutline,
   IoAddCircleOutline,
+  IoOpenOutline,
 } from 'react-icons/io5';
 import api from '../utils/api';
+import { getDocsUrl } from '../utils/docs';
 import AnimatedCounter from '../components/ui/AnimatedCounter';
 import ProgressBar from '../components/ui/ProgressBar';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -253,14 +255,17 @@ const Dashboard = () => {
           </div>
 
           {/* Docs & Guides Button */}
-          <Link
-            to="/docs"
-            className="py-2.5 px-4 text-xs font-bold rounded-2xl bg-surface-raised border border-subtle hover:border-cyan-500/40 text-primary hover:text-cyan-400 transition-all shadow-md flex items-center gap-2"
-            title="Open Documentation & Procedures"
+          <a
+            href={getDocsUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-2.5 px-4 text-xs font-bold rounded-2xl bg-surface-raised border border-subtle hover:border-cyan-500/40 text-primary hover:text-cyan-400 transition-all shadow-md flex items-center gap-2 cursor-pointer"
+            title="Open Documentation & Procedures (opens in new tab)"
           >
             <IoBookOutline size={16} className="text-cyan-400" />
             <span>Docs & Guides</span>
-          </Link>
+            <IoOpenOutline size={12} className="text-muted opacity-70" />
+          </a>
 
           {/* Quick Capture Button */}
           <button
@@ -354,37 +359,51 @@ const Dashboard = () => {
 
           {/* Quick Jump Pills */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <Link
-              to="/docs?topic=telegram-bot"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-[#24A1DE]/15 border border-subtle hover:border-[#24A1DE]/40 text-xs font-medium text-secondary hover:text-[#24A1DE] transition-all flex items-center gap-1.5"
+            <a
+              href={getDocsUrl('telegram-bot')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-[#24A1DE]/15 border border-subtle hover:border-[#24A1DE]/40 text-xs font-medium text-secondary hover:text-[#24A1DE] transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>🤖 Telegram Bot</span>
-            </Link>
-            <Link
-              to="/docs?topic=yt-notes"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-red-500/15 border border-subtle hover:border-red-500/40 text-xs font-medium text-secondary hover:text-red-400 transition-all flex items-center gap-1.5"
+              <IoOpenOutline size={11} className="opacity-60" />
+            </a>
+            <a
+              href={getDocsUrl('yt-notes')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-red-500/15 border border-subtle hover:border-red-500/40 text-xs font-medium text-secondary hover:text-red-400 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>🎬 YouTube Studio</span>
-            </Link>
-            <Link
-              to="/docs?topic=audiobooks"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-cyan-500/15 border border-subtle hover:border-cyan-500/40 text-xs font-medium text-secondary hover:text-cyan-400 transition-all flex items-center gap-1.5"
+              <IoOpenOutline size={11} className="opacity-60" />
+            </a>
+            <a
+              href={getDocsUrl('audiobooks')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-cyan-500/15 border border-subtle hover:border-cyan-500/40 text-xs font-medium text-secondary hover:text-cyan-400 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>🎧 WaveSurfer Audio</span>
-            </Link>
-            <Link
-              to="/docs?topic=shortcuts"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-amber-500/15 border border-subtle hover:border-amber-500/40 text-xs font-medium text-secondary hover:text-amber-400 transition-all flex items-center gap-1.5"
+              <IoOpenOutline size={11} className="opacity-60" />
+            </a>
+            <a
+              href={getDocsUrl('shortcuts')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-amber-500/15 border border-subtle hover:border-amber-500/40 text-xs font-medium text-secondary hover:text-amber-400 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>⚡ Shortcuts</span>
-            </Link>
-            <Link
-              to="/docs"
-              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] text-xs font-bold transition-all shadow-md shadow-cyan-500/25 flex items-center gap-1.5"
+              <IoOpenOutline size={11} className="opacity-60" />
+            </a>
+            <a
+              href={getDocsUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] text-xs font-bold transition-all shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer"
             >
               <span>Browse All Docs</span>
-              <IoArrowForward size={13} />
-            </Link>
+              <IoOpenOutline size={13} />
+            </a>
           </div>
         </div>
       </motion.div>
