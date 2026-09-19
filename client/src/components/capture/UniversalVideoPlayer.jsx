@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
-import { IoFlashOutline, IoGlobeOutline, IoRefreshOutline } from 'react-icons/io5';
+import {
+  IoFlashOutline,
+  IoGlobeOutline,
+  IoRefreshOutline,
+  IoSettingsOutline,
+  IoCheckmarkOutline,
+  IoChevronDownOutline,
+} from 'react-icons/io5';
 
 /**
  * Universal Video Player with HLS (.m3u8), MP4/WebM, and Cloud Stream Proxy support.
@@ -12,6 +19,8 @@ import { IoFlashOutline, IoGlobeOutline, IoRefreshOutline } from 'react-icons/io
  *   2. Otherwise, try direct playback first. If the browser blocks it (CORS, 403, etc.),
  *      auto-fallback to the Cloud Stream proxy.
  *   3. For HLS (.m3u8), uses hls.js with the same proxy-fallback logic.
+ *   4. Quality selection: defaults to 720p (primary) or 480p (fallback) for fast start & low bandwidth,
+ *      with full user choice to switch to highest available (1080p, 4K) or Auto.
  */
 const UniversalVideoPlayer = ({
   src,
@@ -40,6 +49,85 @@ const UniversalVideoPlayer = ({
   const [useProxy, setUseProxy] = useState(forceProxy || needsProxyFromStart(src));
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Quality selection states
+  const [availableQualities, setAvailableQualities] = useState([]);
+  const [selectedQuality, setSelectedQuality] = useState('');
+  const [isQualityMenuOpen, setIsQualityMenuOpen] = useState(false);
+  const qualityMenuRef = useRef(null);
+  const userSelectedQualityRef = useRef(null);
+
+  // Close quality menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (qualityMenuRef.current && !qualityMenuRef.current.contains(event.target)) {
+        setIsQualityMenuOpen(false);
+      }
+    };
+    if (isQualityMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isQualityMenuOpen]);
+
+  // Reset quality state when video source changes
+  useEffect(() => {
+    userSelectedQualityRef.current = null;
+    setSelectedQuality('');
+    setAvailableQualities([]);
+    setIsQualityMenuOpen(false);
+  }, [src]);
+
+  // Helper to deduplicate & sort HLS quality levels
+  const processHlsLevels = (rawLevels) => {
+    if (!rawLevels || rawLevels.length === 0) return [];
+
+    const indexed = rawLevels.map((lvl, index) => ({
+      index,
+      height: lvl.height || 0,
+      width: lvl.width || 0,
+      bitrate: lvl.bitrate || 0,
+    }));
+
+    // Deduplicate by height, keeping highest bitrate for each height
+    const uniqueMap = new Map();
+    for (const item of indexed) {
+      const key = item.height || `lvl_${item.index}`;
+      if (!uniqueMap.has(key) || item.bitrate > uniqueMap.get(key).bitrate) {
+        uniqueMap.set(key, item);
+      }
+    }
+
+    // Sort descending (highest resolution first in dropdown)
+    return Array.from(uniqueMap.values()).sort((a, b) => b.height - a.height);
+  };
+
+  // Helper to determine default quality: 720p (primary) or 480p (fallback), NEVER the highest
+  const findDefaultLevel = (processedLevels) => {
+    if (!processedLevels || processedLevels.length === 0) return null;
+    if (processedLevels.length === 1) return { ...processedLevels[0], isDefault: true };
+
+    // 1. Primary: 720p
+    const lvl720 = processedLevels.find((lvl) => lvl.height === 720);
+    if (lvl720) return { ...lvl720, isDefault: true };
+
+    // 2. Secondary fallback: 480p
+    const lvl480 = processedLevels.find((lvl) => lvl.height === 480);
+    if (lvl480) return { ...lvl480, isDefault: true };
+
+    // 3. Closest <= 720p (list is sorted descending, so first item <= 720 is the highest below 720p)
+    const under720 = processedLevels.filter((lvl) => lvl.height > 0 && lvl.height <= 720);
+    if (under720.length > 0) {
+      return { ...under720[0], isDefault: true };
+    }
+
+    // 4. If all are above 720p, pick the lowest available so it is NOT the highest
+    return { ...processedLevels[processedLevels.length - 1], isDefault: true };
+  };
 
   // Compute final stream URL
   const getStreamUrl = useCallback((rawUrl, proxied) => {
@@ -82,6 +170,34 @@ const UniversalVideoPlayer = ({
     }
   }, []);
 
+  // Handle user changing quality level
+  const handleSelectQuality = (lvl) => {
+    setIsQualityMenuOpen(false);
+    if (!hlsRef.current) return;
+
+    if (lvl === 'auto') {
+      userSelectedQualityRef.current = 'auto';
+      setSelectedQuality('auto');
+      hlsRef.current.currentLevel = -1;
+      // In auto mode, if using proxy, cap at 720p/default to avoid sudden 4K segment spikes
+      if (useProxy && availableQualities.length > 0) {
+        const defaultLvl = availableQualities.find((q) => q.isDefault);
+        if (defaultLvl) {
+          hlsRef.current.autoLevelCapping = defaultLvl.index;
+        }
+      } else {
+        hlsRef.current.autoLevelCapping = -1;
+      }
+    } else {
+      // User explicitly selected a quality level (up to highest available)
+      userSelectedQualityRef.current = lvl.height;
+      setSelectedQuality(`${lvl.height}p`);
+      hlsRef.current.autoLevelCapping = -1; // Uncap so explicit choice is honored
+      hlsRef.current.currentLevel = lvl.index;
+      hlsRef.current.loadLevel = lvl.index;
+    }
+  };
+
   // Initialize HLS for .m3u8 streams, or set src for MP4/WebM
   useEffect(() => {
     const video = videoRef.current;
@@ -98,10 +214,6 @@ const UniversalVideoPlayer = ({
           enableWorker: true,
           lowLatencyMode: true,
           backBufferLength: 60,
-          // Auto-limit quality based on the player's actual rendered size.
-          // Card-sized players (350-500px wide) don't benefit from 4K segments.
-          capLevelToPlayerSize: true,
-          // Start at the lowest quality for instant playback, then auto-upgrade
           startLevel: 0,
           xhrSetup: (xhr) => {
             // Don't send credentials to avoid CORS preflight issues with proxied segments
@@ -114,18 +226,41 @@ const UniversalVideoPlayer = ({
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-          // When proxying through the cloud backend, cap quality to 720p max.
-          // Each .ts segment is fully relayed through our server — 2160p segments
-          // are 50-70MB each, causing massive delays. 720p segments are 3-4MB.
-          if (useProxy && data.levels && data.levels.length > 1) {
-            const maxLevel = data.levels.reduce((best, level, idx) => {
-              if (level.height <= 720 && (best === -1 || level.height > data.levels[best].height)) {
-                return idx;
+          if (data.levels && data.levels.length > 0) {
+            const processed = processHlsLevels(data.levels);
+            const defaultLvl = findDefaultLevel(processed);
+
+            const qualitiesWithDefault = processed.map((lvl) => ({
+              ...lvl,
+              isDefault: defaultLvl && lvl.index === defaultLvl.index,
+            }));
+            setAvailableQualities(qualitiesWithDefault);
+
+            // Honor user's manual choice if previously made, otherwise apply 720p/480p default
+            if (userSelectedQualityRef.current !== null) {
+              if (userSelectedQualityRef.current === 'auto') {
+                hls.currentLevel = -1;
+                setSelectedQuality('auto');
+              } else {
+                const matched = qualitiesWithDefault.find(
+                  (q) => q.height === userSelectedQualityRef.current
+                );
+                if (matched) {
+                  hls.autoLevelCapping = -1;
+                  hls.currentLevel = matched.index;
+                  hls.loadLevel = matched.index;
+                  setSelectedQuality(`${matched.height}p`);
+                } else if (defaultLvl) {
+                  hls.currentLevel = defaultLvl.index;
+                  hls.loadLevel = defaultLvl.index;
+                  setSelectedQuality(`${defaultLvl.height}p`);
+                }
               }
-              return best;
-            }, -1);
-            if (maxLevel >= 0) {
-              hls.autoLevelCapping = maxLevel;
+            } else if (defaultLvl) {
+              // Default video quality is 720p (primary) or 480p, NOT the highest
+              hls.currentLevel = defaultLvl.index;
+              hls.loadLevel = defaultLvl.index;
+              setSelectedQuality(`${defaultLvl.height}p`);
             }
           }
 
@@ -228,9 +363,96 @@ const UniversalVideoPlayer = ({
         className="w-full h-full object-contain"
       />
 
-      {/* Floating Control Bar: Cloud Stream (VPN-Free) Toggle */}
+      {/* Floating Control Bar: Quality Selector & Cloud Stream Toggle */}
       {src && (
         <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
+          {/* Quality Selector Dropdown (shown when multi-quality HLS stream) */}
+          {availableQualities.length > 1 && (
+            <div className="relative" ref={qualityMenuRef}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsQualityMenuOpen((prev) => !prev);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide shadow-md transition-all cursor-pointer backdrop-blur-md border bg-black/60 hover:bg-black/85 text-gray-200 border-white/15 hover:border-white/30 active:scale-95"
+                title="Select video quality"
+              >
+                <IoSettingsOutline size={12} className="text-gray-400" />
+                <span>{selectedQuality === 'auto' ? 'Auto' : selectedQuality || 'Quality'}</span>
+                <IoChevronDownOutline
+                  size={10}
+                  className={`text-gray-400 transition-transform duration-200 ${
+                    isQualityMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Quality Dropdown Menu */}
+              {isQualityMenuOpen && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-0 mt-1.5 py-1 min-w-[130px] bg-neutral-900/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-xl z-30 overflow-hidden"
+                >
+                  <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-white/10">
+                    Quality
+                  </div>
+
+                  {/* Auto option */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectQuality('auto')}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors hover:bg-white/10 cursor-pointer ${
+                      selectedQuality === 'auto' ? 'text-emerald-400 font-semibold bg-white/5' : 'text-gray-300'
+                    }`}
+                  >
+                    <span>Auto</span>
+                    {selectedQuality === 'auto' && <IoCheckmarkOutline size={14} className="text-emerald-400" />}
+                  </button>
+
+                  {/* Available levels from highest to lowest */}
+                  {availableQualities.map((lvl) => {
+                    const isSelected = selectedQuality === `${lvl.height}p`;
+                    return (
+                      <button
+                        key={lvl.index}
+                        type="button"
+                        onClick={() => handleSelectQuality(lvl)}
+                        className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors hover:bg-white/10 cursor-pointer ${
+                          isSelected ? 'text-emerald-400 font-semibold bg-white/5' : 'text-gray-300'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span>{lvl.height}p</span>
+                          {lvl.height >= 2160 && (
+                            <span className="px-1 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded leading-none">
+                              4K
+                            </span>
+                          )}
+                          {lvl.height === 1080 && (
+                            <span className="px-1 py-0.5 text-[9px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded leading-none">
+                              HD
+                            </span>
+                          )}
+                          {lvl.height === 720 && (
+                            <span className="px-1 py-0.5 text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded leading-none">
+                              HD
+                            </span>
+                          )}
+                          {lvl.isDefault && (
+                            <span className="text-[9px] text-gray-500 font-normal">(Default)</span>
+                          )}
+                        </span>
+                        {isSelected && <IoCheckmarkOutline size={14} className="text-emerald-400" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cloud Stream Toggle */}
           <button
             type="button"
             onClick={handleToggleProxy}
