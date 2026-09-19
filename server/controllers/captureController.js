@@ -1103,6 +1103,18 @@ const deleteCapture = async (req, res) => {
 // @desc    Proxy video stream & HLS playlist with Range support & URL rewriting to bypass regional ISP blocks / CORS
 // @route   GET /api/captures/stream
 const streamVideo = async (req, res) => {
+  // Support CORS preflight
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
+      "Access-Control-Max-Age": "86400",
+      "Cross-Origin-Resource-Policy": "cross-origin",
+    });
+    return res.end();
+  }
+
   try {
     const { url } = req.query;
     if (!url || typeof url !== "string" || !/^https?:\/\//i.test(url)) {
@@ -1169,6 +1181,9 @@ const streamVideo = async (req, res) => {
       res.writeHead(200, {
         "Content-Type": "application/vnd.apple.mpegurl",
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
+        "Cross-Origin-Resource-Policy": "cross-origin",
         "Cache-Control": "no-cache",
       });
       return res.end(modifiedText);
@@ -1179,6 +1194,9 @@ const streamVideo = async (req, res) => {
       "Content-Type": contentType || (url.includes(".ts") ? "video/mp2t" : "video/mp4"),
       "Accept-Ranges": "bytes",
       "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
+      "Cross-Origin-Resource-Policy": "cross-origin",
     };
 
     if (response.headers.get("content-length")) {

@@ -16,8 +16,8 @@ const {
 // Scrape link metadata for live modal preview
 router.post("/scrape", protect, scrapeMetadata);
 
-// Video streaming proxy to bypass CDN hotlinking / 403 referer blocks
-router.get("/stream", streamVideo);
+// Video streaming proxy to bypass CDN hotlinking / 403 referer blocks & support HLS
+router.all("/stream", streamVideo);
 
 // Get list of captures with filtering / stats
 router.get("/", protect, getCaptures);
