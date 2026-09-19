@@ -98,6 +98,11 @@ const UniversalVideoPlayer = ({
           enableWorker: true,
           lowLatencyMode: true,
           backBufferLength: 60,
+          // Auto-limit quality based on the player's actual rendered size.
+          // Card-sized players (350-500px wide) don't benefit from 4K segments.
+          capLevelToPlayerSize: true,
+          // Start at the lowest quality for instant playback, then auto-upgrade
+          startLevel: 0,
           xhrSetup: (xhr) => {
             // Don't send credentials to avoid CORS preflight issues with proxied segments
             xhr.withCredentials = false;
@@ -108,7 +113,22 @@ const UniversalVideoPlayer = ({
         hls.loadSource(effectiveSrc);
         hls.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+          // When proxying through the cloud backend, cap quality to 720p max.
+          // Each .ts segment is fully relayed through our server — 2160p segments
+          // are 50-70MB each, causing massive delays. 720p segments are 3-4MB.
+          if (useProxy && data.levels && data.levels.length > 1) {
+            const maxLevel = data.levels.reduce((best, level, idx) => {
+              if (level.height <= 720 && (best === -1 || level.height > data.levels[best].height)) {
+                return idx;
+              }
+              return best;
+            }, -1);
+            if (maxLevel >= 0) {
+              hls.autoLevelCapping = maxLevel;
+            }
+          }
+
           if (autoPlay) {
             video.play().catch(() => {});
           }

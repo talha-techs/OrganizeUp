@@ -1150,11 +1150,33 @@ const streamVideo = async (req, res) => {
 
     const fetchMethod = req.method === "HEAD" ? "HEAD" : "GET";
 
-    const response = await fetch(url, {
-      method: fetchMethod,
-      headers,
-      signal: AbortSignal.timeout(30000),
-    });
+    // Use AbortController with a CONNECTION timeout only.
+    // AbortSignal.timeout() kills the entire operation including body streaming,
+    // which crashes Node when large .ts segments (50-70MB) take >30s to transfer.
+    // Instead, we set a 15s timeout for the connection/headers phase only,
+    // then clear it once headers arrive so data can stream as long as needed.
+    const controller = new AbortController();
+    const connectionTimeout = setTimeout(() => {
+      controller.abort();
+    }, 15000);
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method: fetchMethod,
+        headers,
+        signal: controller.signal,
+      });
+    } catch (fetchErr) {
+      clearTimeout(connectionTimeout);
+      if (fetchErr.name === "AbortError") {
+        return res.status(504).set(corsHeaders).send("Connection to video source timed out");
+      }
+      throw fetchErr;
+    }
+
+    // Headers received — clear the connection timeout so data can stream freely
+    clearTimeout(connectionTimeout);
 
     if (!response.ok && response.status !== 206) {
       return res
@@ -1229,9 +1251,24 @@ const streamVideo = async (req, res) => {
 
     const { Readable } = require("stream");
     const nodeStream = Readable.fromWeb(response.body);
+
+    // CRITICAL: Handle stream errors gracefully to prevent crashing the server.
+    // Without this, a timeout/abort/disconnect emits an unhandled 'error' event
+    // on the Readable, which takes down the entire Node.js process.
+    nodeStream.on("error", (streamErr) => {
+      console.warn("Stream pipe error (handled gracefully):", streamErr.message);
+      if (!res.writableEnded) {
+        res.end();
+      }
+    });
+
     nodeStream.pipe(res);
+
+    // Clean up when the client disconnects mid-stream
     req.on("close", () => {
-      nodeStream.destroy();
+      if (!nodeStream.destroyed) {
+        nodeStream.destroy();
+      }
     });
   } catch (err) {
     console.error("Stream video error:", err.message);
