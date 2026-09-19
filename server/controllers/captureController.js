@@ -1103,15 +1103,18 @@ const deleteCapture = async (req, res) => {
 // @desc    Proxy video stream & HLS playlist with Range support & URL rewriting to bypass regional ISP blocks / CORS
 // @route   GET /api/captures/stream
 const streamVideo = async (req, res) => {
+  // CORS headers shared across all responses
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
+    "Access-Control-Max-Age": "86400",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+  };
+
   // Support CORS preflight
   if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-      "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
-      "Access-Control-Max-Age": "86400",
-      "Cross-Origin-Resource-Policy": "cross-origin",
-    });
+    res.writeHead(204, corsHeaders);
     return res.end();
   }
 
@@ -1121,6 +1124,13 @@ const streamVideo = async (req, res) => {
       return res.status(400).send("A valid video URL is required");
     }
 
+    // Derive Referer and Origin from the target URL to satisfy CDN hotlink checks
+    let targetOrigin = "";
+    try {
+      const parsed = new URL(url);
+      targetOrigin = parsed.origin;
+    } catch {}
+
     const headers = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -1128,18 +1138,28 @@ const streamVideo = async (req, res) => {
       "Accept-Encoding": "identity",
     };
 
+    // Spoof Referer/Origin so CDNs that validate hotlinking don't reject us
+    if (targetOrigin) {
+      headers["Referer"] = targetOrigin + "/";
+      headers["Origin"] = targetOrigin;
+    }
+
     if (req.headers.range) {
       headers["Range"] = req.headers.range;
     }
 
+    const fetchMethod = req.method === "HEAD" ? "HEAD" : "GET";
+
     const response = await fetch(url, {
-      method: "GET",
+      method: fetchMethod,
       headers,
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok && response.status !== 206) {
       return res
         .status(response.status)
+        .set(corsHeaders)
         .send(`Failed to stream video: ${response.statusText}`);
     }
 
@@ -1180,10 +1200,7 @@ const streamVideo = async (req, res) => {
       const modifiedText = rewrittenLines.join("\n");
       res.writeHead(200, {
         "Content-Type": "application/vnd.apple.mpegurl",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-        "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
-        "Cross-Origin-Resource-Policy": "cross-origin",
+        ...corsHeaders,
         "Cache-Control": "no-cache",
       });
       return res.end(modifiedText);
@@ -1193,10 +1210,7 @@ const streamVideo = async (req, res) => {
     const resHeaders = {
       "Content-Type": contentType || (url.includes(".ts") ? "video/mp2t" : "video/mp4"),
       "Accept-Ranges": "bytes",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-      "Access-Control-Allow-Headers": "Range, Content-Type, Accept",
-      "Cross-Origin-Resource-Policy": "cross-origin",
+      ...corsHeaders,
     };
 
     if (response.headers.get("content-length")) {
@@ -1208,20 +1222,21 @@ const streamVideo = async (req, res) => {
 
     res.writeHead(response.status, resHeaders);
 
-    const { Readable } = require("stream");
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body);
-      nodeStream.pipe(res);
-      req.on("close", () => {
-        nodeStream.destroy();
-      });
-    } else {
-      res.end();
+    // HEAD requests don't have a body
+    if (fetchMethod === "HEAD" || !response.body) {
+      return res.end();
     }
+
+    const { Readable } = require("stream");
+    const nodeStream = Readable.fromWeb(response.body);
+    nodeStream.pipe(res);
+    req.on("close", () => {
+      nodeStream.destroy();
+    });
   } catch (err) {
     console.error("Stream video error:", err.message);
     if (!res.headersSent) {
-      res.status(500).send("Video streaming error");
+      res.status(500).set(corsHeaders).send("Video streaming error");
     }
   }
 };

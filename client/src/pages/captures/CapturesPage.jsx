@@ -47,7 +47,23 @@ const isVideoUrl = (url) =>
     url.includes('video.twimg.com') ||
     url.includes('twimg.com') ||
     url.includes('.m3u8') ||
+    url.includes('fbcdn.net') ||
+    url.includes('cdninstagram.com') ||
     url.includes('/api/captures/stream'));
+
+// Stricter check: is the URL a direct video file/stream that a <video> element can play?
+// Returns false for embed/plugin page URLs (e.g. facebook.com/plugins/video.php)
+const isDirectVideoFile = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  // Reject known embed/plugin page URLs
+  if (url.includes('facebook.com/plugins/') || url.includes('youtube.com/embed/') ||
+      url.includes('instagram.com/') || url.includes('linkedin.com/embed/') ||
+      url.includes('platform.twitter.com/embed/') || url.includes('tiktok.com/embed/') ||
+      url.includes('player.vimeo.com/') || url.includes('loom.com/embed/')) {
+    return false;
+  }
+  return isVideoUrl(url);
+};
 
 const getVideoSrc = (url) => {
   if (!url) return '';
@@ -59,6 +75,7 @@ const getVideoSrc = (url) => {
   }
   return url;
 };
+
 
 const CapturesPage = () => {
   const dispatch = useDispatch();
@@ -484,7 +501,7 @@ const CapturesPage = () => {
                           loading="lazy"
                         />
                       </div>
-                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                    ) : isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
                       <UniversalVideoPlayer
                         src={capture.mediaUrl}
                         poster={capture.thumbnailUrl}
@@ -589,7 +606,7 @@ const CapturesPage = () => {
 
                 {/* 4. Web Image, Article Banner, or Direct Video Player */}
                 {['web_image', 'web', 'other'].includes(capture.platform) && (
-                  (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl) || (capture.embedUrl && !['facebook', 'instagram', 'youtube', 'linkedin', 'twitter', 'whatsapp'].includes(capture.platform))) ? (
+                  (capture.mediaType === 'video' || isDirectVideoFile(capture.mediaUrl) || (capture.embedUrl && !['facebook', 'instagram', 'youtube', 'linkedin', 'twitter', 'whatsapp'].includes(capture.platform))) ? (
                     <UniversalVideoPlayer
                       src={capture.mediaUrl}
                       poster={capture.thumbnailUrl}
@@ -655,7 +672,7 @@ const CapturesPage = () => {
                           loading="lazy"
                         />
                       </div>
-                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                    ) : isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
                       <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
                         <video
                           src={getVideoSrc(capture.mediaUrl)}
@@ -758,7 +775,7 @@ const CapturesPage = () => {
                           loading="lazy"
                         />
                       </div>
-                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                    ) : (capture.mediaType === 'video' || isDirectVideoFile(capture.mediaUrl)) && capture.mediaUrl ? (
                       <UniversalVideoPlayer
                         src={capture.mediaUrl}
                         poster={capture.thumbnailUrl}

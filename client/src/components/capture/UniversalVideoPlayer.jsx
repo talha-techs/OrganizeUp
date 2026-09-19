@@ -1,10 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
 import { IoFlashOutline, IoGlobeOutline, IoRefreshOutline } from 'react-icons/io5';
 
 /**
  * Universal Video Player with HLS (.m3u8), MP4/WebM, and Cloud Stream Proxy support.
  * Bypasses regional ISP blocks, CORS restrictions, and hotlink protections via the cloud backend.
+ *
+ * Playback strategy:
+ *   1. If the source is a known hotlink-protected CDN (e.g. twimg.com) or forceProxy is set,
+ *      start with the Cloud Stream proxy immediately.
+ *   2. Otherwise, try direct playback first. If the browser blocks it (CORS, 403, etc.),
+ *      auto-fallback to the Cloud Stream proxy.
+ *   3. For HLS (.m3u8), uses hls.js with the same proxy-fallback logic.
  */
 const UniversalVideoPlayer = ({
   src,
@@ -17,16 +24,25 @@ const UniversalVideoPlayer = ({
 }) => {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
+  const retryCountRef = useRef(0);
 
-  // Twitter/X CDN strictly rejects foreign Referer headers, requiring the stream proxy.
-  // Other platforms (like HLS or direct MP4) try direct first, with auto-fallback to Cloud Proxy on error.
-  const isTwimg = typeof src === 'string' && (src.includes('twimg.com') || src.includes('video.twimg.com'));
-  const [useProxy, setUseProxy] = useState(forceProxy || isTwimg);
+  // Detect sources that require proxying from the start
+  const needsProxyFromStart = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    return (
+      url.includes('twimg.com') ||
+      url.includes('video.twimg.com') ||
+      url.includes('fbcdn.net') ||
+      url.includes('cdninstagram.com')
+    );
+  };
+
+  const [useProxy, setUseProxy] = useState(forceProxy || needsProxyFromStart(src));
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Compute final stream URL
-  const getStreamUrl = (rawUrl, proxied) => {
+  const getStreamUrl = useCallback((rawUrl, proxied) => {
     if (!rawUrl) return '';
     if (rawUrl.startsWith('/api/captures/stream')) return rawUrl;
 
@@ -35,77 +51,130 @@ const UniversalVideoPlayer = ({
       return `${apiBase}/api/captures/stream?url=${encodeURIComponent(rawUrl)}`;
     }
     return rawUrl;
+  }, []);
+
+  const isHls =
+    typeof src === 'string' &&
+    (src.includes('.m3u8') || src.includes('mpegurl'));
+
+  // Check if the src is actually a playable direct video URL (not an embed page URL)
+  const isDirectVideoUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    // If it's already a proxy URL, it's direct
+    if (url.startsWith('/api/captures/stream')) return true;
+    // Check for known video file extensions or video CDN patterns
+    if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url)) return true;
+    if (url.includes('video.twimg.com')) return true;
+    if (url.includes('.m3u8')) return true;
+    if (url.includes('fbcdn.net') && url.includes('video')) return true;
+    return false;
   };
 
-  const isHls = typeof src === 'string' && (src.includes('.m3u8') || src.includes('mpegurl'));
+  // Determine if we should use the video element or an iframe embed
+  const hasDirect = isDirectVideoUrl(src);
   const effectiveSrc = getStreamUrl(src, useProxy);
 
-  // Initialize HLS for .m3u8 streams
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !src || embedUrl || !isHls) return;
-
+  // Cleanup HLS instance
+  const destroyHls = useCallback(() => {
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
+  }, []);
 
+  // Initialize HLS for .m3u8 streams, or set src for MP4/WebM
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src || !hasDirect) return;
+
+    destroyHls();
     setHasError(false);
     setErrorMessage('');
+    retryCountRef.current = 0;
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 60,
-      });
-      hlsRef.current = hls;
+    if (isHls) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 60,
+          xhrSetup: (xhr) => {
+            // Don't send credentials to avoid CORS preflight issues with proxied segments
+            xhr.withCredentials = false;
+          },
+        });
+        hlsRef.current = hls;
 
-      hls.loadSource(effectiveSrc);
-      hls.attachMedia(video);
+        hls.loadSource(effectiveSrc);
+        hls.attachMedia(video);
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              if (!useProxy) {
-                console.warn('HLS direct stream blocked/failed. Auto-switching to Cloud Stream proxy...');
-                setUseProxy(true);
-              } else {
-                hls.startLoad();
-              }
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              setHasError(true);
-              setErrorMessage('Unable to load video stream.');
-              break;
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (autoPlay) {
+            video.play().catch(() => {});
           }
-        }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS for Safari / iOS
+        });
+
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                if (!useProxy) {
+                  console.warn('HLS direct stream blocked/failed. Auto-switching to Cloud Stream proxy...');
+                  setUseProxy(true);
+                } else if (retryCountRef.current < 2) {
+                  retryCountRef.current++;
+                  hls.startLoad();
+                } else {
+                  setHasError(true);
+                  setErrorMessage('Unable to load video stream. The source may be unavailable.');
+                }
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                setHasError(true);
+                setErrorMessage('Unable to load video stream.');
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS for Safari / iOS
+        video.src = effectiveSrc;
+      }
+    } else {
+      // MP4 / WebM — set src directly on the video element
       video.src = effectiveSrc;
+      video.load();
     }
 
     return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
+      destroyHls();
     };
-  }, [src, useProxy, isHls, effectiveSrc]);
+  }, [src, useProxy, isHls, effectiveSrc, hasDirect, autoPlay, destroyHls]);
+
+  const handleVideoError = useCallback(() => {
+    if (!useProxy && src) {
+      console.warn('Direct video playback error. Switching to Cloud Stream proxy...');
+      setUseProxy(true);
+    } else {
+      setHasError(true);
+      setErrorMessage('Unable to stream video. Please check connection or toggle stream mode.');
+    }
+  }, [useProxy, src]);
 
   const handleToggleProxy = (e) => {
     e.stopPropagation();
+    setHasError(false);
+    setErrorMessage('');
+    retryCountRef.current = 0;
     setUseProxy((prev) => !prev);
   };
 
-  // Render iframe embed fallback if embedUrl is provided without a direct stream URL
-  if (!src && embedUrl) {
+  // Render iframe embed fallback if embedUrl is provided and no direct playable stream
+  if ((!src || !hasDirect) && embedUrl) {
     return (
       <div className={`w-full bg-black relative aspect-video overflow-hidden ${className}`}>
         <iframe
@@ -121,28 +190,21 @@ const UniversalVideoPlayer = ({
     );
   }
 
+  // If no src at all, render nothing
+  if (!src) return null;
+
   return (
     <div className={`w-full bg-black relative aspect-video overflow-hidden group select-none ${className}`}>
       {/* Native Video Element with built-in controls */}
       <video
         ref={videoRef}
-        src={!isHls ? effectiveSrc : undefined}
         poster={poster}
         controls
         playsInline
         preload="metadata"
         autoPlay={autoPlay}
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
-        onError={() => {
-          if (!useProxy && src) {
-            console.warn('Direct video playback error. Switching to Cloud Stream proxy...');
-            setUseProxy(true);
-          } else {
-            setHasError(true);
-            setErrorMessage('Unable to stream video. Please check connection or toggle stream mode.');
-          }
-        }}
+        onError={handleVideoError}
         className="w-full h-full object-contain"
       />
 
@@ -191,6 +253,7 @@ const UniversalVideoPlayer = ({
               type="button"
               onClick={() => {
                 setHasError(false);
+                retryCountRef.current = 0;
                 setUseProxy((prev) => !prev);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
