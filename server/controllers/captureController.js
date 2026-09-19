@@ -23,6 +23,55 @@ const decodeHtmlEntities = (str) => {
     .trim();
 };
 
+// Helper to extract schema.org VideoObject from JSON-LD script tags
+const extractJsonLdVideo = (html) => {
+  if (!html || typeof html !== "string") return null;
+
+  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+
+  const findVideoObject = (node) => {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findVideoObject(item);
+        if (found) return found;
+      }
+      return null;
+    }
+    const type = node["@type"];
+    const isVideo =
+      type === "VideoObject" ||
+      (Array.isArray(type) && type.includes("VideoObject")) ||
+      (typeof type === "string" && type.toLowerCase().includes("videoobject"));
+
+    if (isVideo) return node;
+
+    if (node["@graph"] && Array.isArray(node["@graph"])) {
+      for (const item of node["@graph"]) {
+        const found = findVideoObject(item);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const rawJson = match[1].trim();
+      const parsed = JSON.parse(rawJson);
+      const videoObj = findVideoObject(parsed);
+      if (videoObj) {
+        return videoObj;
+      }
+    } catch {
+      // Continue to next script tag if malformed JSON
+    }
+  }
+
+  return null;
+};
+
 // Helper to auto-detect platform, media type, and embed details from URL
 const detectPlatformAndEmbed = (url = "") => {
   const trimmed = url.trim();
@@ -98,8 +147,8 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
-  // Direct Video URLs (.mp4, .webm, .ogg, .mov, .m4v)
-  if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(trimmed)) {
+  // Direct Video & Stream URLs (.mp4, .webm, .ogg, .mov, .m4v, .m3u8, .mpd)
+  if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(trimmed)) {
     return {
       platform: "web",
       mediaType: "video",
@@ -327,21 +376,63 @@ const fetchUrlMetadata = async (url) => {
           html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
         if (ogImgMatch) finalImage = ogImgMatch[1].trim();
 
-        // Extract og:video / og:video:url / og:video:secure_url / twitter:player:stream
+        // 1. Extract schema.org VideoObject from JSON-LD
+        const videoObj = extractJsonLdVideo(html);
+        if (videoObj) {
+          detected.mediaType = "video";
+          if (videoObj.name && !finalTitle) finalTitle = String(videoObj.name).trim();
+          if (videoObj.description && !finalDescription) finalDescription = String(videoObj.description).trim();
+
+          const thumb =
+            typeof videoObj.thumbnailUrl === "string"
+              ? videoObj.thumbnailUrl
+              : Array.isArray(videoObj.thumbnailUrl)
+              ? videoObj.thumbnailUrl[0]
+              : videoObj.thumbnailUrl?.url || videoObj.thumbnail?.url || "";
+          if (thumb) {
+            directPosterUrl = thumb.trim().replace(/&amp;/g, "&");
+            if (!finalImage) finalImage = directPosterUrl;
+          }
+
+          if (videoObj.contentUrl && typeof videoObj.contentUrl === "string") {
+            directVideoUrl = videoObj.contentUrl.trim().replace(/&amp;/g, "&");
+          }
+          if (videoObj.embedUrl && typeof videoObj.embedUrl === "string" && !detected.embedUrl) {
+            detected.embedUrl = videoObj.embedUrl.trim().replace(/&amp;/g, "&");
+          }
+          const vAuthor =
+            videoObj.author?.name ||
+            videoObj.creator?.name ||
+            (typeof videoObj.author === "string" ? videoObj.author : "") ||
+            (typeof videoObj.creator === "string" ? videoObj.creator : "");
+          if (vAuthor && !author) {
+            author = String(vAuthor).trim();
+          }
+        }
+
+        // 2. Extract og:type
+        const ogTypeMatch =
+          html.match(/<meta[^>]+property=["']og:type["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:type["']/i);
+        if (ogTypeMatch && ogTypeMatch[1].trim().toLowerCase().startsWith("video")) {
+          detected.mediaType = "video";
+        }
+
+        // 3. Extract og:video / og:video:url / og:video:secure_url / twitter:player:stream
         const ogVideoMatch =
           html.match(/<meta[^>]+property=["']og:video(?:(?::secure)?_url)?["'][^>]+content=["']([^"']+)["']/i) ||
           html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?:(?::secure)?_url)?["']/i) ||
           html.match(/<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/i);
         if (ogVideoMatch && !directVideoUrl) {
           const ogVid = ogVideoMatch[1].trim().replace(/&amp;/g, "&");
-          if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(ogVid) || ogVid.includes("video")) {
+          if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(ogVid) || ogVid.includes("video") || ogVid.includes(".m3u8")) {
             directVideoUrl = ogVid;
             detected.mediaType = "video";
             if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
           }
         }
 
-        // Extract twitter:player or og:video embed iframe
+        // 4. Extract twitter:player or og:video embed iframe
         const ogPlayerMatch =
           html.match(/<meta[^>]+name=["']twitter:player["'][^>]+content=["']([^"']+)["']/i) ||
           html.match(/<meta[^>]+property=["']twitter:player["'][^>]+content=["']([^"']+)["']/i);
@@ -353,14 +444,23 @@ const fetchUrlMetadata = async (url) => {
           }
         }
 
-        // Extract HTML5 <video><source src="..."> if available
+        // 5. Extract HTML5 <video><source src="..."> if available
         if (!directVideoUrl) {
           const videoTagMatch =
-            html.match(/<video[^>]*>[\s\S]*?<source[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v)[^"']*)["']/i) ||
-            html.match(/<video[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v)[^"']*)["']/i);
+            html.match(/<source[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v|m3u8|mpd)[^"']*)["']/i) ||
+            html.match(/<video[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v|m3u8|mpd)[^"']*)["']/i);
           if (videoTagMatch) {
             directVideoUrl = videoTagMatch[1].trim().replace(/&amp;/g, "&");
             detected.mediaType = "video";
+            if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
+          }
+        }
+
+        // 6. Fallback regex search for HLS or MP4 stream if mediaType is video but no direct stream URL was captured
+        if (!directVideoUrl && detected.mediaType === "video") {
+          const streamRegexMatch = html.match(/https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)(?:\?[^\s"'<>]*)?/i);
+          if (streamRegexMatch) {
+            directVideoUrl = streamRegexMatch[0].trim().replace(/&amp;/g, "&");
             if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
           }
         }
@@ -490,7 +590,7 @@ const fetchUrlMetadata = async (url) => {
       description: finalDescription,
       rawContent: finalDescription,
       thumbnailUrl: directPosterUrl || finalImage,
-      mediaUrl: directVideoUrl || detected.mediaUrl || finalImage,
+      mediaUrl: directVideoUrl || detected.mediaUrl || (resolvedMediaType === "video" ? (detected.embedUrl || "") : finalImage),
       siteName: siteName || detected.platform,
       authorName: author,
       ...detected,
@@ -746,28 +846,31 @@ const createCapture = async (req, res) => {
 
     // Auto-promote mediaType to "video" if video stream, video URL, or video platform detected
     const isVideoFile =
-      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(mediaUrl) ||
-      /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(sourceUrl) ||
-      (typeof mediaUrl === "string" && mediaUrl.includes("video.twimg.com"));
+      /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(mediaUrl) ||
+      /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(sourceUrl) ||
+      (typeof mediaUrl === "string" && (mediaUrl.includes("video.twimg.com") || mediaUrl.includes(".m3u8") || mediaUrl.includes("/api/captures/stream")));
 
-    if (isVideoFile || ["youtube"].includes(platform) || rawMediaType === "video") {
+    if (isVideoFile || ["youtube"].includes(platform) || rawMediaType === "video" || mediaType === "video") {
       mediaType = "video";
+      if (platform === "web_image") {
+        platform = "web";
+      }
     }
 
     // Ensure mediaUrl and thumbnailUrl are synced and unescaped
     if (typeof mediaUrl === "string") mediaUrl = mediaUrl.replace(/&amp;/g, "&");
     if (typeof thumbnailUrl === "string") thumbnailUrl = thumbnailUrl.replace(/&amp;/g, "&");
 
-    // Clean up if an mp4 file was passed as thumbnailUrl
-    if (thumbnailUrl && /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(thumbnailUrl)) {
+    // Clean up if a video file was passed as thumbnailUrl
+    if (thumbnailUrl && /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(thumbnailUrl)) {
       if (!mediaUrl) mediaUrl = thumbnailUrl;
       thumbnailUrl = "";
     }
 
-    if (!mediaUrl && thumbnailUrl) {
+    if (!mediaUrl && thumbnailUrl && mediaType !== "video") {
       mediaUrl = thumbnailUrl;
     }
-    if (!thumbnailUrl && mediaUrl && !isVideoFile) {
+    if (!thumbnailUrl && mediaUrl && !isVideoFile && mediaType !== "video") {
       thumbnailUrl = mediaUrl;
     }
 
@@ -997,7 +1100,7 @@ const deleteCapture = async (req, res) => {
   }
 };
 
-// @desc    Proxy video stream with Range support to bypass CDN hotlinking / 403 referer blocks
+// @desc    Proxy video stream & HLS playlist with Range support & URL rewriting to bypass regional ISP blocks / CORS
 // @route   GET /api/captures/stream
 const streamVideo = async (req, res) => {
   try {
@@ -1008,7 +1111,7 @@ const streamVideo = async (req, res) => {
 
     const headers = {
       "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       Accept: "*/*",
       "Accept-Encoding": "identity",
     };
@@ -1028,8 +1131,52 @@ const streamVideo = async (req, res) => {
         .send(`Failed to stream video: ${response.statusText}`);
     }
 
+    const contentType = response.headers.get("content-type") || "";
+    const isM3u8 = url.includes(".m3u8") || contentType.includes("mpegurl") || contentType.includes("x-mpegurl");
+
+    if (isM3u8) {
+      // HLS playlist: rewrite child playlist and segment URLs so all playback requests flow through this cloud proxy
+      const rawText = await response.text();
+      const originUrl = new URL(url);
+
+      const rewrittenLines = rawText.split(/\r?\n/).map((line) => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine.startsWith("#")) {
+          // Check for URI inside #EXT-X-KEY or #EXT-X-MAP
+          if (trimmedLine.startsWith("#EXT-X-KEY:") || trimmedLine.startsWith("#EXT-X-MAP:")) {
+            return line.replace(/URI=["']([^"']+)["']/g, (full, uri) => {
+              try {
+                const resolved = new URL(uri, originUrl).href;
+                return `URI="/api/captures/stream?url=${encodeURIComponent(resolved)}"`;
+              } catch {
+                return full;
+              }
+            });
+          }
+          return line;
+        }
+
+        // URL / path to child playlist or video segment (.ts, .m3u8, .m4s)
+        try {
+          const resolved = new URL(trimmedLine, originUrl).href;
+          return `/api/captures/stream?url=${encodeURIComponent(resolved)}`;
+        } catch {
+          return line;
+        }
+      });
+
+      const modifiedText = rewrittenLines.join("\n");
+      res.writeHead(200, {
+        "Content-Type": "application/vnd.apple.mpegurl",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache",
+      });
+      return res.end(modifiedText);
+    }
+
+    // Binary video chunk (.ts, .m4s) or standard MP4/WebM stream
     const resHeaders = {
-      "Content-Type": response.headers.get("content-type") || "video/mp4",
+      "Content-Type": contentType || (url.includes(".ts") ? "video/mp2t" : "video/mp4"),
       "Accept-Ranges": "bytes",
       "Access-Control-Allow-Origin": "*",
     };
@@ -1071,5 +1218,6 @@ module.exports = {
   deleteCapture,
   detectPlatformAndEmbed,
   streamVideo,
+  fetchUrlMetadata,
 };
 

@@ -287,18 +287,19 @@ const QuickCaptureModal = () => {
           ? 'instagram'
           : scrapedData?.platform;
 
-        const mediaType =
-          scrapedData?.mediaType ||
-          (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(scrapedData?.mediaUrl || url) ||
-          scrapedData?.embedUrl ||
-          ['youtube', 'instagram', 'facebook'].includes(platform)
-            ? 'video'
-            : 'post');
+        const isVideo =
+          scrapedData?.mediaType === 'video' ||
+          /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(scrapedData?.mediaUrl || url) ||
+          Boolean(scrapedData?.embedUrl) ||
+          ['youtube', 'instagram', 'facebook'].includes(platform);
+
+        const mediaType = isVideo ? 'video' : (scrapedData?.mediaType || 'post');
+        const resolvedPlatform = (platform === 'web_image' && isVideo) ? 'web' : platform;
 
         await dispatch(
           createCapture({
             sourceUrl: url.trim(),
-            platform,
+            platform: resolvedPlatform,
             mediaType,
             title: title || scrapedData?.title || 'Saved Link',
             notes,
@@ -306,7 +307,7 @@ const QuickCaptureModal = () => {
             priority,
             remindAt,
             rawContent: scrapedData?.rawContent || scrapedData?.description || notes,
-            mediaUrl: scrapedData?.mediaUrl || scrapedData?.thumbnailUrl,
+            mediaUrl: scrapedData?.mediaUrl || (isVideo ? scrapedData?.embedUrl : scrapedData?.thumbnailUrl),
             thumbnailUrl: scrapedData?.thumbnailUrl,
             embedId: scrapedData?.embedId,
             embedUrl: scrapedData?.embedUrl,

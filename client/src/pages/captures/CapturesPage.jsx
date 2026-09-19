@@ -39,10 +39,15 @@ import {
   openQuickCapture,
 } from '../../redux/slices/captureSlice';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
 
 const isVideoUrl = (url) =>
   typeof url === 'string' &&
-  (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url) || url.includes('video.twimg.com') || url.includes('twimg.com'));
+  (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) ||
+    url.includes('video.twimg.com') ||
+    url.includes('twimg.com') ||
+    url.includes('.m3u8') ||
+    url.includes('/api/captures/stream'));
 
 const getVideoSrc = (url) => {
   if (!url) return '';
@@ -479,18 +484,14 @@ const CapturesPage = () => {
                           loading="lazy"
                         />
                       </div>
-                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && isVideoUrl(capture.mediaUrl) ? (
-                      <div className="w-full bg-black relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
-                        <video
-                          src={getVideoSrc(capture.mediaUrl)}
-                          poster={capture.thumbnailUrl}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
+                    ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
+                      <UniversalVideoPlayer
+                        src={capture.mediaUrl}
+                        poster={capture.thumbnailUrl}
+                        title={capture.title || 'Facebook Video'}
+                        embedUrl={capture.embedUrl}
+                        className="border-b border-subtle"
+                      />
                     ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
                       <div
                         onClick={() => {
@@ -588,36 +589,14 @@ const CapturesPage = () => {
 
                 {/* 4. Web Image, Article Banner, or Direct Video Player */}
                 {['web_image', 'web', 'other'].includes(capture.platform) && (
-                  (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
-                    <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
-                      <video
-                        src={getVideoSrc(capture.mediaUrl)}
-                        poster={capture.thumbnailUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          const apiBase = import.meta.env.VITE_API_URL || '';
-                          const currentSrc = e.currentTarget.src || '';
-                          if (!currentSrc.includes('/api/captures/stream') && capture.mediaUrl) {
-                            e.currentTarget.src = `${apiBase}/api/captures/stream?url=${encodeURIComponent(capture.mediaUrl)}`;
-                            e.currentTarget.load();
-                          }
-                        }}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  ) : capture.embedUrl ? (
-                    <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle">
-                      <iframe
-                        src={capture.embedUrl}
-                        className="w-full h-full border-0"
-                        allowFullScreen
-                        title={capture.title || 'Embedded Video'}
-                        loading="lazy"
-                      />
-                    </div>
+                  (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl) || (capture.embedUrl && !['facebook', 'instagram', 'youtube', 'linkedin', 'twitter', 'whatsapp'].includes(capture.platform))) ? (
+                    <UniversalVideoPlayer
+                      src={capture.mediaUrl}
+                      poster={capture.thumbnailUrl}
+                      title={capture.title || 'Video Player'}
+                      embedUrl={capture.embedUrl}
+                      className="border-b border-subtle"
+                    />
                   ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
                     <div
                       onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
@@ -780,25 +759,13 @@ const CapturesPage = () => {
                         />
                       </div>
                     ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && capture.mediaUrl ? (
-                      <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
-                        <video
-                          src={getVideoSrc(capture.mediaUrl)}
-                          poster={capture.thumbnailUrl}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            const apiBase = import.meta.env.VITE_API_URL || '';
-                            const currentSrc = e.currentTarget.src || '';
-                            if (!currentSrc.includes('/api/captures/stream') && capture.mediaUrl) {
-                              e.currentTarget.src = `${apiBase}/api/captures/stream?url=${encodeURIComponent(capture.mediaUrl)}`;
-                              e.currentTarget.load();
-                            }
-                          }}
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
+                      <UniversalVideoPlayer
+                        src={capture.mediaUrl}
+                        poster={capture.thumbnailUrl}
+                        title={capture.title || 'X Post Video'}
+                        embedUrl={capture.embedUrl}
+                        className="border-b border-subtle"
+                      />
                     ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
                       <div className="w-full bg-[#000000] relative h-[480px] overflow-hidden border-b border-subtle flex items-center justify-center">
                         <iframe
