@@ -159,7 +159,9 @@ const exploreSlice = createSlice({
         const typeKey = contentType + "s";
         const list = state.results[typeKey];
         if (list) {
-          const idx = list.findIndex((item) => item._id === contentId);
+          const idx = list.findIndex(
+            (item) => String(item._id) === String(contentId),
+          );
           if (idx !== -1) {
             list[idx].upvotes = upvotes;
             list[idx].downvotes = downvotes;
@@ -167,7 +169,7 @@ const exploreSlice = createSlice({
             list[idx].userVote = userVote;
           }
         }
-        if (state.currentItem?._id === contentId) {
+        if (state.currentItem && String(state.currentItem._id) === String(contentId)) {
           state.currentItem.upvotes = upvotes;
           state.currentItem.downvotes = downvotes;
           state.currentItem.score = score;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   IoArrowUpOutline,
@@ -30,37 +30,49 @@ const ExploreContentCard = React.memo(
     onNavigate,
   }) => {
     const [imageError, setImageError] = useState(false);
-    const [optimisticVote, setOptimisticVote] = useState(null);
-    const [optimisticScoreDelta, setOptimisticScoreDelta] = useState(0);
+    const [pendingVote, setPendingVote] = useState(null);
+    const isVotingRef = useRef(false);
 
-    // Sync optimistic state whenever confirmed Redux props update
+    // Sync / clear pendingVote whenever confirmed Redux props update
     useEffect(() => {
-      setOptimisticVote(null);
-      setOptimisticScoreDelta(0);
+      setPendingVote(null);
     }, [item.userVote, item.score]);
 
     const currentVote =
-      optimisticVote !== null ? optimisticVote : item.userVote || 0;
-    const currentScore = (item.score || 0) + optimisticScoreDelta;
+      pendingVote !== null ? pendingVote : item.userVote || 0;
+
+    // Mathematically sound optimistic score:
+    // (Confirmed base score) + (active vote - confirmed vote)
+    const currentScore =
+      (item.score || 0) + (currentVote - (item.userVote || 0));
 
     const hasValidImage = (item.coverImage || item.bannerImage || item.thumbnail) && !imageError;
 
+    const handleVoteClick = async (targetVote) => {
+      if (isVotingRef.current) return;
+
+      // Toggle: if already voted this way, un-vote (0), otherwise set to targetVote (1 or -1)
+      const nextVote = currentVote === targetVote ? 0 : targetVote;
+      setPendingVote(nextVote);
+      isVotingRef.current = true;
+
+      try {
+        await onVote?.(contentType, item._id, nextVote);
+      } catch (err) {
+        setPendingVote(null);
+      } finally {
+        isVotingRef.current = false;
+      }
+    };
+
     const handleUpvote = (e) => {
       e.stopPropagation();
-      const nextVote = currentVote === 1 ? 0 : 1;
-      const scoreDiff = nextVote - currentVote;
-      setOptimisticVote(nextVote);
-      setOptimisticScoreDelta((prev) => prev + scoreDiff);
-      onVote?.(contentType, item._id, nextVote);
+      handleVoteClick(1);
     };
 
     const handleDownvote = (e) => {
       e.stopPropagation();
-      const nextVote = currentVote === -1 ? 0 : -1;
-      const scoreDiff = nextVote - currentVote;
-      setOptimisticVote(nextVote);
-      setOptimisticScoreDelta((prev) => prev + scoreDiff);
-      onVote?.(contentType, item._id, nextVote);
+      handleVoteClick(-1);
     };
 
     const handleCardClick = () => {

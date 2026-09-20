@@ -182,7 +182,11 @@ const ExplorePage = () => {
 
   const handleVote = useCallback(
     async (contentType, contentId, value) => {
-      await dispatch(voteContent({ contentType, contentId, value }));
+      const result = await dispatch(voteContent({ contentType, contentId, value }));
+      if (result.meta.requestStatus === 'rejected') {
+        toast.error(result.payload || 'Failed to update vote');
+        throw new Error(result.payload || 'Failed to update vote');
+      }
     },
     [dispatch],
   );

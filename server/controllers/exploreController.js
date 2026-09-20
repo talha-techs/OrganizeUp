@@ -14,11 +14,11 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * Runs 2 aggregation queries instead of N×3 countDocuments calls,
  * reducing explore page DB queries from ~240 down to 8 (2 per content type).
  */
-const attachSocialCounts = async (items, contentType) => {
+const attachSocialCounts = async (items, contentType, userId = null) => {
   if (!items.length) return [];
   const ids = items.map((item) => item._id);
 
-  const [voteAgg, commentAgg] = await Promise.all([
+  const [voteAgg, commentAgg, userVotes] = await Promise.all([
     Vote.aggregate([
       { $match: { contentType, contentId: { $in: ids } } },
       {
@@ -32,6 +32,13 @@ const attachSocialCounts = async (items, contentType) => {
       { $match: { contentType, contentId: { $in: ids } } },
       { $group: { _id: "$contentId", count: { $sum: 1 } } },
     ]),
+    userId
+      ? Vote.find({
+          contentType,
+          contentId: { $in: ids },
+          user: userId,
+        }).lean()
+      : Promise.resolve([]),
   ]);
 
   const upvoteMap = {};
@@ -45,6 +52,12 @@ const attachSocialCounts = async (items, contentType) => {
   for (const { _id, count } of commentAgg) {
     commentMap[String(_id)] = count;
   }
+  const userVoteMap = {};
+  if (userVotes && userVotes.length) {
+    for (const v of userVotes) {
+      userVoteMap[String(v.contentId)] = v.value;
+    }
+  }
 
   return items.map((item) => {
     const id = String(item._id);
@@ -56,6 +69,7 @@ const attachSocialCounts = async (items, contentType) => {
       downvotes,
       score: upvotes - downvotes,
       commentCount: commentMap[id] || 0,
+      userVote: userVoteMap[id] || 0,
     };
   });
 };
@@ -153,7 +167,7 @@ const getExploreContent = async (req, res) => {
       if (!isPopular) bookQuery = bookQuery.skip(dbSkip).limit(perType);
 
       const books = await bookQuery;
-      let scored = await attachSocialCounts(books, "book");
+      let scored = await attachSocialCounts(books, "book", req.user?._id);
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.books = scored.slice(0, perType);
@@ -172,7 +186,7 @@ const getExploreContent = async (req, res) => {
       if (!isPopular) courseQuery = courseQuery.skip(dbSkip).limit(perType);
 
       const courses = await courseQuery;
-      let scored = await attachSocialCounts(courses, "course");
+      let scored = await attachSocialCounts(courses, "course", req.user?._id);
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.courses = scored.slice(0, perType);
@@ -190,7 +204,7 @@ const getExploreContent = async (req, res) => {
       if (!isPopular) toolQuery = toolQuery.skip(dbSkip).limit(perType);
 
       const tools = await toolQuery;
-      let scored = await attachSocialCounts(tools, "tool");
+      let scored = await attachSocialCounts(tools, "tool", req.user?._id);
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.tools = scored.slice(0, perType);
@@ -208,7 +222,7 @@ const getExploreContent = async (req, res) => {
       if (!isPopular) sectionQuery = sectionQuery.skip(dbSkip).limit(perType);
 
       const sections = await sectionQuery;
-      let scored = await attachSocialCounts(sections, "section");
+      let scored = await attachSocialCounts(sections, "section", req.user?._id);
       // Normalize 'name' → 'title' for consistent card rendering
       scored = scored.map((s) => ({ ...s, title: s.name }));
       if (isPopular) {
@@ -235,7 +249,7 @@ const getExploreContent = async (req, res) => {
         videos: (pl.videos || []).map((v) => ({ ...v, notes: "" })),
       }));
 
-      let scored = await attachSocialCounts(sanitizedPlaylists, "playlist");
+      let scored = await attachSocialCounts(sanitizedPlaylists, "playlist", req.user?._id);
       if (isPopular) {
         scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
         results.playlists = scored.slice(0, perType);

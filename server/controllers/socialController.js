@@ -108,25 +108,24 @@ const vote = async (req, res) => {
       return res.status(400).json({ message: "Value must be 1, -1, or 0" });
     }
 
-    const existing = await Vote.findOne({
-      contentType,
-      contentId,
-      user: req.user._id,
-    });
-
     if (value === 0) {
-      // Remove vote
-      if (existing) await existing.deleteOne();
-    } else if (existing) {
-      existing.value = value;
-      await existing.save();
-    } else {
-      await Vote.create({
+      // Remove vote atomically
+      await Vote.deleteOne({
         contentType,
         contentId,
         user: req.user._id,
-        value,
       });
+    } else {
+      // Upsert vote atomically
+      await Vote.findOneAndUpdate(
+        {
+          contentType,
+          contentId,
+          user: req.user._id,
+        },
+        { value },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
 
     // Return updated vote counts
@@ -135,18 +134,11 @@ const vote = async (req, res) => {
       Vote.countDocuments({ contentType, contentId, value: -1 }),
     ]);
 
-    // Get user's current vote
-    const userVote = await Vote.findOne({
-      contentType,
-      contentId,
-      user: req.user._id,
-    });
-
     res.json({
       upvotes,
       downvotes,
       score: upvotes - downvotes,
-      userVote: userVote?.value || 0,
+      userVote: value === 0 ? 0 : value,
     });
   } catch (error) {
     console.error("Vote error:", error);
