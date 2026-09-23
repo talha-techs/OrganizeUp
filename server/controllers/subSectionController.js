@@ -2,6 +2,9 @@ const SubSection = require("../models/SubSection");
 const { checkSectionAccess } = require("../middleware/sectionAuth");
 const { broadcastToSection, broadcastActivity } = require("../socket");
 
+// Extract client socket ID to exclude sender from receiving duplicate broadcast echoes
+const getSocketId = (req) => req.headers["x-socket-id"] || null;
+
 // Helper: verify the parent section exists and resolve caller permissions
 const checkAccess = async (req) => {
   const result = await checkSectionAccess(req.params.id, req.user);
@@ -46,7 +49,7 @@ const createSubSection = async (req, res) => {
   try {
     const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canEdit) return res.status(403).json({ message: "Not authorized to add blocks" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to create blocks" });
 
     const {
       name,
@@ -105,7 +108,8 @@ const createSubSection = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_created", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_created", { subSection: populated }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "created_block",
@@ -134,10 +138,23 @@ const updateSubSection = async (req, res) => {
     if (!sub) return res.status(404).json({ message: "Sub-section not found" });
 
     // ── Optimistic Concurrency Control (OCC) ──
+    const incomingVersion = req.body.version !== undefined ? Number(req.body.version) : null;
+    const currentVersion = sub.version !== undefined ? Number(sub.version) : 1;
+
+    // Check if the current user is the one who made the previous edit
+    const isSameEditor = sub.lastEditedBy && String(sub.lastEditedBy) === String(req.user._id);
+
+    // Also check if content is unchanged
+    const isContentUnchanged =
+      (req.body.content !== undefined && req.body.content === sub.content) ||
+      (req.body.code !== undefined && req.body.code === sub.code);
+
+    // Conflict ONLY occurs if another collaborator touched the block and changed it
     if (
-      req.body.version !== undefined &&
-      sub.version !== undefined &&
-      Number(req.body.version) !== Number(sub.version)
+      incomingVersion !== null &&
+      incomingVersion !== currentVersion &&
+      !isSameEditor &&
+      !isContentUnchanged
     ) {
       const currentPopulated = await SubSection.findById(sub._id)
         .populate("lastEditedBy", "name avatar")
@@ -175,7 +192,8 @@ const updateSubSection = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "updated_block",
@@ -201,7 +219,8 @@ const deleteSubSection = async (req, res) => {
       _id: req.params.subId,
       sectionId: req.params.id,
     });
-    broadcastToSection(req.params.id, "subsection_deleted", { subId: req.params.subId });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_deleted", { subId: req.params.subId }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "deleted_block",
@@ -246,7 +265,8 @@ const addTodoItem = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "added_todo",
@@ -292,7 +312,8 @@ const updateTodoItem = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
 
     res.json({ subSection: populated });
   } catch (err) {
@@ -324,7 +345,8 @@ const deleteTodoItem = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
 
     res.json({ subSection: populated });
   } catch (err) {
@@ -372,7 +394,8 @@ const bulkAddTodos = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "bulk_added_todos",
@@ -428,7 +451,8 @@ const addBoardItem = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "added_card",
@@ -481,7 +505,8 @@ const updateBoardItem = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
 
     res.json({ subSection: populated });
   } catch (err) {
@@ -515,7 +540,8 @@ const deleteBoardItem = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
 
     res.json({ subSection: populated });
   } catch (err) {
@@ -551,7 +577,8 @@ const addLink = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "added_link",
@@ -589,7 +616,8 @@ const removeLink = async (req, res) => {
       .populate("lastEditedBy", "name avatar")
       .populate("addedBy", "name avatar");
 
-    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated });
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
 
     res.json({ subSection: populated });
   } catch (err) {

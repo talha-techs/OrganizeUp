@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getSocket } from "./socket";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -10,12 +11,16 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: Attach JWT token from localStorage if present
+// Request interceptor: Attach JWT token and x-socket-id from active socket if present
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const sock = getSocket();
+    if (sock?.id) {
+      config.headers["x-socket-id"] = sock.id;
     }
     return config;
   },

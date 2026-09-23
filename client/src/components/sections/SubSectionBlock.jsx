@@ -77,24 +77,44 @@ const NoteEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, onCo
   const dispatch = useDispatch();
   const [local, setLocal] = useState(block.content || '');
   const [saving, setSaving] = useState(false);
+  const isFocusedRef = useRef(false);
+  const lastSavedVersionRef = useRef(block.version || 1);
 
   useEffect(() => {
-    setLocal(block.content || '');
-  }, [block.content]);
+    if (!isFocusedRef.current) {
+      setLocal(block.content || '');
+    }
+    if (block.version) {
+      lastSavedVersionRef.current = block.version;
+    }
+  }, [block.content, block.version]);
+
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+    onFocusBlock?.(block._id);
+  };
 
   const handleBlur = async () => {
+    isFocusedRef.current = false;
     onBlurBlock?.(block._id, 1500);
     if (local === block.content) return;
+    if (saving) return; // Prevent duplicate concurrent saves
+
     setSaving(true);
+    const versionToSend = lastSavedVersionRef.current || block.version || 1;
     const res = await dispatch(
       updateSubSection({
         sectionId,
         subId: block._id,
         content: local,
-        version: block.version,
+        version: versionToSend,
       }),
     );
-    if (res.error) {
+    if (res.meta.requestStatus === 'fulfilled') {
+      if (res.payload?.subSection?.version) {
+        lastSavedVersionRef.current = res.payload.subSection.version;
+      }
+    } else if (res.error) {
       if (res.payload?.isConflict) {
         if (onConflict) {
           onConflict({
@@ -106,6 +126,7 @@ const NoteEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, onCo
           toast.error('Block was modified by another collaborator. Synced with latest version.');
           if (res.payload?.currentBlock?.content !== undefined) {
             setLocal(res.payload.currentBlock.content);
+            lastSavedVersionRef.current = res.payload.currentBlock.version || 1;
           }
         }
       } else {
@@ -127,7 +148,7 @@ const NoteEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, onCo
         <textarea
           value={local}
           onChange={(e) => setLocal(e.target.value)}
-          onFocus={() => onFocusBlock?.(block._id)}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder="Start writing your note…"
           rows={6}
@@ -803,26 +824,46 @@ const SnippetEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, o
   const [localCode, setLocalCode] = useState(block.code || '');
   const [localLang, setLocalLang] = useState(block.language || 'javascript');
   const [saving, setSaving]       = useState(false);
+  const isFocusedRef = useRef(false);
+  const lastSavedVersionRef = useRef(block.version || 1);
 
   useEffect(() => {
-    setLocalCode(block.code || '');
-    setLocalLang(block.language || 'javascript');
-  }, [block.code, block.language]);
+    if (!isFocusedRef.current) {
+      setLocalCode(block.code || '');
+      setLocalLang(block.language || 'javascript');
+    }
+    if (block.version) {
+      lastSavedVersionRef.current = block.version;
+    }
+  }, [block.code, block.language, block.version]);
+
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+    onFocusBlock?.(block._id);
+  };
 
   const handleBlur = async () => {
+    isFocusedRef.current = false;
     onBlurBlock?.(block._id, 1500);
     if (localCode === block.code && localLang === block.language) return;
+    if (saving) return;
+
     setSaving(true);
+    const versionToSend = lastSavedVersionRef.current || block.version || 1;
     const res = await dispatch(
       updateSubSection({
         sectionId,
         subId: block._id,
         code: localCode,
         language: localLang,
-        version: block.version,
+        version: versionToSend,
       }),
     );
-    if (res.error) {
+    if (res.meta.requestStatus === 'fulfilled') {
+      if (res.payload?.subSection?.version) {
+        lastSavedVersionRef.current = res.payload.subSection.version;
+      }
+    } else if (res.error) {
       if (res.payload?.isConflict) {
         if (onConflict) {
           onConflict({
@@ -835,6 +876,7 @@ const SnippetEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, o
           if (res.payload?.currentBlock) {
             setLocalCode(res.payload.currentBlock.code || '');
             setLocalLang(res.payload.currentBlock.language || 'javascript');
+            lastSavedVersionRef.current = res.payload.currentBlock.version || 1;
           }
         }
       } else {
@@ -881,7 +923,7 @@ const SnippetEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, o
         <textarea
           value={localCode}
           onChange={(e) => setLocalCode(e.target.value)}
-          onFocus={() => onFocusBlock?.(block._id)}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder={`// ${localLang} code here…`}
           rows={10}

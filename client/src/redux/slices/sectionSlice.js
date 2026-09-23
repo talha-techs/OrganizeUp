@@ -568,7 +568,7 @@ const sectionSlice = createSlice({
     liveSubSectionCreated: (state, action) => {
       const newSub = action.payload;
       if (!newSub || !newSub._id) return;
-      const exists = state.subSections.some((s) => s._id === newSub._id);
+      const exists = state.subSections.some((s) => String(s._id) === String(newSub._id));
       if (!exists) {
         state.subSections.push(newSub);
         state.subSections.sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -784,14 +784,25 @@ const sectionSlice = createSlice({
       })
       .addCase(fetchSubSections.fulfilled, (state, action) => {
         state.subSectionsLoading = false;
-        state.subSections = action.payload.subSections;
+        const incoming = action.payload?.subSections || [];
+        const seen = new Set();
+        state.subSections = incoming.filter((s) => {
+          if (!s?._id || seen.has(String(s._id))) return false;
+          seen.add(String(s._id));
+          return true;
+        });
       })
       .addCase(fetchSubSections.rejected, (state) => {
         state.subSectionsLoading = false;
       })
       .addCase(createSubSection.fulfilled, (state, action) => {
-        state.subSections.push(action.payload.subSection);
-        state.subSections.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const sub = action.payload?.subSection;
+        if (!sub || !sub._id) return;
+        const exists = state.subSections.some((s) => String(s._id) === String(sub._id));
+        if (!exists) {
+          state.subSections.push(sub);
+          state.subSections.sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
       })
       .addCase(deleteSubSection.fulfilled, (state, action) => {
         state.subSections = state.subSections.filter(
