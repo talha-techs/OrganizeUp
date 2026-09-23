@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { IoMail, IoLockClosed, IoLogoGoogle, IoEye, IoEyeOff, IoArrowBack } from 'react-icons/io5';
@@ -9,15 +9,25 @@ import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const LoginPage = () => {
   useDocumentTitle('Login');
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get('redirect') || '/dashboard';
+  const emailParam = searchParams.get('email') || '';
+
+  const [formData, setFormData] = useState({ email: emailParam, password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, isLoading, error } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (user) navigate('/dashboard');
-  }, [user, navigate]);
+    if (emailParam) {
+      setFormData((prev) => ({ ...prev, email: emailParam }));
+    }
+  }, [emailParam]);
+
+  useEffect(() => {
+    if (user) navigate(redirectTarget);
+  }, [user, navigate, redirectTarget]);
 
   useEffect(() => {
     if (error) {
@@ -141,7 +151,10 @@ const LoginPage = () => {
 
         <p className="text-center text-sm text-muted mt-6">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-accent hover:underline font-medium">
+          <Link
+            to={`/signup${redirectTarget !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTarget)}&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
+            className="text-accent hover:underline font-medium"
+          >
             Sign Up
           </Link>
         </p>

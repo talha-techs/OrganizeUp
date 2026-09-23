@@ -221,6 +221,15 @@ export const updateSubSection = createAsyncThunk(
       );
       return data;
     } catch (err) {
+      if (err.response?.status === 409) {
+        return rejectWithValue({
+          isConflict: true,
+          message:
+            err.response.data?.message ||
+            "Conflict: This block was modified by another collaborator",
+          currentBlock: err.response.data?.currentBlock,
+        });
+      }
       return rejectWithValue(
         err.response?.data?.message || "Failed to update block",
       );
@@ -376,6 +385,130 @@ export const removeLink = createAsyncThunk(
   },
 );
 
+// ── Team Collaboration & Invites ─────────────────────────────────────────────
+
+export const createInvite = createAsyncThunk(
+  "sections/createInvite",
+  async ({ sectionId, email, role }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/sections/${sectionId}/invites`, {
+        email,
+        role,
+      });
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to create invitation",
+      );
+    }
+  },
+);
+
+export const getPublicInviteInfo = createAsyncThunk(
+  "sections/getPublicInviteInfo",
+  async (token, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/sections/invites/public/${token}`);
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch invitation",
+      );
+    }
+  },
+);
+
+export const acceptInvite = createAsyncThunk(
+  "sections/acceptInvite",
+  async (token, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/sections/invites/${token}/accept`);
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data || {
+          message: err.response?.data?.message || "Failed to accept invite",
+        },
+      );
+    }
+  },
+);
+
+export const declineInvite = createAsyncThunk(
+  "sections/declineInvite",
+  async (token, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(`/sections/invites/${token}/decline`);
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to decline invite",
+      );
+    }
+  },
+);
+
+export const fetchPendingInvites = createAsyncThunk(
+  "sections/fetchPendingInvites",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/sections/invites/pending");
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch pending invites",
+      );
+    }
+  },
+);
+
+export const fetchSectionMembers = createAsyncThunk(
+  "sections/fetchSectionMembers",
+  async (sectionId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/sections/${sectionId}/members`);
+      return data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch members",
+      );
+    }
+  },
+);
+
+export const updateCollaboratorRole = createAsyncThunk(
+  "sections/updateCollaboratorRole",
+  async ({ sectionId, userId, role }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(
+        `/sections/${sectionId}/members/${userId}`,
+        { role },
+      );
+      return { sectionId, userId, role, collaborators: data.collaborators };
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to update role",
+      );
+    }
+  },
+);
+
+export const removeCollaborator = createAsyncThunk(
+  "sections/removeCollaborator",
+  async ({ sectionId, userId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(
+        `/sections/${sectionId}/members/${userId}`,
+      );
+      return { sectionId, userId, message: data.message };
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to remove collaborator",
+      );
+    }
+  },
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const sectionSlice = createSlice({
@@ -383,6 +516,21 @@ const sectionSlice = createSlice({
   initialState: {
     sections: [],
     currentSection: null,
+    myRole: "owner",
+    permissions: {
+      canView: true,
+      canEdit: true,
+      canManage: true,
+      canLeave: false,
+    },
+    sectionMembers: {
+      owner: null,
+      collaborators: [],
+      pendingInvites: [],
+      canManage: false,
+    },
+    membersLoading: false,
+    pendingInvites: [],
     driveScan: null,
     subSections: [],
     subSectionsLoading: false,
@@ -396,6 +544,19 @@ const sectionSlice = createSlice({
     },
     clearCurrentSection: (state) => {
       state.currentSection = null;
+      state.myRole = "owner";
+      state.permissions = {
+        canView: true,
+        canEdit: true,
+        canManage: true,
+        canLeave: false,
+      };
+      state.sectionMembers = {
+        owner: null,
+        collaborators: [],
+        pendingInvites: [],
+        canManage: false,
+      };
       state.subSections = [];
     },
     clearDriveScan: (state) => {
@@ -426,10 +587,76 @@ const sectionSlice = createSlice({
       .addCase(fetchSection.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentSection = action.payload.section;
+        state.myRole = action.payload.myRole || "owner";
+        state.permissions = action.payload.permissions || {
+          canView: true,
+          canEdit: true,
+          canManage: true,
+          canLeave: false,
+        };
       })
       .addCase(fetchSection.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+      })
+      // Pending invites for current user
+      .addCase(fetchPendingInvites.fulfilled, (state, action) => {
+        state.pendingInvites = action.payload.invites || [];
+      })
+      .addCase(acceptInvite.fulfilled, (state, action) => {
+        if (action.meta.arg) {
+          state.pendingInvites = state.pendingInvites.filter(
+            (inv) => inv.token !== action.meta.arg,
+          );
+        }
+      })
+      .addCase(declineInvite.fulfilled, (state, action) => {
+        if (action.meta.arg) {
+          state.pendingInvites = state.pendingInvites.filter(
+            (inv) => inv.token !== action.meta.arg,
+          );
+        }
+      })
+      // Section members
+      .addCase(fetchSectionMembers.pending, (state) => {
+        state.membersLoading = true;
+      })
+      .addCase(fetchSectionMembers.fulfilled, (state, action) => {
+        state.membersLoading = false;
+        state.sectionMembers = action.payload;
+      })
+      .addCase(fetchSectionMembers.rejected, (state) => {
+        state.membersLoading = false;
+      })
+      .addCase(createInvite.fulfilled, (state, action) => {
+        if (action.payload?.invite && state.sectionMembers) {
+          state.sectionMembers.pendingInvites.unshift(action.payload.invite);
+        }
+      })
+      .addCase(updateCollaboratorRole.fulfilled, (state, action) => {
+        if (action.payload.collaborators) {
+          if (state.sectionMembers) {
+            state.sectionMembers.collaborators = action.payload.collaborators;
+          }
+          if (state.currentSection) {
+            state.currentSection.collaborators = action.payload.collaborators;
+          }
+        }
+      })
+      .addCase(removeCollaborator.fulfilled, (state, action) => {
+        const uId = action.payload.userId;
+        if (state.sectionMembers) {
+          state.sectionMembers.collaborators =
+            state.sectionMembers.collaborators.filter(
+              (c) => String(c.user?._id || c.user) !== String(uId),
+            );
+        }
+        if (state.currentSection?.collaborators) {
+          state.currentSection.collaborators =
+            state.currentSection.collaborators.filter(
+              (c) => String(c.user?._id || c.user) !== String(uId),
+            );
+        }
       })
       // Create
       .addCase(createSection.fulfilled, (state, action) => {
@@ -521,6 +748,15 @@ const sectionSlice = createSlice({
         state.subSections = state.subSections.filter(
           (s) => s._id !== action.payload.subId,
         );
+      })
+      .addCase(updateSubSection.rejected, (state, action) => {
+        if (action.payload?.isConflict && action.payload?.currentBlock) {
+          const updated = action.payload.currentBlock;
+          const idx = state.subSections.findIndex((s) => s._id === updated._id);
+          if (idx !== -1) {
+            state.subSections[idx] = updated;
+          }
+        }
       });
 
     // Helper: merge updated subSection into state

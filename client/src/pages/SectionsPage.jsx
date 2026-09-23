@@ -13,12 +13,21 @@ import {
   IoImageOutline,
   IoCloudUploadOutline,
   IoSparklesOutline,
+  IoPeopleOutline,
+  IoMailOpenOutline,
+  IoCheckmarkCircleOutline,
+  IoCloseCircleOutline,
+  IoExitOutline,
 } from 'react-icons/io5';
 import {
   fetchSections,
   createSection,
   deleteSection,
   updateSection,
+  fetchPendingInvites,
+  acceptInvite,
+  declineInvite,
+  removeCollaborator,
 } from '../redux/slices/sectionSlice';
 import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
@@ -55,15 +64,19 @@ const SectionsPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [publishSection, setPublishSection] = useState(null);
   const [publishMode, setPublishMode] = useState('with_data');
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'mine' | 'shared'
+  const [leaveSectionTarget, setLeaveSectionTarget] = useState(null);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { sections, isLoading } = useSelector((state) => state.sections);
+  const { sections, pendingInvites, isLoading } = useSelector((state) => state.sections);
   const { user } = useSelector((state) => state.auth);
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     dispatch(fetchSections());
+    dispatch(fetchPendingInvites());
   }, [dispatch]);
 
   const handleCreate = async (e) => {
@@ -119,11 +132,55 @@ const SectionsPage = () => {
     }
   };
 
+  const handleLeaveSection = async () => {
+    if (!leaveSectionTarget || !user?._id) return;
+    setIsLeaving(true);
+    const result = await dispatch(
+      removeCollaborator({ sectionId: leaveSectionTarget._id, userId: user._id }),
+    );
+    setIsLeaving(false);
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('You have left the shared section');
+      setLeaveSectionTarget(null);
+      dispatch(fetchSections());
+    } else {
+      toast.error(result.payload || 'Failed to leave section');
+    }
+  };
+
+  const handleAcceptInvite = async (token) => {
+    const result = await dispatch(acceptInvite(token));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Joined team workspace!');
+      dispatch(fetchSections());
+      dispatch(fetchPendingInvites());
+    } else {
+      toast.error(
+        typeof result.payload === 'string'
+          ? result.payload
+          : result.payload?.message || 'Failed to accept invite',
+      );
+    }
+  };
+
+  const handleDeclineInvite = async (token) => {
+    const result = await dispatch(declineInvite(token));
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Invitation declined');
+      dispatch(fetchPendingInvites());
+    } else {
+      toast.error(
+        typeof result.payload === 'string'
+          ? result.payload
+          : result.payload?.message || 'Failed to decline invite',
+      );
+    }
+  };
+
   const handlePublishRequest = async () => {
     if (!publishSection) return;
 
     if (isAdmin) {
-      // Admin publishes their own section directly — no approval needed
       const result = await dispatch(
         updateSection({ id: publishSection._id, visibility: 'public', publishMode }),
       );
@@ -179,18 +236,35 @@ const SectionsPage = () => {
     }
   };
 
+  // Section categorization
+  const isSectionOwner = (s) =>
+    s.isOwner ??
+    (user?._id && s.addedBy && String(s.addedBy?._id ?? s.addedBy) === String(user._id));
+
+  const mySections = sections.filter((s) => isSectionOwner(s));
+  const sharedSections = sections.filter(
+    (s) => !isSectionOwner(s) && (s.myRole === 'editor' || s.myRole === 'viewer'),
+  );
+
+  const displayedSections =
+    filterTab === 'mine'
+      ? mySections
+      : filterTab === 'shared'
+      ? sharedSections
+      : sections;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
           <h1 className="text-3xl font-bold text-primary font-display">Custom Sections</h1>
           <p className="text-secondary text-sm mt-1">
-            Create custom sections and import content from Google Drive
+            Create custom sections, collaborate in shared spaces, and import Google Drive content
           </p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
@@ -198,30 +272,166 @@ const SectionsPage = () => {
         </button>
       </motion.div>
 
+      {/* Pending Team Invites Banner */}
+      <AnimatePresence>
+        {pendingInvites && pendingInvites.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="overflow-hidden"
+          >
+            <div className="glass-card border border-accent/40 bg-accent/5 p-4 rounded-2xl relative shadow-lg shadow-accent/5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="p-1.5 rounded-lg bg-accent/20 text-accent">
+                  <IoMailOpenOutline size={18} />
+                </span>
+                <h3 className="text-sm font-semibold text-primary">
+                  Pending Team Invitations ({pendingInvites.length})
+                </h3>
+              </div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingInvites.map((inv) => (
+                  <div
+                    key={inv._id}
+                    className="p-3 rounded-xl bg-surface border border-subtle flex flex-col justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-sm font-semibold text-primary truncate">
+                          {inv.sectionId?.name || 'Untitled Section'}
+                        </span>
+                        <span
+                          className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                            inv.role === 'editor'
+                              ? 'bg-accent/15 text-accent border border-accent/30'
+                              : 'bg-surface-raised text-secondary border border-subtle'
+                          }`}
+                        >
+                          {inv.role}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted">
+                        Invited by{' '}
+                        <span className="text-secondary font-medium">
+                          {inv.invitedBy?.name || 'Collaborator'}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 border-t border-subtle">
+                      <button
+                        onClick={() => handleAcceptInvite(inv.token)}
+                        className="btn-primary text-xs py-1.5 px-3 flex-1 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <IoCheckmarkCircleOutline size={14} /> Accept
+                      </button>
+                      <button
+                        onClick={() => handleDeclineInvite(inv.token)}
+                        className="btn-secondary text-xs py-1.5 px-3 hover:text-red-400 hover:border-red-500/30 transition-colors cursor-pointer"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-subtle pb-3">
+        <button
+          onClick={() => setFilterTab('all')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+            filterTab === 'all'
+              ? 'bg-accent text-white shadow-md shadow-accent/20'
+              : 'text-secondary hover:text-primary hover:bg-surface-raised'
+          }`}
+        >
+          All
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+              filterTab === 'all' ? 'bg-white/20 text-white' : 'bg-surface-raised text-muted'
+            }`}
+          >
+            {sections.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setFilterTab('mine')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+            filterTab === 'mine'
+              ? 'bg-accent text-white shadow-md shadow-accent/20'
+              : 'text-secondary hover:text-primary hover:bg-surface-raised'
+          }`}
+        >
+          My Sections
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+              filterTab === 'mine' ? 'bg-white/20 text-white' : 'bg-surface-raised text-muted'
+            }`}
+          >
+            {mySections.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setFilterTab('shared')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+            filterTab === 'shared'
+              ? 'bg-accent text-white shadow-md shadow-accent/20'
+              : 'text-secondary hover:text-primary hover:bg-surface-raised'
+          }`}
+        >
+          <IoPeopleOutline size={13} />
+          Shared with Me
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+              filterTab === 'shared' ? 'bg-white/20 text-white' : 'bg-surface-raised text-muted'
+            }`}
+          >
+            {sharedSections.length}
+          </span>
+        </button>
+      </div>
+
       {/* Sections Grid */}
       {isLoading ? (
         <LoadingSpinner text="Loading sections..." />
-      ) : sections.length === 0 ? (
+      ) : displayedSections.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="text-center py-20"
         >
           <IoFolderOutline className="mx-auto text-muted mb-4" size={48} />
-          <h3 className="text-lg font-medium text-secondary mb-2">No sections yet</h3>
+          <h3 className="text-lg font-medium text-secondary mb-2">
+            {filterTab === 'shared'
+              ? 'No shared sections yet'
+              : filterTab === 'mine'
+              ? 'No created sections yet'
+              : 'No sections yet'}
+          </h3>
           <p className="text-sm text-muted">
-            Create your first custom section to organize Drive content
+            {filterTab === 'shared'
+              ? 'When colleagues or teammates invite you to custom sections, they will appear here.'
+              : 'Create your first custom section to organize Drive content and workspace blocks.'}
           </p>
         </motion.div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <AnimatePresence>
-            {sections.map((section, i) => {
+            {displayedSections.map((section, i) => {
               const col = getColorClasses(section.color);
-              const isOwner =
-                !!(user?._id && section.addedBy &&
-                  String(section.addedBy?._id ?? section.addedBy) === String(user._id));
+              const isOwner = isSectionOwner(section);
               const canManage = isAdmin || isOwner;
+              const hasCollaborators =
+                Array.isArray(section.collaborators) && section.collaborators.length > 0;
 
               return (
                 <motion.div
@@ -250,20 +460,43 @@ const SectionsPage = () => {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
-                    {/* Visibility badge */}
-                    <div
-                      className={`absolute top-3 left-3 px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm ${
-                        section.visibility === 'public'
-                          ? 'text-emerald-400 bg-emerald-500/20'
-                          : 'text-secondary bg-surface-raised/80'
-                      }`}
-                    >
-                      {section.visibility}
+                    {/* Top-left Badges (Visibility & Collaboration) */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap z-10">
+                      <span
+                        className={`px-2 py-0.5 rounded-lg text-[11px] font-medium backdrop-blur-sm ${
+                          section.visibility === 'public'
+                            ? 'text-emerald-400 bg-emerald-500/20'
+                            : 'text-secondary bg-surface-raised/80'
+                        }`}
+                      >
+                        {section.visibility}
+                      </span>
+
+                      {/* Role badge if guest */}
+                      {!isOwner && section.myRole && (
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold backdrop-blur-sm capitalize ${
+                            section.myRole === 'editor'
+                              ? 'bg-accent/20 text-accent border border-accent/30'
+                              : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                          }`}
+                        >
+                          {section.myRole}
+                        </span>
+                      )}
+
+                      {/* Shared badge if owner */}
+                      {isOwner && hasCollaborators && (
+                        <span className="px-2 py-0.5 rounded-lg text-[11px] font-medium backdrop-blur-sm bg-accent/20 text-accent border border-accent/30 flex items-center gap-1">
+                          <IoPeopleOutline size={12} />
+                          {section.collaborators.length}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Saved / Unsave button */}
-                    {section.isSaved && (
-                      <div className="absolute top-3 right-3 z-10">
+                    {/* Top-Right: Saved or Leave button */}
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
+                      {section.isSaved && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -278,8 +511,22 @@ const SectionsPage = () => {
                           <span className="group-hover/unsave:hidden">Saved</span>
                           <span className="hidden group-hover/unsave:inline">Unsave</span>
                         </button>
-                      </div>
-                    )}
+                      )}
+
+                      {!isOwner && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLeaveSectionTarget(section);
+                          }}
+                          className="p-1.5 rounded-xl text-xs text-muted hover:text-red-400 bg-surface/80 hover:bg-red-500/15 border border-subtle hover:border-red-500/30 backdrop-blur-md transition-colors cursor-pointer"
+                          title="Leave this shared section"
+                        >
+                          <IoExitOutline size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Content */}
@@ -292,14 +539,47 @@ const SectionsPage = () => {
                         {section.description}
                       </p>
                     )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted">
-                        {section.files?.length || 0} file{section.files?.length !== 1 ? 's' : ''}
-                      </span>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">
+                          {section.files?.length || 0} file{section.files?.length !== 1 ? 's' : ''}
+                        </span>
+
+                        {/* Collaborator Avatars */}
+                        {hasCollaborators && (
+                          <div className="flex items-center -space-x-1.5">
+                            {section.collaborators.slice(0, 3).map((collab, cIdx) => {
+                              const u = collab.user;
+                              return (
+                                <div
+                                  key={u?._id || cIdx}
+                                  title={`${u?.name || 'Collaborator'} (${collab.role})`}
+                                  className="w-5 h-5 rounded-full ring-2 ring-surface overflow-hidden bg-surface-raised flex items-center justify-center text-[9px] font-bold text-secondary"
+                                >
+                                  {u?.avatar ? (
+                                    <img
+                                      src={u.avatar}
+                                      alt={u.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    (u?.name || 'U').charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {section.collaborators.length > 3 && (
+                              <span className="w-5 h-5 rounded-full ring-2 ring-surface bg-surface-raised flex items-center justify-center text-[9px] font-bold text-muted">
+                                +{section.collaborators.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {canManage && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {/* Admin managing OTHER users' sections: direct visibility toggle */}
                           {isAdmin && !isOwner && (
                             <button
                               onClick={(e) => {
@@ -312,7 +592,6 @@ const SectionsPage = () => {
                               {section.visibility === 'public' ? 'Private' : 'Public'}
                             </button>
                           )}
-                          {/* Owner's own public section → make private */}
                           {isOwner && section.visibility === 'public' && (
                             <button
                               onClick={async (e) => {
@@ -321,7 +600,11 @@ const SectionsPage = () => {
                                   handleTogglePublic(section);
                                 } else {
                                   try {
-                                    await api.put('/content/toggle-visibility', { contentType: 'section', contentId: section._id, visibility: 'private' });
+                                    await api.put('/content/toggle-visibility', {
+                                      contentType: 'section',
+                                      contentId: section._id,
+                                      visibility: 'private',
+                                    });
                                     toast.success('Section set to private');
                                     dispatch(fetchSections());
                                   } catch (err) {
@@ -335,7 +618,6 @@ const SectionsPage = () => {
                               Private
                             </button>
                           )}
-                          {/* Owner's own private section → publish */}
                           {isOwner && section.visibility === 'private' && (
                             <button
                               onClick={(e) => {
@@ -473,6 +755,7 @@ const SectionsPage = () => {
         </form>
       </Modal>
 
+      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={!!deleteSectionId}
         title="Delete Section"
@@ -483,11 +766,31 @@ const SectionsPage = () => {
         isLoading={isDeleting}
       />
 
+      {/* Leave Shared Section Confirmation */}
+      <ConfirmDialog
+        isOpen={!!leaveSectionTarget}
+        title="Leave Shared Section"
+        message={`Are you sure you want to leave "${leaveSectionTarget?.name}"? You will lose access to its workspace blocks and files.`}
+        confirmText="Leave Section"
+        onConfirm={handleLeaveSection}
+        onCancel={() => setLeaveSectionTarget(null)}
+        isLoading={isLeaving}
+      />
+
       {/* Publish Mode Modal */}
-      <Modal isOpen={!!publishSection} onClose={() => { setPublishSection(null); setPublishMode('with_data'); }} title="Publish Section">
+      <Modal
+        isOpen={!!publishSection}
+        onClose={() => {
+          setPublishSection(null);
+          setPublishMode('with_data');
+        }}
+        title="Publish Section"
+      >
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            Choose how others will receive <span className="text-primary font-medium">"{publishSection?.name}"</span> when they clone it:
+            Choose how others will receive{' '}
+            <span className="text-primary font-medium">"{publishSection?.name}"</span> when they clone
+            it:
           </p>
 
           <div className="space-y-3">
@@ -531,7 +834,10 @@ const SectionsPage = () => {
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => { setPublishSection(null); setPublishMode('with_data'); }}
+              onClick={() => {
+                setPublishSection(null);
+                setPublishMode('with_data');
+              }}
               className="btn-secondary"
             >
               Cancel

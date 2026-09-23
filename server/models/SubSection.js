@@ -86,6 +86,14 @@ const subSectionSchema = new mongoose.Schema(
     // ── Image ─────────────────────────────────────────────
     imageUrl: { type: String, default: "" },
     imageCaption: { type: String, default: "" },
+
+    // ── Concurrency & Attribution ─────────────────────────
+    version: { type: Number, default: 1 },
+    lastEditedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true },
 );

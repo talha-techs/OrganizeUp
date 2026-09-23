@@ -17,6 +17,7 @@ const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage'));
 const GoogleSuccess = lazy(() => import('./pages/auth/GoogleSuccess'));
 const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
+const InviteLandingPage = lazy(() => import('./pages/InviteLandingPage'));
 
 const DocsRedirect = () => {
   useEffect(() => {
@@ -148,6 +149,7 @@ const App = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/auth/google/success" element={<GoogleSuccess />} />
+            <Route path="/invite/:token" element={<InviteLandingPage />} />
 
             {/* Protected routes with layout */}
             <Route

@@ -5,6 +5,7 @@ const YoutubePlaylist = require("../models/YoutubePlaylist");
 const SubSection = require("../models/SubSection");
 const CapturedResource = require("../models/CapturedResource");
 const CustomSection = require("../models/CustomSection");
+const SectionInvite = require("../models/SectionInvite");
 const { generateToken } = require("../middleware/auth");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
 
@@ -122,6 +123,16 @@ const register = async (req, res) => {
       role: isAdmin ? "admin" : "user",
       isVerified: true,
     });
+
+    // Auto-bind any pending SectionInvite matching this email
+    try {
+      await SectionInvite.updateMany(
+        { invitedEmail: email.toLowerCase(), status: "pending", invitedUser: null },
+        { invitedUser: user._id }
+      );
+    } catch (inviteErr) {
+      console.warn("Failed to auto-bind section invites on register:", inviteErr);
+    }
 
     const token = generateToken(user._id);
 

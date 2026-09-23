@@ -21,6 +21,8 @@ import {
   IoLinkOutline,
   IoRefreshOutline,
   IoCheckmarkOutline,
+  IoPeopleOutline,
+  IoEyeOutline,
 } from 'react-icons/io5';
 import {
   fetchSection,
@@ -41,6 +43,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
 import SubSectionBlock from '../components/sections/SubSectionBlock';
+import TeamShareModal from '../components/sections/TeamShareModal';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -418,7 +421,7 @@ const SectionDetailPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { currentSection, isLoading, subSections, subSectionsLoading } =
+  const { currentSection, isLoading, subSections, subSectionsLoading, myRole, permissions } =
     useSelector((state) => state.sections);
   const { user } = useSelector((state) => state.auth);
   useDocumentTitle(currentSection?.name || 'Section');
@@ -428,6 +431,7 @@ const SectionDetailPage = () => {
   const [selectedFile, setSelectedFile]       = useState(null);
   const [showAddBlock, setShowAddBlock]       = useState(false);
   const [showBannerModal, setShowBannerModal] = useState(false);
+  const [showTeamModal, setShowTeamModal]     = useState(false);
   const [driveExpanded, setDriveExpanded]     = useState(true);
   const [activeBlockId, setActiveBlockId]     = useState(null);
   const [pasteNotice, setPasteNotice]         = useState(null); // { message, lastBlockId }
@@ -441,16 +445,23 @@ const SectionDetailPage = () => {
   }, [dispatch, id]);
 
   const isOwner =
-    !!(user?._id && currentSection?.addedBy &&
-      String(currentSection.addedBy?._id ?? currentSection.addedBy) === String(user._id));
-  const canManage = isAdmin || isOwner;
+    myRole === 'owner' ||
+    isAdmin ||
+    !!(
+      user?._id &&
+      currentSection?.addedBy &&
+      String(currentSection.addedBy?._id ?? currentSection.addedBy) === String(user._id)
+    );
+  const isViewer = myRole === 'viewer';
+  const canEdit = permissions?.canEdit ?? !isViewer;
+  const canManage = isOwner || isAdmin;
 
   const colorClasses = getColorClasses(currentSection?.color);
 
   // ── Smart Clipboard Handler (Ctrl+V) ──────────────────────────────────────
   const handleGlobalPaste = useCallback(
     async (e) => {
-      if (!canManage) return;
+      if (!canEdit) return;
 
       const activeEl = document.activeElement;
       const isTypingInField =
@@ -783,29 +794,59 @@ const SectionDetailPage = () => {
               <IoArrowBack size={13} /> All Sections
             </button>
 
-            {canManage && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowBannerModal(true)}
-                className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-accent transition-colors cursor-pointer shadow-sm"
-                title="Change banner via Web URL, custom file, or Pexels"
+                onClick={() => setShowTeamModal(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-cyan-400 transition-colors cursor-pointer shadow-sm"
+                title="Manage team collaborators & share access"
               >
-                <IoImageOutline size={14} />
-                <span>Change Banner</span>
+                <IoPeopleOutline size={15} className="text-cyan-400" />
+                <span>
+                  Team {currentSection.collaborators?.length ? `(${1 + currentSection.collaborators.length})` : ''}
+                </span>
               </button>
-            )}
+
+              {canManage && (
+                <button
+                  onClick={() => setShowBannerModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-accent transition-colors cursor-pointer shadow-sm"
+                  title="Change banner via Web URL, custom file, or Pexels"
+                >
+                  <IoImageOutline size={14} />
+                  <span>Change Banner</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Bottom Title & Actions on Banner */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white font-display truncate drop-shadow-md">
-                {currentSection.name}
-              </h1>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white font-display truncate drop-shadow-md">
+                  {currentSection.name}
+                </h1>
+                {myRole === 'owner' ? (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 backdrop-blur-sm">
+                    Owner
+                  </span>
+                ) : myRole === 'editor' ? (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 backdrop-blur-sm">
+                    Editor
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-500/25 text-zinc-300 border border-zinc-500/40 backdrop-blur-sm">
+                    Viewer (Read-only)
+                  </span>
+                )}
+              </div>
+
               {currentSection.description && (
                 <p className="text-white/80 text-sm mt-1 max-w-xl line-clamp-2 drop-shadow">
                   {currentSection.description}
                 </p>
               )}
+
               <div className="flex items-center gap-2.5 mt-2.5 text-xs text-white/70 flex-wrap">
                 {hasDriveData && (
                   <span>
@@ -822,9 +863,40 @@ const SectionDetailPage = () => {
                     <span>by {currentSection.addedBy.name}</span>
                   </>
                 )}
-                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-accent-light font-mono bg-black/40 border border-white/10 px-2 py-0.5 rounded-full">
-                  <IoSparklesOutline size={11} className="text-accent" /> Smart Paste (Ctrl+V) enabled
-                </span>
+                {/* Collaborators avatar stack preview */}
+                {currentSection.collaborators?.length > 0 && (
+                  <>
+                    <span>·</span>
+                    <button
+                      onClick={() => setShowTeamModal(true)}
+                      className="inline-flex items-center -space-x-1.5 hover:opacity-80 transition-opacity cursor-pointer"
+                      title="View all team members"
+                    >
+                      {currentSection.collaborators.slice(0, 3).map((collab, i) => (
+                        <div
+                          key={collab._id || i}
+                          className="w-5 h-5 rounded-full bg-surface-raised border border-white/40 flex items-center justify-center text-[9px] font-bold text-white overflow-hidden shrink-0"
+                        >
+                          {collab.user?.avatar ? (
+                            <img src={collab.user.avatar} alt={collab.user?.name} className="w-full h-full object-cover" />
+                          ) : (
+                            (collab.user?.name || 'U').charAt(0).toUpperCase()
+                          )}
+                        </div>
+                      ))}
+                      {currentSection.collaborators.length > 3 && (
+                        <div className="w-5 h-5 rounded-full bg-black/70 border border-white/40 flex items-center justify-center text-[8px] font-bold text-white shrink-0">
+                          +{currentSection.collaborators.length - 3}
+                        </div>
+                      )}
+                    </button>
+                  </>
+                )}
+                {canEdit && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-accent-light font-mono bg-black/40 border border-white/10 px-2 py-0.5 rounded-full">
+                    <IoSparklesOutline size={11} className="text-accent" /> Smart Paste (Ctrl+V) enabled
+                  </span>
+                )}
               </div>
             </div>
 
@@ -837,7 +909,7 @@ const SectionDetailPage = () => {
                   <IoCloudDownloadOutline size={16} /> Drive Import
                 </button>
               )}
-              {canManage && (
+              {canEdit && (
                 <button
                   onClick={() => setShowAddBlock(true)}
                   className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm px-3.5 py-2 shadow-lg shadow-accent/25 cursor-pointer"
@@ -849,6 +921,14 @@ const SectionDetailPage = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Read-Only Viewer Notice */}
+      {isViewer && (
+        <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-700/60 flex items-center gap-2.5 text-xs text-zinc-300">
+          <IoEyeOutline size={16} className="text-zinc-400 shrink-0" />
+          <span>You have <strong>Viewer</strong> access to this shared section. Editing controls, adding blocks, and clipboard pasting are disabled.</span>
+        </div>
+      )}
 
       {/* Drive Files – collapsible */}
       {hasDriveData && (
@@ -913,6 +993,8 @@ const SectionDetailPage = () => {
                   block={block}
                   sectionId={id}
                   canManage={canManage}
+                  canEdit={canEdit}
+                  myRole={myRole}
                   isActive={activeBlockId === block._id}
                   onSelectBlock={(bId) => setActiveBlockId(bId)}
                 />
@@ -927,21 +1009,23 @@ const SectionDetailPage = () => {
                 <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
                   Add blocks or hit <kbd className="px-1.5 py-0.5 rounded bg-surface border border-subtle text-xs font-mono">Ctrl+V</kbd> anywhere to smart-paste screenshots, tasks, links, code, or notes.
                 </p>
-                {canManage && (
-                  <div className="flex flex-wrap justify-center gap-3">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {canEdit && (
                     <button onClick={() => setShowAddBlock(true)} className="btn-primary flex items-center gap-2">
                       <IoAddOutline size={16} /> Add Block
                     </button>
+                  )}
+                  {canManage && (
                     <button onClick={() => setShowImport(true)} className="btn-secondary flex items-center gap-2">
                       <IoCloudDownloadOutline size={16} /> Import Drive
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </motion.div>
             )}
 
             {/* "+ Add another block" row at bottom */}
-            {canManage && subSections.length > 0 && (
+            {canEdit && subSections.length > 0 && (
               <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 onClick={() => setShowAddBlock(true)}
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-dashed border-subtle text-sm text-muted hover:text-primary hover:border-strong hover:bg-surface-raised transition-all cursor-pointer">
@@ -1003,6 +1087,14 @@ const SectionDetailPage = () => {
           />
         )}
       </AnimatePresence>
+      <TeamShareModal
+        isOpen={showTeamModal}
+        onClose={() => setShowTeamModal(false)}
+        sectionId={id}
+        sectionName={currentSection.name}
+        isOwner={isOwner}
+        canManage={canManage}
+      />
     </div>
   );
 };

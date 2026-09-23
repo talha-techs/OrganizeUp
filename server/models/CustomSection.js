@@ -33,6 +33,27 @@ const folderSchema = new mongoose.Schema({
   subfolders: [{ type: mongoose.Schema.Types.Mixed }],
 });
 
+const collaboratorSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  role: {
+    type: String,
+    enum: ["editor", "viewer"],
+    default: "editor",
+  },
+  invitedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const customSectionSchema = new mongoose.Schema(
   {
     name: {
@@ -73,6 +94,7 @@ const customSectionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    collaborators: [collaboratorSchema],
     visibility: {
       type: String,
       enum: ["public", "private", "pending"],
@@ -96,6 +118,7 @@ const customSectionSchema = new mongoose.Schema(
 );
 
 customSectionSchema.index({ addedBy: 1, createdAt: -1 });
+customSectionSchema.index({ "collaborators.user": 1, createdAt: -1 });
 customSectionSchema.index({ visibility: 1, createdAt: -1 });
 
 module.exports = mongoose.model("CustomSection", customSectionSchema);

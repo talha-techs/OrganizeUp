@@ -1,16 +1,20 @@
 const SubSection = require("../models/SubSection");
-const CustomSection = require("../models/CustomSection");
+const { checkSectionAccess } = require("../middleware/sectionAuth");
 
-// Helper: verify the parent section exists and the requester has access
+// Helper: verify the parent section exists and resolve caller permissions
 const checkAccess = async (req) => {
-  const section = await CustomSection.findById(req.params.id);
-  if (!section) return { error: "Section not found", status: 404 };
-  const isOwner = section.addedBy.toString() === req.user._id.toString();
-  const isAdmin = req.user.role === "admin";
-  const isPublic = section.visibility === "public";
-  if (!isOwner && !isAdmin && !isPublic)
-    return { error: "Not authorized", status: 403 };
-  return { section, isOwner, isAdmin, canManage: isOwner || isAdmin };
+  const result = await checkSectionAccess(req.params.id, req.user);
+  if (result.error) return { error: result.error, status: result.status };
+  return {
+    section: result.section,
+    role: result.role,
+    permissions: result.permissions,
+    isOwner: result.role === "owner",
+    isAdmin: req.user.role === "admin",
+    canManage: result.permissions.canManage,
+    canEdit: result.permissions.canEdit,
+    canView: result.permissions.canView,
+  };
 };
 
 // ─── Sub-section CRUD ────────────────────────────────────────────────────────
@@ -18,12 +22,16 @@ const checkAccess = async (req) => {
 // @route   GET /api/sections/:id/subsections
 const getSubSections = async (req, res) => {
   try {
-    const { error, status } = await checkAccess(req);
+    const { error, status, canView } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
+    if (!canView) return res.status(403).json({ message: "Not authorized" });
 
     const subSections = await SubSection.find({
       sectionId: req.params.id,
-    }).sort({ order: 1, createdAt: 1 });
+    })
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar")
+      .sort({ order: 1, createdAt: 1 });
 
     res.json({ subSections });
   } catch (err) {
@@ -35,9 +43,9 @@ const getSubSections = async (req, res) => {
 // @route   POST /api/sections/:id/subsections
 const createSubSection = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to add blocks" });
 
     const {
       name,
@@ -80,6 +88,8 @@ const createSubSection = async (req, res) => {
       type,
       order: targetOrder,
       addedBy: req.user._id,
+      lastEditedBy: req.user._id,
+      version: 1,
       content: content || "",
       code: code || "",
       language: language || "javascript",
@@ -90,7 +100,11 @@ const createSubSection = async (req, res) => {
       links: Array.isArray(links) ? links : [],
     });
 
-    res.status(201).json({ subSection });
+    const populated = await SubSection.findById(subSection._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.status(201).json({ subSection: populated });
   } catch (err) {
     console.error("createSubSection:", err);
     res.status(500).json({ message: "Server error" });
@@ -100,15 +114,31 @@ const createSubSection = async (req, res) => {
 // @route   PUT /api/sections/:id/subsections/:subId
 const updateSubSection = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to edit blocks" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
       sectionId: req.params.id,
     });
     if (!sub) return res.status(404).json({ message: "Sub-section not found" });
+
+    // ── Optimistic Concurrency Control (OCC) ──
+    if (
+      req.body.version !== undefined &&
+      sub.version !== undefined &&
+      Number(req.body.version) !== Number(sub.version)
+    ) {
+      const currentPopulated = await SubSection.findById(sub._id)
+        .populate("lastEditedBy", "name avatar")
+        .populate("addedBy", "name avatar");
+
+      return res.status(409).json({
+        message: "Conflict: This block was modified by another collaborator",
+        currentBlock: currentPopulated,
+      });
+    }
 
     const {
       name,
@@ -127,8 +157,16 @@ const updateSubSection = async (req, res) => {
     if (imageUrl !== undefined) sub.imageUrl = imageUrl;
     if (imageCaption !== undefined) sub.imageCaption = imageCaption;
 
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("updateSubSection:", err);
     res.status(500).json({ message: "Server error" });
@@ -138,9 +176,9 @@ const updateSubSection = async (req, res) => {
 // @route   DELETE /api/sections/:id/subsections/:subId
 const deleteSubSection = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to delete blocks" });
 
     await SubSection.findOneAndDelete({
       _id: req.params.subId,
@@ -158,9 +196,9 @@ const deleteSubSection = async (req, res) => {
 // @route   POST /api/sections/:id/subsections/:subId/todos
 const addTodoItem = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to add todo items" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -175,8 +213,17 @@ const addTodoItem = async (req, res) => {
       dueDate: dueDate || null,
       order: sub.todos.length,
     });
+
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("addTodoItem:", err);
     res.status(500).json({ message: "Server error" });
@@ -186,9 +233,9 @@ const addTodoItem = async (req, res) => {
 // @route   PATCH /api/sections/:id/subsections/:subId/todos/:todoId
 const updateTodoItem = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to edit todo items" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -205,8 +252,16 @@ const updateTodoItem = async (req, res) => {
     if (priority !== undefined) todo.priority = priority;
     if (dueDate !== undefined) todo.dueDate = dueDate;
 
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("updateTodoItem:", err);
     res.status(500).json({ message: "Server error" });
@@ -216,9 +271,9 @@ const updateTodoItem = async (req, res) => {
 // @route   DELETE /api/sections/:id/subsections/:subId/todos/:todoId
 const deleteTodoItem = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to delete todo items" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -227,8 +282,16 @@ const deleteTodoItem = async (req, res) => {
     if (!sub) return res.status(404).json({ message: "Sub-section not found" });
 
     sub.todos = sub.todos.filter((t) => t._id.toString() !== req.params.todoId);
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("deleteTodoItem:", err);
     res.status(500).json({ message: "Server error" });
@@ -238,9 +301,9 @@ const deleteTodoItem = async (req, res) => {
 // @route   POST /api/sections/:id/subsections/:subId/todos/bulk
 const bulkAddTodos = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to add todos" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -265,8 +328,16 @@ const bulkAddTodos = async (req, res) => {
       }
     });
 
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("bulkAddTodos:", err);
     res.status(500).json({ message: "Server error" });
@@ -278,9 +349,9 @@ const bulkAddTodos = async (req, res) => {
 // @route   POST /api/sections/:id/subsections/:subId/board
 const addBoardItem = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to add board items" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -304,8 +375,17 @@ const addBoardItem = async (req, res) => {
       dueDate: dueDate || null,
       order: sub.boardItems.length,
     });
+
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("addBoardItem:", err);
     res.status(500).json({ message: "Server error" });
@@ -315,9 +395,9 @@ const addBoardItem = async (req, res) => {
 // @route   PATCH /api/sections/:id/subsections/:subId/board/:itemId
 const updateBoardItem = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to update board items" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -341,8 +421,16 @@ const updateBoardItem = async (req, res) => {
     if (priority !== undefined) item.priority = priority;
     if (dueDate !== undefined) item.dueDate = dueDate;
 
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("updateBoardItem:", err);
     res.status(500).json({ message: "Server error" });
@@ -352,9 +440,9 @@ const updateBoardItem = async (req, res) => {
 // @route   DELETE /api/sections/:id/subsections/:subId/board/:itemId
 const deleteBoardItem = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to delete board items" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -365,8 +453,16 @@ const deleteBoardItem = async (req, res) => {
     sub.boardItems = sub.boardItems.filter(
       (i) => i._id.toString() !== req.params.itemId,
     );
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("deleteBoardItem:", err);
     res.status(500).json({ message: "Server error" });
@@ -378,9 +474,9 @@ const deleteBoardItem = async (req, res) => {
 // @route   POST /api/sections/:id/subsections/:subId/links
 const addLink = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to add links" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -390,8 +486,17 @@ const addLink = async (req, res) => {
 
     const { title, url, description } = req.body;
     sub.links.push({ title, url, description: description || "" });
+
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("addLink:", err);
     res.status(500).json({ message: "Server error" });
@@ -401,9 +506,9 @@ const addLink = async (req, res) => {
 // @route   DELETE /api/sections/:id/subsections/:subId/links/:linkId
 const removeLink = async (req, res) => {
   try {
-    const { error, status, canManage } = await checkAccess(req);
+    const { error, status, canEdit } = await checkAccess(req);
     if (error) return res.status(status).json({ message: error });
-    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to remove links" });
 
     const sub = await SubSection.findOne({
       _id: req.params.subId,
@@ -412,8 +517,16 @@ const removeLink = async (req, res) => {
     if (!sub) return res.status(404).json({ message: "Sub-section not found" });
 
     sub.links = sub.links.filter((l) => l._id.toString() !== req.params.linkId);
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
     await sub.save();
-    res.json({ subSection: sub });
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    res.json({ subSection: populated });
   } catch (err) {
     console.error("removeLink:", err);
     res.status(500).json({ message: "Server error" });

@@ -11,6 +11,14 @@ const {
   cloneSection,
   uploadSectionImage,
   updateSectionBanner,
+  createInvite,
+  getPublicInviteInfo,
+  acceptInvite,
+  declineInvite,
+  getPendingInvites,
+  getSectionMembers,
+  updateCollaboratorRole,
+  removeCollaborator,
 } = require("../controllers/sectionController");
 const {
   getSubSections,
@@ -30,6 +38,12 @@ const {
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 
+// ── Invites (Specific routes MUST precede /:id) ──────────────────────────────
+router.get("/invites/public/:token", getPublicInviteInfo);
+router.post("/invites/:token/accept", protect, acceptInvite);
+router.post("/invites/:token/decline", protect, declineInvite);
+router.get("/invites/pending", protect, getPendingInvites);
+
 // ── Section ──────────────────────────────────────────────────────────────────
 router.get("/", protect, getSections);
 router.get("/:id", protect, getSection);
@@ -41,6 +55,12 @@ router.post("/:id/clone", protect, cloneSection);
 router.put("/:id", protect, updateSection);
 router.delete("/:id", protect, deleteSection);
 router.delete("/:id/files/:fileId", protect, removeFile);
+
+// ── Team Members & Collaboration ─────────────────────────────────────────────
+router.post("/:id/invites", protect, createInvite);
+router.get("/:id/members", protect, getSectionMembers);
+router.patch("/:id/members/:userId", protect, updateCollaboratorRole);
+router.delete("/:id/members/:userId", protect, removeCollaborator);
 
 // ── Sub-sections ─────────────────────────────────────────────────────────────
 router.get("/:id/subsections", protect, getSubSections);

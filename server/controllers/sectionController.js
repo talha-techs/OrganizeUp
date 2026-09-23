@@ -1,11 +1,19 @@
+const crypto = require("crypto");
 const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
 const UserLibrary = require("../models/UserLibrary");
+const User = require("../models/User");
+const SectionInvite = require("../models/SectionInvite");
 const { uploadToGridFS } = require("../config/gridfs");
 const { fetchPexelsBanner } = require("../services/pexelsService");
+const {
+  resolveSectionRole,
+  getSectionPermissions,
+  checkSectionAccess,
+} = require("../middleware/sectionAuth");
 
 // @desc    Get all custom sections for current user (+ saved from library; admin sees all)
-// @route   GET /api/sections?mine=true
+// @route   GET /api/sections?mine=true&shared=true
 const getSections = async (req, res) => {
   try {
     const isAdmin = req.user.role === "admin";
@@ -14,6 +22,8 @@ const getSections = async (req, res) => {
     let filter;
     if (req.query.mine === "true") {
       filter = { addedBy: req.user._id };
+    } else if (req.query.shared === "true") {
+      filter = { "collaborators.user": req.user._id };
     } else if (isAdmin) {
       filter = {};
       const saved = await UserLibrary.find({
@@ -30,25 +40,36 @@ const getSections = async (req, res) => {
       saved.forEach((s) => savedSectionIdMap.set(s.contentId.toString(), s._id));
 
       filter = {
-        $or: [{ addedBy: req.user._id }, { _id: { $in: savedIds } }],
+        $or: [
+          { addedBy: req.user._id },
+          { "collaborators.user": req.user._id },
+          { _id: { $in: savedIds } },
+        ],
       };
     }
 
     const sections = await CustomSection.find(filter)
-      .populate("addedBy", "name avatar")
+      .populate("addedBy", "name email avatar")
+      .populate("collaborators.user", "name email avatar")
       .sort({ createdAt: -1 });
 
     const sectionsWithSaved = sections.map((s) => {
       const obj = s.toObject();
       const sIdStr = s._id.toString();
-      const isOwner = s.addedBy && String(s.addedBy._id || s.addedBy) === String(req.user._id);
+      const role = resolveSectionRole(s, req.user);
+      const permissions = getSectionPermissions(role, s.visibility);
+
       if (savedSectionIdMap.has(sIdStr)) {
         obj.isSaved = true;
         obj.libraryEntryId = savedSectionIdMap.get(sIdStr);
       } else {
         obj.isSaved = false;
       }
-      obj.isOwner = isOwner;
+      obj.myRole = role;
+      obj.isOwner = role === "owner";
+      obj.isShared = Array.isArray(s.collaborators) && s.collaborators.length > 0;
+      obj.collaboratorCount = s.collaborators?.length || 0;
+      obj.permissions = permissions;
       return obj;
     });
 
@@ -63,33 +84,29 @@ const getSections = async (req, res) => {
 // @route   GET /api/sections/:id
 const getSection = async (req, res) => {
   try {
-    const section = await CustomSection.findById(req.params.id).populate(
-      "addedBy",
-      "name avatar",
+    const { section, role, permissions, error, status } = await checkSectionAccess(
+      req.params.id,
+      req.user,
     );
 
-    if (!section) {
-      return res.status(404).json({ message: "Section not found" });
+    if (error) {
+      return res.status(status).json({ message: error });
     }
 
-    const isOwner = section.addedBy && String(section.addedBy._id || section.addedBy) === String(req.user._id);
-    const isAdmin = req.user.role === "admin";
     const savedEntry = await UserLibrary.findOne({
       user: req.user._id,
       contentType: "section",
       contentId: section._id,
     });
 
-    if (!isOwner && !isAdmin && section.visibility !== "public" && !savedEntry) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
     const sectionObj = section.toObject();
     sectionObj.isSaved = !!savedEntry;
     sectionObj.libraryEntryId = savedEntry?._id || null;
-    sectionObj.isOwner = isOwner;
+    sectionObj.isOwner = role === "owner";
+    sectionObj.myRole = role;
+    sectionObj.permissions = permissions;
 
-    res.json({ section: sectionObj });
+    res.json({ section: sectionObj, myRole: role, permissions });
   } catch (error) {
     console.error("Get section error:", error);
     res.status(500).json({ message: "Server error" });
@@ -409,15 +426,13 @@ const uploadSectionImage = async (req, res) => {
       return res.status(400).json({ message: "No image file provided" });
     }
 
-    const section = await CustomSection.findById(req.params.id);
+    const { section, permissions } = await checkSectionAccess(req.params.id, req.user);
     if (!section) {
       return res.status(404).json({ message: "Section not found" });
     }
 
-    const isOwner = section.addedBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin";
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
+    if (!permissions.canEdit) {
+      return res.status(403).json({ message: "Not authorized to upload to this section" });
     }
 
     const fileId = await uploadToGridFS(
@@ -439,15 +454,13 @@ const uploadSectionImage = async (req, res) => {
 // @route   PATCH /api/sections/:id/banner
 const updateSectionBanner = async (req, res) => {
   try {
-    const section = await CustomSection.findById(req.params.id);
+    const { section, permissions } = await checkSectionAccess(req.params.id, req.user);
     if (!section) {
       return res.status(404).json({ message: "Section not found" });
     }
 
-    const isOwner = section.addedBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin";
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: "Not authorized" });
+    if (!permissions.canManage) {
+      return res.status(403).json({ message: "Only the section owner or admin can update banner" });
     }
 
     const { bannerImage, query, autoFetch } = req.body || {};
@@ -488,6 +501,351 @@ const updateSectionBanner = async (req, res) => {
   }
 };
 
+// ── Team Collaboration & Invites ─────────────────────────────────────────────
+
+// @desc    Create invite for a section (Owner/Admin only)
+// @route   POST /api/sections/:id/invites
+const createInvite = async (req, res) => {
+  try {
+    const { section, permissions } = await checkSectionAccess(req.params.id, req.user);
+    if (!section) return res.status(404).json({ message: "Section not found" });
+    if (!permissions.canManage) {
+      return res.status(403).json({ message: "Only the section owner or admin can invite members" });
+    }
+
+    const { email, role = "editor" } = req.body;
+    if (!email || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if inviting owner themselves
+    const ownerEmail = section.addedBy?.email?.toLowerCase();
+    if (ownerEmail && ownerEmail === cleanEmail) {
+      return res.status(400).json({ message: "You are already the owner of this section" });
+    }
+
+    // Check if user is already a collaborator
+    const isAlreadyCollab = section.collaborators?.some(
+      (c) => c.user?.email?.toLowerCase() === cleanEmail,
+    );
+    if (isAlreadyCollab) {
+      return res.status(400).json({ message: "User is already a collaborator on this section" });
+    }
+
+    // Check if existing active pending invite exists
+    let existingInvite = await SectionInvite.findOne({
+      sectionId: section._id,
+      invitedEmail: cleanEmail,
+      status: "pending",
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (existingInvite) {
+      return res.json({
+        invite: existingInvite,
+        inviteUrl: `/invite/${existingInvite.token}`,
+        message: "An active invitation for this email already exists",
+      });
+    }
+
+    // Find if user already exists in OrganizeUp DB
+    const existingUser = await User.findOne({ email: cleanEmail }).select("_id name email");
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const newInvite = await SectionInvite.create({
+      sectionId: section._id,
+      invitedEmail: cleanEmail,
+      invitedUser: existingUser ? existingUser._id : null,
+      invitedBy: req.user._id,
+      role: role === "viewer" ? "viewer" : "editor",
+      token,
+      expiresAt,
+    });
+
+    res.status(201).json({
+      invite: newInvite,
+      inviteUrl: `/invite/${token}`,
+      isRegistered: !!existingUser,
+      message: existingUser
+        ? `Invitation created for ${existingUser.name}`
+        : `Invitation created for ${cleanEmail} (will auto-bind upon signup)`,
+    });
+  } catch (error) {
+    console.error("Create invite error:", error);
+    res.status(500).json({ message: "Server error creating invitation" });
+  }
+};
+
+// @desc    Get public sanitized info about an invite
+// @route   GET /api/sections/invites/public/:token
+const getPublicInviteInfo = async (req, res) => {
+  try {
+    const invite = await SectionInvite.findOne({ token: req.params.token })
+      .populate("sectionId", "name color icon description bannerImage")
+      .populate("invitedBy", "name avatar");
+
+    if (!invite || !invite.sectionId) {
+      return res.status(404).json({ message: "Invitation not found or section has been deleted" });
+    }
+
+    const isExpired = invite.expiresAt < new Date();
+
+    res.json({
+      sectionId: invite.sectionId._id,
+      sectionName: invite.sectionId.name,
+      sectionColor: invite.sectionId.color,
+      sectionIcon: invite.sectionId.icon,
+      sectionDescription: invite.sectionId.description,
+      bannerImage: invite.sectionId.bannerImage,
+      invitedBy: {
+        name: invite.invitedBy?.name || "A team member",
+        avatar: invite.invitedBy?.avatar || "",
+      },
+      invitedEmail: invite.invitedEmail,
+      role: invite.role,
+      status: invite.status,
+      isExpired,
+    });
+  } catch (error) {
+    console.error("Get public invite info error:", error);
+    res.status(500).json({ message: "Server error fetching invitation" });
+  }
+};
+
+// @desc    Accept invite (User must be logged in with matching email)
+// @route   POST /api/sections/invites/:token/accept
+const acceptInvite = async (req, res) => {
+  try {
+    const invite = await SectionInvite.findOne({ token: req.params.token });
+    if (!invite) {
+      return res.status(404).json({ message: "Invitation not found" });
+    }
+
+    if (invite.status === "accepted") {
+      return res.json({
+        message: "You have already accepted this invitation",
+        sectionId: invite.sectionId,
+      });
+    }
+
+    if (invite.status !== "pending") {
+      return res.status(400).json({ message: `Invitation is no longer valid (${invite.status})` });
+    }
+
+    if (invite.expiresAt < new Date()) {
+      invite.status = "revoked";
+      await invite.save();
+      return res.status(400).json({ message: "Invitation has expired" });
+    }
+
+    // Security check: Active user's email must match invitedEmail
+    if (req.user.email.toLowerCase() !== invite.invitedEmail.toLowerCase()) {
+      return res.status(403).json({
+        message: `Account mismatch: You are logged in as ${req.user.email}, but this invite was sent to ${invite.invitedEmail}`,
+        currentEmail: req.user.email,
+        invitedEmail: invite.invitedEmail,
+      });
+    }
+
+    const section = await CustomSection.findById(invite.sectionId);
+    if (!section) {
+      return res.status(404).json({ message: "Section no longer exists" });
+    }
+
+    // Check if user is owner
+    const isOwner = String(section.addedBy) === String(req.user._id);
+    if (!isOwner) {
+      // Add user to collaborators if not already present
+      const alreadyIn = section.collaborators?.some(
+        (c) => String(c.user) === String(req.user._id),
+      );
+      if (!alreadyIn) {
+        if (!section.collaborators) section.collaborators = [];
+        section.collaborators.push({
+          user: req.user._id,
+          role: invite.role || "editor",
+          invitedBy: invite.invitedBy,
+          joinedAt: new Date(),
+        });
+        await section.save();
+      }
+    }
+
+    invite.status = "accepted";
+    invite.invitedUser = req.user._id;
+    await invite.save();
+
+    res.json({
+      message: "Invitation accepted successfully",
+      sectionId: section._id,
+    });
+  } catch (error) {
+    console.error("Accept invite error:", error);
+    res.status(500).json({ message: "Server error accepting invitation" });
+  }
+};
+
+// @desc    Decline invite
+// @route   POST /api/sections/invites/:token/decline
+const declineInvite = async (req, res) => {
+  try {
+    const invite = await SectionInvite.findOne({ token: req.params.token });
+    if (!invite) {
+      return res.status(404).json({ message: "Invitation not found" });
+    }
+
+    if (req.user.email.toLowerCase() !== invite.invitedEmail.toLowerCase()) {
+      return res.status(403).json({ message: "Not authorized to decline this invite" });
+    }
+
+    invite.status = "declined";
+    await invite.save();
+
+    res.json({ message: "Invitation declined" });
+  } catch (error) {
+    console.error("Decline invite error:", error);
+    res.status(500).json({ message: "Server error declining invitation" });
+  }
+};
+
+// @desc    Get pending invites for current user
+// @route   GET /api/sections/invites/pending
+const getPendingInvites = async (req, res) => {
+  try {
+    const invites = await SectionInvite.find({
+      invitedEmail: req.user.email.toLowerCase(),
+      status: "pending",
+      expiresAt: { $gt: new Date() },
+    })
+      .populate("sectionId", "name color icon bannerImage description")
+      .populate("invitedBy", "name avatar email")
+      .sort({ createdAt: -1 });
+
+    // Filter out if section was deleted
+    const validInvites = invites.filter((inv) => inv.sectionId);
+
+    res.json({ invites: validInvites });
+  } catch (error) {
+    console.error("Get pending invites error:", error);
+    res.status(500).json({ message: "Server error fetching invites" });
+  }
+};
+
+// @desc    Get all members of a section (Collaborators + Owner)
+// @route   GET /api/sections/:id/members
+const getSectionMembers = async (req, res) => {
+  try {
+    const { section, permissions } = await checkSectionAccess(req.params.id, req.user);
+    if (!section) return res.status(404).json({ message: "Section not found" });
+    if (!permissions.canView) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    let pendingInvites = [];
+    if (permissions.canManage) {
+      pendingInvites = await SectionInvite.find({
+        sectionId: section._id,
+        status: "pending",
+        expiresAt: { $gt: new Date() },
+      })
+        .populate("invitedUser", "name avatar email")
+        .populate("invitedBy", "name")
+        .sort({ createdAt: -1 });
+    }
+
+    res.json({
+      owner: section.addedBy,
+      collaborators: section.collaborators || [],
+      pendingInvites,
+      canManage: permissions.canManage,
+    });
+  } catch (error) {
+    console.error("Get section members error:", error);
+    res.status(500).json({ message: "Server error fetching members" });
+  }
+};
+
+// @desc    Update collaborator role (Owner only)
+// @route   PATCH /api/sections/:id/members/:userId
+const updateCollaboratorRole = async (req, res) => {
+  try {
+    const { section, permissions } = await checkSectionAccess(req.params.id, req.user);
+    if (!section) return res.status(404).json({ message: "Section not found" });
+    if (!permissions.canManage) {
+      return res.status(403).json({ message: "Only the owner can modify member roles" });
+    }
+
+    const { role } = req.body;
+    if (!["editor", "viewer"].includes(role)) {
+      return res.status(400).json({ message: "Role must be 'editor' or 'viewer'" });
+    }
+
+    const collab = section.collaborators?.find(
+      (c) => String(c.user?._id || c.user) === String(req.params.userId),
+    );
+
+    if (!collab) {
+      return res.status(404).json({ message: "Collaborator not found in this section" });
+    }
+
+    collab.role = role;
+    await section.save();
+
+    const updated = await CustomSection.findById(section._id)
+      .populate("addedBy", "name email avatar")
+      .populate("collaborators.user", "name email avatar");
+
+    res.json({ message: "Role updated", collaborators: updated.collaborators });
+  } catch (error) {
+    console.error("Update collaborator role error:", error);
+    res.status(500).json({ message: "Server error updating role" });
+  }
+};
+
+// @desc    Remove collaborator (Owner removing member, or member leaving section)
+// @route   DELETE /api/sections/:id/members/:userId
+const removeCollaborator = async (req, res) => {
+  try {
+    const { section, permissions } = await checkSectionAccess(req.params.id, req.user);
+    if (!section) return res.status(404).json({ message: "Section not found" });
+
+    const isSelfLeaving = String(req.user._id) === String(req.params.userId);
+    if (!isSelfLeaving && !permissions.canManage) {
+      return res.status(403).json({ message: "Only the section owner can remove members" });
+    }
+
+    const initialCount = section.collaborators?.length || 0;
+    section.collaborators = (section.collaborators || []).filter(
+      (c) => String(c.user?._id || c.user) !== String(req.params.userId),
+    );
+
+    if (section.collaborators.length === initialCount) {
+      return res.status(404).json({ message: "User is not a collaborator in this section" });
+    }
+
+    await section.save();
+
+    // Revoke any pending invites for that user if owner removed them
+    if (permissions.canManage && !isSelfLeaving) {
+      await SectionInvite.updateMany(
+        { sectionId: section._id, invitedUser: req.params.userId, status: "pending" },
+        { status: "revoked" },
+      );
+    }
+
+    res.json({
+      message: isSelfLeaving ? "You left the section" : "Collaborator removed",
+      userId: req.params.userId,
+    });
+  } catch (error) {
+    console.error("Remove collaborator error:", error);
+    res.status(500).json({ message: "Server error removing member" });
+  }
+};
+
 module.exports = {
   getSections,
   getSection,
@@ -499,4 +857,12 @@ module.exports = {
   cloneSection,
   uploadSectionImage,
   updateSectionBanner,
+  createInvite,
+  getPublicInviteInfo,
+  acceptInvite,
+  declineInvite,
+  getPendingInvites,
+  getSectionMembers,
+  updateCollaboratorRole,
+  removeCollaborator,
 };
