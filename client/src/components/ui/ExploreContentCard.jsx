@@ -13,7 +13,7 @@ const DETAIL_ROUTE_BY_TYPE = {
   book: '/books',
   course: '/courses',
   tool: '/tools',
-  section: '/sections',
+  section: '/workspaces',
   playlist: '/youtube-playlists',
 };
 

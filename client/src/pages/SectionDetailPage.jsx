@@ -281,7 +281,7 @@ const ChangeBannerModal = ({ isOpen, onClose, currentBanner, sectionId, sectionN
         <div className="flex items-center justify-between">
           <h3 className="text-primary font-semibold text-lg flex items-center gap-2">
             <IoImageOutline className="text-accent" size={20} />
-            <span>Customize Section Banner</span>
+            <span>Customize Workspace Banner</span>
           </h3>
           <button onClick={onClose} className="text-muted hover:text-primary transition-colors cursor-pointer">
             <IoCloseOutline size={20} />
@@ -428,7 +428,7 @@ const SectionDetailPage = () => {
   const { currentSection, isLoading, subSections, subSectionsLoading, myRole, permissions } =
     useSelector((state) => state.sections);
   const { user } = useSelector((state) => state.auth);
-  useDocumentTitle(currentSection?.name || 'Section');
+  useDocumentTitle(currentSection?.name || 'Workspace');
   const isAdmin = user?.role === 'admin';
 
   const [showImport, setShowImport]           = useState(false);
@@ -853,10 +853,10 @@ const SectionDetailPage = () => {
           {/* Top Bar on Banner */}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => navigate('/sections')}
+              onClick={() => navigate('/workspaces')}
               className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 transition-colors cursor-pointer"
             >
-              <IoArrowBack size={13} /> All Sections
+              <IoArrowBack size={13} /> All Workspaces
             </button>
 
             <div className="flex items-center gap-2">

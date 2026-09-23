@@ -27,7 +27,7 @@ const TYPE_META = {
   book:     { label: 'Book',     icon: IoBookOutline,    color: 'text-accent',     bg: 'bg-accent-subtle', route: (id) => `/books/${id}` },
   course:   { label: 'Course',   icon: IoSchoolOutline,  color: 'text-purple-400', bg: 'bg-purple-500/10', route: (id) => `/courses/${id}` },
   tool:     { label: 'Trick',    icon: IoBulbOutline,    color: 'text-amber-400',  bg: 'bg-amber-500/10',  route: (id) => `/tools/${id}` },
-  section:  { label: 'Section',  icon: IoFolderOutline,  color: 'text-emerald-400',bg: 'bg-emerald-500/10',route: (id) => `/sections/${id}` },
+  section:  { label: 'Workspace',icon: IoFolderOutline,  color: 'text-emerald-400',bg: 'bg-emerald-500/10',route: (id) => `/workspaces/${id}` },
   playlist: { label: 'Playlist', icon: IoLogoYoutube,    color: 'text-red-400',    bg: 'bg-red-500/10',    route: (id) => `/youtube-playlists/${id}` },
   video:    { label: 'YouTube Video', icon: IoLogoYoutube, color: 'text-red-400',    bg: 'bg-red-500/10',    route: (id) => `/youtube-playlists/${id}` },
 };

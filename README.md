@@ -42,8 +42,8 @@
 **OrganizeUp solves this entirely:**
 - **Zero-Friction Ingestion:** Forward messages and files directly to the **Telegram Bot** or right-click any Discord message using the **Discord Context Menu App** to capture links and media straight into your personal Inbox.
 - **Universal Multi-Format Player:** Read PDFs with auto-saved scroll positions, watch Google Drive video series with progress tracking & post-lesson reflection prompts, and stream audiobooks with interactive waveforms.
-- **Modular Knowledge Canvas:** Build structured custom sections with Markdown notes, interactive checklists, code snippets, and **drag-and-drop Kanban boards**.
-- **Community & Discovery:** Explore curated public sections shared by other learners, upvote helpful resources, participate in nested discussions, or publish your own knowledge for admin review.
+- **Modular Collaborative Workspaces:** Build structured workspaces with real-time team co-editing, live presence, Markdown notes, interactive checklists, code snippets, and **drag-and-drop Kanban boards**.
+- **Community & Discovery:** Explore curated public workspaces and resources shared by other learners, upvote helpful resources, participate in nested discussions, or publish your own knowledge for admin review.
 
 ---
 
@@ -76,18 +76,24 @@ Never lose a shared resource again. OrganizeUp turns chat platforms into direct 
 
 ---
 
-### 🗂️ 3. Custom Sections & Modular Knowledge Canvas
-OrganizeUp includes a block-based knowledge workspace for structuring personal wikis, study guides, and project hubs:
+### 🗂️ 3. Collaborative Workspaces & Modular Knowledge Canvas
+OrganizeUp includes a real-time collaborative workspace engine for structuring team hubs, personal wikis, study guides, and project sprints:
 
-- **Section Architecture:** Set custom section titles, descriptions, banner images, and toggle privacy (**Public** or **Private**).
-- **Sub-Section Blocks:**
+- **Workspace Architecture:** Set custom workspace titles, descriptions, banner images, and toggle privacy (**Public** or **Private**).
+- **Multiplayer Co-Editing & Real-Time Presence:**
+  - 👥 **Team Role Permissions:** Invite collaborators with granular roles (*Owner*, *Editor*, *Commenter*, *Viewer*) via direct email or shareable invite links.
+  - 🟢 **Live Room Presence:** Real-time presence indicators with avatar stacks show who is currently online in the workspace.
+  - 🟣 **Live Block Focus:** Instant visual glowing borders and floating badges (\`"{avatar} {name} is editing..."\`) proactively prevent concurrent collisions before they happen.
+  - ⚡ **60fps Live Sync:** Changes to notes, checklists, kanban cards, and snippets propagate instantly via WebSockets without page reloads.
+  - ⚖️ **Visual Conflict Resolver:** Side-by-side diff resolution modal (Keep Mine, Accept Remote, or Merge Both) for seamless simultaneous co-editing.
+- **Modular Blocks:**
   - 📝 **Markdown Notes:** Formatted long-form guides, notes, and study material.
-  - 📋 **Kanban Boards:** Drag-and-drop task boards powered by `@dnd-kit/core` with custom columns (e.g. *To Do*, *In Progress*, *Done*), item priorities (*Low*, *Medium*, *High*), and due dates.
+  - 📋 **Kanban Boards:** Drag-and-drop task boards powered by \`@dnd-kit/core\` with custom columns (e.g. *To Do*, *In Progress*, *Done*), item priorities (*Low*, *Medium*, *High*), and due dates.
   - ✅ **Interactive To-Do Lists:** Checklists with completion state persistence, priority badges, and target dates.
   - 💻 **Code Snippets:** Syntax-highlighted code blocks with language indicators and 1-click copy.
   - 🔗 **Curated Resource Links:** Clean link cards with titles and descriptions.
   - 🖼️ **Image Galleries:** Visual reference blocks with captions and modal expansion.
-- **Publishing Pipeline:** Request to publish custom sections to the community Explore tab. Admins review and approve submissions through the moderation panel.
+- **Publishing Pipeline:** Request to publish workspaces to the community Explore tab. Admins review and approve submissions through the moderation panel.
 
 ---
 
@@ -379,7 +385,7 @@ npm run dev
 - [x] Progressive Web App (PWA) with offline caching and mobile tab bar
 - [ ] AI-assisted auto-tagging and summary generation for saved articles
 - [ ] Browser Extension for 1-click URL saving from Chrome, Edge, and Firefox
-- [ ] Collaborative real-time editing on shared custom sections
+- [x] Collaborative real-time editing on shared workspaces
 
 ---
 

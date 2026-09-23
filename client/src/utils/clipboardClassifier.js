@@ -1,5 +1,5 @@
 /**
- * Smart Clipboard Classifier for Custom Section Blocks
+ * Smart Clipboard Classifier for Workspace Blocks
  * Automatically detects whether clipboard content is an Image, URL, Checklist, Code Snippet, or Note.
  */
 

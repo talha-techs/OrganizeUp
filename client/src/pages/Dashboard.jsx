@@ -197,14 +197,14 @@ const Dashboard = () => {
       badge: 'Omni-Captures',
     },
     {
-      title: 'Custom Notebooks',
-      desc: 'Personal workspaces, sections & study notes',
+      title: 'Workspaces',
+      desc: 'Collaborative workspaces, modular blocks & team notes',
       count: counts.sections,
-      to: '/sections',
+      to: '/workspaces',
       icon: <IoFolderOutline size={26} />,
       gradient: 'from-rose-500 to-pink-600',
       bgGlow: 'bg-rose-500/15',
-      badge: 'Notebooks',
+      badge: 'Workspaces',
     },
   ];
 

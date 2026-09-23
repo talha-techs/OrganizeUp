@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { getMe } from './redux/slices/authSlice';
 
@@ -18,6 +18,11 @@ const SignupPage = lazy(() => import('./pages/auth/SignupPage'));
 const GoogleSuccess = lazy(() => import('./pages/auth/GoogleSuccess'));
 const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
 const InviteLandingPage = lazy(() => import('./pages/InviteLandingPage'));
+
+const WorkspaceLegacyRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/workspaces/${id}`} replace />;
+};
 
 const DocsRedirect = () => {
   useEffect(() => {
@@ -167,8 +172,11 @@ const App = () => {
               <Route path="/courses/:id" element={<CourseDetailPage />} />
               <Route path="/tools" element={<ToolsPage />} />
               <Route path="/tools/:id" element={<ToolDetailPage />} />
-              <Route path="/sections" element={<SectionsPage />} />
-              <Route path="/sections/:id" element={<SectionDetailPage />} />
+              {/* Workspaces (formerly Custom Sections) */}
+              <Route path="/workspaces" element={<SectionsPage />} />
+              <Route path="/workspaces/:id" element={<SectionDetailPage />} />
+              <Route path="/sections" element={<Navigate to="/workspaces" replace />} />
+              <Route path="/sections/:id" element={<WorkspaceLegacyRedirect />} />
               <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
               <Route path="/youtube-playlists/:id" element={<YouTubePlaylistDetailPage />} />
               <Route path="/profile" element={<ProfilePage />} />

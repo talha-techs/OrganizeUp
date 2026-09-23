@@ -14,7 +14,7 @@ const MobileTabBar = () => {
     { to: '/dashboard', label: 'Home', icon: IoGridOutline },
     { to: '/books', label: 'Books', icon: IoBookOutline },
     { to: '/explore', label: 'Explore', icon: IoCompassOutline },
-    { to: '/sections', label: 'Sections', icon: IoFolderOutline },
+    { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
     { to: '/saved', label: 'Saved', icon: IoBookmarkOutline },
   ];
 

@@ -302,7 +302,7 @@ const ExplorePage = () => {
     },
     {
       key: 'sections',
-      label: 'Sections',
+      label: 'Workspaces',
       icon: <IoFolderOutline size={16} />,
       count: totals.sections,
     },
@@ -434,7 +434,7 @@ const ExplorePage = () => {
       >
         <h1 className="text-3xl font-bold text-primary font-display">Explore</h1>
         <p className="text-secondary text-sm mt-1">
-          Discover public books, modern bestsellers, classic audiobooks, courses, and sections
+          Discover public books, modern bestsellers, classic audiobooks, courses, and workspaces
         </p>
       </motion.div>
 
@@ -555,7 +555,7 @@ const ExplorePage = () => {
               {renderSection('Books', results.books, 'book')}
               {renderSection('Courses', results.courses, 'course')}
               {renderSection('Tricks & Tools', results.tools, 'tool')}
-              {renderSection('Sections', results.sections, 'section')}
+              {renderSection('Workspaces', results.sections, 'section')}
               {renderSection('YouTube Playlists', results.playlists, 'playlist')}
               {!search &&
                 results.books.length === 0 &&
@@ -880,7 +880,7 @@ const ExplorePage = () => {
 
           {/* SECTIONS TAB */}
           {activeTab === 'sections' &&
-            renderSection('Sections', results.sections, 'section')}
+            renderSection('Workspaces', results.sections, 'section')}
 
           {/* PLAYLISTS TAB */}
           {activeTab === 'playlists' &&

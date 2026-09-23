@@ -315,27 +315,27 @@ Step 2: Cloning to Your Library
   },
   {
     id: 'modular-canvas',
-    title: 'Modular Knowledge Canvas',
+    title: 'Workspaces & Modular Canvas',
     icon: 'IoFolderOutline',
-    description: 'Custom sections, Markdown wikis, code blocks, and Kanban boards.',
+    description: 'Collaborative workspaces, real-time sync, Markdown notes, code snippets, and Kanban boards.',
     items: [
       {
         id: 'sections',
-        title: 'Custom Sections & Blocks',
-        summary: 'Build project hubs with Smart Clipboard ingestion, Markdown notes, checklists, code, and banners.',
-        badge: 'Canvas',
-        readTime: '5 min read',
+        title: 'Workspaces & Modular Blocks',
+        summary: 'Build real-time collaborative workspaces with live co-editing, smart clipboard ingestion, notes, checklists, code, and banners.',
+        badge: 'Workspaces',
+        readTime: '6 min read',
         content: `
-### Versatile Multi-Purpose Workspaces
-Sections are flexible workspaces where you can organize multifaceted projects, study guides, technical cheat sheets, and research wikis.
+### Real-Time Collaborative Workspaces
+Workspaces are flexible multi-user collaborative hubs where you and your team can organize multifaceted projects, research wikis, sprint roadmaps, and code snippets in real time.
 
-Step 1: Creating a Custom Section
-1. Navigate to **Custom Sections** in the sidebar.
-2. Click **+ New Section**.
+Step 1: Creating a Workspace
+1. Navigate to **Workspaces** in the sidebar.
+2. Click **+ New Workspace**.
 3. Choose a title, icon, and accent color to distinguish your workspace.
 
 Step 2: Modular Content Blocks
-Inside your Section canvas, click **+ Add Block** to add any content type:
+Inside your Workspace canvas, click **+ Add Block** to add any content type:
 - **Markdown Notes**: Rich formatted documentation with headers, bullet points, and tables.
 - **Interactive Checklists**: Checkboxes to track project milestones, bug lists, and reading targets.
 - **Syntax-Highlighted Code Blocks**: Formatted snippets for JavaScript, Python, Bash, HTML, CSS, SQL, Rust, Go, and JSON with 1-click copy.
@@ -344,7 +344,7 @@ Inside your Section canvas, click **+ Add Block** to add any content type:
 - **File Attachments**: Upload supplementary documents directly to your private cloud storage.
 
 Step 3: Smart Multimodal Clipboard Ingestion (<kbd>Ctrl</kbd> + <kbd>V</kbd>)
-Never slow down to configure block types manually. Press <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere on the canvas:
+Never slow down to configure block types manually. Press <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere on the workspace canvas:
 1. **Screenshots & Images**: Paste directly from the Snipping Tool, <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>, or browser clipboard. OrganizeUp uploads the image to MongoDB GridFS and creates a dedicated Image block automatically.
 2. **Note-Adjacent Image Insertion**: If you paste an image while actively editing a Note block, OrganizeUp automatically inserts the new Image block directly underneath the active note instead of placing it at the bottom of the canvas!
 3. **Task Lists & Bullet Points**: Pasting multiline text formatted with dashes, bullet points, numbers, or \`- [ ]\` checkboxes automatically parses and creates an Interactive Checklist.
@@ -352,24 +352,28 @@ Never slow down to configure block types manually. Press <kbd>Ctrl</kbd> + <kbd>
 5. **Web URLs**: Pasting any link creates a Bookmark Link block with favicon and domain preview.
 6. **Smart-Paste Notification with Undo**: A floating badge confirms the ingested block type with an instant 1-click **Undo** button to revert if needed.
 
-Step 4: In-Block Pasting & Drag-and-Drop
-- **Checklist Blocks**: Paste multi-line text directly into a Todo block to bulk-add multiple items in a single action.
-- **Image Blocks**: Drag and drop image files directly onto the drop zone or paste images directly into the block.
+Step 4: Real-Time Multi-User Collaboration & Presence
+Experience zero-friction synchronous collaboration with your team:
+- **Granular Roles**: Invite team members via direct email or magic link with roles: *Owner*, *Editor*, *Commenter*, *Viewer*.
+- **Live Presence Tracking**: Pulsing emerald presence pill and live collaborator avatars display who is actively in the workspace room.
+- **Visual Block Focus**: Real-time glowing purple borders and floating badges (\`"{avatar} {name} is editing..."\`) indicate what block a teammate is working on, proactively preventing edit conflicts.
+- **60fps Live Sync**: Notes, task status, board cards, and code snippets propagate instantly over WebSockets without page reloads.
+- **Conflict Resolver**: Built-in Optimistic Concurrency Control with a side-by-side visual diff modal to easily review or merge concurrent drafts.
 
-Step 5: Custom Section Banners & Pexels Discovery
-Personalize your section workspace with a hero header banner displayed on the section page and across the Sections gallery cards:
-1. Click **Change Banner** in the section header.
+Step 5: Workspace Banners & Pexels Discovery
+Personalize your workspace with a hero header banner displayed on the workspace page and across the Workspaces gallery cards:
+1. Click **Change Banner** in the workspace header.
 2. Select your preferred banner source:
    - **Upload Custom File**: Upload personal PNG, JPG, or WebP images directly to MongoDB GridFS.
    - **Web Image Address**: Paste any direct public image URL.
-   - **Auto-Discovery via Pexels API**: When \`PEXELS_API_KEY\` is configured, OrganizeUp automatically searches and suggests high-definition royalty-free covers matching your section title, complete with sleek gradient fallbacks.
+   - **Auto-Discovery via Pexels API**: When \`PEXELS_API_KEY\` is configured, OrganizeUp automatically searches and suggests high-definition royalty-free covers matching your workspace title, complete with sleek gradient fallbacks.
 3. Update or remove the banner at any time.
         `,
         callouts: [
           {
             type: 'tip',
             title: 'Instant Screenshot Ingestion',
-            text: 'Capture any diagram or code snippet with Win+Shift+S (or Cmd+Shift+4) and hit Ctrl+V in your Custom Section. If you are typing inside a Note block, the screenshot will conveniently appear right below your note!',
+            text: 'Capture any diagram or code snippet with Win+Shift+S (or Cmd+Shift+4) and hit Ctrl+V in your Workspace. If you are typing inside a Note block, the screenshot will conveniently appear right below your note!',
           },
         ],
         quickLinks: [
@@ -385,10 +389,10 @@ Personalize your section workspace with a hero header banner displayed on the se
         readTime: '3 min read',
         content: `
 ### Visual Task Management
-Keep your learning structured with interactive Kanban boards integrated directly into your sections.
+Keep your learning structured with interactive Kanban boards integrated directly into your workspaces.
 
 Step 1: Enabling Kanban Board
-1. Open any Custom Section.
+1. Open any Workspace.
 2. Switch to the **Kanban Board** tab.
 3. You will see three columns: **To Do**, **In Progress**, and **Completed**.
 
@@ -421,12 +425,12 @@ Step 1: Keyboard Shortcuts Reference
 |---|---|---|
 | <kbd>Ctrl</kbd> + <kbd>K</kbd> | Open Quick Capture Modal | Global |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Instant Quick Capture | Global |
-| <kbd>Ctrl</kbd> + <kbd>V</kbd> | Smart Multimodal Clipboard Ingestion | Custom Sections Canvas |
+| <kbd>Ctrl</kbd> + <kbd>V</kbd> | Smart Multimodal Clipboard Ingestion | Workspace Canvas |
 | <kbd>/</kbd> | Focus Search Bar | Explore & Docs |
 | <kbd>Esc</kbd> | Close Modals & Overlays | Global |
 
-Step 2: Smart Clipboard Ingestion in Sections
-Press <kbd>Ctrl</kbd> + <kbd>V</kbd> inside any Custom Section to automatically classify and insert screenshots, multi-line checklists, code snippets, links, or notes without clicking any menus.
+Step 2: Smart Clipboard Ingestion in Workspaces
+Press <kbd>Ctrl</kbd> + <kbd>V</kbd> inside any Workspace to automatically classify and insert screenshots, multi-line checklists, code snippets, links, or notes without clicking any menus.
 
 Step 3: Quick Capture Anywhere
 1. Press <kbd>Ctrl</kbd> + <kbd>K</kbd> anywhere in the application.
@@ -542,7 +546,7 @@ Use the top navigation bar in Explore to filter by:
 - **Books**: Public domain audiobooks and curated textbooks.
 - **Courses**: Community-reviewed video lecture series.
 - **Tricks & Tools**: Developer cheat sheets and utility links.
-- **Sections**: Curated project wikis and study blueprints.
+- **Workspaces**: Curated project wikis, team spaces, and study blueprints.
 - **Playlists**: Curated YouTube playlists.
 
 Step 2: Upvoting & Discussions

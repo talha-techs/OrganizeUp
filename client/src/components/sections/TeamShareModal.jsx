@@ -90,17 +90,17 @@ const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canM
   const handleRemoveMember = async (userId, memberName) => {
     const isSelf = String(user?._id) === String(userId);
     const confirmMsg = isSelf
-      ? 'Are you sure you want to leave this shared section?'
-      : `Remove ${memberName || 'this collaborator'} from the section?`;
+      ? 'Are you sure you want to leave this shared workspace?'
+      : `Remove ${memberName || 'this collaborator'} from the workspace?`;
 
     if (!window.confirm(confirmMsg)) return;
 
     const res = await dispatch(removeCollaborator({ sectionId, userId }));
     if (res.meta.requestStatus === 'fulfilled') {
-      toast.success(isSelf ? 'You have left the section' : 'Collaborator removed');
+      toast.success(isSelf ? 'You have left the workspace' : 'Collaborator removed');
       if (isSelf) {
         onClose();
-        window.location.href = '/sections';
+        window.location.href = '/workspaces';
       }
     } else {
       toast.error(res.payload || 'Failed to remove collaborator');
@@ -235,7 +235,7 @@ const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canM
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-primary truncate">{owner?.name || 'Section Owner'}</span>
+                      <span className="text-sm font-semibold text-primary truncate">{owner?.name || 'Workspace Owner'}</span>
                       <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                         Owner
                       </span>

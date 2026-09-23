@@ -659,14 +659,14 @@ const ProfilePage = () => {
                 })}
               </Section>
 
-              {/* Sections */}
+              {/* Workspaces */}
               <Section
                 icon={<IoFolderOutline size={16} className="text-emerald-400" />}
-                title="Sections"
+                title="Workspaces"
                 count={mySections.length}
                 color="bg-emerald-500/10"
               >
-                {mySections.length === 0 && <p className="px-5 py-4 text-sm text-muted">No sections created yet.</p>}
+                {mySections.length === 0 && <p className="px-5 py-4 text-sm text-muted">No workspaces created yet.</p>}
                 {mySections.map((section) => {
                   const allFiles = [
                     ...(section.files || []),

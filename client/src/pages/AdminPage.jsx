@@ -1582,7 +1582,7 @@ const AdminPage = () => {
                         <p className="text-xs text-primary font-medium">
                           {selectedUser.storage?.breakdown?.notes?.count || 0} note entries
                         </p>
-                        <p className="text-[10px] text-secondary mt-0.5">Custom sections & study text</p>
+                        <p className="text-[10px] text-secondary mt-0.5">Workspaces & study text</p>
                       </div>
                     </div>
                   </div>
@@ -1644,7 +1644,7 @@ const AdminPage = () => {
                   { type: 'book',     label: 'Books',     icon: IoBookOutline,    activeClass: 'bg-accent-subtle text-accent border-accent/30' },
                   { type: 'course',   label: 'Courses',   icon: IoSchoolOutline,  activeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
                   { type: 'tool',     label: 'Tricks',    icon: IoBulbOutline,    activeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-                  { type: 'section',  label: 'Sections',  icon: IoFolderOutline,  activeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+                  { type: 'section',  label: 'Workspaces',icon: IoFolderOutline,  activeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
                   { type: 'playlist', label: 'Playlists', icon: IoLogoYoutube,    activeClass: 'bg-red-500/15 text-red-400 border-red-500/30' },
                 ].map(({ type, label, icon: Icon, activeClass }) => (
                   <button

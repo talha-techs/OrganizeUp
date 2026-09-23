@@ -53,7 +53,7 @@ function getColorClasses(color) {
 }
 
 const SectionsPage = () => {
-  useDocumentTitle('Sections');
+  useDocumentTitle('Workspaces');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -103,7 +103,7 @@ const SectionsPage = () => {
     const result = await dispatch(createSection(createPayload));
 
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Section created');
+      toast.success('Workspace created');
       setShowForm(false);
       setName('');
       setDescription('');
@@ -125,7 +125,7 @@ const SectionsPage = () => {
     const result = await dispatch(deleteSection(deleteSectionId));
     setIsDeleting(false);
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Section deleted');
+      toast.success('Workspace deleted');
       setDeleteSectionId(null);
     } else {
       toast.error(result.payload || 'Failed to delete section');
@@ -185,7 +185,7 @@ const SectionsPage = () => {
         updateSection({ id: publishSection._id, visibility: 'public', publishMode }),
       );
       if (result.meta.requestStatus === 'fulfilled') {
-        toast.success('Section published');
+        toast.success('Workspace published');
         setPublishSection(null);
         setPublishMode('with_data');
         dispatch(fetchSections());
@@ -221,7 +221,7 @@ const SectionsPage = () => {
       }),
     );
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success(`Section set to ${newVis}`);
+      toast.success(`Workspace set to ${newVis}`);
       dispatch(fetchSections());
     }
   };
@@ -262,13 +262,13 @@ const SectionsPage = () => {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-bold text-primary font-display">Custom Sections</h1>
+          <h1 className="text-3xl font-bold text-primary font-display">Workspaces</h1>
           <p className="text-secondary text-sm mt-1">
-            Create custom sections, collaborate in shared spaces, and import Google Drive content
+            Create collaborative workspaces, co-edit with your team, and organize modular blocks
           </p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <IoAdd size={18} /> New Section
+          <IoAdd size={18} /> New Workspace
         </button>
       </motion.div>
 
@@ -370,7 +370,7 @@ const SectionsPage = () => {
               : 'text-secondary hover:text-primary hover:bg-surface-raised'
           }`}
         >
-          My Sections
+          My Workspaces
           <span
             className={`text-[10px] px-1.5 py-0.2 rounded-full ${
               filterTab === 'mine' ? 'bg-white/20 text-white' : 'bg-surface-raised text-muted'
@@ -402,7 +402,7 @@ const SectionsPage = () => {
 
       {/* Sections Grid */}
       {isLoading ? (
-        <LoadingSpinner text="Loading sections..." />
+        <LoadingSpinner text="Loading workspaces..." />
       ) : displayedSections.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
@@ -412,15 +412,15 @@ const SectionsPage = () => {
           <IoFolderOutline className="mx-auto text-muted mb-4" size={48} />
           <h3 className="text-lg font-medium text-secondary mb-2">
             {filterTab === 'shared'
-              ? 'No shared sections yet'
+              ? 'No shared workspaces yet'
               : filterTab === 'mine'
-              ? 'No created sections yet'
-              : 'No sections yet'}
+              ? 'No created workspaces yet'
+              : 'No workspaces yet'}
           </h3>
           <p className="text-sm text-muted">
             {filterTab === 'shared'
-              ? 'When colleagues or teammates invite you to custom sections, they will appear here.'
-              : 'Create your first custom section to organize Drive content and workspace blocks.'}
+              ? 'When colleagues or teammates invite you to shared workspaces, they will appear here.'
+              : 'Create your first workspace to organize blocks, docs, and team tasks.'}
           </p>
         </motion.div>
       ) : (
@@ -441,7 +441,7 @@ const SectionsPage = () => {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: i * 0.05 }}
                   className="glass-card group relative overflow-hidden cursor-pointer border border-subtle"
-                  onClick={() => navigate(`/sections/${section._id}`)}
+                  onClick={() => navigate(`/workspaces/${section._id}`)}
                 >
                   {/* Banner media or color gradient */}
                   <div
@@ -650,8 +650,8 @@ const SectionsPage = () => {
         </div>
       )}
 
-      {/* Create Section Modal */}
-      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="New Custom Section">
+      {/* Create Workspace Modal */}
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="New Workspace">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-secondary mb-1.5">Name</label>
@@ -749,7 +749,7 @@ const SectionsPage = () => {
               Cancel
             </button>
             <button type="submit" className="btn-primary">
-              Create Section
+              Create Workspace
             </button>
           </div>
         </form>
@@ -758,20 +758,20 @@ const SectionsPage = () => {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={!!deleteSectionId}
-        title="Delete Section"
-        message="Delete this section and all its files? This action cannot be undone."
+        title="Delete Workspace"
+        message="Delete this workspace and all its blocks and files? This action cannot be undone."
         confirmText="Delete"
         onConfirm={confirmDeleteSection}
         onCancel={() => setDeleteSectionId(null)}
         isLoading={isDeleting}
       />
 
-      {/* Leave Shared Section Confirmation */}
+      {/* Leave Shared Workspace Confirmation */}
       <ConfirmDialog
         isOpen={!!leaveSectionTarget}
-        title="Leave Shared Section"
+        title="Leave Shared Workspace"
         message={`Are you sure you want to leave "${leaveSectionTarget?.name}"? You will lose access to its workspace blocks and files.`}
-        confirmText="Leave Section"
+        confirmText="Leave Workspace"
         onConfirm={handleLeaveSection}
         onCancel={() => setLeaveSectionTarget(null)}
         isLoading={isLeaving}
@@ -784,7 +784,7 @@ const SectionsPage = () => {
           setPublishSection(null);
           setPublishMode('with_data');
         }}
-        title="Publish Section"
+        title="Publish Workspace"
       >
         <div className="space-y-4">
           <p className="text-sm text-secondary">

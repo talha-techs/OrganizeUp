@@ -76,7 +76,7 @@ const MobileDrawer = ({ isOpen, onClose }) => {
     {
       title: 'Knowledge',
       items: [
-        { to: '/sections', label: 'Custom Sections', icon: IoFolderOutline },
+        { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
         { to: '/explore', label: 'Explore Hub', icon: IoCompassOutline },
       ],
     },
