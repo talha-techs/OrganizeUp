@@ -11,6 +11,7 @@ const {
   getSectionPermissions,
   checkSectionAccess,
 } = require("../middleware/sectionAuth");
+const { broadcastToSection, broadcastActivity } = require("../socket");
 
 // @desc    Get all custom sections for current user (+ saved from library; admin sees all)
 // @route   GET /api/sections?mine=true&shared=true
@@ -494,6 +495,12 @@ const updateSectionBanner = async (req, res) => {
       "name avatar",
     );
 
+    broadcastToSection(section._id.toString(), "section_updated", { section: populated });
+    broadcastActivity(section._id.toString(), {
+      user: { name: req.user.name, avatar: req.user.avatar },
+      action: "updated_banner",
+    });
+
     res.json({ section: populated });
   } catch (error) {
     console.error("Update section banner error:", error);
@@ -798,6 +805,14 @@ const updateCollaboratorRole = async (req, res) => {
       .populate("addedBy", "name email avatar")
       .populate("collaborators.user", "name email avatar");
 
+    broadcastToSection(section._id.toString(), "collaborator_changed", {
+      collaborators: updated.collaborators,
+    });
+    broadcastActivity(section._id.toString(), {
+      user: { name: req.user.name, avatar: req.user.avatar },
+      action: "role_changed",
+    });
+
     res.json({ message: "Role updated", collaborators: updated.collaborators });
   } catch (error) {
     console.error("Update collaborator role error:", error);
@@ -835,6 +850,14 @@ const removeCollaborator = async (req, res) => {
         { status: "revoked" },
       );
     }
+
+    broadcastToSection(section._id.toString(), "collaborator_changed", {
+      removedUserId: req.params.userId,
+    });
+    broadcastActivity(section._id.toString(), {
+      user: { name: req.user.name, avatar: req.user.avatar },
+      action: isSelfLeaving ? "left_section" : "removed_collaborator",
+    });
 
     res.json({
       message: isSelfLeaving ? "You left the section" : "Collaborator removed",

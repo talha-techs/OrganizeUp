@@ -565,6 +565,55 @@ const sectionSlice = createSlice({
     clearSubSections: (state) => {
       state.subSections = [];
     },
+    liveSubSectionCreated: (state, action) => {
+      const newSub = action.payload;
+      if (!newSub || !newSub._id) return;
+      const exists = state.subSections.some((s) => s._id === newSub._id);
+      if (!exists) {
+        state.subSections.push(newSub);
+        state.subSections.sort((a, b) => (a.order || 0) - (b.order || 0));
+      }
+    },
+    liveSubSectionUpdated: (state, action) => {
+      const updated = action.payload;
+      if (!updated || !updated._id) return;
+      const idx = state.subSections.findIndex((s) => s._id === updated._id);
+      if (idx !== -1) {
+        state.subSections[idx] = updated;
+      }
+    },
+    liveSubSectionDeleted: (state, action) => {
+      const subId = action.payload;
+      state.subSections = state.subSections.filter((s) => s._id !== subId);
+    },
+    liveSectionUpdated: (state, action) => {
+      const updatedSection = action.payload;
+      if (state.currentSection && state.currentSection._id === updatedSection?._id) {
+        state.currentSection = { ...state.currentSection, ...updatedSection };
+      }
+    },
+    liveCollaboratorsUpdated: (state, action) => {
+      const { collaborators, removedUserId } = action.payload || {};
+      if (collaborators) {
+        if (state.sectionMembers) {
+          state.sectionMembers.collaborators = collaborators;
+        }
+        if (state.currentSection) {
+          state.currentSection.collaborators = collaborators;
+        }
+      } else if (removedUserId) {
+        if (state.sectionMembers) {
+          state.sectionMembers.collaborators = state.sectionMembers.collaborators.filter(
+            (c) => String(c.user?._id || c.user) !== String(removedUserId),
+          );
+        }
+        if (state.currentSection?.collaborators) {
+          state.currentSection.collaborators = state.currentSection.collaborators.filter(
+            (c) => String(c.user?._id || c.user) !== String(removedUserId),
+          );
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -798,5 +847,10 @@ export const {
   clearCurrentSection,
   clearDriveScan,
   clearSubSections,
+  liveSubSectionCreated,
+  liveSubSectionUpdated,
+  liveSubSectionDeleted,
+  liveSectionUpdated,
+  liveCollaboratorsUpdated,
 } = sectionSlice.actions;
 export default sectionSlice.reducer;

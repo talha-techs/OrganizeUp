@@ -73,7 +73,7 @@ const formatDue = (date) => {
 const getDomain = (url) => { try { return new URL(url).hostname; } catch { return url; } };
 
 // ─── Note ─────────────────────────────────────────────────────────────────────
-const NoteEditor = ({ block, sectionId, canEdit }) => {
+const NoteEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, onConflict }) => {
   const dispatch = useDispatch();
   const [local, setLocal] = useState(block.content || '');
   const [saving, setSaving] = useState(false);
@@ -83,6 +83,7 @@ const NoteEditor = ({ block, sectionId, canEdit }) => {
   }, [block.content]);
 
   const handleBlur = async () => {
+    onBlurBlock?.(block._id, 1500);
     if (local === block.content) return;
     setSaving(true);
     const res = await dispatch(
@@ -95,9 +96,17 @@ const NoteEditor = ({ block, sectionId, canEdit }) => {
     );
     if (res.error) {
       if (res.payload?.isConflict) {
-        toast.error('Block was modified by another collaborator. Synced with latest version.');
-        if (res.payload?.currentBlock?.content !== undefined) {
-          setLocal(res.payload.currentBlock.content);
+        if (onConflict) {
+          onConflict({
+            block,
+            localDraft: local,
+            remoteBlock: res.payload.currentBlock,
+          });
+        } else {
+          toast.error('Block was modified by another collaborator. Synced with latest version.');
+          if (res.payload?.currentBlock?.content !== undefined) {
+            setLocal(res.payload.currentBlock.content);
+          }
         }
       } else {
         toast.error(
@@ -118,6 +127,7 @@ const NoteEditor = ({ block, sectionId, canEdit }) => {
         <textarea
           value={local}
           onChange={(e) => setLocal(e.target.value)}
+          onFocus={() => onFocusBlock?.(block._id)}
           onBlur={handleBlur}
           placeholder="Start writing your note…"
           rows={6}
@@ -137,7 +147,7 @@ const NoteEditor = ({ block, sectionId, canEdit }) => {
 };
 
 // ─── Todo ─────────────────────────────────────────────────────────────────────
-const TodoEditor = ({ block, sectionId, canEdit }) => {
+const TodoEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
   const [newText, setNewText]         = useState('');
   const [newPriority, setNewPriority] = useState('medium');
@@ -298,6 +308,8 @@ const TodoEditor = ({ block, sectionId, canEdit }) => {
                 autoFocus
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
+                onFocus={() => onFocusBlock?.(block._id)}
+                onBlur={() => onBlurBlock?.(block._id, 1500)}
                 onPaste={handlePasteInTodo}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAdd();
@@ -362,7 +374,7 @@ const TodoEditor = ({ block, sectionId, canEdit }) => {
 };
 
 // ─── Board ────────────────────────────────────────────────────────────────────
-const BoardEditor = ({ block, sectionId, canEdit }) => {
+const BoardEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
   const [addingInCol, setAddingInCol] = useState(null);
   const [newTitle, setNewTitle]       = useState('');
@@ -389,12 +401,14 @@ const BoardEditor = ({ block, sectionId, canEdit }) => {
     setAddingInCol(null);
     setNewTitle('');
     setNewPriority('medium');
+    onBlurBlock?.(block._id, 1500);
   };
 
   const openEdit = (item) => {
     setEditingCard(item);
     setEditTitle(item.title);
     setEditDesc(item.description);
+    onFocusBlock?.(block._id);
   };
 
   const handleSaveCard = async () => {
@@ -409,6 +423,7 @@ const BoardEditor = ({ block, sectionId, canEdit }) => {
       }),
     );
     setEditingCard(null);
+    onBlurBlock?.(block._id, 1500);
   };
 
   const handleMove = (item, newStatus) => {
@@ -422,12 +437,14 @@ const BoardEditor = ({ block, sectionId, canEdit }) => {
       }),
     );
     setEditingCard(null);
+    onBlurBlock?.(block._id, 1500);
   };
 
   const handleDeleteCard = (itemId) => {
     if (!canEdit) return;
     dispatch(deleteBoardItem({ sectionId, subId: block._id, itemId }));
     if (editingCard?._id === itemId) setEditingCard(null);
+    onBlurBlock?.(block._id, 1500);
   };
 
   return (
@@ -491,6 +508,8 @@ const BoardEditor = ({ block, sectionId, canEdit }) => {
                         autoFocus
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
+                        onFocus={() => onFocusBlock?.(block._id)}
+                        onBlur={() => onBlurBlock?.(block._id, 1500)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleAddCard(col.id);
                           if (e.key === 'Escape') setAddingInCol(null);
@@ -634,7 +653,7 @@ const BoardEditor = ({ block, sectionId, canEdit }) => {
 };
 
 // ─── Links ────────────────────────────────────────────────────────────────────
-const LinksEditor = ({ block, sectionId, canEdit }) => {
+const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
   const [adding, setAdding]     = useState(false);
   const [newUrl, setNewUrl]     = useState('');
@@ -658,6 +677,7 @@ const LinksEditor = ({ block, sectionId, canEdit }) => {
     setNewTitle('');
     setNewDesc('');
     setAdding(false);
+    onBlurBlock?.(block._id, 1500);
   };
 
   return (
@@ -726,18 +746,24 @@ const LinksEditor = ({ block, sectionId, canEdit }) => {
               <input
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
+                onFocus={() => onFocusBlock?.(block._id)}
+                onBlur={() => onBlurBlock?.(block._id, 1500)}
                 placeholder="https://…"
                 className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none border-b border-subtle pb-2"
               />
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
+                onFocus={() => onFocusBlock?.(block._id)}
+                onBlur={() => onBlurBlock?.(block._id, 1500)}
                 placeholder="Title (required)"
                 className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none"
               />
               <input
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
+                onFocus={() => onFocusBlock?.(block._id)}
+                onBlur={() => onBlurBlock?.(block._id, 1500)}
                 placeholder="Description (optional)"
                 className="w-full bg-transparent text-xs text-secondary placeholder-muted focus:outline-none"
               />
@@ -772,7 +798,7 @@ const LinksEditor = ({ block, sectionId, canEdit }) => {
 };
 
 // ─── Snippet ──────────────────────────────────────────────────────────────────
-const SnippetEditor = ({ block, sectionId, canEdit }) => {
+const SnippetEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, onConflict }) => {
   const dispatch = useDispatch();
   const [localCode, setLocalCode] = useState(block.code || '');
   const [localLang, setLocalLang] = useState(block.language || 'javascript');
@@ -784,6 +810,7 @@ const SnippetEditor = ({ block, sectionId, canEdit }) => {
   }, [block.code, block.language]);
 
   const handleBlur = async () => {
+    onBlurBlock?.(block._id, 1500);
     if (localCode === block.code && localLang === block.language) return;
     setSaving(true);
     const res = await dispatch(
@@ -797,10 +824,18 @@ const SnippetEditor = ({ block, sectionId, canEdit }) => {
     );
     if (res.error) {
       if (res.payload?.isConflict) {
-        toast.error('Block was modified by another collaborator. Synced with latest code.');
-        if (res.payload?.currentBlock) {
-          setLocalCode(res.payload.currentBlock.code || '');
-          setLocalLang(res.payload.currentBlock.language || 'javascript');
+        if (onConflict) {
+          onConflict({
+            block,
+            localDraft: localCode,
+            remoteBlock: res.payload.currentBlock,
+          });
+        } else {
+          toast.error('Block was modified by another collaborator. Synced with latest code.');
+          if (res.payload?.currentBlock) {
+            setLocalCode(res.payload.currentBlock.code || '');
+            setLocalLang(res.payload.currentBlock.language || 'javascript');
+          }
         }
       } else {
         toast.error(
@@ -846,6 +881,7 @@ const SnippetEditor = ({ block, sectionId, canEdit }) => {
         <textarea
           value={localCode}
           onChange={(e) => setLocalCode(e.target.value)}
+          onFocus={() => onFocusBlock?.(block._id)}
           onBlur={handleBlur}
           placeholder={`// ${localLang} code here…`}
           rows={10}
@@ -862,7 +898,7 @@ const SnippetEditor = ({ block, sectionId, canEdit }) => {
 };
 
 // ─── Image ────────────────────────────────────────────────────────────────────
-const ImageEditor = ({ block, sectionId, canEdit }) => {
+const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
   const [localUrl, setLocalUrl]         = useState(block.imageUrl || '');
@@ -905,6 +941,7 @@ const ImageEditor = ({ block, sectionId, canEdit }) => {
       }
     }
     setSaving(false);
+    onBlurBlock?.(block._id, 1500);
   };
 
   const handleUploadFile = async (file) => {
@@ -989,6 +1026,7 @@ const ImageEditor = ({ block, sectionId, canEdit }) => {
                 setLocalUrl(e.target.value);
                 setImgError(false);
               }}
+              onFocus={() => onFocusBlock?.(block._id)}
               onBlur={() => handleSave()}
               placeholder="Paste image URL (https://…) or upload below"
               className="flex-1 bg-surface border border-subtle rounded-xl px-4 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
@@ -1007,6 +1045,7 @@ const ImageEditor = ({ block, sectionId, canEdit }) => {
           <input
             value={localCaption}
             onChange={(e) => setLocalCaption(e.target.value)}
+            onFocus={() => onFocusBlock?.(block._id)}
             onBlur={() => handleSave()}
             placeholder="Caption (optional)"
             className="w-full bg-surface border border-subtle rounded-xl px-4 py-2 text-xs text-secondary placeholder-muted focus:outline-none focus:border-accent transition-colors"
@@ -1083,6 +1122,10 @@ const SubSectionBlock = ({
   myRole = 'viewer',
   isActive = false,
   onSelectBlock,
+  remoteFocusUser = null,
+  onFocusBlock,
+  onBlurBlock,
+  onConflict,
 }) => {
   const dispatch = useDispatch();
   const [collapsed, setCollapsed]         = useState(false);
@@ -1121,6 +1164,7 @@ const SubSectionBlock = ({
       }
     }
     setRenaming(false);
+    onBlurBlock?.(block._id, 1500);
   };
 
   const handleDelete = async () => {
@@ -1136,13 +1180,15 @@ const SubSectionBlock = ({
       exit={{ opacity: 0, y: -8 }}
       onClick={() => onSelectBlock?.(block._id)}
       className={`glass-card overflow-hidden border transition-all duration-200 ${
-        isActive
+        remoteFocusUser
+          ? 'border-purple-500/80 ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10'
+          : isActive
           ? 'border-accent shadow-lg shadow-accent/5 ring-1 ring-accent/40'
           : 'border-subtle hover:border-strong'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-subtle">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-subtle flex-wrap sm:flex-nowrap">
         <span className="text-base select-none">{cfg.icon}</span>
 
         {renaming ? (
@@ -1150,6 +1196,7 @@ const SubSectionBlock = ({
             autoFocus
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
+            onFocus={() => onFocusBlock?.(block._id)}
             onBlur={handleRename}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleRename();
@@ -1163,15 +1210,33 @@ const SubSectionBlock = ({
         ) : (
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer"
+            className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer flex-wrap sm:flex-nowrap"
           >
             <span className="text-sm font-semibold text-primary truncate">{block.name}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-raised text-secondary flex-shrink-0">
               {cfg.label}
             </span>
 
+            {/* Remote Focus / Typing Indicator Pill */}
+            {remoteFocusUser && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/40 text-purple-300 text-[11px] font-medium animate-pulse flex-shrink-0">
+                {remoteFocusUser.avatar ? (
+                  <img
+                    src={remoteFocusUser.avatar}
+                    alt=""
+                    className="w-3.5 h-3.5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="w-3.5 h-3.5 rounded-full bg-purple-500/30 text-purple-200 text-[9px] font-bold flex items-center justify-center">
+                    {(remoteFocusUser.name || 'U').charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span>{remoteFocusUser.name} is editing…</span>
+              </span>
+            )}
+
             {/* Last edited attribution */}
-            {block.lastEditedBy && (
+            {block.lastEditedBy && !remoteFocusUser && (
               <span
                 className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-muted flex-shrink-0 ml-1"
                 title={`Last edited by ${block.lastEditedBy.name || 'collaborator'}`}
@@ -1201,7 +1266,7 @@ const SubSectionBlock = ({
           </button>
         )}
 
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
           {canEdit && !renaming && !confirmDelete && (
             <button
               onClick={() => setRenaming(true)}
@@ -1258,22 +1323,60 @@ const SubSectionBlock = ({
           >
             <div className="p-4">
               {block.type === 'note' && (
-                <NoteEditor block={block} sectionId={sectionId} canEdit={canEdit} />
+                <NoteEditor
+                  block={block}
+                  sectionId={sectionId}
+                  canEdit={canEdit}
+                  onFocusBlock={onFocusBlock}
+                  onBlurBlock={onBlurBlock}
+                  onConflict={onConflict}
+                />
               )}
               {block.type === 'todo' && (
-                <TodoEditor block={block} sectionId={sectionId} canEdit={canEdit} />
+                <TodoEditor
+                  block={block}
+                  sectionId={sectionId}
+                  canEdit={canEdit}
+                  onFocusBlock={onFocusBlock}
+                  onBlurBlock={onBlurBlock}
+                />
               )}
               {block.type === 'board' && (
-                <BoardEditor block={block} sectionId={sectionId} canEdit={canEdit} />
+                <BoardEditor
+                  block={block}
+                  sectionId={sectionId}
+                  canEdit={canEdit}
+                  onFocusBlock={onFocusBlock}
+                  onBlurBlock={onBlurBlock}
+                />
               )}
               {block.type === 'links' && (
-                <LinksEditor block={block} sectionId={sectionId} canEdit={canEdit} />
+                <LinksEditor
+                  block={block}
+                  sectionId={sectionId}
+                  canEdit={canEdit}
+                  onFocusBlock={onFocusBlock}
+                  onBlurBlock={onBlurBlock}
+                />
               )}
               {block.type === 'snippet' && (
-                <SnippetEditor block={block} sectionId={sectionId} canEdit={canEdit} />
+                <SnippetEditor
+                  block={block}
+                  sectionId={sectionId}
+                  canEdit={canEdit}
+                  onFocusBlock={onFocusBlock}
+                  onBlurBlock={onBlurBlock}
+                  onConflict={onConflict}
+                />
               )}
               {block.type === 'image' && (
-                <ImageEditor block={block} sectionId={sectionId} canEdit={canEdit} />
+                <ImageEditor
+                  block={block}
+                  sectionId={sectionId}
+                  canEdit={canEdit}
+                  onFocusBlock={onFocusBlock}
+                  onBlurBlock={onBlurBlock}
+                />
               )}
             </div>
           </motion.div>

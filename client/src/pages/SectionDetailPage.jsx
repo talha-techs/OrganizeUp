@@ -23,6 +23,7 @@ import {
   IoCheckmarkOutline,
   IoPeopleOutline,
   IoEyeOutline,
+  IoPulseOutline,
 } from 'react-icons/io5';
 import {
   fetchSection,
@@ -44,6 +45,9 @@ import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
 import SubSectionBlock from '../components/sections/SubSectionBlock';
 import TeamShareModal from '../components/sections/TeamShareModal';
+import ConflictResolutionModal from '../components/sections/ConflictResolutionModal';
+import ActivityFeedDrawer from '../components/sections/ActivityFeedDrawer';
+import useSectionRealtime from '../hooks/useSectionRealtime';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -432,9 +436,61 @@ const SectionDetailPage = () => {
   const [showAddBlock, setShowAddBlock]       = useState(false);
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [showTeamModal, setShowTeamModal]     = useState(false);
+  const [showActivity, setShowActivity]       = useState(false);
+  const [conflictData, setConflictData]       = useState(null);
   const [driveExpanded, setDriveExpanded]     = useState(true);
   const [activeBlockId, setActiveBlockId]     = useState(null);
   const [pasteNotice, setPasteNotice]         = useState(null); // { message, lastBlockId }
+
+  // ── Real-Time Synchronization & Presence ─────────────────────────────────
+  const {
+    activeCollaborators,
+    remoteFocusedBlocks,
+    activityStream,
+    isConnected,
+    emitBlockFocus,
+    emitBlockBlur,
+  } = useSectionRealtime(id);
+
+  const handleConflictKeepMine = async () => {
+    if (!conflictData) return;
+    try {
+      await dispatch(
+        updateSubSection({
+          sectionId: id,
+          subId: conflictData.subId,
+          content: conflictData.localDraft,
+        }),
+      ).unwrap();
+      toast.success('Your version was preserved');
+    } catch (_) {
+      toast.error('Failed to overwrite version');
+    }
+    setConflictData(null);
+  };
+
+  const handleConflictAcceptRemote = () => {
+    dispatch(fetchSubSections(id));
+    toast.success('Loaded latest remote version');
+    setConflictData(null);
+  };
+
+  const handleConflictMerge = async (mergedText) => {
+    if (!conflictData) return;
+    try {
+      await dispatch(
+        updateSubSection({
+          sectionId: id,
+          subId: conflictData.subId,
+          content: mergedText,
+        }),
+      ).unwrap();
+      toast.success('Merged both versions successfully');
+    } catch (_) {
+      toast.error('Failed to save merged version');
+    }
+    setConflictData(null);
+  };
 
   useEffect(() => {
     dispatch(fetchSection(id));
@@ -795,6 +851,53 @@ const SectionDetailPage = () => {
             </button>
 
             <div className="flex items-center gap-2">
+              {/* Live Presence Pill */}
+              {activeCollaborators.length > 0 && (
+                <div
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 bg-black/50 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-emerald-500/40 shadow-sm"
+                  title={`${activeCollaborators.length} collaborator${activeCollaborators.length !== 1 ? 's' : ''} online right now`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="hidden sm:inline text-[11px] font-semibold tracking-wide">Live</span>
+                  <div className="flex items-center -space-x-1.5 ml-1">
+                    {activeCollaborators.slice(0, 3).map((collab) => (
+                      <div
+                        key={collab._id || collab.socketId}
+                        className="w-5 h-5 rounded-full bg-surface-raised border border-white/40 flex items-center justify-center text-[9px] font-bold text-white overflow-hidden shrink-0 shadow-sm"
+                        title={collab.name}
+                      >
+                        {collab.avatar ? (
+                          <img src={collab.avatar} alt={collab.name} className="w-full h-full object-cover" />
+                        ) : (
+                          (collab.name || 'U').charAt(0).toUpperCase()
+                        )}
+                      </div>
+                    ))}
+                    {activeCollaborators.length > 3 && (
+                      <div className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-400/50 flex items-center justify-center text-[8px] font-bold text-white shrink-0">
+                        +{activeCollaborators.length - 3}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Activity Drawer Toggle */}
+              <button
+                onClick={() => setShowActivity(true)}
+                className="relative flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-amber-400/70 transition-colors cursor-pointer shadow-sm"
+                title="View live activity feed"
+              >
+                <IoPulseOutline size={15} className="text-amber-400" />
+                <span className="hidden sm:inline">Activity</span>
+                {activityStream.length > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                )}
+              </button>
+
               <button
                 onClick={() => setShowTeamModal(true)}
                 className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-cyan-400 transition-colors cursor-pointer shadow-sm"
@@ -997,6 +1100,10 @@ const SectionDetailPage = () => {
                   myRole={myRole}
                   isActive={activeBlockId === block._id}
                   onSelectBlock={(bId) => setActiveBlockId(bId)}
+                  remoteFocusUser={remoteFocusedBlocks[block._id]}
+                  onFocusBlock={emitBlockFocus}
+                  onBlurBlock={emitBlockBlur}
+                  onConflict={(conf) => setConflictData(conf)}
                 />
               ))}
             </AnimatePresence>
@@ -1094,6 +1201,22 @@ const SectionDetailPage = () => {
         sectionName={currentSection.name}
         isOwner={isOwner}
         canManage={canManage}
+      />
+      <ActivityFeedDrawer
+        isOpen={showActivity}
+        onClose={() => setShowActivity(false)}
+        activeCollaborators={activeCollaborators}
+        activityStream={activityStream}
+      />
+      <ConflictResolutionModal
+        isOpen={!!conflictData}
+        onClose={() => setConflictData(null)}
+        blockTitle={conflictData?.blockTitle}
+        localDraft={conflictData?.localDraft}
+        serverVersion={conflictData?.serverVersion}
+        onKeepMine={handleConflictKeepMine}
+        onAcceptRemote={handleConflictAcceptRemote}
+        onMerge={handleConflictMerge}
       />
     </div>
   );

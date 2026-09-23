@@ -1,6 +1,8 @@
 require("dotenv").config();
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
+const { initSocket } = require("./socket");
 const cookieParser = require("cookie-parser");
 const compression = require("compression");
 const helmet = require("helmet");
@@ -217,8 +219,12 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
 
-app.listen(PORT, () => {
+// Initialize real-time Socket.io engine
+initSocket(server);
+
+server.listen(PORT, () => {
   console.log(`🚀 OrganizeUp Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
 
