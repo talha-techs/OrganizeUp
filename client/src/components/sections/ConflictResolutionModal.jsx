@@ -15,13 +15,14 @@ const ConflictResolutionModal = ({
   blockName = 'Block',
   localDraft = '',
   remoteBlock = null,
+  serverVersion = '',
   onKeepMine,
   onAcceptRemote,
   onMerge,
 }) => {
   if (!isOpen) return null;
 
-  const remoteContent = remoteBlock?.content || remoteBlock?.code || '';
+  const remoteContent = remoteBlock?.content || remoteBlock?.code || serverVersion || '';
   const editorName = remoteBlock?.lastEditedBy?.name || 'A teammate';
   const editorAvatar = remoteBlock?.lastEditedBy?.avatar;
 
@@ -119,7 +120,12 @@ const ConflictResolutionModal = ({
 
               <button
                 type="button"
-                onClick={onMerge}
+                onClick={() => {
+                  const combined = localDraft
+                    ? (remoteContent ? `${localDraft}\n\n--- Remote Version ---\n${remoteContent}` : localDraft)
+                    : remoteContent;
+                  onMerge?.(combined);
+                }}
                 className="btn-secondary text-xs py-2 px-3 flex items-center justify-center gap-1.5 flex-1 sm:flex-initial cursor-pointer hover:border-accent"
               >
                 <IoGitMergeOutline size={15} className="text-accent" />

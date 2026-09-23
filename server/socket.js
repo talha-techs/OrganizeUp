@@ -19,8 +19,12 @@ const getAllowedOrigins = () => {
   const allowed = [
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
     "https://organizeup.app",
     "https://www.organizeup.app",
+    "https://organizeup.vercel.app",
+    "https://organizeup.onrender.com",
   ];
   if (process.env.CLIENT_URL) {
     allowed.push(process.env.CLIENT_URL);
@@ -44,9 +48,9 @@ const emitPresenceUpdate = (sectionId) => {
     }
   }
 
-  io.to(`section:${sectionId}`).emit("presence_update", {
-    activeUsers: Array.from(uniqueUsers.values()),
-  });
+  const activeUsers = Array.from(uniqueUsers.values());
+  console.log(`⚡ [Socket] Broadcasting presence for section:${sectionId}: ${activeUsers.length} user(s) online`);
+  io.to(`section:${sectionId}`).emit("presence_update", { activeUsers });
 };
 
 const handleLeaveSection = (socket, sectionId) => {
@@ -90,7 +94,20 @@ const handleLeaveSection = (socket, sectionId) => {
 const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: getAllowedOrigins(),
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const allowed = getAllowedOrigins();
+        if (
+          allowed.includes(origin) ||
+          origin.includes("localhost") ||
+          origin.includes("127.0.0.1") ||
+          origin.endsWith(".vercel.app") ||
+          origin.includes("organizeup")
+        ) {
+          return callback(null, true);
+        }
+        return callback(null, true);
+      },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     },
@@ -102,6 +119,10 @@ const initSocket = (httpServer) => {
   io.use(async (socket, next) => {
     try {
       let token = socket.handshake.auth?.token;
+
+      if (!token && socket.handshake.query?.token) {
+        token = socket.handshake.query.token;
+      }
 
       if (!token && socket.handshake.headers?.authorization) {
         const parts = socket.handshake.headers.authorization.split(" ");
@@ -116,6 +137,7 @@ const initSocket = (httpServer) => {
       }
 
       if (!token) {
+        console.warn("⚠️ [Socket] Handshake rejected: No token found in auth/query/cookie/headers");
         return next(new Error("Authentication error: No token provided"));
       }
 
@@ -123,13 +145,15 @@ const initSocket = (httpServer) => {
       const user = await User.findById(decoded.id).select("-password");
 
       if (!user) {
+        console.warn(`⚠️ [Socket] Handshake rejected: User not found for id ${decoded.id}`);
         return next(new Error("Authentication error: User not found"));
       }
 
       socket.user = user;
+      console.log(`⚡ [Socket] Client authenticated: ${user.name} (${user.email}) [id: ${socket.id}]`);
       next();
     } catch (err) {
-      console.error("Socket authentication error:", err.message);
+      console.error("⚠️ [Socket] Authentication error:", err.message);
       next(new Error("Authentication error: Invalid or expired token"));
     }
   });
@@ -146,11 +170,15 @@ const initSocket = (httpServer) => {
       try {
         const section = await CustomSection.findById(sectionId);
         if (!section) {
+          console.warn(`[Socket] join_section failed: Section ${sectionId} not found`);
           return socket.emit("error", { message: "Section not found" });
         }
 
         const role = resolveSectionRole(section, user);
+        console.log(`⚡ [Socket] User "${user.name}" joined section "${section.name}" with role: ${role}`);
+
         if (role === "none" && section.visibility !== "public") {
+          console.warn(`[Socket] Unauthorized join attempt by ${user.name} for section ${sectionId}`);
           return socket.emit("error", { message: "Not authorized to view this section" });
         }
 

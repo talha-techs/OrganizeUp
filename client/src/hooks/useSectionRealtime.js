@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { connectSocket, getSocket } from '../utils/socket';
+import { connectSocket, getSocket, ensureSocketToken } from '../utils/socket';
 import {
   liveSubSectionCreated,
   liveSubSectionUpdated,
@@ -22,118 +22,147 @@ export const useSectionRealtime = (sectionId) => {
   const blurTimerRef = useRef({});
 
   useEffect(() => {
-    if (!sectionId || !currentUserId) return;
+    if (!sectionId) return;
 
-    const socket = connectSocket();
+    let active = true;
+    let socketInstance = null;
 
-    const handleConnect = () => {
-      setIsConnected(true);
-      socket.emit('join_section', { sectionId });
-    };
+    const initRealtime = async () => {
+      // 1. Ensure token exists (retrieves from cookie session if not in localStorage)
+      const token = await ensureSocketToken();
+      if (!active) return;
 
-    const handleDisconnect = () => {
-      setIsConnected(false);
-      setActiveCollaborators([]);
-      setRemoteFocusedBlocks({});
-    };
+      const socket = connectSocket(token);
+      socketInstance = socket;
 
-    if (socket.connected) {
-      handleConnect();
-    } else {
+      const handleConnect = () => {
+        if (!active) return;
+        console.log(`[Realtime] Connected and joining room section:${sectionId}`);
+        setIsConnected(true);
+        socket.emit('join_section', { sectionId });
+      };
+
+      const handleDisconnect = (reason) => {
+        if (!active) return;
+        console.log('[Realtime] Section room disconnected:', reason);
+        setIsConnected(false);
+        setActiveCollaborators([]);
+        setRemoteFocusedBlocks({});
+      };
+
+      const handleSocketError = (err) => {
+        console.warn('[Realtime] Section room error:', err);
+      };
+
       socket.on('connect', handleConnect);
-    }
-    socket.on('disconnect', handleDisconnect);
+      socket.on('disconnect', handleDisconnect);
+      socket.on('error', handleSocketError);
 
-    // ── 1. Presence Updates ──
-    const handlePresenceUpdate = ({ activeUsers }) => {
-      if (Array.isArray(activeUsers)) {
-        setActiveCollaborators(activeUsers);
+      if (socket.connected) {
+        handleConnect();
       }
-    };
-    socket.on('presence_update', handlePresenceUpdate);
 
-    // ── 2. Block Focus Indicators ──
-    const handleInitialBlockFocus = ({ focuses }) => {
-      if (Array.isArray(focuses)) {
-        const focusMap = {};
-        focuses.forEach(({ blockId, user: focusUser }) => {
-          if (focusUser && focusUser.userId !== currentUserId) {
-            focusMap[blockId] = focusUser;
-          }
-        });
-        setRemoteFocusedBlocks(focusMap);
-      }
-    };
-    socket.on('initial_block_focus', handleInitialBlockFocus);
-
-    const handleBlockFocusChanged = ({ blockId, user: focusUser, focused }) => {
-      if (!blockId) return;
-
-      setRemoteFocusedBlocks((prev) => {
-        const next = { ...prev };
-        if (focused && focusUser && focusUser.userId !== currentUserId) {
-          next[blockId] = focusUser;
-        } else {
-          delete next[blockId];
+      // ── 1. Presence Updates ──
+      const handlePresenceUpdate = ({ activeUsers }) => {
+        if (!active) return;
+        if (Array.isArray(activeUsers)) {
+          console.log('[Realtime] presence_update activeUsers:', activeUsers);
+          setActiveCollaborators(activeUsers);
         }
-        return next;
-      });
-    };
-    socket.on('block_focus_changed', handleBlockFocusChanged);
+      };
+      socket.on('presence_update', handlePresenceUpdate);
 
-    // ── 3. Real-Time Workspace Mutations ──
-    const handleSubSectionCreated = ({ subSection }) => {
-      if (subSection) {
+      // ── 2. Block Focus Indicators ──
+      const handleInitialBlockFocus = ({ focuses }) => {
+        if (!active) return;
+        if (Array.isArray(focuses)) {
+          const focusMap = {};
+          focuses.forEach(({ blockId, user: focusUser }) => {
+            if (focusUser && String(focusUser.userId) !== String(currentUserId)) {
+              focusMap[blockId] = focusUser;
+            }
+          });
+          setRemoteFocusedBlocks(focusMap);
+        }
+      };
+      socket.on('initial_block_focus', handleInitialBlockFocus);
+
+      const handleBlockFocusChanged = ({ blockId, user: focusUser, focused }) => {
+        if (!active || !blockId) return;
+
+        setRemoteFocusedBlocks((prev) => {
+          const next = { ...prev };
+          if (focused && focusUser && String(focusUser.userId) !== String(currentUserId)) {
+            next[blockId] = focusUser;
+          } else {
+            delete next[blockId];
+          }
+          return next;
+        });
+      };
+      socket.on('block_focus_changed', handleBlockFocusChanged);
+
+      // ── 3. Real-Time Workspace Mutations ──
+      const handleSubSectionCreated = ({ subSection }) => {
+        if (!active || !subSection) return;
+        console.log('⚡ [Realtime] New block received:', subSection.name);
         dispatch(liveSubSectionCreated(subSection));
-      }
-    };
-    socket.on('subsection_created', handleSubSectionCreated);
+      };
+      socket.on('subsection_created', handleSubSectionCreated);
 
-    const handleSubSectionUpdated = ({ subSection }) => {
-      if (subSection) {
+      const handleSubSectionUpdated = ({ subSection }) => {
+        if (!active || !subSection) return;
+        console.log('⚡ [Realtime] Block updated:', subSection.name);
         dispatch(liveSubSectionUpdated(subSection));
-      }
-    };
-    socket.on('subsection_updated', handleSubSectionUpdated);
+      };
+      socket.on('subsection_updated', handleSubSectionUpdated);
 
-    const handleSubSectionDeleted = ({ subId }) => {
-      if (subId) {
+      const handleSubSectionDeleted = ({ subId }) => {
+        if (!active || !subId) return;
+        console.log('⚡ [Realtime] Block deleted:', subId);
         dispatch(liveSubSectionDeleted(subId));
-      }
-    };
-    socket.on('subsection_deleted', handleSubSectionDeleted);
+      };
+      socket.on('subsection_deleted', handleSubSectionDeleted);
 
-    const handleSectionUpdated = ({ section }) => {
-      if (section) {
+      const handleSectionUpdated = ({ section }) => {
+        if (!active || !section) return;
         dispatch(liveSectionUpdated(section));
-      }
-    };
-    socket.on('section_updated', handleSectionUpdated);
+      };
+      socket.on('section_updated', handleSectionUpdated);
 
-    const handleCollaboratorChanged = (payload) => {
-      dispatch(liveCollaboratorsUpdated(payload));
-    };
-    socket.on('collaborator_changed', handleCollaboratorChanged);
+      const handleCollaboratorChanged = (payload) => {
+        if (!active) return;
+        dispatch(liveCollaboratorsUpdated(payload));
+      };
+      socket.on('collaborator_changed', handleCollaboratorChanged);
 
-    // ── 4. Collaborative Activity Feed ──
-    const handleActivityEvent = (activity) => {
-      setActivityStream((prev) => [activity, ...prev.slice(0, 49)]);
+      // ── 4. Collaborative Activity Feed ──
+      const handleActivityEvent = (activity) => {
+        if (!active) return;
+        setActivityStream((prev) => [activity, ...prev.slice(0, 49)]);
+      };
+      socket.on('activity_event', handleActivityEvent);
     };
-    socket.on('activity_event', handleActivityEvent);
+
+    initRealtime();
 
     return () => {
-      socket.emit('leave_section', { sectionId });
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('presence_update', handlePresenceUpdate);
-      socket.off('initial_block_focus', handleInitialBlockFocus);
-      socket.off('block_focus_changed', handleBlockFocusChanged);
-      socket.off('subsection_created', handleSubSectionCreated);
-      socket.off('subsection_updated', handleSubSectionUpdated);
-      socket.off('subsection_deleted', handleSubSectionDeleted);
-      socket.off('section_updated', handleSectionUpdated);
-      socket.off('collaborator_changed', handleCollaboratorChanged);
-      socket.off('activity_event', handleActivityEvent);
+      active = false;
+      if (socketInstance) {
+        socketInstance.emit('leave_section', { sectionId });
+        socketInstance.off('connect');
+        socketInstance.off('disconnect');
+        socketInstance.off('error');
+        socketInstance.off('presence_update');
+        socketInstance.off('initial_block_focus');
+        socketInstance.off('block_focus_changed');
+        socketInstance.off('subsection_created');
+        socketInstance.off('subsection_updated');
+        socketInstance.off('subsection_deleted');
+        socketInstance.off('section_updated');
+        socketInstance.off('collaborator_changed');
+        socketInstance.off('activity_event');
+      }
 
       // Clear any pending blur timers
       Object.values(blurTimerRef.current).forEach(clearTimeout);

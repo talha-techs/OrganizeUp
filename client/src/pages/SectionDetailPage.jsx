@@ -454,11 +454,13 @@ const SectionDetailPage = () => {
 
   const handleConflictKeepMine = async () => {
     if (!conflictData) return;
+    const subId = conflictData.block?._id || conflictData.subId;
+    if (!subId) return;
     try {
       await dispatch(
         updateSubSection({
           sectionId: id,
-          subId: conflictData.subId,
+          subId,
           content: conflictData.localDraft,
         }),
       ).unwrap();
@@ -477,12 +479,19 @@ const SectionDetailPage = () => {
 
   const handleConflictMerge = async (mergedText) => {
     if (!conflictData) return;
+    const subId = conflictData.block?._id || conflictData.subId;
+    if (!subId) return;
     try {
+      const textToSave =
+        typeof mergedText === 'string' && mergedText
+          ? mergedText
+          : `${conflictData.localDraft || ''}\n\n--- Remote Changes ---\n${conflictData.remoteBlock?.content || conflictData.serverVersion || ''}`.trim();
+
       await dispatch(
         updateSubSection({
           sectionId: id,
-          subId: conflictData.subId,
-          content: mergedText,
+          subId,
+          content: textToSave,
         }),
       ).unwrap();
       toast.success('Merged both versions successfully');
@@ -1211,9 +1220,10 @@ const SectionDetailPage = () => {
       <ConflictResolutionModal
         isOpen={!!conflictData}
         onClose={() => setConflictData(null)}
-        blockTitle={conflictData?.blockTitle}
-        localDraft={conflictData?.localDraft}
-        serverVersion={conflictData?.serverVersion}
+        blockName={conflictData?.block?.name || conflictData?.blockTitle || 'Block'}
+        localDraft={conflictData?.localDraft || ''}
+        remoteBlock={conflictData?.remoteBlock}
+        serverVersion={conflictData?.remoteBlock?.content || conflictData?.serverVersion || ''}
         onKeepMine={handleConflictKeepMine}
         onAcceptRemote={handleConflictAcceptRemote}
         onMerge={handleConflictMerge}

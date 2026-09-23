@@ -12,6 +12,7 @@ const {
   setCookie,
   getUserStats,
   getDashboardData,
+  getSocketToken,
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 const upload = require("../middleware/upload");
@@ -50,6 +51,7 @@ router.get(
 
 // Protected routes
 router.get("/me", protect, getMe);
+router.get("/socket-token", protect, getSocketToken);
 router.get("/stats", protect, getUserStats);
 router.get("/dashboard", protect, getDashboardData);
 router.put("/profile", protect, upload.single("avatar"), updateProfile);

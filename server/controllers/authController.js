@@ -259,10 +259,16 @@ const setCookie = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     // Asynchronously ensure today's activity is marked
     recordUserActivity(req.user._id).catch(() => {});
 
+    const token = generateToken(user._id);
+
     res.json({
+      token,
       user: {
         _id: user._id,
         name: user.name,
@@ -281,6 +287,17 @@ const getMe = async (req, res) => {
         createdAt: user.createdAt,
       },
     });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Get fresh JWT token for WebSocket connection
+// @route   GET /api/auth/socket-token
+const getSocketToken = async (req, res) => {
+  try {
+    const token = generateToken(req.user._id);
+    res.json({ token, userId: req.user._id });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -745,4 +762,5 @@ module.exports = {
   setCookie,
   getUserStats,
   getDashboardData,
+  getSocketToken,
 };

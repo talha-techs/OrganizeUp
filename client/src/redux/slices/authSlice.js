@@ -159,6 +159,9 @@ const authSlice = createSlice({
       // Get Me
       .addCase(getMe.fulfilled, (state, action) => {
         state.user = action.payload.user;
+        if (action.payload.token) {
+          localStorage.setItem("token", action.payload.token);
+        }
       })
       .addCase(getMe.rejected, (state) => {
         state.user = null;
