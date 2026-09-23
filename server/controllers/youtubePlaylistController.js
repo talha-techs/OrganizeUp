@@ -238,6 +238,7 @@ const addPlaylist = async (req, res) => {
             duration: details.duration || "",
             position: 0,
             notes: "",
+            description: details.description || "",
           },
         ],
         addedBy: req.user._id,
@@ -618,6 +619,7 @@ const refreshPlaylist = async (req, res) => {
       const details = await fetchVideoDetails(vId);
 
       playlist.title = details.title;
+      playlist.description = details.description || playlist.description || "";
       playlist.thumbnail = details.thumbnail;
       playlist.channelTitle = details.channelTitle;
       playlist.videos = [
@@ -628,6 +630,7 @@ const refreshPlaylist = async (req, res) => {
           duration: details.duration || playlist.videos?.[0]?.duration || "",
           position: 0,
           notes: existingNotes,
+          description: details.description || playlist.videos?.[0]?.description || "",
         },
       ];
 

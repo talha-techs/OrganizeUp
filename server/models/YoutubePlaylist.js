@@ -7,6 +7,7 @@ const videoSchema = new mongoose.Schema({
   duration: { type: String, default: "" },
   position: { type: Number, default: 0 },
   notes: { type: String, default: "" },
+  description: { type: String, default: "" },
 });
 
 const youtubePlaylistSchema = new mongoose.Schema(

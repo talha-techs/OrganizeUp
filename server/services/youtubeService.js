@@ -156,9 +156,37 @@ async function fetchVideoDetails(videoId) {
 
     if (res.ok) {
       const data = await res.json();
+
+      // Also scrape description from watch page if available so description is not blank in fallback
+      let description = "";
+      try {
+        const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          const descMatch = html.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
+          if (descMatch) {
+            try {
+              description = JSON.parse(`"${descMatch[1]}"`);
+            } catch (_) {
+              description = descMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+            }
+          } else {
+            const ogMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i);
+            if (ogMatch) description = ogMatch[1];
+          }
+        }
+      } catch (_) {}
+
       return {
         title: data.title || "YouTube Video",
-        description: "",
+        description,
         channelTitle: data.author_name || "YouTube",
         thumbnail:
           data.thumbnail_url ||

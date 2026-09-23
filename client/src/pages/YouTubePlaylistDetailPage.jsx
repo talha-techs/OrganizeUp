@@ -18,6 +18,8 @@ import {
   IoTimeOutline,
   IoListOutline,
   IoCodeSlashOutline,
+  IoChevronDownOutline,
+  IoChevronUpOutline,
 } from 'react-icons/io5';
 import {
   fetchPlaylist,
@@ -56,6 +58,97 @@ const YouTubePlaylistDetailPage = () => {
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const saveTimeoutRef = useRef(null);
   const notesTextareaRef = useRef(null);
+  const cockpitRef = useRef(null);
+
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Resizable notes panel state (for single video cockpit: min 25% to max 50%)
+  const [notesWidth, setNotesWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('yt_single_notes_width');
+      if (saved) {
+        const parsed = parseFloat(saved);
+        if (!isNaN(parsed)) return Math.min(50, Math.max(25, parsed));
+      }
+    } catch (_) {}
+    return 33.3; // Default width (~33.3%)
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' && window.innerWidth >= 1024,
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const startResizing = useCallback((mouseDownEvent) => {
+    mouseDownEvent.preventDefault();
+    setIsDragging(true);
+
+    const handleMouseMove = (mouseMoveEvent) => {
+      if (!cockpitRef.current) return;
+      const rect = cockpitRef.current.getBoundingClientRect();
+      const rightDistance = rect.right - mouseMoveEvent.clientX;
+      const newWidthPercent = (rightDistance / rect.width) * 100;
+      // Clamp strictly between 25% (min) and 50% (center max)
+      const clamped = Math.min(50, Math.max(25, newWidthPercent));
+      setNotesWidth(clamped);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) {
+      try {
+        localStorage.setItem('yt_single_notes_width', String(notesWidth));
+      } catch (_) {}
+    }
+  }, [notesWidth, isDragging]);
+
+  // Helper to parse complete description text and render openable links
+  const renderDescriptionWithLinks = useCallback((text) => {
+    if (!text || typeof text !== 'string') return null;
+
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        const href = part.startsWith('http') ? part : `https://${part}`;
+        return (
+          <a
+            key={`link-${index}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-red-400 hover:text-red-300 underline underline-offset-2 break-all transition-colors inline-flex items-center gap-0.5 font-medium"
+          >
+            {part}
+            <IoOpenOutline size={11} className="inline opacity-80" />
+          </a>
+        );
+      }
+      return part;
+    });
+  }, []);
 
   const isOwner = Boolean(
     user?._id &&
@@ -383,15 +476,17 @@ const YouTubePlaylistDetailPage = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer"
-              title="Re-sync details from YouTube"
-            >
-              <IoRefreshOutline size={15} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? 'Syncing...' : 'Sync YouTube'}
-            </button>
+            {!isSingleVideo && (
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer"
+                title="Re-sync details from YouTube"
+              >
+                <IoRefreshOutline size={15} className={isRefreshing ? 'animate-spin' : ''} />
+                {isRefreshing ? 'Syncing...' : 'Sync YouTube'}
+              </button>
+            )}
 
             {!isSingleVideo && (
               <button
@@ -465,16 +560,34 @@ const YouTubePlaylistDetailPage = () => {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 1. SINGLE VIDEO LAYOUT: Side-by-Side Cinema Study Cockpit     */}
       {/* ───────────────────────────────────────────────────────────── */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 1. SINGLE VIDEO LAYOUT: Resizable Cinema Study Cockpit        */}
+      {/* ───────────────────────────────────────────────────────────── */}
       {isSingleVideo ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left / Top: Video Player */}
-          <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+        <div
+          ref={cockpitRef}
+          className={`flex flex-col lg:flex-row gap-0 lg:gap-2 relative w-full ${
+            isDragging ? 'select-none' : ''
+          }`}
+        >
+          {/* Left Column: Video Player + Complete Description with Openable Links */}
+          <div
+            className="w-full lg:min-w-0 space-y-4"
+            style={{
+              width: isDesktop ? `calc(${100 - notesWidth}% - 8px)` : '100%',
+              maxWidth: isDesktop ? `calc(${100 - notesWidth}% - 8px)` : '100%',
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               className="glass-card overflow-hidden border border-subtle rounded-2xl shadow-xl"
             >
               <div className="relative w-full aspect-video bg-black">
+                {/* Overlay during drag so iframe doesn't swallow mouse events */}
+                {isDragging && (
+                  <div className="absolute inset-0 z-50 cursor-col-resize bg-black/10" />
+                )}
                 <iframe
                   key={effectiveVideoId}
                   src={embedUrl}
@@ -487,13 +600,29 @@ const YouTubePlaylistDetailPage = () => {
               </div>
             </motion.div>
 
-            {/* Video Overview / Description */}
-            <div className="glass-card p-4 border border-subtle">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-primary">Overview & Description</h3>
+            {/* Video Overview / Complete Description with Openable Links */}
+            <div className="glass-card p-4 sm:p-5 border border-subtle rounded-2xl shadow-sm space-y-3">
+              <div className="flex items-center justify-between gap-3 border-b border-subtle pb-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-red-500/10 text-red-400 flex-shrink-0">
+                    <IoLogoYoutube size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-primary truncate">
+                      Video Description
+                    </h3>
+                    {currentPlaylist.channelTitle && (
+                      <p className="text-[11px] text-muted truncate">
+                        {currentPlaylist.channelTitle}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <button
+                  type="button"
                   onClick={() => handleToggleVideoComplete(effectiveVideoId)}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex-shrink-0 ${
                     isCurrentVideoCompleted
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
                       : 'bg-surface text-secondary hover:text-primary border-subtle'
@@ -506,14 +635,114 @@ const YouTubePlaylistDetailPage = () => {
                   {isCurrentVideoCompleted ? 'Completed' : 'Mark as Completed'}
                 </button>
               </div>
-              <p className="text-xs text-secondary leading-relaxed whitespace-pre-line line-clamp-4">
-                {currentPlaylist.description || 'No description provided by YouTube channel.'}
-              </p>
+
+              {/* Complete Description Content with Openable Links */}
+              {(() => {
+                const descText =
+                  currentPlaylist.description ||
+                  activeVideo?.description ||
+                  '';
+
+                if (!descText) {
+                  return (
+                    <div className="py-3 text-center">
+                      <p className="text-xs text-muted mb-2">
+                        No description stored for this video.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="btn-secondary text-xs inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <IoRefreshOutline
+                          size={13}
+                          className={isRefreshing ? 'animate-spin' : ''}
+                        />
+                        {isRefreshing ? 'Fetching...' : 'Fetch description from YouTube'}
+                      </button>
+                    </div>
+                  );
+                }
+
+                const isLong = descText.length > 350;
+
+                return (
+                  <div className="relative">
+                    <div
+                      className={`text-xs sm:text-sm text-secondary leading-relaxed whitespace-pre-wrap font-sans transition-all duration-300 ${
+                        !isDescriptionExpanded && isLong
+                          ? 'max-h-36 overflow-hidden'
+                          : ''
+                      }`}
+                    >
+                      {renderDescriptionWithLinks(descText)}
+                    </div>
+
+                    {isLong && (
+                      <div
+                        className={`${
+                          !isDescriptionExpanded
+                            ? 'pt-6 -mt-8 bg-gradient-to-t from-surface via-surface/85 to-transparent relative z-10'
+                            : 'pt-2.5'
+                        } flex justify-center`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                          className="btn-secondary text-xs px-3 py-1 rounded-full flex items-center gap-1.5 cursor-pointer shadow-sm hover:border-accent/40"
+                        >
+                          {isDescriptionExpanded ? (
+                            <>
+                              <IoChevronUpOutline size={13} />
+                              <span>Show less</span>
+                            </>
+                          ) : (
+                            <>
+                              <IoChevronDownOutline size={13} />
+                              <span>Show complete description</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
-          {/* Right: Study Notes Workspace */}
-          <div className="lg:col-span-5 xl:col-span-4">
+          {/* Draggable Vertical Divider Handle (Desktop Only) */}
+          <div
+            onMouseDown={startResizing}
+            className={`hidden lg:flex items-center justify-center w-3 cursor-col-resize group/resizer relative select-none hover:bg-surface-raised/40 rounded-lg transition-colors flex-shrink-0 ${
+              isDragging ? 'bg-accent/15' : ''
+            }`}
+            title="Drag to resize notes panel (min 25% to max 50% center)"
+          >
+            <div
+              className={`w-1 rounded-full transition-all duration-150 ${
+                isDragging
+                  ? 'h-36 bg-accent shadow-md shadow-accent/50 scale-x-125'
+                  : 'h-20 bg-subtle group-hover/resizer:bg-accent/80 group-hover/resizer:h-28'
+              }`}
+            />
+            {/* Grip dots on hover */}
+            <div className="absolute flex flex-col gap-1 items-center opacity-0 group-hover/resizer:opacity-100 transition-opacity pointer-events-none">
+              <span className="w-1 h-1 rounded-full bg-white/70" />
+              <span className="w-1 h-1 rounded-full bg-white/70" />
+              <span className="w-1 h-1 rounded-full bg-white/70" />
+            </div>
+          </div>
+
+          {/* Right Column: Study Notes Workspace (Adjustable 25% to 50%) */}
+          <div
+            className="w-full lg:min-w-0 mt-6 lg:mt-0 flex-shrink-0"
+            style={{
+              width: isDesktop ? `${notesWidth}%` : '100%',
+              maxWidth: isDesktop ? `${notesWidth}%` : '100%',
+            }}
+          >
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -522,20 +751,25 @@ const YouTubePlaylistDetailPage = () => {
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-subtle pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-red-500/10 text-red-400">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-red-500/10 text-red-400 flex-shrink-0">
                     <IoDocumentTextOutline size={18} />
                   </div>
-                  <div>
-                    <h2 className="text-sm font-semibold text-primary">Study Notes</h2>
-                    <p className="text-[11px] text-muted">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-semibold text-primary truncate">Study Notes</h2>
+                      <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono text-muted bg-surface-raised border border-subtle">
+                        {Math.round(notesWidth)}%
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted truncate">
                       {lastSavedTime ? `Saved at ${lastSavedTime}` : 'Auto-saves after 3s'}
                     </p>
                   </div>
                 </div>
 
                 {isSavingNotes && (
-                  <span className="text-[11px] text-accent flex items-center gap-1">
+                  <span className="text-[11px] text-accent flex items-center gap-1 flex-shrink-0">
                     <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
