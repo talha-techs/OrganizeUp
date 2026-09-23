@@ -9,6 +9,8 @@ const {
   deleteSection,
   removeFile,
   cloneSection,
+  uploadSectionImage,
+  updateSectionBanner,
 } = require("../controllers/sectionController");
 const {
   getSubSections,
@@ -16,6 +18,7 @@ const {
   updateSubSection,
   deleteSubSection,
   addTodoItem,
+  bulkAddTodos,
   updateTodoItem,
   deleteTodoItem,
   addBoardItem,
@@ -25,11 +28,14 @@ const {
   removeLink,
 } = require("../controllers/subSectionController");
 const { protect } = require("../middleware/auth");
+const upload = require("../middleware/upload");
 
 // ── Section ──────────────────────────────────────────────────────────────────
 router.get("/", protect, getSections);
 router.get("/:id", protect, getSection);
-router.post("/", protect, createSection);
+router.post("/", protect, upload.single("image"), createSection);
+router.post("/:id/upload-image", protect, upload.single("image"), uploadSectionImage);
+router.patch("/:id/banner", protect, upload.single("image"), updateSectionBanner);
 router.post("/:id/import", protect, importToSection);
 router.post("/:id/clone", protect, cloneSection);
 router.put("/:id", protect, updateSection);
@@ -44,6 +50,7 @@ router.delete("/:id/subsections/:subId", protect, deleteSubSection);
 
 // To-Do items
 router.post("/:id/subsections/:subId/todos", protect, addTodoItem);
+router.post("/:id/subsections/:subId/todos/bulk", protect, bulkAddTodos);
 router.patch("/:id/subsections/:subId/todos/:todoId", protect, updateTodoItem);
 router.delete("/:id/subsections/:subId/todos/:todoId", protect, deleteTodoItem);
 

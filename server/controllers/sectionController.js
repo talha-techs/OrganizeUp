@@ -1,6 +1,8 @@
 const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
 const UserLibrary = require("../models/UserLibrary");
+const { uploadToGridFS } = require("../config/gridfs");
+const { fetchPexelsBanner } = require("../services/pexelsService");
 
 // @desc    Get all custom sections for current user (+ saved from library; admin sees all)
 // @route   GET /api/sections?mine=true
@@ -99,12 +101,27 @@ const getSection = async (req, res) => {
 const createSection = async (req, res) => {
   try {
     const { name, description, icon, color } = req.body;
+    let bannerImage = req.body.bannerImage || "";
+
+    if (req.file) {
+      const fileId = await uploadToGridFS(
+        req.file.buffer,
+        req.file.originalname || `section_banner_${Date.now()}.jpg`,
+        req.file.mimetype,
+        "image",
+      );
+      bannerImage = `/api/images/${fileId}`;
+    } else if (!bannerImage && name) {
+      // Auto-fetch banner from Pexels if API key is provided
+      bannerImage = await fetchPexelsBanner(name);
+    }
 
     const section = await CustomSection.create({
       name,
       description: description || "",
       icon: icon || "folder",
       color: color || "indigo",
+      bannerImage: bannerImage || "",
       addedBy: req.user._id,
       visibility: "private",
     });
@@ -194,12 +211,13 @@ const updateSection = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const { name, description, icon, color, visibility, publishMode } =
+    const { name, description, icon, color, bannerImage, visibility, publishMode } =
       req.body;
     if (name) section.name = name;
     if (description !== undefined) section.description = description;
     if (icon) section.icon = icon;
     if (color) section.color = color;
+    if (bannerImage !== undefined) section.bannerImage = bannerImage;
     // Admin can directly set visibility; owner or admin can set publishMode
     if (isAdmin && visibility && ["public", "private"].includes(visibility)) {
       section.visibility = visibility;
@@ -315,6 +333,7 @@ const cloneSection = async (req, res) => {
       description: original.description,
       icon: original.icon,
       color: original.color,
+      bannerImage: original.bannerImage || "",
       addedBy: req.user._id,
       visibility: "private",
       clonedFrom: original._id,
@@ -382,6 +401,93 @@ const cloneSection = async (req, res) => {
   }
 };
 
+// @desc    Upload an image for custom section / pasted blocks
+// @route   POST /api/sections/:id/upload-image
+const uploadSectionImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image file provided" });
+    }
+
+    const section = await CustomSection.findById(req.params.id);
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    const isOwner = section.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const fileId = await uploadToGridFS(
+      req.file.buffer,
+      req.file.originalname || `section_img_${Date.now()}.png`,
+      req.file.mimetype || "image/png",
+      "image",
+    );
+
+    const imageUrl = `/api/images/${fileId}`;
+    res.json({ imageUrl, fileId: fileId.toString() });
+  } catch (error) {
+    console.error("Upload section image error:", error);
+    res.status(500).json({ message: "Server error uploading image" });
+  }
+};
+
+// @desc    Update section banner (via web URL, file upload, or Pexels re-query)
+// @route   PATCH /api/sections/:id/banner
+const updateSectionBanner = async (req, res) => {
+  try {
+    const section = await CustomSection.findById(req.params.id);
+    if (!section) {
+      return res.status(404).json({ message: "Section not found" });
+    }
+
+    const isOwner = section.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const { bannerImage, query, autoFetch } = req.body || {};
+
+    if (req.file) {
+      const fileId = await uploadToGridFS(
+        req.file.buffer,
+        req.file.originalname || `banner_${Date.now()}.jpg`,
+        req.file.mimetype,
+        "image",
+      );
+      section.bannerImage = `/api/images/${fileId}`;
+    } else if (autoFetch || query) {
+      const pexelsUrl = await fetchPexelsBanner(query || section.name);
+      if (!pexelsUrl) {
+        return res.status(404).json({
+          message: process.env.PEXELS_API_KEY
+            ? "No landscape image found for this search"
+            : "Pexels API key not configured in server .env",
+        });
+      }
+      section.bannerImage = pexelsUrl;
+    } else if (bannerImage !== undefined) {
+      section.bannerImage = bannerImage;
+    }
+
+    await section.save();
+
+    const populated = await CustomSection.findById(section._id).populate(
+      "addedBy",
+      "name avatar",
+    );
+
+    res.json({ section: populated });
+  } catch (error) {
+    console.error("Update section banner error:", error);
+    res.status(500).json({ message: "Server error updating banner" });
+  }
+};
+
 module.exports = {
   getSections,
   getSection,
@@ -391,4 +497,6 @@ module.exports = {
   deleteSection,
   removeFile,
   cloneSection,
+  uploadSectionImage,
+  updateSectionBanner,
 };

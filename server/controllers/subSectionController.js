@@ -39,8 +39,34 @@ const createSubSection = async (req, res) => {
     if (error) return res.status(status).json({ message: error });
     if (!canManage) return res.status(403).json({ message: "Not authorized" });
 
-    const { name, type, content, code, language, boardColumns } = req.body;
+    const {
+      name,
+      type,
+      content,
+      code,
+      language,
+      boardColumns,
+      imageUrl,
+      imageCaption,
+      todos,
+      links,
+      afterSubId,
+    } = req.body;
+
     const count = await SubSection.countDocuments({ sectionId: req.params.id });
+    let targetOrder = count;
+
+    if (afterSubId) {
+      const targetSub = await SubSection.findById(afterSubId);
+      if (targetSub) {
+        targetOrder = targetSub.order + 1;
+        // Shift any subsequent blocks by 1
+        await SubSection.updateMany(
+          { sectionId: req.params.id, order: { $gte: targetOrder } },
+          { $inc: { order: 1 } },
+        );
+      }
+    }
 
     const defaultColumns = [
       { id: "todo", name: "To Do", color: "slate" },
@@ -52,12 +78,16 @@ const createSubSection = async (req, res) => {
       sectionId: req.params.id,
       name,
       type,
-      order: count,
+      order: targetOrder,
       addedBy: req.user._id,
       content: content || "",
       code: code || "",
       language: language || "javascript",
       boardColumns: type === "board" ? boardColumns || defaultColumns : [],
+      imageUrl: imageUrl || "",
+      imageCaption: imageCaption || "",
+      todos: Array.isArray(todos) ? todos : [],
+      links: Array.isArray(links) ? links : [],
     });
 
     res.status(201).json({ subSection });
@@ -201,6 +231,44 @@ const deleteTodoItem = async (req, res) => {
     res.json({ subSection: sub });
   } catch (err) {
     console.error("deleteTodoItem:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @route   POST /api/sections/:id/subsections/:subId/todos/bulk
+const bulkAddTodos = async (req, res) => {
+  try {
+    const { error, status, canManage } = await checkAccess(req);
+    if (error) return res.status(status).json({ message: error });
+    if (!canManage) return res.status(403).json({ message: "Not authorized" });
+
+    const sub = await SubSection.findOne({
+      _id: req.params.subId,
+      sectionId: req.params.id,
+    });
+    if (!sub) return res.status(404).json({ message: "Sub-section not found" });
+
+    const { todos } = req.body;
+    if (!Array.isArray(todos) || todos.length === 0) {
+      return res.status(400).json({ message: "No todos provided" });
+    }
+
+    todos.forEach((item, idx) => {
+      if (item && item.text && item.text.trim()) {
+        sub.todos.push({
+          text: item.text.trim(),
+          checked: !!item.checked,
+          priority: item.priority || "medium",
+          dueDate: item.dueDate || null,
+          order: sub.todos.length + idx,
+        });
+      }
+    });
+
+    await sub.save();
+    res.json({ subSection: sub });
+  } catch (err) {
+    console.error("bulkAddTodos:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -358,6 +426,7 @@ module.exports = {
   updateSubSection,
   deleteSubSection,
   addTodoItem,
+  bulkAddTodos,
   updateTodoItem,
   deleteTodoItem,
   addBoardItem,

@@ -11,12 +11,15 @@ import {
   IoAddOutline,
   IoCopyOutline,
   IoOpenOutline,
+  IoCloudUploadOutline,
+  IoImageOutline,
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import {
   updateSubSection,
   deleteSubSection,
   addTodoItem,
+  bulkAddTodos,
   updateTodoItem,
   deleteTodoItem,
   addBoardItem,
@@ -24,6 +27,7 @@ import {
   deleteBoardItem,
   addLink,
   removeLink,
+  uploadSectionImage,
 } from '../../redux/slices/sectionSlice';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -130,6 +134,28 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
     inputRef.current?.focus();
   };
 
+  const handlePasteInTodo = async (e) => {
+    const text = e.clipboardData?.getData('text/plain');
+    if (text && (text.includes('\n') || /[-*•]/.test(text))) {
+      const lines = text
+        .split('\n')
+        .map((l) => l.replace(/^[-*•+]\s*(\[[ xX]\]\s*)?/, '').replace(/^\d+[\.\)]\s*/, '').trim())
+        .filter(Boolean);
+      if (lines.length > 1) {
+        e.preventDefault();
+        const todosToAdd = lines.map((line) => ({
+          text: line,
+          priority: newPriority,
+          dueDate: newDue || null,
+        }));
+        await dispatch(bulkAddTodos({ sectionId, subId: block._id, todos: todosToAdd }));
+        setNewText('');
+        setAdding(false);
+        toast.success(`Added ${todosToAdd.length} tasks!`);
+      }
+    }
+  };
+
   return (
     <div>
       {todos.length > 0 && (
@@ -188,8 +214,9 @@ const TodoEditor = ({ block, sectionId, canManage }) => {
                 autoFocus
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
+                onPaste={handlePasteInTodo}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
-                placeholder="Task description…"
+                placeholder="Task description (paste multi-line checklist supported)…"
                 className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none"
               />
               <div className="flex items-center gap-3">
@@ -509,33 +536,129 @@ const SnippetEditor = ({ block, sectionId, canManage }) => {
 // ─── Image ────────────────────────────────────────────────────────────────────
 const ImageEditor = ({ block, sectionId, canManage }) => {
   const dispatch = useDispatch();
+  const fileInputRef = useRef(null);
   const [localUrl, setLocalUrl] = useState(block.imageUrl || '');
   const [localCaption, setLocalCaption] = useState(block.imageCaption || '');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleSave = async () => {
-    if (localUrl === block.imageUrl && localCaption === block.imageCaption) return;
+  const handleSave = async (newUrl = localUrl, newCaption = localCaption) => {
+    if (newUrl === block.imageUrl && newCaption === block.imageCaption) return;
     setSaving(true);
-    await dispatch(updateSubSection({ sectionId, subId: block._id, imageUrl: localUrl, imageCaption: localCaption }));
+    await dispatch(
+      updateSubSection({
+        sectionId,
+        subId: block._id,
+        imageUrl: newUrl,
+        imageCaption: newCaption,
+      }),
+    );
     setSaving(false);
   };
 
+  const handleUploadFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+    try {
+      setUploading(true);
+      const result = await dispatch(uploadSectionImage({ sectionId, file }));
+      if (result.meta.requestStatus === 'fulfilled' && result.payload?.imageUrl) {
+        const url = result.payload.imageUrl;
+        setLocalUrl(url);
+        setImgError(false);
+        await handleSave(url, localCaption);
+        toast.success('Image uploaded successfully');
+      } else {
+        toast.error(result.payload || 'Failed to upload image');
+      }
+    } catch (_) {
+      toast.error('Upload error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePasteImage = async (e) => {
+    if (!canManage) return;
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          e.preventDefault();
+          const file = items[i].getAsFile();
+          if (file) {
+            await handleUploadFile(file);
+            return;
+          }
+        }
+      }
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (!canManage) return;
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      await handleUploadFile(e.dataTransfer.files[0]);
+    }
+  };
+
   return (
-    <div className="space-y-3">
+    <div
+      onPaste={handlePasteImage}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (canManage) setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={handleDrop}
+      className={`space-y-3 rounded-xl transition-colors ${
+        isDragOver ? 'ring-2 ring-accent bg-accent-subtle/30' : ''
+      }`}
+    >
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.[0]) handleUploadFile(e.target.files[0]);
+        }}
+      />
+
       {canManage && (
         <div className="space-y-2">
-          <input
-            value={localUrl}
-            onChange={(e) => { setLocalUrl(e.target.value); setImgError(false); }}
-            onBlur={handleSave}
-            placeholder="Image URL (https://…)"
-            className="w-full bg-surface border border-subtle rounded-xl px-4 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              value={localUrl}
+              onChange={(e) => {
+                setLocalUrl(e.target.value);
+                setImgError(false);
+              }}
+              onBlur={() => handleSave()}
+              placeholder="Paste image URL (https://…) or upload below"
+              className="flex-1 bg-surface border border-subtle rounded-xl px-4 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              title="Upload image from computer"
+            >
+              <IoCloudUploadOutline size={15} />
+              <span>{uploading ? 'Uploading…' : 'Upload'}</span>
+            </button>
+          </div>
           <input
             value={localCaption}
             onChange={(e) => setLocalCaption(e.target.value)}
-            onBlur={handleSave}
+            onBlur={() => handleSave()}
             placeholder="Caption (optional)"
             className="w-full bg-surface border border-subtle rounded-xl px-4 py-2 text-xs text-secondary placeholder-muted focus:outline-none focus:border-accent transition-colors"
           />
@@ -543,7 +666,7 @@ const ImageEditor = ({ block, sectionId, canManage }) => {
       )}
 
       {localUrl && !imgError ? (
-        <div className="rounded-xl overflow-hidden border border-subtle">
+        <div className="rounded-xl overflow-hidden border border-subtle relative group">
           <img
             src={localUrl}
             alt={localCaption || block.name}
@@ -555,6 +678,18 @@ const ImageEditor = ({ block, sectionId, canManage }) => {
               {localCaption || block.imageCaption}
             </p>
           )}
+          {canManage && (
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-md bg-surface/90 backdrop-blur-sm cursor-pointer"
+              >
+                <IoCloudUploadOutline size={13} />
+                <span>Replace</span>
+              </button>
+            </div>
+          )}
         </div>
       ) : localUrl && imgError ? (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
@@ -563,19 +698,41 @@ const ImageEditor = ({ block, sectionId, canManage }) => {
           <p className="text-xs text-muted mt-1 truncate">{localUrl}</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-subtle bg-surface p-8 text-center">
-          <span className="text-2xl mb-2 block">🖼️</span>
-          <p className="text-sm text-muted">{canManage ? 'Enter an image URL above' : 'No image added yet'}</p>
+        <div
+          onClick={() => canManage && fileInputRef.current?.click()}
+          className={`rounded-xl border border-dashed border-subtle bg-surface p-8 text-center transition-all ${
+            canManage ? 'cursor-pointer hover:border-accent hover:bg-surface-raised' : ''
+          }`}
+        >
+          <span className="text-3xl mb-2 block">🖼️</span>
+          <p className="text-sm font-medium text-secondary">
+            {canManage ? 'Click to upload or drag & drop image here' : 'No image added yet'}
+          </p>
+          {canManage && (
+            <p className="text-xs text-muted mt-1">
+              Supports screenshots via Ctrl+V paste or direct PNG, JPG, WebP upload
+            </p>
+          )}
         </div>
       )}
 
-      {saving && <span className="text-xs text-accent animate-pulse">Saving…</span>}
+      {(saving || uploading) && (
+        <span className="text-xs text-accent animate-pulse">
+          {uploading ? 'Uploading image to GridFS…' : 'Saving…'}
+        </span>
+      )}
     </div>
   );
 };
 
 // ─── SubSectionBlock (main export) ───────────────────────────────────────────
-const SubSectionBlock = ({ block, sectionId, canManage }) => {
+const SubSectionBlock = ({
+  block,
+  sectionId,
+  canManage,
+  isActive = false,
+  onSelectBlock,
+}) => {
   const dispatch = useDispatch();
   const [collapsed, setCollapsed]       = useState(false);
   const [renaming, setRenaming]         = useState(false);
@@ -596,21 +753,51 @@ const SubSectionBlock = ({ block, sectionId, canManage }) => {
   };
 
   return (
-    <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-      className="glass-card overflow-hidden border border-subtle">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      onClick={() => onSelectBlock?.(block._id)}
+      className={`glass-card overflow-hidden border transition-all duration-200 ${
+        isActive
+          ? 'border-accent shadow-lg shadow-accent/5 ring-1 ring-accent/40'
+          : 'border-subtle hover:border-strong'
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-subtle">
         <span className="text-base select-none">{cfg.icon}</span>
 
         {renaming ? (
-          <input autoFocus value={nameInput} onChange={(e) => setNameInput(e.target.value)}
+          <input
+            autoFocus
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
             onBlur={handleRename}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') { setNameInput(block.name); setRenaming(false); } }}
-            className="flex-1 bg-transparent text-primary text-sm font-medium focus:outline-none border-b border-accent pb-0.5" />
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRename();
+              if (e.key === 'Escape') {
+                setNameInput(block.name);
+                setRenaming(false);
+              }
+            }}
+            className="flex-1 bg-transparent text-primary text-sm font-medium focus:outline-none border-b border-accent pb-0.5"
+          />
         ) : (
-          <button onClick={() => setCollapsed((c) => !c)} className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer">
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer"
+          >
             <span className="text-sm font-semibold text-primary truncate">{block.name}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-raised text-secondary flex-shrink-0">{cfg.label}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-raised text-secondary flex-shrink-0">
+              {cfg.label}
+            </span>
+            {isActive && (
+              <span className="text-[10px] text-accent font-medium px-1.5 py-0.5 rounded bg-accent-subtle hidden sm:inline-block">
+                Active Target
+              </span>
+            )}
           </button>
         )}
 

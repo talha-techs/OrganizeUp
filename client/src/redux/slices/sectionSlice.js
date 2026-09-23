@@ -135,6 +135,49 @@ export const cloneSection = createAsyncThunk(
   },
 );
 
+export const uploadSectionImage = createAsyncThunk(
+  "sections/uploadSectionImage",
+  async ({ sectionId, file }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const { data } = await api.post(
+        `/sections/${sectionId}/upload-image`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      return data; // { imageUrl, fileId }
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to upload image",
+      );
+    }
+  },
+);
+
+export const updateSectionBanner = createAsyncThunk(
+  "sections/updateSectionBanner",
+  async ({ sectionId, bannerData }, { rejectWithValue }) => {
+    try {
+      let res;
+      if (bannerData instanceof FormData) {
+        res = await api.patch(`/sections/${sectionId}/banner`, bannerData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        res = await api.patch(`/sections/${sectionId}/banner`, bannerData);
+      }
+      return res.data; // { section }
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to update banner",
+      );
+    }
+  },
+);
+
 // ── Sub-section thunks ───────────────────────────────────────────────────────
 
 export const fetchSubSections = createAsyncThunk(
@@ -208,6 +251,21 @@ export const addTodoItem = createAsyncThunk(
       const { data } = await api.post(
         `/sections/${sectionId}/subsections/${subId}/todos`,
         body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
+export const bulkAddTodos = createAsyncThunk(
+  "sections/bulkAddTodos",
+  async ({ sectionId, subId, todos }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post(
+        `/sections/${sectionId}/subsections/${subId}/todos/bulk`,
+        { todos },
       );
       return data;
     } catch (err) {
@@ -433,6 +491,17 @@ const sectionSlice = createSlice({
         state.isScanning = false;
         state.error = action.payload;
       })
+      // Update Banner
+      .addCase(updateSectionBanner.fulfilled, (state, action) => {
+        if (action.payload.section) {
+          const updated = action.payload.section;
+          const idx = state.sections.findIndex((s) => s._id === updated._id);
+          if (idx !== -1) state.sections[idx] = updated;
+          if (state.currentSection?._id === updated._id) {
+            state.currentSection = updated;
+          }
+        }
+      })
       // ── Sub-sections ────────────────────────────────────────────────────────
       .addCase(fetchSubSections.pending, (state) => {
         state.subSectionsLoading = true;
@@ -446,6 +515,7 @@ const sectionSlice = createSlice({
       })
       .addCase(createSubSection.fulfilled, (state, action) => {
         state.subSections.push(action.payload.subSection);
+        state.subSections.sort((a, b) => (a.order || 0) - (b.order || 0));
       })
       .addCase(deleteSubSection.fulfilled, (state, action) => {
         state.subSections = state.subSections.filter(
@@ -464,6 +534,7 @@ const sectionSlice = createSlice({
     [
       updateSubSection,
       addTodoItem,
+      bulkAddTodos,
       updateTodoItem,
       deleteTodoItem,
       addBoardItem,

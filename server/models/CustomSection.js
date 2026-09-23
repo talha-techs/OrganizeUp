@@ -52,6 +52,10 @@ const customSectionSchema = new mongoose.Schema(
       type: String,
       default: "indigo",
     },
+    bannerImage: {
+      type: String,
+      default: "",
+    },
     driveLink: {
       type: String,
       default: "",

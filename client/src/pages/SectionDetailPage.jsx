@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +16,11 @@ import {
   IoCloseOutline,
   IoAddOutline,
   IoLayersOutline,
+  IoSparklesOutline,
+  IoCloudUploadOutline,
+  IoLinkOutline,
+  IoRefreshOutline,
+  IoCheckmarkOutline,
 } from 'react-icons/io5';
 import {
   fetchSection,
@@ -24,13 +29,35 @@ import {
   clearCurrentSection,
   fetchSubSections,
   createSubSection,
+  updateSubSection,
+  deleteSubSection,
+  uploadSectionImage,
+  updateSectionBanner,
+  bulkAddTodos,
+  addLink,
 } from '../redux/slices/sectionSlice';
+import { classifyClipboard } from '../utils/clipboardClassifier';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import FileViewer from '../components/ui/FileViewer';
 import SubSectionBlock from '../components/sections/SubSectionBlock';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+
+// ─── Color Palettes ──────────────────────────────────────────────────────────
+const COLORS = [
+  { name: 'coral', from: 'from-[#ff5722]', to: 'to-[#f4511e]' },
+  { name: 'amber', from: 'from-amber-500', to: 'to-orange-600' },
+  { name: 'purple', from: 'from-purple-500', to: 'to-pink-600' },
+  { name: 'emerald', from: 'from-emerald-500', to: 'to-green-600' },
+  { name: 'rose', from: 'from-rose-500', to: 'to-red-600' },
+  { name: 'zinc', from: 'from-zinc-700', to: 'to-zinc-900' },
+  { name: 'indigo', from: 'from-indigo-500', to: 'to-indigo-700' },
+];
+
+function getColorClasses(color) {
+  return COLORS.find((c) => c.name === color) || COLORS[0];
+}
 
 // ─── Block type definitions ──────────────────────────────────────────────────
 const BLOCK_TYPES = [
@@ -153,7 +180,239 @@ const AddBlockModal = ({ onClose, onAdd }) => {
   );
 };
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Change Banner Modal ─────────────────────────────────────────────────────
+const ChangeBannerModal = ({ isOpen, onClose, currentBanner, sectionId, sectionName }) => {
+  const dispatch = useDispatch();
+  const fileInputRef = useRef(null);
+  const [tab, setTab] = useState('upload'); // 'upload' | 'url' | 'pexels'
+  const [webUrl, setWebUrl] = useState('');
+  const [pexelsQuery, setPexelsQuery] = useState(sectionName || '');
+  const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleUploadFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    setLoading(true);
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await dispatch(updateSectionBanner({ sectionId, bannerData: fd }));
+    setLoading(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Banner updated');
+      onClose();
+    } else {
+      toast.error(res.payload || 'Failed to update banner');
+    }
+  };
+
+  const handleApplyUrl = async () => {
+    if (!webUrl.trim()) return;
+    setLoading(true);
+    const res = await dispatch(
+      updateSectionBanner({
+        sectionId,
+        bannerData: { bannerImage: webUrl.trim() },
+      }),
+    );
+    setLoading(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Banner updated');
+      onClose();
+    } else {
+      toast.error(res.payload || 'Failed to update banner');
+    }
+  };
+
+  const handlePexelsFetch = async () => {
+    setLoading(true);
+    const res = await dispatch(
+      updateSectionBanner({
+        sectionId,
+        bannerData: { autoFetch: true, query: pexelsQuery.trim() || sectionName },
+      }),
+    );
+    setLoading(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Cover image discovered & applied!');
+      onClose();
+    } else {
+      toast.error(res.payload || 'Failed to fetch cover from Pexels');
+    }
+  };
+
+  const handleRemoveBanner = async () => {
+    setLoading(true);
+    const res = await dispatch(
+      updateSectionBanner({ sectionId, bannerData: { bannerImage: '' } }),
+    );
+    setLoading(false);
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Banner removed (reverted to gradient)');
+      onClose();
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.95 }}
+        className="glass-card w-full max-w-md p-6 space-y-5 border border-strong bg-surface-raised"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-primary font-semibold text-lg flex items-center gap-2">
+            <IoImageOutline className="text-accent" size={20} />
+            <span>Customize Section Banner</span>
+          </h3>
+          <button onClick={onClose} className="text-muted hover:text-primary transition-colors cursor-pointer">
+            <IoCloseOutline size={20} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-subtle gap-2">
+          <button
+            onClick={() => setTab('upload')}
+            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${
+              tab === 'upload'
+                ? 'border-accent text-accent font-semibold'
+                : 'border-transparent text-secondary hover:text-primary'
+            }`}
+          >
+            <IoCloudUploadOutline size={14} /> Upload File
+          </button>
+          <button
+            onClick={() => setTab('url')}
+            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${
+              tab === 'url'
+                ? 'border-accent text-accent font-semibold'
+                : 'border-transparent text-secondary hover:text-primary'
+            }`}
+          >
+            <IoLinkOutline size={14} /> Web URL
+          </button>
+          <button
+            onClick={() => setTab('pexels')}
+            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${
+              tab === 'pexels'
+                ? 'border-accent text-accent font-semibold'
+                : 'border-transparent text-secondary hover:text-primary'
+            }`}
+          >
+            <IoSparklesOutline size={14} /> Pexels Discover
+          </button>
+        </div>
+
+        {/* Tab 1: Upload */}
+        {tab === 'upload' && (
+          <div className="space-y-4">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleUploadFile(e.target.files[0]);
+              }}
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-subtle hover:border-accent hover:bg-surface rounded-xl p-8 text-center cursor-pointer transition-all"
+            >
+              <IoCloudUploadOutline size={36} className="mx-auto text-accent mb-2" />
+              <p className="text-sm font-medium text-primary">Click to select banner image</p>
+              <p className="text-xs text-muted mt-1">PNG, JPG, WebP up to 5MB (stored securely in GridFS)</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: URL */}
+        {tab === 'url' && (
+          <div className="space-y-3">
+            <label className="text-xs text-secondary block">Direct Web Image Address</label>
+            <input
+              value={webUrl}
+              onChange={(e) => setWebUrl(e.target.value)}
+              placeholder="https://images.unsplash.com/..."
+              className="w-full bg-surface border border-subtle rounded-xl px-4 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
+            />
+            {webUrl && (
+              <div className="h-28 rounded-lg overflow-hidden border border-subtle relative">
+                <img src={webUrl} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <button
+              onClick={handleApplyUrl}
+              disabled={!webUrl.trim() || loading}
+              className="btn-primary w-full text-sm py-2"
+            >
+              {loading ? 'Applying…' : 'Apply Image Address'}
+            </button>
+          </div>
+        )}
+
+        {/* Tab 3: Pexels */}
+        {tab === 'pexels' && (
+          <div className="space-y-3">
+            <label className="text-xs text-secondary block">Search Keywords for Pexels</label>
+            <div className="flex gap-2">
+              <input
+                value={pexelsQuery}
+                onChange={(e) => setPexelsQuery(e.target.value)}
+                placeholder="e.g. React, Cyberpunk, Nature…"
+                className="flex-1 bg-surface border border-subtle rounded-xl px-4 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent"
+              />
+              <button
+                onClick={handlePexelsFetch}
+                disabled={loading}
+                className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <IoSparklesOutline size={14} />
+                <span>{loading ? 'Searching…' : 'Auto-Fetch'}</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-muted">
+              Uses the configured Pexels API key to find high-resolution landscape photography for this topic.
+            </p>
+          </div>
+        )}
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-subtle">
+          {currentBanner ? (
+            <button
+              type="button"
+              onClick={handleRemoveBanner}
+              disabled={loading}
+              className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+            >
+              Reset to Gradient
+            </button>
+          ) : (
+            <div />
+          )}
+          <button onClick={onClose} className="btn-secondary text-xs px-4 py-2 cursor-pointer">
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ─── Main Section Detail Page ────────────────────────────────────────────────
 const SectionDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -165,21 +424,266 @@ const SectionDetailPage = () => {
   useDocumentTitle(currentSection?.name || 'Section');
   const isAdmin = user?.role === 'admin';
 
-  const [showImport,    setShowImport]    = useState(false);
-  const [selectedFile,  setSelectedFile]  = useState(null);
-  const [showAddBlock,  setShowAddBlock]  = useState(false);
-  const [driveExpanded, setDriveExpanded] = useState(true);
+  const [showImport, setShowImport]           = useState(false);
+  const [selectedFile, setSelectedFile]       = useState(null);
+  const [showAddBlock, setShowAddBlock]       = useState(false);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [driveExpanded, setDriveExpanded]     = useState(true);
+  const [activeBlockId, setActiveBlockId]     = useState(null);
+  const [pasteNotice, setPasteNotice]         = useState(null); // { message, lastBlockId }
 
   useEffect(() => {
     dispatch(fetchSection(id));
     dispatch(fetchSubSections(id));
-    return () => { dispatch(clearCurrentSection()); };
+    return () => {
+      dispatch(clearCurrentSection());
+    };
   }, [dispatch, id]);
 
   const isOwner =
     !!(user?._id && currentSection?.addedBy &&
       String(currentSection.addedBy?._id ?? currentSection.addedBy) === String(user._id));
   const canManage = isAdmin || isOwner;
+
+  const colorClasses = getColorClasses(currentSection?.color);
+
+  // ── Smart Clipboard Handler (Ctrl+V) ──────────────────────────────────────
+  const handleGlobalPaste = useCallback(
+    async (e) => {
+      if (!canManage) return;
+
+      const activeEl = document.activeElement;
+      const isTypingInField =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+
+      // Inspect clipboard contents
+      const classified = await classifyClipboard(e);
+      if (!classified) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Case 1: Image Paste (interception even inside text fields / notes)
+      if (classified.type === 'image') {
+        e.preventDefault();
+        const toastId = toast.loading('Uploading screenshot to section…');
+        try {
+          const uploadRes = await dispatch(
+            uploadSectionImage({ sectionId: id, file: classified.file }),
+          );
+          if (uploadRes.meta.requestStatus === 'fulfilled' && uploadRes.payload?.imageUrl) {
+            const imageUrl = uploadRes.payload.imageUrl;
+
+            // Option A: If currently working on a Note block, place Image block directly below it!
+            const activeBlock = subSections.find((b) => b._id === activeBlockId);
+
+            if (activeBlock && activeBlock.type === 'image' && !activeBlock.imageUrl) {
+              // Update existing empty image block
+              await dispatch(
+                updateSubSection({
+                  sectionId: id,
+                  subId: activeBlock._id,
+                  imageUrl,
+                  imageCaption: `Pasted at ${timeStr}`,
+                }),
+              );
+              toast.success('Image placed into active block!', { id: toastId });
+            } else if (activeBlock && activeBlock.type === 'note') {
+              // Create linked Image block right below the Note block
+              const createRes = await dispatch(
+                createSubSection({
+                  sectionId: id,
+                  name: `Screenshot - ${timeStr}`,
+                  type: 'image',
+                  imageUrl,
+                  imageCaption: `Pasted from ${activeBlock.name}`,
+                  afterSubId: activeBlock._id,
+                }),
+              );
+              toast.success('Screenshot placed below your Note!', { id: toastId });
+              if (createRes.payload?.subSection?._id) {
+                setActiveBlockId(createRes.payload.subSection._id);
+                setPasteNotice({
+                  message: 'Created Image block below note',
+                  createdBlockId: createRes.payload.subSection._id,
+                });
+              }
+            } else {
+              // Create a brand new image block
+              const createRes = await dispatch(
+                createSubSection({
+                  sectionId: id,
+                  name: `Screenshot - ${timeStr}`,
+                  type: 'image',
+                  imageUrl,
+                  imageCaption: `Pasted at ${timeStr}`,
+                  afterSubId: activeBlockId || undefined,
+                }),
+              );
+              toast.success('Smart Paste: Created Image block!', { id: toastId });
+              if (createRes.payload?.subSection?._id) {
+                setActiveBlockId(createRes.payload.subSection._id);
+                setPasteNotice({
+                  message: 'Created Image block',
+                  createdBlockId: createRes.payload.subSection._id,
+                });
+              }
+            }
+          } else {
+            toast.error('Failed to upload image', { id: toastId });
+          }
+        } catch (_) {
+          toast.error('Upload failed', { id: toastId });
+        }
+        return;
+      }
+
+      // If user is actively typing in a native input/textarea, let normal text paste proceed
+      if (isTypingInField) {
+        return;
+      }
+
+      // Case 2: Page-Level Paste (no text input focused)
+      e.preventDefault();
+      const activeBlock = subSections.find((b) => b._id === activeBlockId);
+
+      // To-Do list
+      if (classified.type === 'todo') {
+        if (activeBlock && activeBlock.type === 'todo') {
+          await dispatch(
+            bulkAddTodos({ sectionId: id, subId: activeBlock._id, todos: classified.todos }),
+          );
+          toast.success(`Appended ${classified.todos.length} tasks to ${activeBlock.name}!`);
+        } else {
+          const res = await dispatch(
+            createSubSection({
+              sectionId: id,
+              name: classified.blockName,
+              type: 'todo',
+              todos: classified.todos,
+              afterSubId: activeBlockId || undefined,
+            }),
+          );
+          toast.success(`Smart Paste: Created To-Do block with ${classified.todos.length} tasks!`);
+          if (res.payload?.subSection?._id) {
+            setActiveBlockId(res.payload.subSection._id);
+            setPasteNotice({
+              message: `Created Tasks block (${classified.todos.length} items)`,
+              createdBlockId: res.payload.subSection._id,
+            });
+          }
+        }
+        return;
+      }
+
+      // Link
+      if (classified.type === 'links') {
+        if (activeBlock && activeBlock.type === 'links') {
+          await dispatch(
+            addLink({
+              sectionId: id,
+              subId: activeBlock._id,
+              url: classified.url,
+              title: classified.title,
+            }),
+          );
+          toast.success(`Added link to ${activeBlock.name}!`);
+        } else {
+          const res = await dispatch(
+            createSubSection({
+              sectionId: id,
+              name: classified.blockName,
+              type: 'links',
+              links: [{ url: classified.url, title: classified.title }],
+              afterSubId: activeBlockId || undefined,
+            }),
+          );
+          toast.success(`Smart Paste: Created Links block!`);
+          if (res.payload?.subSection?._id) {
+            setActiveBlockId(res.payload.subSection._id);
+            setPasteNotice({
+              message: 'Created Links block',
+              createdBlockId: res.payload.subSection._id,
+            });
+          }
+        }
+        return;
+      }
+
+      // Code Snippet
+      if (classified.type === 'snippet') {
+        if (activeBlock && activeBlock.type === 'snippet') {
+          await dispatch(
+            updateSubSection({
+              sectionId: id,
+              subId: activeBlock._id,
+              code: classified.code,
+              language: classified.language,
+            }),
+          );
+          toast.success(`Updated ${activeBlock.name} with code!`);
+        } else {
+          const res = await dispatch(
+            createSubSection({
+              sectionId: id,
+              name: classified.blockName,
+              type: 'snippet',
+              code: classified.code,
+              language: classified.language,
+              afterSubId: activeBlockId || undefined,
+            }),
+          );
+          toast.success(`Smart Paste: Created ${classified.language} Snippet!`);
+          if (res.payload?.subSection?._id) {
+            setActiveBlockId(res.payload.subSection._id);
+            setPasteNotice({
+              message: `Created ${classified.language} snippet`,
+              createdBlockId: res.payload.subSection._id,
+            });
+          }
+        }
+        return;
+      }
+
+      // Note
+      if (classified.type === 'note') {
+        if (activeBlock && activeBlock.type === 'note') {
+          const combined = (activeBlock.content ? activeBlock.content + '\n\n' : '') + classified.content;
+          await dispatch(
+            updateSubSection({ sectionId: id, subId: activeBlock._id, content: combined }),
+          );
+          toast.success(`Appended note to ${activeBlock.name}!`);
+        } else {
+          const res = await dispatch(
+            createSubSection({
+              sectionId: id,
+              name: classified.blockName,
+              type: 'note',
+              content: classified.content,
+              afterSubId: activeBlockId || undefined,
+            }),
+          );
+          toast.success(`Smart Paste: Created Note block!`);
+          if (res.payload?.subSection?._id) {
+            setActiveBlockId(res.payload.subSection._id);
+            setPasteNotice({
+              message: 'Created Note block',
+              createdBlockId: res.payload.subSection._id,
+            });
+          }
+        }
+      }
+    },
+    [canManage, id, subSections, activeBlockId, dispatch],
+  );
+
+  useEffect(() => {
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [handleGlobalPaste]);
 
   const handleImport = async (data) => {
     const result = await dispatch(importToSection({ sectionId: id, importData: data }));
@@ -204,8 +708,21 @@ const SectionDetailPage = () => {
     const result = await dispatch(createSubSection({ sectionId: id, name, type }));
     if (result.meta.requestStatus === 'fulfilled') {
       toast.success(`${name} created`);
+      if (result.payload?.subSection?._id) {
+        setActiveBlockId(result.payload.subSection._id);
+      }
     } else {
       toast.error(result.payload || 'Failed to create block');
+    }
+  };
+
+  const handleUndoPaste = async () => {
+    if (pasteNotice?.createdBlockId) {
+      await dispatch(
+        deleteSubSection({ sectionId: id, subId: pasteNotice.createdBlockId }),
+      );
+      toast.success('Undone paste action');
+      setPasteNotice(null);
     }
   };
 
@@ -220,7 +737,7 @@ const SectionDetailPage = () => {
   if (isLoading || !currentSection) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <LoadingSpinner text="Loading sectionâ€¦" />
+        <LoadingSpinner text="Loading section…" />
       </div>
     );
   }
@@ -231,36 +748,104 @@ const SectionDetailPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <button onClick={() => navigate('/sections')}
-          className="flex items-center gap-2 text-sm text-secondary hover:text-primary mb-4 transition-colors cursor-pointer">
-          <IoArrowBack size={14} /> All Sections
-        </button>
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-primary font-display">{currentSection.name}</h1>
-            {currentSection.description && (
-              <p className="text-secondary text-sm mt-1">{currentSection.description}</p>
-            )}
-            <div className="flex items-center gap-3 mt-2 text-xs text-muted flex-wrap">
-              {hasDriveData && <span>{currentSection.files?.length || 0} drive file{currentSection.files?.length !== 1 ? 's' : ''}</span>}
-              {hasDriveData && <span>·</span>}
-              <span>{subSections.length} block{subSections.length !== 1 ? 's' : ''}</span>
-              {currentSection.addedBy?.name && <><span>·</span><span>by {currentSection.addedBy.name}</span></>}
-            </div>
+      {/* ─── Hero Banner Header ────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative rounded-2xl overflow-hidden border border-subtle shadow-xl bg-surface"
+      >
+        {/* Banner Media Backdrop */}
+        {currentSection.bannerImage ? (
+          <div className="h-48 sm:h-60 w-full relative overflow-hidden">
+            <img
+              src={currentSection.bannerImage}
+              alt={currentSection.name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 backdrop-blur-[0.5px]" />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+        ) : (
+          <div
+            className={`h-40 sm:h-52 w-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to} relative overflow-hidden`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+          </div>
+        )}
+
+        {/* Content Overlaid on Banner */}
+        <div className="absolute inset-0 p-5 sm:p-6 flex flex-col justify-between z-10">
+          {/* Top Bar on Banner */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate('/sections')}
+              className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 transition-colors cursor-pointer"
+            >
+              <IoArrowBack size={13} /> All Sections
+            </button>
+
             {canManage && (
-              <button onClick={() => setShowImport(true)} className="btn-secondary flex items-center gap-2 text-sm cursor-pointer">
-                <IoCloudDownloadOutline size={16} /> Drive Import
+              <button
+                onClick={() => setShowBannerModal(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-accent transition-colors cursor-pointer shadow-sm"
+                title="Change banner via Web URL, custom file, or Pexels"
+              >
+                <IoImageOutline size={14} />
+                <span>Change Banner</span>
               </button>
             )}
-            {canManage && (
-              <button onClick={() => setShowAddBlock(true)} className="btn-primary flex items-center gap-2 text-sm cursor-pointer">
-                <IoAddOutline size={16} /> Add Block
-              </button>
-            )}
+          </div>
+
+          {/* Bottom Title & Actions on Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-display truncate drop-shadow-md">
+                {currentSection.name}
+              </h1>
+              {currentSection.description && (
+                <p className="text-white/80 text-sm mt-1 max-w-xl line-clamp-2 drop-shadow">
+                  {currentSection.description}
+                </p>
+              )}
+              <div className="flex items-center gap-2.5 mt-2.5 text-xs text-white/70 flex-wrap">
+                {hasDriveData && (
+                  <span>
+                    {currentSection.files?.length || 0} drive file{currentSection.files?.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {hasDriveData && <span>·</span>}
+                <span>
+                  {subSections.length} block{subSections.length !== 1 ? 's' : ''}
+                </span>
+                {currentSection.addedBy?.name && (
+                  <>
+                    <span>·</span>
+                    <span>by {currentSection.addedBy.name}</span>
+                  </>
+                )}
+                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-accent-light font-mono bg-black/40 border border-white/10 px-2 py-0.5 rounded-full">
+                  <IoSparklesOutline size={11} className="text-accent" /> Smart Paste (Ctrl+V) enabled
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+              {canManage && (
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm px-3 py-2 bg-black/50 text-white hover:bg-black/70 border-white/15 backdrop-blur-md cursor-pointer"
+                >
+                  <IoCloudDownloadOutline size={16} /> Drive Import
+                </button>
+              )}
+              {canManage && (
+                <button
+                  onClick={() => setShowAddBlock(true)}
+                  className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm px-3.5 py-2 shadow-lg shadow-accent/25 cursor-pointer"
+                >
+                  <IoAddOutline size={16} /> Add Block
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -323,7 +908,14 @@ const SectionDetailPage = () => {
           <>
             <AnimatePresence mode="popLayout">
               {subSections.map((block) => (
-                <SubSectionBlock key={block._id} block={block} sectionId={id} canManage={canManage} />
+                <SubSectionBlock
+                  key={block._id}
+                  block={block}
+                  sectionId={id}
+                  canManage={canManage}
+                  isActive={activeBlockId === block._id}
+                  onSelectBlock={(bId) => setActiveBlockId(bId)}
+                />
               ))}
             </AnimatePresence>
 
@@ -333,7 +925,7 @@ const SectionDetailPage = () => {
                 <IoLayersOutline className="mx-auto text-muted mb-4" size={52} />
                 <h3 className="text-lg font-medium text-secondary mb-2">Empty workspace</h3>
                 <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-                  Add blocks to organize notes, tasks, links, code snippets — or import files from Google Drive.
+                  Add blocks or hit <kbd className="px-1.5 py-0.5 rounded bg-surface border border-subtle text-xs font-mono">Ctrl+V</kbd> anywhere to smart-paste screenshots, tasks, links, code, or notes.
                 </p>
                 {canManage && (
                   <div className="flex flex-wrap justify-center gap-3">
@@ -360,11 +952,56 @@ const SectionDetailPage = () => {
         )}
       </div>
 
+      {/* Floating Smart Paste Notification Pill */}
+      <AnimatePresence>
+        {pasteNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-40 glass-card p-3 rounded-xl border border-accent/40 shadow-xl bg-surface/95 backdrop-blur-md flex items-center gap-3"
+          >
+            <div className="p-1 rounded-full bg-accent/15 text-accent">
+              <IoSparklesOutline size={16} />
+            </div>
+            <div className="text-xs">
+              <p className="font-semibold text-primary">{pasteNotice.message}</p>
+              <p className="text-[11px] text-muted">Automatically detected & placed</p>
+            </div>
+            <div className="flex items-center gap-2 ml-2">
+              <button
+                onClick={handleUndoPaste}
+                className="text-xs text-red-400 hover:text-red-300 font-medium px-2 py-1 rounded bg-red-500/10 cursor-pointer"
+              >
+                Undo
+              </button>
+              <button
+                onClick={() => setPasteNotice(null)}
+                className="text-muted hover:text-primary p-1 cursor-pointer"
+              >
+                <IoCloseOutline size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Modals */}
       <DriveImportModal isOpen={showImport} onClose={() => setShowImport(false)} onImport={handleImport}
         title={`Import to "${currentSection.name}"`} />
       <AnimatePresence>
         {showAddBlock && <AddBlockModal onClose={() => setShowAddBlock(false)} onAdd={handleAddBlock} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showBannerModal && (
+          <ChangeBannerModal
+            isOpen={showBannerModal}
+            onClose={() => setShowBannerModal(false)}
+            currentBanner={currentSection.bannerImage}
+            sectionId={id}
+            sectionName={currentSection.name}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

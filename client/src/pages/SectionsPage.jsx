@@ -10,6 +10,9 @@ import {
   IoCreateOutline,
   IoBookmark,
   IoCloseOutline,
+  IoImageOutline,
+  IoCloudUploadOutline,
+  IoSparklesOutline,
 } from 'react-icons/io5';
 import {
   fetchSections,
@@ -46,6 +49,8 @@ const SectionsPage = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedColor, setSelectedColor] = useState('coral');
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [bannerFile, setBannerFile] = useState(null);
   const [deleteSectionId, setDeleteSectionId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [publishSection, setPublishSection] = useState(null);
@@ -65,9 +70,24 @@ const SectionsPage = () => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const result = await dispatch(
-      createSection({ name: name.trim(), description: description.trim(), color: selectedColor }),
-    );
+    let createPayload;
+    if (bannerFile) {
+      const fd = new FormData();
+      fd.append('name', name.trim());
+      fd.append('description', description.trim());
+      fd.append('color', selectedColor);
+      fd.append('image', bannerFile);
+      createPayload = fd;
+    } else {
+      createPayload = {
+        name: name.trim(),
+        description: description.trim(),
+        color: selectedColor,
+        bannerImage: bannerUrl.trim(),
+      };
+    }
+
+    const result = await dispatch(createSection(createPayload));
 
     if (result.meta.requestStatus === 'fulfilled') {
       toast.success('Section created');
@@ -75,6 +95,8 @@ const SectionsPage = () => {
       setName('');
       setDescription('');
       setSelectedColor('coral');
+      setBannerUrl('');
+      setBannerFile(null);
     } else {
       toast.error(result.payload || 'Failed to create section');
     }
@@ -211,12 +233,22 @@ const SectionsPage = () => {
                   className="glass-card group relative overflow-hidden cursor-pointer border border-subtle"
                   onClick={() => navigate(`/sections/${section._id}`)}
                 >
-                  {/* Color banner */}
+                  {/* Banner media or color gradient */}
                   <div
-                    className={`h-32 bg-gradient-to-br ${col.from} ${col.to} relative flex items-center justify-center`}
+                    className={`h-32 relative flex items-center justify-center overflow-hidden ${
+                      section.bannerImage ? 'bg-canvas' : `bg-gradient-to-br ${col.from} ${col.to}`
+                    }`}
                   >
-                    <IoFolderOutline size={40} className="text-white/30" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    {section.bannerImage ? (
+                      <img
+                        src={section.bannerImage}
+                        alt={section.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <IoFolderOutline size={40} className="text-white/30" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
                     {/* Visibility badge */}
                     <div
@@ -361,6 +393,57 @@ const SectionsPage = () => {
               placeholder="Brief description..."
               className="input-dark w-full h-20 resize-none"
             />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-secondary">
+                Banner Image (optional)
+              </label>
+              <span className="text-[11px] text-muted flex items-center gap-1">
+                <IoSparklesOutline size={12} className="text-accent" /> Auto-fetched via Pexels if empty
+              </span>
+            </div>
+            <div className="space-y-2">
+              <input
+                type="url"
+                value={bannerUrl}
+                onChange={(e) => {
+                  setBannerUrl(e.target.value);
+                  setBannerFile(null);
+                }}
+                placeholder="Paste web image address (https://...)"
+                className="input-dark w-full text-xs"
+                disabled={!!bannerFile}
+              />
+              <div className="flex items-center gap-2">
+                <label className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 cursor-pointer">
+                  <IoCloudUploadOutline size={14} />
+                  <span className="truncate max-w-[200px]">
+                    {bannerFile ? bannerFile.name : 'Upload from device'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setBannerFile(e.target.files[0]);
+                        setBannerUrl('');
+                      }
+                    }}
+                  />
+                </label>
+                {bannerFile && (
+                  <button
+                    type="button"
+                    onClick={() => setBannerFile(null)}
+                    className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-secondary mb-1.5">Color</label>
