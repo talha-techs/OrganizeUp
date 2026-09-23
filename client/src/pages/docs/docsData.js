@@ -207,7 +207,7 @@ Step 2: Copying Commands in 1-Click
       {
         id: 'yt-overview',
         title: 'Playlists & Single Videos',
-        summary: 'Cinema player mode, isolated user notes, and personal video management.',
+        summary: 'Cinema player mode, isolated user notes, responsive resolution, and single video workspaces.',
         badge: 'Studio',
         readTime: '4 min read',
         content: `
@@ -218,24 +218,42 @@ Step 1: Adding a Full Playlist
 1. Navigate to **Playlists** in the sidebar.
 2. Click **+ Add Playlist**.
 3. Paste the URL of any public YouTube playlist (e.g. \`https://www.youtube.com/playlist?list=PL...\`).
-4. OrganizeUp automatically fetches the playlist metadata, video titles, durations, and thumbnails.
+4. OrganizeUp automatically fetches playlist metadata, video titles, durations, and high-res thumbnails.
+5. In playlists, use the **Sync** button at any time to automatically poll and ingest newly added episodes from YouTube.
 
-Step 2: Adding a Single Video
-1. In the Playlists page, navigate to the **Single Videos** tab.
-2. Click **+ Add Single Video** and paste the video URL.
-3. The video is ingested into your library as a standalone learning item with its own dedicated notes workspace!
+Step 2: Dedicated Single Video Workspaces
+1. In the Playlists page, switch to the **Single Videos** tab.
+2. Click **+ Add Single Video** and paste any YouTube video URL.
+3. The video is ingested into your library as a standalone learning item with its own dedicated notes workspace.
+4. **Optimized Interface**: Unlike multi-episode playlists, single videos omit redundant sync controls for an uncluttered focus view.
+5. **Full Auto-Linkified Description**: The video's complete YouTube description is parsed and displayed beneath the player. All URLs are rendered as safe, openable links (opening in new tabs), and timestamps (e.g. \`04:15\`) are highlighted. Toggle the expandable description drawer at any time.
 
-Step 3: Using the Cinema Player
+Step 3: Adaptive Video Resolution
+1. OrganizeUp smartly defaults playback resolution to a fast, bandwidth-friendly quality (720p or 480p).
+2. Use the resolution dropdown to switch to higher or lower available resolutions up to the maximum quality supported by that video.
+
+Step 4: Using the Cinema Player
 1. Click on any video episode to launch the **Cinema Player**.
-2. The player expands to maximize focus while keeping your notes workspace alongside the video.
+2. The player expands to maximize visual focus while keeping your interactive notes workspace alongside the video.
         `,
+        callouts: [
+          {
+            type: 'info',
+            title: 'Playlist Sync vs. Single Videos',
+            text: 'Multi-video playlists include an active "Sync" button to poll YouTube for new episodes. Standalone single videos are individual assets, so sync controls are omitted to preserve a clean, focused UI.',
+          },
+        ],
+        quickLinks: [
+          { label: 'Timestamps & Video Notes Workspace', targetId: 'yt-notes' },
+          { label: 'Global Shortcuts', targetId: 'shortcuts' },
+        ],
       },
       {
         id: 'yt-notes',
         title: 'Timestamps & Video Notes Workspace',
-        summary: 'Capture timestamps and write persistent Markdown notes while watching.',
+        summary: 'Capture timestamps, write persistent Markdown notes, and drag-to-resize the split screen.',
         badge: 'Interactive',
-        readTime: '3 min read',
+        readTime: '4 min read',
         content: `
 ### Interactive Timestamped Notes
 OrganizeUp allows you to link your written notes directly to specific moments in the video.
@@ -251,7 +269,27 @@ Step 2: Jumping to Timestamps
 
 Step 3: Private Notes Isolation
 Every note you take is completely isolated to your account. Even if you clone a public playlist from the Explore page, your personal notes remain 100% private to you.
+
+Step 4: Draggable & Resizable Split Notes Panel
+1. Customize your viewing split between the video player and your notes editor.
+2. Hover your mouse over the **left edge** of the notes workspace until the resize cursor (<kbd>col-resize</kbd>) appears.
+3. Click and drag horizontally:
+   - **Expand up to 50%**: Creates an equal 50/50 side-by-side split — perfect for side-by-side code replication, math notations, or in-depth synthesis.
+   - **Minimize down to 25%**: Keeps a compact, unobtrusive note pane while giving maximum screen real estate to the video.
+4. **Drag Shield Protection**: While dragging, an invisible protection layer engages over the YouTube iframe to prevent video player mouse capture and ensure buttery smooth resizing.
+5. **Persistent Layout Memory**: Your chosen width is automatically stored in browser storage and remembered across all videos.
         `,
+        callouts: [
+          {
+            type: 'tip',
+            title: 'Side-by-Side 50/50 Study Cockpit',
+            text: 'Drag the left border of the notes panel towards the center of your screen to enjoy an equal 50/50 split between video and notes. Your preference is automatically remembered for all future study sessions.',
+          },
+        ],
+        quickLinks: [
+          { label: 'Playlists & Single Videos', targetId: 'yt-overview' },
+          { label: 'Global Shortcuts', targetId: 'shortcuts' },
+        ],
       },
       {
         id: 'yt-explore',
@@ -284,25 +322,60 @@ Step 2: Cloning to Your Library
       {
         id: 'sections',
         title: 'Custom Sections & Blocks',
-        summary: 'Build project hubs with Markdown notes, checklists, and code snippets.',
+        summary: 'Build project hubs with Smart Clipboard ingestion, Markdown notes, checklists, code, and banners.',
         badge: 'Canvas',
-        readTime: '4 min read',
+        readTime: '5 min read',
         content: `
 ### Versatile Multi-Purpose Workspaces
-Sections are flexible workspaces where you can organize multifaceted projects, study guides, and research wikis.
+Sections are flexible workspaces where you can organize multifaceted projects, study guides, technical cheat sheets, and research wikis.
 
 Step 1: Creating a Custom Section
 1. Navigate to **Custom Sections** in the sidebar.
 2. Click **+ New Section**.
 3. Choose a title, icon, and accent color to distinguish your workspace.
 
-Step 2: Adding Modular Blocks
-Inside your Section, you can click **+ Add Block** to add:
+Step 2: Modular Content Blocks
+Inside your Section canvas, click **+ Add Block** to add any content type:
 - **Markdown Notes**: Rich formatted documentation with headers, bullet points, and tables.
-- **Interactive Checklists**: Checkboxes to track project milestones and reading goals.
-- **Syntax-Highlighted Code Blocks**: Formatted snippets for JavaScript, Python, Bash, HTML, CSS, and SQL with 1-click copy.
+- **Interactive Checklists**: Checkboxes to track project milestones, bug lists, and reading targets.
+- **Syntax-Highlighted Code Blocks**: Formatted snippets for JavaScript, Python, Bash, HTML, CSS, SQL, Rust, Go, and JSON with 1-click copy.
+- **Image Galleries**: High-resolution image blocks with GridFS cloud persistence.
+- **Web Bookmark Links**: Ingest URL links with domain previews and favicons.
 - **File Attachments**: Upload supplementary documents directly to your private cloud storage.
+
+Step 3: Smart Multimodal Clipboard Ingestion (<kbd>Ctrl</kbd> + <kbd>V</kbd>)
+Never slow down to configure block types manually. Press <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere on the canvas:
+1. **Screenshots & Images**: Paste directly from the Snipping Tool, <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>, or browser clipboard. OrganizeUp uploads the image to MongoDB GridFS and creates a dedicated Image block automatically.
+2. **Note-Adjacent Image Insertion**: If you paste an image while actively editing a Note block, OrganizeUp automatically inserts the new Image block directly underneath the active note instead of placing it at the bottom of the canvas!
+3. **Task Lists & Bullet Points**: Pasting multiline text formatted with dashes, bullet points, numbers, or \`- [ ]\` checkboxes automatically parses and creates an Interactive Checklist.
+4. **Code Snippets**: Automatically detects code syntax (JavaScript, TypeScript, Python, HTML, CSS, SQL, Rust, Go, Shell, JSON) and creates a syntax-highlighted Code block.
+5. **Web URLs**: Pasting any link creates a Bookmark Link block with favicon and domain preview.
+6. **Smart-Paste Notification with Undo**: A floating badge confirms the ingested block type with an instant 1-click **Undo** button to revert if needed.
+
+Step 4: In-Block Pasting & Drag-and-Drop
+- **Checklist Blocks**: Paste multi-line text directly into a Todo block to bulk-add multiple items in a single action.
+- **Image Blocks**: Drag and drop image files directly onto the drop zone or paste images directly into the block.
+
+Step 5: Custom Section Banners & Pexels Discovery
+Personalize your section workspace with a hero header banner displayed on the section page and across the Sections gallery cards:
+1. Click **Change Banner** in the section header.
+2. Select your preferred banner source:
+   - **Upload Custom File**: Upload personal PNG, JPG, or WebP images directly to MongoDB GridFS.
+   - **Web Image Address**: Paste any direct public image URL.
+   - **Auto-Discovery via Pexels API**: When \`PEXELS_API_KEY\` is configured, OrganizeUp automatically searches and suggests high-definition royalty-free covers matching your section title, complete with sleek gradient fallbacks.
+3. Update or remove the banner at any time.
         `,
+        callouts: [
+          {
+            type: 'tip',
+            title: 'Instant Screenshot Ingestion',
+            text: 'Capture any diagram or code snippet with Win+Shift+S (or Cmd+Shift+4) and hit Ctrl+V in your Custom Section. If you are typing inside a Note block, the screenshot will conveniently appear right below your note!',
+          },
+        ],
+        quickLinks: [
+          { label: 'Drag-and-Drop Kanban Boards', targetId: 'kanban' },
+          { label: 'Global Shortcuts & Fast Ingestion', targetId: 'shortcuts' },
+        ],
       },
       {
         id: 'kanban',
@@ -336,26 +409,37 @@ Step 2: Managing Task Cards
       {
         id: 'shortcuts',
         title: 'Global Shortcuts & Fast Ingestion',
-        summary: 'Use keyboard shortcuts anywhere to capture thoughts and links.',
+        summary: 'Use keyboard shortcuts anywhere to capture thoughts, media, and links.',
         badge: 'Shortcuts',
-        readTime: '2 min read',
+        readTime: '3 min read',
         content: `
 ### Frictionless Knowledge Ingestion
-Capture valuable articles and videos in seconds without interrupting your workflow.
+Capture valuable articles, videos, and screenshots in seconds without interrupting your workflow.
 
 Step 1: Keyboard Shortcuts Reference
 | Shortcut | Action | Scope |
 |---|---|---|
 | <kbd>Ctrl</kbd> + <kbd>K</kbd> | Open Quick Capture Modal | Global |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Instant Quick Capture | Global |
+| <kbd>Ctrl</kbd> + <kbd>V</kbd> | Smart Multimodal Clipboard Ingestion | Custom Sections Canvas |
 | <kbd>/</kbd> | Focus Search Bar | Explore & Docs |
 | <kbd>Esc</kbd> | Close Modals & Overlays | Global |
 
-Step 2: Ingesting Links
+Step 2: Smart Clipboard Ingestion in Sections
+Press <kbd>Ctrl</kbd> + <kbd>V</kbd> inside any Custom Section to automatically classify and insert screenshots, multi-line checklists, code snippets, links, or notes without clicking any menus.
+
+Step 3: Quick Capture Anywhere
 1. Press <kbd>Ctrl</kbd> + <kbd>K</kbd> anywhere in the application.
 2. Paste any URL (article, YouTube video, PDF link, social post).
 3. OrganizeUp automatically fetches metadata, titles, and thumbnails, saving the item into your **Vault & Captures** library.
         `,
+        callouts: [
+          {
+            type: 'tip',
+            title: 'Fast Navigation Tip',
+            text: 'Press "/" from anywhere in Explore or Docs to immediately jump your focus to the search bar.',
+          },
+        ],
       },
       {
         id: 'social-embeds',
