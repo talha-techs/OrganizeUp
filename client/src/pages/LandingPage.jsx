@@ -15,8 +15,9 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 import Footer from '../components/layout/Footer';
 import TiltCard from '../components/ui/TiltCard';
 import { getDocsUrl } from '../utils/docs';
+import lazyWithRetry from '../utils/lazyWithRetry';
 
-const LandingHero3D = lazy(() => import('../components/landing/LandingHero3D'));
+const LandingHero3D = lazyWithRetry(() => import('../components/landing/LandingHero3D'), 'LandingHero3D');
 
 // -- Animation Variants --
 const containerVariants = {

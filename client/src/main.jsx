@@ -8,6 +8,49 @@ import { ThemeProvider } from './theme/ThemeContext';
 import App from './App';
 import './index.css';
 
+// ── Automatic Deployment Recovery ──────────────────────────────────────────
+// When a new build is deployed, old hashed chunks are removed from the server.
+// These listeners ensure open tabs seamlessly reload and fetch the fresh assets
+// instead of crashing into an ErrorBoundary.
+
+// 1. Vite's official event fired on dynamic module preload/fetch failure
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  const lastReload = Number(sessionStorage.getItem('last_chunk_preload_reload') || 0);
+  // Debounce to at most once per 10s to avoid reload loops if offline
+  if (Date.now() - lastReload > 10000) {
+    sessionStorage.setItem('last_chunk_preload_reload', String(Date.now()));
+    window.location.reload();
+  }
+});
+
+// 2. Service Worker controller change (PWA autoUpdate activated new build)
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+}
+
+// 3. Global unhandled chunk import error catcher
+window.addEventListener('error', (event) => {
+  const msg = event?.message || '';
+  if (
+    /Failed to fetch dynamically imported module/i.test(msg) ||
+    /error loading dynamically imported module/i.test(msg) ||
+    /Importing a module script failed/i.test(msg)
+  ) {
+    const lastReload = Number(sessionStorage.getItem('last_chunk_preload_reload') || 0);
+    if (Date.now() - lastReload > 10000) {
+      sessionStorage.setItem('last_chunk_preload_reload', String(Date.now()));
+      window.location.reload();
+    }
+  }
+});
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>

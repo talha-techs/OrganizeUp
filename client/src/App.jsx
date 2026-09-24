@@ -10,14 +10,15 @@ import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
 import { getDocsUrl } from './utils/docs';
+import lazyWithRetry from './utils/lazyWithRetry';
 
-// Public pages (lazy-loaded)
-const LandingPage = lazy(() => import('./pages/LandingPage'));
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
-const SignupPage = lazy(() => import('./pages/auth/SignupPage'));
-const GoogleSuccess = lazy(() => import('./pages/auth/GoogleSuccess'));
-const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
-const InviteLandingPage = lazy(() => import('./pages/InviteLandingPage'));
+// Public pages (lazy-loaded with auto-retry on new deployments)
+const LandingPage = lazyWithRetry(() => import('./pages/LandingPage'), 'LandingPage');
+const LoginPage = lazyWithRetry(() => import('./pages/auth/LoginPage'), 'LoginPage');
+const SignupPage = lazyWithRetry(() => import('./pages/auth/SignupPage'), 'SignupPage');
+const GoogleSuccess = lazyWithRetry(() => import('./pages/auth/GoogleSuccess'), 'GoogleSuccess');
+const DocsPage = lazyWithRetry(() => import('./pages/docs/DocsPage'), 'DocsPage');
+const InviteLandingPage = lazyWithRetry(() => import('./pages/InviteLandingPage'), 'InviteLandingPage');
 
 const WorkspaceLegacyRedirect = () => {
   const { id } = useParams();
@@ -38,25 +39,25 @@ const DocsRedirect = () => {
   );
 };
 
-// Protected pages (lazy-loaded — excluded from initial bundle)
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const BooksPage = lazy(() => import('./pages/BooksPage'));
-const BookDetailPage = lazy(() => import('./pages/BookDetailPage'));
-const CoursesPage = lazy(() => import('./pages/CoursesPage'));
-const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage'));
-const ToolsPage = lazy(() => import('./pages/ToolsPage'));
-const ToolDetailPage = lazy(() => import('./pages/ToolDetailPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const AdminPage = lazy(() => import('./pages/AdminPage'));
-const ExplorePage = lazy(() => import('./pages/ExplorePage'));
-const SectionsPage = lazy(() => import('./pages/SectionsPage'));
-const SectionDetailPage = lazy(() => import('./pages/SectionDetailPage'));
-const YouTubePlaylistsPage = lazy(() => import('./pages/YouTubePlaylistsPage'));
-const YouTubePlaylistDetailPage = lazy(() => import('./pages/YouTubePlaylistDetailPage'));
-const SavedLibraryPage = lazy(() => import('./pages/SavedLibraryPage'));
-const TelegramLibrary = lazy(() => import('./pages/telegram/TelegramLibrary'));
-const DiscordLibrary = lazy(() => import('./pages/discord/DiscordLibrary'));
-const CapturesPage = lazy(() => import('./pages/captures/CapturesPage'));
+// Protected pages (lazy-loaded with auto-retry on new deployments)
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'), 'Dashboard');
+const BooksPage = lazyWithRetry(() => import('./pages/BooksPage'), 'BooksPage');
+const BookDetailPage = lazyWithRetry(() => import('./pages/BookDetailPage'), 'BookDetailPage');
+const CoursesPage = lazyWithRetry(() => import('./pages/CoursesPage'), 'CoursesPage');
+const CourseDetailPage = lazyWithRetry(() => import('./pages/CourseDetailPage'), 'CourseDetailPage');
+const ToolsPage = lazyWithRetry(() => import('./pages/ToolsPage'), 'ToolsPage');
+const ToolDetailPage = lazyWithRetry(() => import('./pages/ToolDetailPage'), 'ToolDetailPage');
+const ProfilePage = lazyWithRetry(() => import('./pages/ProfilePage'), 'ProfilePage');
+const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'), 'AdminPage');
+const ExplorePage = lazyWithRetry(() => import('./pages/ExplorePage'), 'ExplorePage');
+const SectionsPage = lazyWithRetry(() => import('./pages/SectionsPage'), 'SectionsPage');
+const SectionDetailPage = lazyWithRetry(() => import('./pages/SectionDetailPage'), 'SectionDetailPage');
+const YouTubePlaylistsPage = lazyWithRetry(() => import('./pages/YouTubePlaylistsPage'), 'YouTubePlaylistsPage');
+const YouTubePlaylistDetailPage = lazyWithRetry(() => import('./pages/YouTubePlaylistDetailPage'), 'YouTubePlaylistDetailPage');
+const SavedLibraryPage = lazyWithRetry(() => import('./pages/SavedLibraryPage'), 'SavedLibraryPage');
+const TelegramLibrary = lazyWithRetry(() => import('./pages/telegram/TelegramLibrary'), 'TelegramLibrary');
+const DiscordLibrary = lazyWithRetry(() => import('./pages/discord/DiscordLibrary'), 'DiscordLibrary');
+const CapturesPage = lazyWithRetry(() => import('./pages/captures/CapturesPage'), 'CapturesPage');
 
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
