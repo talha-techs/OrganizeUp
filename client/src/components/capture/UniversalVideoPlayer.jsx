@@ -7,6 +7,10 @@ import {
   IoSettingsOutline,
   IoCheckmarkOutline,
   IoChevronDownOutline,
+  IoOpenOutline,
+  IoPlay,
+  IoCopyOutline,
+  IoVideocamOutline,
 } from 'react-icons/io5';
 
 /**
@@ -21,16 +25,30 @@ import {
  *   3. For HLS (.m3u8), uses hls.js with the same proxy-fallback logic.
  *   4. Quality selection: defaults to 720p (primary) or 480p (fallback) for fast start & low bandwidth,
  *      with full user choice to switch to highest available (1080p, 4K) or Auto.
+ *   5. For non-embeddable video sources, displays a rich video preview & external launcher
+ *      card to avoid broken iframes and ERR_CONNECTION_RESET errors.
  */
 const UniversalVideoPlayer = ({
   src,
   poster,
   title = 'Video Player',
   embedUrl,
+  sourceUrl,
+  platform,
   className = '',
   autoPlay = false,
   forceProxy = false,
 }) => {
+  const targetUrl = sourceUrl || embedUrl || src || '';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = (e) => {
+    e.stopPropagation();
+    if (!targetUrl) return;
+    navigator.clipboard.writeText(targetUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const retryCountRef = useRef(0);
@@ -150,16 +168,60 @@ const UniversalVideoPlayer = ({
     if (!url || typeof url !== 'string') return false;
     // If it's already a proxy URL, it's direct
     if (url.startsWith('/api/captures/stream')) return true;
+    if (url.startsWith('blob:') || url.startsWith('data:video/')) return true;
+    // Known non-direct video sites (web pages)
+    if (url.includes('pmvhaven.com')) return false;
     // Check for known video file extensions or video CDN patterns
     if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url)) return true;
     if (url.includes('video.twimg.com')) return true;
     if (url.includes('.m3u8')) return true;
-    if (url.includes('fbcdn.net') && url.includes('video')) return true;
+    if (url.includes('fbcdn.net') && (url.includes('video') || url.includes('/v/'))) return true;
     return false;
   };
 
-  // Determine if we should use the video element or an iframe embed
+  // Check if an embedUrl is actually a legitimate iframe player that can be embedded
+  const isEmbeddableUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim().toLowerCase();
+
+    // Explicitly blocked / non-embeddable sites (cause ERR_CONNECTION_RESET, CSP violations, or broken iframe pages)
+    if (
+      trimmed.includes('pmvhaven.com') ||
+      trimmed.includes('t.co/') ||
+      trimmed.includes('bit.ly/')
+    ) {
+      return false;
+    }
+
+    // Standard trusted embed providers
+    if (
+      trimmed.includes('youtube.com/embed') ||
+      trimmed.includes('youtube-nocookie.com/embed') ||
+      trimmed.includes('player.vimeo.com/video') ||
+      trimmed.includes('facebook.com/plugins/video.php') ||
+      trimmed.includes('instagram.com/reel/') ||
+      trimmed.includes('instagram.com/p/') ||
+      trimmed.includes('tiktok.com/embed') ||
+      trimmed.includes('loom.com/embed') ||
+      trimmed.includes('platform.twitter.com/embed') ||
+      trimmed.includes('linkedin.com/embed') ||
+      trimmed.includes('dailymotion.com/embed') ||
+      trimmed.includes('player.twitch.tv') ||
+      trimmed.includes('streamable.com/e') ||
+      trimmed.includes('streamable.com/o') ||
+      trimmed.includes('wistia.net/embed') ||
+      trimmed.includes('soundcloud.com/player') ||
+      trimmed.includes('open.spotify.com/embed')
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Determine if we should use the video element, an iframe embed, or an external video card
   const hasDirect = isDirectVideoUrl(src);
+  const canEmbed = isEmbeddableUrl(embedUrl);
   const effectiveSrc = getStreamUrl(src, useProxy);
 
   // Cleanup HLS instance
@@ -328,10 +390,10 @@ const UniversalVideoPlayer = ({
     setUseProxy((prev) => !prev);
   };
 
-  // Render iframe embed fallback if embedUrl is provided and no direct playable stream
-  if ((!src || !hasDirect) && embedUrl) {
+  // 1. Render iframe embed fallback if embedUrl is provided and is a valid embeddable player
+  if ((!src || !hasDirect) && canEmbed && embedUrl) {
     return (
-      <div className={`w-full bg-black relative aspect-video overflow-hidden ${className}`}>
+      <div className={`w-full bg-black relative aspect-video overflow-hidden group ${className}`}>
         <iframe
           src={embedUrl}
           className="w-full h-full border-0"
@@ -341,10 +403,117 @@ const UniversalVideoPlayer = ({
           title={title}
           loading="lazy"
         />
+        {/* Floating External Launcher shortcut for iframes */}
+        {targetUrl && (
+          <a
+            href={targetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide shadow-lg backdrop-blur-md bg-black/75 hover:bg-black text-gray-200 border border-white/20 hover:border-white/40"
+            title="Open original video page in new tab"
+          >
+            <span>Open</span>
+            <IoOpenOutline size={12} />
+          </a>
+        )}
       </div>
     );
   }
 
+  // 2. If video source is non-direct and non-embeddable:
+  // Render a responsive, high-polish Video Preview & External Stream Launcher Card instead of a broken iframe or broken video tag
+  if (!hasDirect) {
+    if (!targetUrl && !poster) return null;
+
+    const getHostName = (url) => {
+      try {
+        if (!url) return '';
+        const parsed = new URL(url);
+        return parsed.hostname.replace(/^www\./, '');
+      } catch {
+        return '';
+      }
+    };
+    const hostLabel = getHostName(targetUrl) || 'Host Website';
+
+    return (
+      <div
+        onClick={() => {
+          if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
+        }}
+        className={`w-full bg-neutral-950 relative aspect-video overflow-hidden group cursor-pointer select-none border-b border-subtle ${className}`}
+      >
+        {/* High-res Poster Backdrop */}
+        {poster ? (
+          <img
+            src={poster}
+            alt={title}
+            className="w-full h-full object-cover filter brightness-[0.70] group-hover:scale-105 group-hover:brightness-[0.82] transition-all duration-700 ease-out"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 flex items-center justify-center">
+            <IoVideocamOutline size={48} className="text-neutral-700" />
+          </div>
+        )}
+
+        {/* Ambient Dark Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/60 group-hover:via-black/30 transition-colors duration-500" />
+
+        {/* Top Badges: Source Type & Copy Link */}
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10 pointer-events-none">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide backdrop-blur-md bg-black/65 border border-white/15 text-white/90 shadow-md">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <span>{hostLabel !== 'Host Website' ? `${hostLabel} Stream` : 'External Video'}</span>
+          </div>
+
+          {targetUrl && (
+            <div className="pointer-events-auto flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide shadow-md transition-all cursor-pointer backdrop-blur-md bg-black/65 hover:bg-black/90 text-gray-200 border border-white/15 hover:border-white/30 active:scale-95"
+                title="Copy video link"
+              >
+                {copied ? <IoCheckmarkOutline size={12} className="text-emerald-400" /> : <IoCopyOutline size={12} />}
+                <span>{copied ? 'Copied' : 'Copy Link'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Center Play Button & Launch Details */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
+          <div className="w-14 h-14 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center shadow-2xl shadow-rose-950/80 transform group-hover:scale-110 active:scale-95 transition-all duration-300 ring-4 ring-rose-500/25 backdrop-blur-sm mb-3">
+            <IoPlay size={26} className="ml-1 text-white" />
+          </div>
+
+          <h4 className="text-sm font-semibold text-white drop-shadow-md line-clamp-1 max-w-[90%] mb-1">
+            {title}
+          </h4>
+
+          <p className="text-[11px] text-gray-300/90 drop-shadow line-clamp-1 max-w-[85%] mb-4">
+            Direct in-app embed restricted by {hostLabel}. Click to stream externally.
+          </p>
+
+          {targetUrl && (
+            <a
+              href={targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold tracking-wide shadow-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-rose-400/30"
+            >
+              <span>Watch on {hostLabel}</span>
+              <IoOpenOutline size={14} />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Direct Playable Stream:
   // If no src at all, render nothing
   if (!src) return null;
 

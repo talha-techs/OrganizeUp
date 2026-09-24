@@ -226,6 +226,14 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
+  // Non-embeddable video host (direct web page without dedicated iframe player)
+  if (/(?:pmvhaven\.com)/i.test(trimmed)) {
+    return {
+      platform: "web",
+      mediaType: "video",
+    };
+  }
+
   // Default web article/page
   return {
     platform: "web",
@@ -468,7 +476,12 @@ const fetchUrlMetadata = async (url) => {
           if (videoObj.contentUrl && typeof videoObj.contentUrl === "string") {
             directVideoUrl = videoObj.contentUrl.trim().replace(/&amp;/g, "&");
           }
-          if (videoObj.embedUrl && typeof videoObj.embedUrl === "string" && !detected.embedUrl) {
+          if (
+            videoObj.embedUrl &&
+            typeof videoObj.embedUrl === "string" &&
+            !detected.embedUrl &&
+            !/pmvhaven\.com/i.test(videoObj.embedUrl)
+          ) {
             detected.embedUrl = videoObj.embedUrl.trim().replace(/&amp;/g, "&");
           }
           const vAuthor =
@@ -507,7 +520,12 @@ const fetchUrlMetadata = async (url) => {
         const ogPlayerMatch =
           html.match(/<meta[^>]+name=["']twitter:player["'][^>]+content=["']([^"']+)["']/i) ||
           html.match(/<meta[^>]+property=["']twitter:player["'][^>]+content=["']([^"']+)["']/i);
-        if (ogPlayerMatch && !detected.embedUrl && !directVideoUrl) {
+        if (
+          ogPlayerMatch &&
+          !detected.embedUrl &&
+          !directVideoUrl &&
+          !/pmvhaven\.com/i.test(ogPlayerMatch[1])
+        ) {
           const playerUrl = ogPlayerMatch[1].trim().replace(/&amp;/g, "&");
           if (/^https?:\/\//i.test(playerUrl)) {
             detected.embedUrl = playerUrl;

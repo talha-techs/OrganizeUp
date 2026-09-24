@@ -55,11 +55,12 @@ const isVideoUrl = (url) =>
 // Returns false for embed/plugin page URLs (e.g. facebook.com/plugins/video.php)
 const isDirectVideoFile = (url) => {
   if (!url || typeof url !== 'string') return false;
-  // Reject known embed/plugin page URLs
+  // Reject known embed/plugin page URLs and non-direct video sites
   if (url.includes('facebook.com/plugins/') || url.includes('youtube.com/embed/') ||
       url.includes('instagram.com/') || url.includes('linkedin.com/embed/') ||
       url.includes('platform.twitter.com/embed/') || url.includes('tiktok.com/embed/') ||
-      url.includes('player.vimeo.com/') || url.includes('loom.com/embed/')) {
+      url.includes('player.vimeo.com/') || url.includes('loom.com/embed/') ||
+      url.includes('pmvhaven.com/')) {
     return false;
   }
   return isVideoUrl(url);
@@ -532,6 +533,8 @@ const CapturesPage = () => {
                         poster={capture.thumbnailUrl}
                         title={capture.title || 'Facebook Video'}
                         embedUrl={capture.embedUrl}
+                        sourceUrl={capture.sourceUrl || capture.url}
+                        platform="facebook"
                         className="border-b border-subtle"
                       />
                     ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
@@ -637,6 +640,8 @@ const CapturesPage = () => {
                       poster={capture.thumbnailUrl}
                       title={capture.title || 'Video Player'}
                       embedUrl={capture.embedUrl}
+                      sourceUrl={capture.sourceUrl || capture.url}
+                      platform={capture.platform}
                       className="border-b border-subtle"
                     />
                   ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
@@ -806,6 +811,8 @@ const CapturesPage = () => {
                         poster={capture.thumbnailUrl}
                         title={capture.title || 'X Post Video'}
                         embedUrl={capture.embedUrl}
+                        sourceUrl={capture.sourceUrl || capture.url}
+                        platform="twitter"
                         className="border-b border-subtle"
                       />
                     ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
