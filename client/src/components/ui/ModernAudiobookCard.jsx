@@ -29,7 +29,19 @@ const ModernAudiobookCard = ({
   isSaving = false,
 }) => {
   const [imageError, setImageError] = useState(false);
-  const isSaved = !!book.isSaved;
+  const [justSaved, setJustSaved] = useState(false);
+  const isSaved = !!book.isSaved || justSaved;
+
+  const handleSaveClick = async (e) => {
+    e?.stopPropagation?.();
+    if (isSaved || isSaving) return;
+    try {
+      await onSave(book);
+      setJustSaved(true);
+    } catch (err) {
+      // error handled by parent toast
+    }
+  };
 
   const topicStyle =
     TOPIC_BADGES[book.topic] || TOPIC_BADGES.Default;
@@ -121,19 +133,30 @@ const ModernAudiobookCard = ({
           </button>
 
           <button
-            onClick={() => onSave(book)}
+            onClick={handleSaveClick}
             disabled={isSaving || isSaved}
-            className={`p-2 rounded-xl text-xs font-medium border transition-all active:scale-95 cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all ${
               isSaved
-                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                : 'bg-surface text-secondary border-subtle hover:text-primary hover:bg-surface-raised'
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 cursor-default'
+                : 'bg-surface text-secondary border-subtle hover:text-primary hover:bg-surface-raised active:scale-95 cursor-pointer'
             }`}
-            title={isSaved ? 'Saved in library' : 'Save to my library'}
+            title={isSaved ? 'Saved in personal library' : 'Save to my library'}
           >
-            {isSaved ? (
-              <IoCheckmarkCircle size={15} className="text-emerald-400" />
+            {isSaving ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : isSaved ? (
+              <>
+                <IoCheckmarkCircle size={15} className="text-emerald-400" />
+                <span>Saved</span>
+              </>
             ) : (
-              <IoBookmarkOutline size={15} />
+              <>
+                <IoBookmarkOutline size={15} />
+                <span>Save</span>
+              </>
             )}
           </button>
         </div>

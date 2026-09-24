@@ -73,7 +73,7 @@ const bookSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["local", "drive", "librivox"],
+      enum: ["local", "drive", "librivox", "youtube"],
       default: "local",
     },
     driveLink: {

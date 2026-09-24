@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   IoClose,
@@ -7,6 +7,7 @@ import {
   IoLogoYoutube,
   IoTimeOutline,
   IoSparklesOutline,
+  IoCheckmarkCircle,
 } from 'react-icons/io5';
 
 const YouTubeAudioPlayerModal = ({
@@ -17,7 +18,18 @@ const YouTubeAudioPlayerModal = ({
   isSaving = false,
 }) => {
   const videoId = book?.videoId || book?.id;
-  const isSaved = !!book?.isSaved;
+  const [justSaved, setJustSaved] = useState(false);
+  const isSaved = !!book?.isSaved || justSaved;
+
+  const handleSave = async () => {
+    if (isSaved || isSaving) return;
+    try {
+      await onSave(book);
+      setJustSaved(true);
+    } catch (err) {
+      // Handled by parent toast
+    }
+  };
 
   // Update browser tab title dynamically while modal is active
   useEffect(() => {
@@ -69,21 +81,29 @@ const YouTubeAudioPlayerModal = ({
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onSave(book)}
+                onClick={handleSave}
                 disabled={isSaving || isSaved}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                   isSaved
-                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                    : 'bg-surface text-secondary border-subtle hover:text-primary hover:bg-surface-raised'
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 cursor-default'
+                    : 'bg-surface text-secondary border-subtle hover:text-primary hover:bg-surface-raised active:scale-95 cursor-pointer'
                 }`}
+                title={isSaved ? 'Saved in personal library' : 'Save to my library'}
               >
-                {isSaved ? (
+                {isSaving ? (
                   <>
-                    <IoBookmark size={14} className="text-emerald-400" /> Saved
+                    <span className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : isSaved ? (
+                  <>
+                    <IoCheckmarkCircle size={15} className="text-emerald-400" />
+                    <span>Saved</span>
                   </>
                 ) : (
                   <>
-                    <IoBookmarkOutline size={14} /> Save to Library
+                    <IoBookmarkOutline size={14} />
+                    <span>Save to Library</span>
                   </>
                 )}
               </button>

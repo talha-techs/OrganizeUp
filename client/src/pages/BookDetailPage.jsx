@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   IoArrowBack, IoPlayCircle, IoPauseCircle, IoCheckmarkCircle,
   IoBookOutline, IoSaveOutline, IoMusicalNote,
   IoPlaySkipBack, IoPlaySkipForward, IoVolumeMediumOutline, IoTrashOutline,
-  IoBookmark, IoBookmarkOutline, IoCloseOutline,
+  IoBookmark, IoBookmarkOutline, IoCloseOutline, IoCreateOutline,
 } from 'react-icons/io5';
 import { fetchBook, fetchBookProgress, updateVideoProgress, updateReadingProgress, clearCurrentBook, removeAudioFromBook } from '../redux/slices/bookSlice';
 import { addToLibrary, removeFromLibrary } from '../redux/slices/librarySlice';
@@ -28,6 +28,9 @@ const BookDetailPage = () => {
   const [selectedVideo, setSelectedVideo] = useState(0);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [note, setNote] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
+  const [currentNote, setCurrentNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const [completedVideoIndex, setCompletedVideoIndex] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -185,6 +188,31 @@ const BookDetailPage = () => {
         (vp.bookId === id || String(vp.bookId?._id || vp.bookId) === String(id)) &&
         vp.videoIndex === videoIndex
     );
+  };
+
+  // Sync active note when selected video changes or user data loads
+  useEffect(() => {
+    const existing = getVideoProgress(selectedVideo);
+    setCurrentNote(existing?.note || '');
+  }, [selectedVideo, user?.videoProgress, id]);
+
+  const handleSaveNote = async () => {
+    setIsSavingNote(true);
+    const existing = getVideoProgress(selectedVideo);
+    await dispatch(
+      updateVideoProgress({
+        bookId: id,
+        progressData: {
+          videoIndex: selectedVideo,
+          progress: existing?.progress || 0,
+          completed: !!existing?.completed,
+          note: currentNote,
+        },
+      })
+    );
+    dispatch(getMe());
+    setIsSavingNote(false);
+    toast.success('Notes saved!');
   };
 
   const handleVideoEnd = (videoIndex) => {
@@ -388,12 +416,26 @@ const BookDetailPage = () => {
                       progress={getVideoProgress(selectedVideo)?.progress || 0}
                       showLabel
                     />
-                    <div className="flex gap-3 mt-3">
+                    <div className="flex flex-wrap items-center gap-3 mt-3">
                       <button
                         onClick={() => handleVideoEnd(selectedVideo)}
                         className="btn-primary text-xs py-2 px-4 cursor-pointer"
                       >
                         <IoCheckmarkCircle size={14} /> Mark Complete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowNotes((prev) => !prev)}
+                        className={`btn-secondary text-xs py-2 px-4 inline-flex items-center gap-2 cursor-pointer transition-colors ${
+                          showNotes ? 'border-accent text-accent bg-accent-subtle' : ''
+                        }`}
+                        title={showNotes ? 'Collapse notes' : 'Open notes editor'}
+                      >
+                        <IoCreateOutline size={15} />
+                        {showNotes ? 'Hide Notes' : currentNote ? 'Notes (Saved)' : 'Take Notes'}
+                        {currentNote && !showNotes && (
+                          <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -407,6 +449,73 @@ const BookDetailPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Notes Section - Hidden by default, toggled via Take Notes */}
+            <AnimatePresence>
+              {showNotes && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, y: -10 }}
+                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -10 }}
+                  transition={{ duration: 0.25 }}
+                  className="mt-4 glass-card p-4 sm:p-5 border border-subtle overflow-hidden"
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-subtle mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center text-accent">
+                        <IoCreateOutline size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-primary font-display">
+                          Notes & Reflections
+                        </h4>
+                        <p className="text-[11px] text-muted truncate max-w-[200px] sm:max-w-xs">
+                          {currentBook.videos[selectedVideo]?.title || `Video ${selectedVideo + 1}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleSaveNote}
+                        disabled={isSavingNote}
+                        className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        {isSavingNote ? (
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <IoSaveOutline size={13} />
+                        )}
+                        <span>{isSavingNote ? 'Saving...' : 'Save Notes'}</span>
+                      </button>
+                      <button
+                        onClick={() => setShowNotes(false)}
+                        className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+                        title="Hide notes section"
+                      >
+                        <IoCloseOutline size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={currentNote}
+                    onChange={(e) => setCurrentNote(e.target.value)}
+                    placeholder="Write your notes, key takeaways, and reflections while listening..."
+                    className="input-dark w-full min-h-[140px] resize-y text-sm font-sans leading-relaxed p-3 rounded-xl focus:border-accent"
+                    rows={5}
+                  />
+
+                  <div className="flex items-center justify-between text-xs text-muted mt-2 pt-1">
+                    <span>
+                      {currentNote ? `${currentNote.length} characters` : 'No notes written yet'}
+                    </span>
+                    <span className="text-secondary/60">
+                      Notes are automatically saved to your private profile
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Video List */}
@@ -668,6 +777,20 @@ const BookDetailPage = () => {
                         </div>
                         <span className="text-xs text-muted w-9 text-right">{Math.round(audioVolume * 100)}%</span>
                       </div>
+
+                      {/* Take Notes toggle for audio */}
+                      <div className="mt-4 pt-4 border-t border-subtle flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setShowNotes((prev) => !prev)}
+                          className={`btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+                            showNotes ? 'border-accent text-accent bg-accent-subtle' : ''
+                          }`}
+                        >
+                          <IoCreateOutline size={14} />
+                          {showNotes ? 'Hide Notes' : currentNote ? 'Notes (Saved)' : 'Take Notes'}
+                        </button>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -678,6 +801,73 @@ const BookDetailPage = () => {
                   </div>
                 )}
               </div>
+
+              {/* Notes Section for Audio */}
+              <AnimatePresence>
+                {showNotes && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -10 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-4 glass-card p-4 sm:p-5 border border-subtle overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-subtle mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center text-accent">
+                          <IoCreateOutline size={16} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-primary font-display">
+                            Audiobook Notes & Reflections
+                          </h4>
+                          <p className="text-[11px] text-muted truncate max-w-[200px] sm:max-w-xs">
+                            {currentBook.audioFiles?.[currentTrackIdx]?.title || currentBook.title}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSaveNote}
+                          disabled={isSavingNote}
+                          className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          {isSavingNote ? (
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <IoSaveOutline size={13} />
+                          )}
+                          <span>{isSavingNote ? 'Saving...' : 'Save Notes'}</span>
+                        </button>
+                        <button
+                          onClick={() => setShowNotes(false)}
+                          className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+                          title="Hide notes section"
+                        >
+                          <IoCloseOutline size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={currentNote}
+                      onChange={(e) => setCurrentNote(e.target.value)}
+                      placeholder="Write your notes, key takeaways, and reflections while listening..."
+                      className="input-dark w-full min-h-[140px] resize-y text-sm font-sans leading-relaxed p-3 rounded-xl focus:border-accent"
+                      rows={5}
+                    />
+
+                    <div className="flex items-center justify-between text-xs text-muted mt-2 pt-1">
+                      <span>
+                        {currentNote ? `${currentNote.length} characters` : 'No notes written yet'}
+                      </span>
+                      <span className="text-secondary/60">
+                        Notes are automatically saved to your private profile
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Track list */}

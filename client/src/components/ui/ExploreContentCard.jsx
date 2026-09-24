@@ -6,6 +6,7 @@ import {
   IoChatbubbleOutline,
   IoAddCircleOutline,
   IoRemoveCircleOutline,
+  IoCheckmarkCircle,
 } from 'react-icons/io5';
 import DefaultResourceCover from './DefaultResourceCover';
 
@@ -243,18 +244,13 @@ const ExploreContentCard = React.memo(
 
                 {!isOwn &&
                   (isSaved ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveFromLibrary?.(item._id);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 hover:text-red-400 hover:bg-red-500/10 border border-emerald-500/20 transition-colors cursor-pointer"
-                      title="Remove from library"
+                    <span
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 select-none cursor-default"
+                      title="Saved in your personal library"
                     >
-                      <IoRemoveCircleOutline size={15} />
+                      <IoCheckmarkCircle size={15} />
                       <span>Saved</span>
-                    </button>
+                    </span>
                   ) : (
                     <button
                       type="button"

@@ -252,10 +252,12 @@ const ExplorePage = () => {
     const result = await dispatch(saveModernAudiobook(book));
     setSavingAudioId(null);
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Modern audiobook saved to your library!');
+      toast.success('Audiobook saved to your personal library!');
       dispatch(fetchLibrary());
+      return result.payload;
     } else {
       toast.error(result.payload || 'Failed to save');
+      throw new Error(result.payload || 'Failed to save');
     }
   };
 

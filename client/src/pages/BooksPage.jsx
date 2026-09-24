@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IoBookOutline, IoVideocamOutline, IoDocumentTextOutline, IoMusicalNotesOutline, IoAdd, IoCloudDownloadOutline, IoGlobeOutline } from 'react-icons/io5';
+import { IoBookOutline, IoVideocamOutline, IoDocumentTextOutline, IoMusicalNotesOutline, IoLogoYoutube, IoAdd, IoCloudDownloadOutline, IoGlobeOutline } from 'react-icons/io5';
 import { fetchBooks, deleteBook } from '../redux/slices/bookSlice';
 import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
@@ -39,12 +39,22 @@ const BooksPage = () => {
 
   const tabs = [
     { key: 'all', label: 'All', icon: <IoBookOutline size={16} /> },
+    { key: 'youtube', label: 'YouTube Books', icon: <IoLogoYoutube size={16} className="text-red-500" /> },
     { key: 'video', label: 'Video Books', icon: <IoVideocamOutline size={16} /> },
     { key: 'text', label: 'Text Books', icon: <IoDocumentTextOutline size={16} /> },
     { key: 'audio', label: 'Audio Books', icon: <IoMusicalNotesOutline size={16} /> },
   ];
 
-  const filteredBooks = activeTab === 'all' ? books : books.filter((b) => b.type === activeTab);
+  const isYouTubeBook = (b) =>
+    b.source === 'youtube' ||
+    (b.type === 'video' && b.videos?.some((v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId)));
+
+  const filteredBooks = books.filter((b) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'youtube') return isYouTubeBook(b);
+    if (activeTab === 'video') return b.type === 'video' && !isYouTubeBook(b);
+    return b.type === activeTab;
+  });
 
   const handleDelete = (bookId) => {
     setDeleteBookId(bookId);
@@ -136,15 +146,23 @@ const BooksPage = () => {
         >
           {activeTab === 'audio' ? (
             <IoMusicalNotesOutline className="mx-auto text-accent mb-4" size={48} />
+          ) : activeTab === 'youtube' ? (
+            <IoLogoYoutube className="mx-auto text-red-500/80 mb-4" size={48} />
           ) : (
             <IoBookOutline className="mx-auto text-muted mb-4" size={48} />
           )}
           <h3 className="text-lg font-medium text-primary mb-2">
-            {activeTab === 'audio' ? 'No audiobooks in your space yet' : 'No books yet'}
+            {activeTab === 'audio'
+              ? 'No audiobooks in your space yet'
+              : activeTab === 'youtube'
+              ? 'No YouTube books saved yet'
+              : 'No books yet'}
           </h3>
           <p className="text-sm text-secondary max-w-md mx-auto mb-5">
             {activeTab === 'audio'
               ? 'Browse thousands of free classic audiobooks from LibriVox on the Explore page and add them to your shelf with one click.'
+              : activeTab === 'youtube'
+              ? 'Browse modern bestseller audiobooks and video summaries on Explore and save them directly to your personal library.'
               : isAdmin
               ? 'Click "Add Book" to get started with video or PDF books.'
               : 'Add your own books or browse public books shared in Explore.'}
@@ -155,6 +173,13 @@ const BooksPage = () => {
               className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2"
             >
               <IoMusicalNotesOutline size={16} /> Explore LibriVox Audiobooks
+            </button>
+          ) : activeTab === 'youtube' ? (
+            <button
+              onClick={() => navigate('/explore')}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2"
+            >
+              <IoLogoYoutube size={16} className="text-red-500" /> Explore YouTube Audiobooks
             </button>
           ) : (
             <button
@@ -174,7 +199,15 @@ const BooksPage = () => {
                 title={book.title}
                 subtitle={book.author}
                 image={book.coverImage}
-                description={book.type === 'video' ? `${book.videos?.length || 0} videos` : book.type === 'text' ? 'PDF Book' : 'Audio'}
+                description={
+                  isYouTubeBook(book)
+                    ? 'YouTube Audiobook'
+                    : book.type === 'video'
+                    ? `${book.videos?.length || 0} videos`
+                    : book.type === 'text'
+                    ? 'PDF Book'
+                    : 'Audio'
+                }
                 isAdmin={isAdmin}
                 ownerId={book.addedBy}
                 visibility={book.visibility}

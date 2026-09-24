@@ -207,6 +207,20 @@ const unsaveAudiobookFromLibrary = async (req, res) => {
 
 // @desc    Get Modern Audiobooks & Book Summaries (YouTube)
 // @route   GET /api/audiobooks/modern?topic=...&search=...
+// One-time sanitation: Ensure modern audiobooks mistakenly saved as public are private
+Book.updateMany(
+  {
+    $or: [
+      { source: "youtube" },
+      { description: "Modern Audiobook & Summary" },
+    ],
+    visibility: "public",
+  },
+  { $set: { visibility: "private", source: "youtube" } }
+).catch((err) => console.warn("Audiobook visibility cleanup notice:", err.message));
+
+// @desc    Get Modern Audiobooks & Summaries (YouTube)
+// @route   GET /api/audiobooks/modern
 const getModernAudiobooks = async (req, res) => {
   try {
     const { topic = "All", search = "" } = req.query;
@@ -220,38 +234,57 @@ const getModernAudiobooks = async (req, res) => {
     // Check which videos user already saved in library
     if (req.user && data.books && data.books.length > 0) {
       try {
-        const videoIds = data.books.map((b) => b.videoId);
+        const videoIds = data.books.map((b) => b.videoId || b.id).filter(Boolean);
 
-        const existingBooks = await Book.find({
+        // 1. Check books created/owned by user
+        const userBooks = await Book.find({
+          "videos.driveFileId": { $in: videoIds },
+          addedBy: req.user._id,
+        }).select("_id videos").maxTimeMS(3000);
+
+        const savedVideoMap = new Map();
+        userBooks.forEach((b) => {
+          const vId = b.videos?.[0]?.driveFileId;
+          if (vId) savedVideoMap.set(vId, b._id);
+        });
+
+        // 2. Check books saved in UserLibrary
+        const allMatchingBooks = await Book.find({
           "videos.driveFileId": { $in: videoIds },
         }).select("_id videos").maxTimeMS(3000);
 
-        if (existingBooks.length > 0) {
-          const videoIdToBookId = {};
-          const bookObjectIds = existingBooks.map((b) => {
-            const vId = b.videos?.[0]?.driveFileId;
-            if (vId) videoIdToBookId[vId] = b._id;
-            return b._id;
-          });
+        const bookIdToVideoId = new Map();
+        const bookObjectIds = allMatchingBooks.map((b) => {
+          const vId = b.videos?.[0]?.driveFileId;
+          if (vId) bookIdToVideoId.set(b._id.toString(), vId);
+          return b._id;
+        });
 
+        if (bookObjectIds.length > 0) {
           const savedEntries = await UserLibrary.find({
             user: req.user._id,
             contentType: "book",
             contentId: { $in: bookObjectIds },
           }).maxTimeMS(3000);
 
-          const savedBookIds = new Set(savedEntries.map((e) => e.contentId.toString()));
-
-          data.books = data.books.map((b) => {
-            const dbId = videoIdToBookId[b.videoId];
-            const isSaved = dbId ? savedBookIds.has(dbId.toString()) : false;
-            return {
-              ...b,
-              isSaved,
-              dbBookId: dbId || null,
-            };
+          savedEntries.forEach((entry) => {
+            const vId = bookIdToVideoId.get(entry.contentId.toString());
+            if (vId && !savedVideoMap.has(vId)) {
+              savedVideoMap.set(vId, entry.contentId);
+            }
           });
         }
+
+        data.books = data.books.map((b) => {
+          const vId = b.videoId || b.id;
+          const isSaved = savedVideoMap.has(vId);
+          const dbId = savedVideoMap.get(vId) || null;
+          return {
+            ...b,
+            isSaved,
+            dbBookId: dbId,
+          };
+        });
       } catch (dbErr) {
         console.warn("Modern audiobooks DB check warning:", dbErr.message);
       }
@@ -264,7 +297,7 @@ const getModernAudiobooks = async (req, res) => {
   }
 };
 
-// @desc    Save a Modern Audiobook (YouTube) to user's library
+// @desc    Save a Modern Audiobook (YouTube) to user's personal library
 // @route   POST /api/audiobooks/modern/:videoId/save
 const saveModernAudiobookToLibrary = async (req, res) => {
   try {
@@ -272,8 +305,11 @@ const saveModernAudiobookToLibrary = async (req, res) => {
     const { title, author, duration, thumbnail, description } = req.body;
     const userId = req.user._id;
 
-    // Find or create Book document
-    let bookDoc = await Book.findOne({ "videos.driveFileId": videoId });
+    // Check if user already has this book saved privately
+    let bookDoc = await Book.findOne({
+      "videos.driveFileId": videoId,
+      addedBy: userId,
+    });
 
     if (!bookDoc) {
       bookDoc = await Book.create({
@@ -282,8 +318,8 @@ const saveModernAudiobookToLibrary = async (req, res) => {
         type: "video",
         description: description || "Modern Audiobook & Summary",
         coverImage: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-        source: "drive",
-        visibility: "public",
+        source: "youtube",
+        visibility: "private", // STRICTLY PRIVATE: Never published to Explore
         addedBy: userId,
         videos: [
           {
@@ -294,6 +330,13 @@ const saveModernAudiobookToLibrary = async (req, res) => {
           },
         ],
       });
+    } else {
+      // Ensure existing is private and source is youtube
+      if (bookDoc.visibility !== "private" || bookDoc.source !== "youtube") {
+        bookDoc.visibility = "private";
+        bookDoc.source = "youtube";
+        await bookDoc.save();
+      }
     }
 
     // Create UserLibrary entry
@@ -312,7 +355,7 @@ const saveModernAudiobookToLibrary = async (req, res) => {
     }
 
     res.status(201).json({
-      message: "Saved to your library",
+      message: "Saved to your personal library",
       book: bookDoc,
       libraryId: saved._id,
       isSaved: true,
