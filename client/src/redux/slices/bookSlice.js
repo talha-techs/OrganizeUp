@@ -158,6 +158,20 @@ export const fetchBookProgress = createAsyncThunk(
   },
 );
 
+export const fetchCombinedBookNotes = createAsyncThunk(
+  "books/fetchCombinedBookNotes",
+  async (bookId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/books/${bookId}/notes`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch book notes",
+      );
+    }
+  },
+);
+
 export const scanDriveFolder = createAsyncThunk(
   "books/scanDriveFolder",
   async (driveLink, { rejectWithValue }) => {
@@ -192,6 +206,8 @@ const bookSlice = createSlice({
     books: [],
     currentBook: null,
     progress: {},
+    combinedNotes: "",
+    isSavingNotes: false,
     driveScanned: null,
     isLoading: false,
     isScanningDrive: false,
@@ -204,6 +220,10 @@ const bookSlice = createSlice({
     },
     clearCurrentBook: (state) => {
       state.currentBook = null;
+      state.combinedNotes = "";
+    },
+    clearCombinedBookNotes: (state) => {
+      state.combinedNotes = "";
     },
     clearDriveScanned: (state) => {
       state.driveScanned = null;
@@ -266,8 +286,17 @@ const bookSlice = createSlice({
           readingProgress: action.payload.readingProgress,
         };
       })
-      .addCase(updateVideoProgress.fulfilled, (state, action) => {
-        // Progress is stored on user, will be refreshed via getMe
+      .addCase(fetchCombinedBookNotes.fulfilled, (state, action) => {
+        state.combinedNotes = action.payload.combinedNotes;
+      })
+      .addCase(updateVideoProgress.pending, (state) => {
+        state.isSavingNotes = true;
+      })
+      .addCase(updateVideoProgress.fulfilled, (state) => {
+        state.isSavingNotes = false;
+      })
+      .addCase(updateVideoProgress.rejected, (state) => {
+        state.isSavingNotes = false;
       })
       .addCase(updateReadingProgress.fulfilled, (state, action) => {
         // Progress is stored on user, will be refreshed via getMe
@@ -310,6 +339,10 @@ const bookSlice = createSlice({
   },
 });
 
-export const { clearBookError, clearCurrentBook, clearDriveScanned } =
-  bookSlice.actions;
+export const {
+  clearBookError,
+  clearCurrentBook,
+  clearCombinedBookNotes,
+  clearDriveScanned,
+} = bookSlice.actions;
 export default bookSlice.reducer;

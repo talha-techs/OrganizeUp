@@ -14,6 +14,7 @@ const {
   updateVideoProgress,
   updateReadingProgress,
   getBookProgress,
+  getCombinedBookNotes,
 } = require("../controllers/bookController");
 const {
   scanDriveFolder,
@@ -35,7 +36,8 @@ router.get("/audio/:fileId", protect, serveAudio);
 
 router.get("/:id", protect, getBook);
 
-// Progress routes (authenticated users)
+// Notes & Progress routes (authenticated users)
+router.get("/:id/notes", protect, getCombinedBookNotes);
 router.get("/:id/progress", protect, getBookProgress);
 router.put("/:id/video-progress", protect, updateVideoProgress);
 router.put("/:id/reading-progress", protect, updateReadingProgress);

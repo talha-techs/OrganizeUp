@@ -366,7 +366,7 @@ const deleteBook = async (req, res) => {
 // @route   PUT /api/books/:id/video-progress
 const updateVideoProgress = async (req, res) => {
   try {
-    const { videoIndex, progress, completed, note } = req.body;
+    const { videoIndex, progress, completed, note, title } = req.body;
     const user = await User.findById(req.user._id);
     const bookId = req.params.id;
 
@@ -386,16 +386,18 @@ const updateVideoProgress = async (req, res) => {
           : Math.max(existingProgress.progress || 0, progress);
       }
       existingProgress.completed = isCompleted;
-      if (note !== undefined && note.trim()) existingProgress.note = note;
+      if (note !== undefined) existingProgress.note = note;
+      if (title) existingProgress.title = title;
       existingProgress.lastWatched = new Date();
     } else {
       user.videoProgress.push({
         bookId,
         contentType: "book",
         videoIndex,
+        title: title || "",
         progress: isCompleted ? 100 : (progress || 0),
         completed: isCompleted,
-        note: note || "",
+        note: note !== undefined ? note : "",
         lastWatched: new Date(),
       });
     }
@@ -407,6 +409,50 @@ const updateVideoProgress = async (req, res) => {
     });
   } catch (error) {
     console.error("Update video progress error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Get combined sequential notes for all videos in a video book
+// @route   GET /api/books/:id/notes
+const getCombinedBookNotes = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    const user = await User.findById(req.user._id);
+    const bookIdStr = req.params.id.toString();
+    const userVideoProgress = (user?.videoProgress || []).filter(
+      (vp) => vp.bookId && vp.bookId.toString() === bookIdStr,
+    );
+
+    // Build combined notes document
+    const videos = book.videos || [];
+    const sections = [];
+
+    videos.forEach((video, index) => {
+      const vProg = userVideoProgress.find((vp) => vp.videoIndex === index);
+      const noteText = vProg?.note?.trim();
+      if (noteText) {
+        const title = video.title || `Video ${index + 1}`;
+        sections.push(`## ${index + 1}. ${title}\n\n${noteText}`);
+      }
+    });
+
+    const combinedNotes =
+      sections.length > 0
+        ? `# ${book.title} — Study Notes\n\n${sections.join("\n\n---\n\n")}`
+        : "";
+
+    res.json({
+      combinedNotes,
+      bookTitle: book.title,
+      totalNotesCount: sections.length,
+    });
+  } catch (error) {
+    console.error("Get combined book notes error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -613,4 +659,5 @@ module.exports = {
   updateVideoProgress,
   updateReadingProgress,
   getBookProgress,
+  getCombinedBookNotes,
 };

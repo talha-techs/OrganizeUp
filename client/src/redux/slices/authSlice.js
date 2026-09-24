@@ -198,7 +198,15 @@ const authSlice = createSlice({
       })
       .addCase(fetchUserStats.rejected, (state) => {
         state.isStatsLoading = false;
-      });
+      })
+      .addMatcher(
+        (action) => action.type === 'books/updateVideoProgress/fulfilled',
+        (state, action) => {
+          if (state.user && action.payload?.videoProgress) {
+            state.user.videoProgress = action.payload.videoProgress;
+          }
+        },
+      );
   },
 });
 
