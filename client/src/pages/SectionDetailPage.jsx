@@ -1107,8 +1107,10 @@ const SectionDetailPage = () => {
                   canManage={canManage}
                   canEdit={canEdit}
                   myRole={myRole}
-                  isActive={activeBlockId === block._id}
-                  onSelectBlock={(bId) => setActiveBlockId(bId)}
+                  isActive={canEdit && activeBlockId === block._id}
+                  onSelectBlock={(bId) => {
+                    if (canEdit) setActiveBlockId(bId);
+                  }}
                   remoteFocusUser={remoteFocusedBlocks[block._id]}
                   onFocusBlock={emitBlockFocus}
                   onBlurBlock={emitBlockBlur}

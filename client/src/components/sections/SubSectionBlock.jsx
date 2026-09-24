@@ -1220,11 +1220,13 @@ const SubSectionBlock = ({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      onClick={() => onSelectBlock?.(block._id)}
+      onClick={() => {
+        if (canEdit) onSelectBlock?.(block._id);
+      }}
       className={`glass-card overflow-hidden border transition-all duration-200 ${
         remoteFocusUser
           ? 'border-purple-500/80 ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10'
-          : isActive
+          : canEdit && isActive
           ? 'border-accent shadow-lg shadow-accent/5 ring-1 ring-accent/40'
           : 'border-subtle hover:border-strong'
       }`}
@@ -1300,7 +1302,7 @@ const SubSectionBlock = ({
               </span>
             )}
 
-            {isActive && (
+            {canEdit && isActive && (
               <span className="text-[10px] text-accent font-medium px-1.5 py-0.5 rounded bg-accent-subtle hidden md:inline-block">
                 Active Target
               </span>
