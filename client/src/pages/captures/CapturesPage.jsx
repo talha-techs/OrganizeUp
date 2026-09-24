@@ -76,12 +76,37 @@ const getVideoSrc = (url) => {
   return url;
 };
 
+// Robust helper to extract/build a playable YouTube iframe embed URL
+const getYouTubeEmbedUrl = (capture) => {
+  if (!capture) return null;
+  if (
+    capture.embedUrl &&
+    (capture.embedUrl.includes('/embed/') ||
+      capture.embedUrl.includes('youtube.com/embed') ||
+      capture.embedUrl.includes('youtube-nocookie.com/embed'))
+  ) {
+    return capture.embedUrl;
+  }
+  const rawUrl = capture.embedUrl || capture.sourceUrl || capture.mediaUrl;
+  if (rawUrl) {
+    const match = rawUrl.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/))([a-zA-Z0-9_-]{11})/,
+    );
+    if (match) {
+      return `https://www.youtube.com/embed/${match[1]}`;
+    }
+  }
+  if (capture.embedId && /^[a-zA-Z0-9_-]{11}$/.test(capture.embedId)) {
+    return `https://www.youtube.com/embed/${capture.embedId}`;
+  }
+  return null;
+};
 
 const CapturesPage = () => {
   const dispatch = useDispatch();
   const { captures, stats, loading } = useSelector((state) => state.captures);
 
-  // Filter tabs: 'all', 'whatsapp', 'instagram', 'facebook', 'linkedin', 'web_image', 'reminders'
+  // Filter tabs: 'all', 'youtube', 'instagram', 'facebook', 'linkedin', 'web_image', 'reminders'
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'inbox', 'completed'
@@ -253,7 +278,7 @@ const CapturesPage = () => {
   // Tab definitions
   const tabs = [
     { id: 'all', label: 'All Vault', icon: IoFlashOutline },
-    { id: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp },
+    { id: 'youtube', label: 'YouTube', icon: FaYoutube },
     { id: 'instagram', label: 'Instagram Reels', icon: FaInstagram },
     { id: 'facebook', label: 'Facebook', icon: FaFacebook },
     { id: 'linkedin', label: 'LinkedIn', icon: FaLinkedin },
@@ -278,7 +303,7 @@ const CapturesPage = () => {
               Captures, Reels & <span className="gradient-text">Reminders</span>
             </h1>
             <p className="text-sm text-secondary max-w-xl">
-              A unified powerhouse for all your untracked external resources: play Instagram Reels, review WhatsApp chats, save internet images, and never miss actionable reminders.
+              A unified powerhouse for all your untracked external resources: play YouTube videos & Shorts, watch Instagram Reels, review LinkedIn posts, save internet images, and never miss actionable reminders.
             </p>
           </div>
 
@@ -421,7 +446,7 @@ const CapturesPage = () => {
             <p className="text-xs text-muted max-w-sm mx-auto">
               {activeTab !== 'all'
                 ? `You haven't saved any items under ${activeTab} yet.`
-                : 'Your Vault is empty. Start capturing Instagram Reels, WhatsApp insights, or screenshots!'}
+                : 'Your Vault is empty. Start capturing YouTube videos, Instagram Reels, or screenshots!'}
             </p>
           </div>
           <button
@@ -592,12 +617,12 @@ const CapturesPage = () => {
                 )}
 
                 {/* 3. YouTube Embed Video (Playable in-app) */}
-                {capture.platform === 'youtube' && capture.embedUrl && (
-                  <div className="w-full bg-black relative aspect-video overflow-hidden">
+                {(capture.platform === 'youtube' || getYouTubeEmbedUrl(capture)) && (
+                  <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle">
                     <iframe
-                      src={capture.embedUrl}
+                      src={getYouTubeEmbedUrl(capture) || capture.embedUrl}
                       className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
                       title={capture.title || 'YouTube Video'}
                     />
@@ -605,7 +630,7 @@ const CapturesPage = () => {
                 )}
 
                 {/* 4. Web Image, Article Banner, or Direct Video Player */}
-                {['web_image', 'web', 'other'].includes(capture.platform) && (
+                {['web_image', 'web', 'other'].includes(capture.platform) && !getYouTubeEmbedUrl(capture) && (
                   (capture.mediaType === 'video' || isDirectVideoFile(capture.mediaUrl) || (capture.embedUrl && !['facebook', 'instagram', 'youtube', 'linkedin', 'twitter', 'whatsapp'].includes(capture.platform))) ? (
                     <UniversalVideoPlayer
                       src={capture.mediaUrl}

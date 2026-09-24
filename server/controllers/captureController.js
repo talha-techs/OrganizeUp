@@ -702,6 +702,7 @@ const getCaptures = async (req, res) => {
       ).length,
       platforms: {
         all: allUserCaptures.length,
+        youtube: allUserCaptures.filter((c) => c.platform === "youtube").length,
         whatsapp: allUserCaptures.filter((c) => c.platform === "whatsapp").length,
         instagram: allUserCaptures.filter((c) => c.platform === "instagram").length,
         facebook: allUserCaptures.filter((c) => c.platform === "facebook").length,
@@ -810,6 +811,15 @@ const createCapture = async (req, res) => {
       mediaType = "video";
       const detected = detectPlatformAndEmbed(sourceUrl);
       if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
+    }
+
+    // Force YouTube platform if sourceUrl matches youtube.com or youtu.be
+    if (sourceUrl && /(?:youtube\.com|youtu\.be)/i.test(sourceUrl)) {
+      platform = "youtube";
+      const detected = detectPlatformAndEmbed(sourceUrl);
+      if (detected.embedId && !embedId) embedId = detected.embedId;
+      if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
+      if (detected.mediaType) mediaType = detected.mediaType;
     }
 
     // If sourceUrl provided and platform was not manually set, auto-detect platform and embed

@@ -169,7 +169,7 @@ const getPlaylist = async (req, res) => {
 // @route   POST /api/youtube-playlists
 const addPlaylist = async (req, res) => {
   try {
-    const { playlistUrl, url, type } = req.body;
+    const { playlistUrl, url, type, notes, title: customTitle } = req.body;
     const targetUrl = (url || playlistUrl || "").trim();
 
     if (!targetUrl) {
@@ -221,7 +221,7 @@ const addPlaylist = async (req, res) => {
 
       const playlist = await YoutubePlaylist.create({
         type: "video",
-        title: details.title,
+        title: (customTitle && customTitle.trim()) || details.title,
         description: details.description || "",
         videoId,
         playlistId: "",
@@ -237,7 +237,7 @@ const addPlaylist = async (req, res) => {
             thumbnail: details.thumbnail,
             duration: details.duration || "",
             position: 0,
-            notes: "",
+            notes: (notes && notes.trim()) || "",
             description: details.description || "",
           },
         ],

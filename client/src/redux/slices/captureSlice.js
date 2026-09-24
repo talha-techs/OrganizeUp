@@ -99,10 +99,12 @@ const initialState = {
     activeReminders: 0,
     platforms: {
       all: 0,
+      youtube: 0,
       whatsapp: 0,
       instagram: 0,
       facebook: 0,
       linkedin: 0,
+      twitter: 0,
       web_image: 0,
     },
   },
