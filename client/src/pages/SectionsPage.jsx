@@ -30,7 +30,6 @@ import {
   removeCollaborator,
 } from '../redux/slices/sectionSlice';
 import { removeFromLibrary } from '../redux/slices/librarySlice';
-import { requestPublish } from '../redux/slices/exploreSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
 import api from '../utils/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -62,8 +61,6 @@ const SectionsPage = () => {
   const [bannerFile, setBannerFile] = useState(null);
   const [deleteSectionId, setDeleteSectionId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [publishSection, setPublishSection] = useState(null);
-  const [publishMode, setPublishMode] = useState('with_data');
   const [filterTab, setFilterTab] = useState('all'); // 'all' | 'mine' | 'shared'
   const [leaveSectionTarget, setLeaveSectionTarget] = useState(null);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -177,39 +174,7 @@ const SectionsPage = () => {
     }
   };
 
-  const handlePublishRequest = async () => {
-    if (!publishSection) return;
 
-    if (isAdmin) {
-      const result = await dispatch(
-        updateSection({ id: publishSection._id, visibility: 'public', publishMode }),
-      );
-      if (result.meta.requestStatus === 'fulfilled') {
-        toast.success('Workspace published');
-        setPublishSection(null);
-        setPublishMode('with_data');
-        dispatch(fetchSections());
-      } else {
-        toast.error(result.payload || 'Failed to publish');
-      }
-    } else {
-      const result = await dispatch(
-        requestPublish({
-          contentType: 'section',
-          contentId: publishSection._id,
-          publishMode,
-        }),
-      );
-      if (result.meta.requestStatus === 'fulfilled') {
-        toast.success('Publish request submitted');
-        setPublishSection(null);
-        setPublishMode('with_data');
-        dispatch(fetchSections());
-      } else {
-        toast.error(result.payload || 'Failed to submit request');
-      }
-    }
-  };
 
   const handleTogglePublic = async (section) => {
     const newVis = section.visibility === 'public' ? 'private' : 'public';
@@ -462,15 +427,11 @@ const SectionsPage = () => {
 
                     {/* Top-left Badges (Visibility & Collaboration) */}
                     <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap z-10">
-                      <span
-                        className={`px-2 py-0.5 rounded-lg text-[11px] font-medium backdrop-blur-sm ${
-                          section.visibility === 'public'
-                            ? 'text-emerald-400 bg-emerald-500/20'
-                            : 'text-secondary bg-surface-raised/80'
-                        }`}
-                      >
-                        {section.visibility}
-                      </span>
+                      {section.visibility === 'public' && (
+                        <span className="px-2 py-0.5 rounded-lg text-[11px] font-medium backdrop-blur-sm text-emerald-400 bg-emerald-500/20">
+                          public
+                        </span>
+                      )}
 
                       {/* Role badge if guest */}
                       {!isOwner && section.myRole && (
@@ -618,18 +579,7 @@ const SectionsPage = () => {
                               Private
                             </button>
                           )}
-                          {isOwner && section.visibility === 'private' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPublishSection(section);
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-accent-subtle text-secondary hover:text-accent transition-colors text-xs cursor-pointer"
-                              title={isAdmin ? 'Publish section' : 'Request to publish'}
-                            >
-                              Publish
-                            </button>
-                          )}
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -776,82 +726,6 @@ const SectionsPage = () => {
         onCancel={() => setLeaveSectionTarget(null)}
         isLoading={isLeaving}
       />
-
-      {/* Publish Mode Modal */}
-      <Modal
-        isOpen={!!publishSection}
-        onClose={() => {
-          setPublishSection(null);
-          setPublishMode('with_data');
-        }}
-        title="Publish Workspace"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-secondary">
-            Choose how others will receive{' '}
-            <span className="text-primary font-medium">"{publishSection?.name}"</span> when they clone
-            it:
-          </p>
-
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => setPublishMode('with_data')}
-              className={`w-full p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                publishMode === 'with_data'
-                  ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
-                  : 'border-subtle hover:border-strong hover:bg-surface-raised'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">📦</span>
-                <span className="text-sm font-semibold text-primary">With Data</span>
-              </div>
-              <p className="text-xs text-muted ml-7">
-                Others get a full copy of your section including all notes, tasks, links, and code.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPublishMode('without_data')}
-              className={`w-full p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                publishMode === 'without_data'
-                  ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
-                  : 'border-subtle hover:border-strong hover:bg-surface-raised'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">📄</span>
-                <span className="text-sm font-semibold text-primary">Template Only</span>
-              </div>
-              <p className="text-xs text-muted ml-7">
-                Others get the block structure as a blank template — they fill in their own data.
-              </p>
-            </button>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPublishSection(null);
-                setPublishMode('with_data');
-              }}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handlePublishRequest}
-              className="btn-primary"
-            >
-              Submit Request
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };
