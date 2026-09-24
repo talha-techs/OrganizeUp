@@ -339,20 +339,20 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-cyan-500/10 via-surface to-accent/5 dark:from-cyan-950/40 dark:via-surface dark:to-accent/5 border border-cyan-500/30 dark:border-cyan-500/20 shadow-lg relative overflow-hidden"
+        className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-sky-50 via-white to-orange-50/40 border border-sky-200/90 shadow-md relative overflow-hidden dark:from-cyan-950/40 dark:via-surface dark:to-accent/5 dark:border-cyan-500/20"
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-sky-600 text-white shadow-xs dark:bg-cyan-500/15 dark:text-cyan-300 dark:border dark:border-cyan-500/30">
                 Help & Documentation
               </span>
-              <span className="text-xs text-muted">docs.organizeup.app</span>
+              <span className="text-xs font-mono font-medium text-slate-500 dark:text-muted">docs.organizeup.app</span>
             </div>
-            <h3 className="text-lg sm:text-xl font-bold text-primary font-display">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-primary font-display">
               Master OrganizeUp: Step-by-Step Feature Guides
             </h3>
-            <p className="text-xs sm:text-sm text-secondary leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-secondary leading-relaxed">
               Learn how to link the Telegram & Discord capture bots, take timestamped notes on YouTube videos, upload WaveSurfer audiobooks, and use PDF reading position memory.
             </p>
           </div>
@@ -363,7 +363,7 @@ const Dashboard = () => {
               href={getDocsUrl('telegram-bot')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-[#24A1DE]/15 border border-subtle hover:border-[#24A1DE]/40 text-xs font-semibold text-secondary hover:text-[#0088cc] dark:hover:text-[#24A1DE] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 hover:border-[#0088cc] text-xs font-bold text-slate-700 hover:text-[#0088cc] shadow-xs transition-all flex items-center gap-1.5 cursor-pointer dark:bg-surface-raised dark:border-subtle dark:text-secondary dark:hover:text-[#24A1DE] dark:hover:border-[#24A1DE]/40"
             >
               <span>🤖 Telegram Bot</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -372,7 +372,7 @@ const Dashboard = () => {
               href={getDocsUrl('yt-notes')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-red-500/15 border border-subtle hover:border-red-500/40 text-xs font-semibold text-secondary hover:text-red-600 dark:hover:text-red-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer dark:bg-surface-raised dark:border-subtle dark:text-secondary dark:hover:text-red-400 dark:hover:border-red-500/40"
             >
               <span>🎬 YouTube Studio</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -381,7 +381,7 @@ const Dashboard = () => {
               href={getDocsUrl('audiobooks')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-cyan-500/15 border border-subtle hover:border-cyan-500/40 text-xs font-semibold text-secondary hover:text-cyan-700 dark:hover:text-cyan-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 hover:border-cyan-600 text-xs font-bold text-slate-700 hover:text-cyan-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer dark:bg-surface-raised dark:border-subtle dark:text-secondary dark:hover:text-cyan-400 dark:hover:border-cyan-500/40"
             >
               <span>🎧 WaveSurfer Audio</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -390,7 +390,7 @@ const Dashboard = () => {
               href={getDocsUrl('shortcuts')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-amber-500/15 border border-subtle hover:border-amber-500/40 text-xs font-semibold text-secondary hover:text-amber-700 dark:hover:text-amber-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 hover:border-amber-600 text-xs font-bold text-slate-700 hover:text-amber-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer dark:bg-surface-raised dark:border-subtle dark:text-secondary dark:hover:text-amber-400 dark:hover:border-amber-500/40"
             >
               <span>⚡ Shortcuts</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -399,7 +399,7 @@ const Dashboard = () => {
               href={getDocsUrl()}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-[#0d1117] text-xs font-bold transition-all shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-md shadow-sky-600/25 flex items-center gap-1.5 cursor-pointer dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-[#0d1117]"
             >
               <span>Browse All Docs</span>
               <IoOpenOutline size={13} />
@@ -418,29 +418,29 @@ const Dashboard = () => {
         {/* Calendar Header with Navigation and Streak Badges */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-subtle">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-accent uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-accent uppercase tracking-wider mb-1">
               <IoCalendarOutline size={16} />
               <span>Study Habit & Login Tracker</span>
             </div>
-            <h2 className="text-2xl font-bold text-primary font-display flex items-center gap-3">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-primary font-display flex items-center gap-3">
               <span>{calendarInfo.monthName}</span>
               <div className="flex items-center gap-1 ml-2">
                 <button
                   onClick={handlePrevMonth}
-                  className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised border border-subtle transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-700 dark:text-secondary hover:text-slate-900 dark:hover:text-primary bg-white dark:bg-surface-raised hover:bg-slate-100 dark:hover:bg-surface border border-slate-300 dark:border-subtle transition-colors cursor-pointer shadow-2xs"
                   title="Previous Month"
                 >
                   <IoChevronBack size={14} />
                 </button>
                 <button
                   onClick={handleResetToToday}
-                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg text-secondary hover:text-primary hover:bg-surface-raised border border-subtle transition-colors cursor-pointer"
+                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-700 dark:text-secondary hover:text-slate-900 dark:hover:text-primary bg-white dark:bg-surface-raised hover:bg-slate-100 dark:hover:bg-surface border border-slate-300 dark:border-subtle transition-colors cursor-pointer shadow-2xs"
                 >
                   Today
                 </button>
                 <button
                   onClick={handleNextMonth}
-                  className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised border border-subtle transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-700 dark:text-secondary hover:text-slate-900 dark:hover:text-primary bg-white dark:bg-surface-raised hover:bg-slate-100 dark:hover:bg-surface border border-slate-300 dark:border-subtle transition-colors cursor-pointer shadow-2xs"
                   title="Next Month"
                 >
                   <IoChevronForward size={14} />
@@ -449,20 +449,20 @@ const Dashboard = () => {
             </h2>
           </div>
 
-          {/* Streak Statistics Summary Panel (No Consistency Rate) */}
+          {/* Streak Statistics Summary Panel */}
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {/* Current Streak */}
-            <div className="px-4 py-2.5 rounded-2xl bg-orange-500/10 border border-orange-500/25 dark:bg-orange-500/10 dark:border-orange-500/20 flex items-center gap-3 shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
-                <IoFlame size={18} />
+            <div className="px-4 py-2.5 rounded-2xl bg-orange-50/90 border-2 border-orange-200/90 dark:bg-orange-500/10 dark:border-orange-500/20 flex items-center gap-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center shadow-xs dark:bg-orange-500/20 dark:text-orange-400">
+                <IoFlame size={20} />
               </div>
               <div>
-                <p className="text-[10px] text-orange-800 dark:text-orange-300 font-bold uppercase tracking-wider">
+                <p className="text-[10px] text-orange-950 dark:text-orange-300 font-black uppercase tracking-wider">
                   Current Streak
                 </p>
-                <p className="text-base font-bold text-zinc-900 dark:text-white font-display">
+                <p className="text-xl font-black text-slate-950 dark:text-white font-display leading-tight">
                   {activity.currentStreak || 0}{' '}
-                  <span className="text-xs font-medium text-orange-700/80 dark:text-orange-200/80">
+                  <span className="text-xs font-bold text-orange-700 dark:text-orange-200">
                     Days
                   </span>
                 </p>
@@ -470,17 +470,17 @@ const Dashboard = () => {
             </div>
 
             {/* Max Record Streak */}
-            <div className="px-4 py-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 dark:bg-indigo-500/10 dark:border-indigo-500/20 flex items-center gap-3 shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <div className="px-4 py-2.5 rounded-2xl bg-indigo-50/90 border-2 border-indigo-200/90 dark:bg-indigo-500/10 dark:border-indigo-500/20 flex items-center gap-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs dark:bg-indigo-500/20 dark:text-indigo-400">
                 <IoFlash size={18} />
               </div>
               <div>
-                <p className="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold uppercase tracking-wider">
+                <p className="text-[10px] text-indigo-950 dark:text-indigo-300 font-black uppercase tracking-wider">
                   Max Streak
                 </p>
-                <p className="text-base font-bold text-zinc-900 dark:text-white font-display">
+                <p className="text-xl font-black text-slate-950 dark:text-white font-display leading-tight">
                   {activity.maxStreak || 0}{' '}
-                  <span className="text-xs font-medium text-indigo-700/80 dark:text-indigo-200/80">
+                  <span className="text-xs font-bold text-indigo-700 dark:text-indigo-200">
                     Days Record
                   </span>
                 </p>
@@ -488,17 +488,17 @@ const Dashboard = () => {
             </div>
 
             {/* Days Active this Month */}
-            <div className="px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-500/10 dark:border-emerald-500/20 flex items-center gap-3 shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <IoCheckmarkCircle size={18} />
+            <div className="px-4 py-2.5 rounded-2xl bg-emerald-50/90 border-2 border-emerald-200/90 dark:bg-emerald-500/10 dark:border-emerald-500/20 flex items-center gap-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs dark:bg-emerald-500/20 dark:text-emerald-400">
+                <IoCheckmarkCircle size={20} />
               </div>
               <div>
-                <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider">
+                <p className="text-[10px] text-emerald-950 dark:text-emerald-300 font-black uppercase tracking-wider">
                   Active This Month
                 </p>
-                <p className="text-base font-bold text-zinc-900 dark:text-white font-display">
+                <p className="text-xl font-black text-slate-950 dark:text-white font-display leading-tight">
                   {calendarInfo.activeThisMonthCount}{' '}
-                  <span className="text-xs font-medium text-emerald-700/80 dark:text-emerald-200/80">
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-200">
                     / {calendarInfo.daysInMonth} Days
                   </span>
                 </p>
@@ -512,7 +512,7 @@ const Dashboard = () => {
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-2 mb-2 text-center">
             {WEEKDAYS.map((day) => (
-              <div key={day} className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-muted py-1">
+              <div key={day} className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-muted py-1">
                 {day}
               </div>
             ))}
@@ -530,28 +530,28 @@ const Dashboard = () => {
                   key={item.key}
                   className={`relative h-16 sm:h-20 rounded-2xl p-2 flex flex-col justify-between border transition-all duration-200 ${
                     item.isActive
-                      ? 'bg-emerald-50 border-emerald-300 shadow-xs dark:bg-gradient-to-br dark:from-emerald-500/15 dark:via-emerald-500/5 dark:to-transparent dark:border-emerald-500/40 dark:shadow-sm'
+                      ? 'bg-emerald-100/70 border-2 border-emerald-400/90 shadow-xs hover:border-emerald-500 dark:bg-gradient-to-br dark:from-emerald-500/15 dark:via-emerald-500/5 dark:to-transparent dark:border-emerald-500/40 dark:shadow-sm'
                       : item.isToday
-                      ? 'bg-white dark:bg-surface-raised border-accent shadow-md ring-2 ring-accent/30'
-                      : 'bg-zinc-50/70 hover:bg-zinc-100/80 border-zinc-200 dark:bg-surface-raised/40 dark:hover:bg-surface-raised/60 dark:border-subtle/60'
+                      ? 'bg-orange-50/80 border-2 border-accent shadow-md ring-2 ring-accent/30 dark:bg-surface-raised dark:border-accent'
+                      : 'bg-white hover:bg-slate-50 border border-slate-200/90 dark:bg-surface-raised/40 dark:hover:bg-surface-raised/60 dark:border-subtle/60'
                   } ${item.isFuture ? 'opacity-40' : ''}`}
                 >
                   {/* Top Day Number & Today Marker */}
                   <div className="flex items-center justify-between w-full">
                     <span
-                      className={`text-xs sm:text-sm font-bold ${
+                      className={`text-xs sm:text-sm ${
                         item.isActive
-                          ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
+                          ? 'text-emerald-950 dark:text-emerald-300 font-black'
                           : item.isToday
-                          ? 'text-accent font-extrabold'
-                          : 'text-zinc-700 dark:text-secondary'
+                          ? 'text-accent font-black'
+                          : 'text-slate-800 dark:text-secondary font-bold'
                       }`}
                     >
                       {item.dayNum}
                     </span>
 
                     {item.isToday && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-white uppercase tracking-wider shadow-xs">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-accent text-white uppercase tracking-wider shadow-xs">
                         Today
                       </span>
                     )}
@@ -561,13 +561,13 @@ const Dashboard = () => {
                   <div className="flex items-center justify-end">
                     {item.isActive ? (
                       <span
-                        className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 flex items-center justify-center text-xs shadow-xs"
+                        className="w-6 h-6 rounded-full bg-emerald-600 text-white shadow-xs flex items-center justify-center text-xs dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30"
                         title={`Active on ${item.dateStr}`}
                       >
-                        <IoFlame size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <IoFlame size={14} className="text-white dark:text-emerald-400" />
                       </span>
                     ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-subtle" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-subtle" />
                     )}
                   </div>
                 </div>
@@ -576,21 +576,22 @@ const Dashboard = () => {
           </div>
 
           {/* Calendar Legend */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-subtle mt-4 text-xs text-zinc-600 dark:text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-subtle mt-4 text-xs text-slate-600 dark:text-muted">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 dark:bg-emerald-500/30 dark:border-emerald-500/50" />
-                <span className="font-medium text-zinc-700 dark:text-secondary">Logged In / Active Study</span>
+                <span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700 dark:bg-emerald-500/30 dark:border-emerald-500/50" />
+                <span className="font-semibold text-slate-700 dark:text-secondary">Logged In / Active Study</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-accent ring-2 ring-accent/30" />
-                <span className="font-medium text-zinc-700 dark:text-secondary">Current Day</span>
+                <span className="font-semibold text-slate-700 dark:text-secondary">Current Day</span>
               </span>
             </div>
-            <span>Streaks increase when you log in or study on consecutive days</span>
+            <span className="font-medium text-slate-500 dark:text-muted">Streaks increase when you log in or study on consecutive days</span>
           </div>
         </div>
       </motion.div>
+
 
       {/* 4. CONTINUE WHERE YOU LEFT OFF (IN-PROGRESS SHELF) */}
       {(continueBooks.length > 0 || continueCourses.length > 0) && (

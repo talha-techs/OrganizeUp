@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
@@ -28,21 +30,21 @@
 }
 
 [data-theme="light"], :root.light {
-  --bg-canvas: #f4f5f8;
+  --bg-canvas: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-surface-raised: #ffffff;
-  --bg-surface-glass: rgba(255, 255, 255, 0.92);
+  --bg-surface-raised: #f1f5f9;
+  --bg-surface-glass: rgba(255, 255, 255, 0.95);
   --text-primary: #0f172a;
   --text-secondary: #334155;
   --text-muted: #64748b;
-  --border-subtle: rgba(15, 23, 42, 0.09);
-  --border-strong: rgba(15, 23, 42, 0.18);
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
   --accent: #ea580c;
   --accent-hover: #c2410c;
   --accent-light: #f97316;
   --accent-dark: #9a3412;
-  --accent-subtle: rgba(234, 88, 12, 0.12);
-  --accent-glow: rgba(234, 88, 12, 0.22);
+  --accent-subtle: rgba(234, 88, 12, 0.14);
+  --accent-glow: rgba(234, 88, 12, 0.25);
   --success: #059669;
   --warning: #d97706;
   --danger: #dc2626;
