@@ -153,6 +153,7 @@ const register = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        bio: user.bio || "",
       },
     });
   } catch (error) {
@@ -201,6 +202,7 @@ const login = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        bio: user.bio || "",
       },
     });
   } catch (error) {
@@ -275,6 +277,7 @@ const getMe = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        bio: user.bio || "",
         activityDays: user.activityDays || [],
         currentStreak: user.currentStreak || 0,
         maxStreak: user.maxStreak || 0,
@@ -331,10 +334,13 @@ const logout = (req, res) => {
 // @route   PUT /api/auth/profile
 const updateProfile = async (req, res) => {
   try {
-    const { name, whatsappPhoneNumber } = req.body;
+    const { name, whatsappPhoneNumber, bio } = req.body;
     const user = await User.findById(req.user._id);
 
     if (name) user.name = name;
+    if (bio !== undefined) {
+      user.bio = bio.trim();
+    }
     if (whatsappPhoneNumber !== undefined) {
       user.whatsappPhoneNumber = whatsappPhoneNumber.trim();
     }
@@ -372,6 +378,7 @@ const updateProfile = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
+        bio: user.bio || "",
         whatsappPhoneNumber: user.whatsappPhoneNumber || "",
       },
     });

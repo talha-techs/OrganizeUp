@@ -23,6 +23,8 @@ import {
   IoLinkOutline,
   IoCheckmarkDoneCircleOutline,
   IoCheckmarkCircle,
+  IoClipboardOutline,
+  IoChevronUpOutline,
 } from 'react-icons/io5';
 import { updateProfile, getMe, fetchUserStats } from '../redux/slices/authSlice';
 import { fetchBooks, deleteBook, removeVideoFromBook } from '../redux/slices/bookSlice';
@@ -150,6 +152,102 @@ const SubRow = ({ name, onDelete }) => {
   );
 };
 
+/** Expandable Note Card with 3-line clamp and complete note toggle */
+const NoteCard = ({ note }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(note.content || '');
+    setCopied(true);
+    toast.success('Note copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const content = note.content || '';
+  const isLong = content.length > 160 || content.split('\n').length > 3;
+
+  return (
+    <div className="p-4 rounded-xl bg-surface border border-subtle hover:border-accent/30 transition-all">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+              note.type === 'youtube'
+                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                : note.type === 'book'
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                : note.type === 'course'
+                ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+            }`}
+          >
+            {note.type === 'youtube' && <IoLogoYoutube size={10} />}
+            {note.type === 'book' && <IoBookOutline size={10} />}
+            {note.type === 'course' && <IoSchoolOutline size={10} />}
+            {note.type === 'notebook' && <IoDocumentTextOutline size={10} />}
+            <span className="capitalize">{note.type}</span>
+          </span>
+          <span className="text-xs font-semibold text-primary truncate max-w-[280px] sm:max-w-md">
+            {note.sourceTitle}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[11px] text-muted">
+            {new Date(note.date).toLocaleDateString()}
+          </span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="p-1 rounded text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+            title={copied ? 'Copied!' : 'Copy note'}
+          >
+            <IoClipboardOutline size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Note Content clamped up to first 3 lines when collapsed */}
+      <div className="relative pl-2.5 border-l-2 border-accent/40 my-1">
+        <p
+          className={`text-xs sm:text-sm text-secondary leading-relaxed whitespace-pre-line ${
+            !isExpanded ? 'line-clamp-3 overflow-hidden text-ellipsis' : ''
+          }`}
+        >
+          {content}
+        </p>
+      </div>
+
+      {/* Expand / Collapse toggle if note exceeds 3 lines */}
+      {isLong && (
+        <div className="flex items-center justify-between pt-2 mt-1 border-t border-subtle/60">
+          <button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="text-xs text-accent hover:underline flex items-center gap-1 cursor-pointer font-medium py-0.5"
+          >
+            {isExpanded ? (
+              <>
+                <span>Show less</span>
+                <IoChevronUpOutline size={12} />
+              </>
+            ) : (
+              <>
+                <span>View complete note</span>
+                <IoChevronDownOutline size={12} />
+              </>
+            )}
+          </button>
+          <span className="text-[10px] text-muted font-mono">
+            {content.length} chars
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ── main component ─────────────────────────────────────── */
 const ProfilePage = () => {
   useDocumentTitle('Profile');
@@ -162,7 +260,9 @@ const ProfilePage = () => {
   const dispatch = useDispatch();
 
   const [name, setName] = useState(user?.name || '');
+  const [bio, setBio] = useState(user?.bio || '');
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -177,6 +277,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (user?.name) setName(user.name);
+    if (user?.bio !== undefined) setBio(user.bio || '');
   }, [user]);
 
   useEffect(() => {
@@ -242,10 +343,18 @@ const ProfilePage = () => {
   };
 
   const handleSave = async () => {
+    setSaving(true);
     const formData = new FormData();
     formData.append('name', name);
+    formData.append('bio', bio);
     const result = await dispatch(updateProfile(formData));
-    if (result.meta.requestStatus === 'fulfilled') { toast.success('Profile updated'); setIsEditing(false); }
+    setSaving(false);
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+    } else {
+      toast.error(result.payload || 'Failed to update profile');
+    }
   };
 
   /* delete helpers */
@@ -344,12 +453,12 @@ const ProfilePage = () => {
                       </div>
                     )}
                   </div>
-                  <div className="text-center sm:text-left mt-2">
+                  <div className="text-center sm:text-left mt-2 flex-1">
                     <h2 className="text-xl font-bold text-primary">{user?.name}</h2>
-                    <div className="flex items-center gap-2 text-secondary text-sm mt-1">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 text-secondary text-sm mt-1">
                       <IoMail size={14} /> {user?.email}
                     </div>
-                    <div className="flex items-center gap-4 mt-2">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-2">
                       {user?.role === 'admin' && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-accent bg-accent-subtle px-2.5 py-1 rounded-full border border-accent/20">
                           <IoShieldCheckmark size={12} /> Admin
@@ -359,22 +468,111 @@ const ProfilePage = () => {
                         <IoCalendar size={12} /> Joined {new Date(user?.createdAt).toLocaleDateString()}
                       </span>
                     </div>
+                    {/* User Bio Preview */}
+                    {user?.bio ? (
+                      <p className="text-xs sm:text-sm text-secondary mt-3 leading-relaxed bg-surface/50 border border-subtle/60 rounded-xl px-3.5 py-2 whitespace-pre-line">
+                        {user.bio}
+                      </p>
+                    ) : (
+                      <div className="mt-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(true)}
+                          className="text-xs text-accent hover:underline inline-flex items-center gap-1 cursor-pointer font-medium"
+                        >
+                          + Add a bio to your profile
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Edit Name */}
+                {/* Personal Information & Bio */}
                 <div className="border-t border-subtle pt-6 mb-6">
-                  <h3 className="text-sm font-medium text-secondary mb-3">Display Name</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-secondary flex items-center gap-2">
+                      <IoPersonCircleOutline className="text-accent" size={16} /> Personal Information
+                    </h3>
+                    {!isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="btn-secondary text-xs py-1.5 px-3.5 cursor-pointer font-medium"
+                      >
+                        Edit Profile
+                      </button>
+                    )}
+                  </div>
+
                   {isEditing ? (
-                    <div className="flex gap-3">
-                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-dark flex-1" />
-                      <button onClick={handleSave} className="btn-primary cursor-pointer">Save</button>
-                      <button onClick={() => { setIsEditing(false); setName(user?.name); }} className="btn-secondary cursor-pointer">Cancel</button>
+                    <div className="space-y-4 bg-surface/30 p-4 rounded-xl border border-subtle">
+                      <div>
+                        <label className="block text-xs font-medium text-secondary mb-1.5">
+                          Display Name
+                        </label>
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Your full name"
+                          className="input-dark w-full text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-medium text-secondary">
+                            About / Bio
+                          </label>
+                          <span className={`text-[11px] font-mono ${bio.length >= 280 ? 'text-amber-400 font-bold' : 'text-muted'}`}>
+                            {bio.length}/300
+                          </span>
+                        </div>
+                        <textarea
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value.slice(0, 300))}
+                          rows={3}
+                          maxLength={300}
+                          placeholder="Share a short bio, learning interests, or personal motto..."
+                          className="input-dark w-full text-sm resize-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setName(user?.name || '');
+                            setBio(user?.bio || '');
+                          }}
+                          disabled={saving}
+                          className="btn-secondary text-xs py-2 px-4 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="btn-primary text-xs py-2 px-4 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                          {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <span className="text-primary">{user?.name}</span>
-                      <button onClick={() => setIsEditing(true)} className="btn-secondary text-sm py-1.5 px-4 cursor-pointer">Edit</button>
+                    <div className="space-y-3 bg-surface/20 p-4 rounded-xl border border-subtle/50">
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-muted font-medium block mb-0.5">Display Name</span>
+                        <p className="text-sm font-medium text-primary">{user?.name || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-muted font-medium block mb-0.5">Bio</span>
+                        <p className="text-sm text-secondary leading-relaxed whitespace-pre-line">
+                          {user?.bio ? user.bio : <span className="text-muted italic">No bio added yet. Click &quot;Edit Profile&quot; to write one.</span>}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -485,38 +683,7 @@ const ProfilePage = () => {
 
                     <div className="space-y-3 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
                       {filteredNotes.map((n, i) => (
-                        <div key={n.id || i} className="p-4 rounded-xl bg-surface border border-subtle hover:border-accent/30 transition-all">
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                                  n.type === 'youtube'
-                                    ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                    : n.type === 'book'
-                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                    : n.type === 'course'
-                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                                    : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                                }`}
-                              >
-                                {n.type === 'youtube' && <IoLogoYoutube size={10} />}
-                                {n.type === 'book' && <IoBookOutline size={10} />}
-                                {n.type === 'course' && <IoSchoolOutline size={10} />}
-                                {n.type === 'notebook' && <IoDocumentTextOutline size={10} />}
-                                <span className="capitalize">{n.type}</span>
-                              </span>
-                              <span className="text-xs font-semibold text-primary truncate max-w-[280px] sm:max-w-md">
-                                {n.sourceTitle}
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-muted flex-shrink-0">
-                              {new Date(n.date).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="text-xs sm:text-sm text-secondary leading-relaxed whitespace-pre-line pl-2 border-l-2 border-accent/40">
-                            {n.content}
-                          </p>
-                        </div>
+                        <NoteCard key={n.id || i} note={n} />
                       ))}
                     </div>
                   </div>
