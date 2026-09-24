@@ -60,7 +60,8 @@ const UniversalVideoPlayer = ({
       url.includes('twimg.com') ||
       url.includes('video.twimg.com') ||
       url.includes('fbcdn.net') ||
-      url.includes('cdninstagram.com')
+      url.includes('cdninstagram.com') ||
+      url.includes('pmvhaven.com')
     );
   };
 
@@ -161,7 +162,7 @@ const UniversalVideoPlayer = ({
 
   const isHls =
     typeof src === 'string' &&
-    (src.includes('.m3u8') || src.includes('mpegurl'));
+    (src.includes('.m3u8') || src.includes('mpegurl') || src.includes('pmvhaven.com'));
 
   // Check if the src is actually a playable direct video URL (not an embed page URL)
   const isDirectVideoUrl = (url) => {
@@ -169,8 +170,8 @@ const UniversalVideoPlayer = ({
     // If it's already a proxy URL, it's direct
     if (url.startsWith('/api/captures/stream')) return true;
     if (url.startsWith('blob:') || url.startsWith('data:video/')) return true;
-    // Known non-direct video sites (web pages)
-    if (url.includes('pmvhaven.com')) return false;
+    // Explicitly direct
+    if (url.includes('pmvhaven.com')) return true;
     // Check for known video file extensions or video CDN patterns
     if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url)) return true;
     if (url.includes('video.twimg.com')) return true;
@@ -186,7 +187,6 @@ const UniversalVideoPlayer = ({
 
     // Explicitly blocked / non-embeddable sites (cause ERR_CONNECTION_RESET, CSP violations, or broken iframe pages)
     if (
-      trimmed.includes('pmvhaven.com') ||
       trimmed.includes('t.co/') ||
       trimmed.includes('bit.ly/')
     ) {

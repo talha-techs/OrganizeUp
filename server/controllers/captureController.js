@@ -1305,12 +1305,34 @@ const streamVideo = async (req, res) => {
     }
 
     const contentType = response.headers.get("content-type") || "";
-    const isM3u8 = url.includes(".m3u8") || contentType.includes("mpegurl") || contentType.includes("x-mpegurl");
+    let isM3u8 = url.includes(".m3u8") || contentType.includes("mpegurl") || contentType.includes("x-mpegurl");
+
+    let responseToStream = response;
+    let urlToRewrite = url;
+
+    // Explicit HTML scraping via stream proxy for in-app HLS playback
+    if (contentType.includes("text/html") && url.includes("pmvhaven.com") && fetchMethod !== "HEAD") {
+      const htmlText = await response.text();
+      const m3u8Match = htmlText.match(/https?:\/\/[^\s"'`]+\.m3u8[^\s"'`]*/i);
+      if (m3u8Match) {
+        urlToRewrite = m3u8Match[0].trim().replace(/&amp;/g, '&');
+        responseToStream = await fetch(urlToRewrite, {
+          method: "GET",
+          headers: { ...headers, Referer: targetOrigin + "/" }
+        });
+        if (!responseToStream.ok) {
+           return res.status(responseToStream.status).set(corsHeaders).send("Failed to proxy extracted PMVHaven stream");
+        }
+        isM3u8 = true;
+      } else {
+        return res.status(404).set(corsHeaders).send("No video stream found on PMVHaven page");
+      }
+    }
 
     if (isM3u8) {
       // HLS playlist: rewrite child playlist and segment URLs so all playback requests flow through this cloud proxy
-      const rawText = await response.text();
-      const originUrl = new URL(url);
+      const rawText = await responseToStream.text();
+      const originUrl = new URL(urlToRewrite);
 
       const rewrittenLines = rawText.split(/\r?\n/).map((line) => {
         const trimmedLine = line.trim();
@@ -1354,22 +1376,22 @@ const streamVideo = async (req, res) => {
       ...corsHeaders,
     };
 
-    if (response.headers.get("content-length")) {
-      resHeaders["Content-Length"] = response.headers.get("content-length");
+    if (responseToStream.headers.get("content-length")) {
+      resHeaders["Content-Length"] = responseToStream.headers.get("content-length");
     }
-    if (response.headers.get("content-range")) {
-      resHeaders["Content-Range"] = response.headers.get("content-range");
+    if (responseToStream.headers.get("content-range")) {
+      resHeaders["Content-Range"] = responseToStream.headers.get("content-range");
     }
 
-    res.writeHead(response.status, resHeaders);
+    res.writeHead(responseToStream.status, resHeaders);
 
     // HEAD requests don't have a body
-    if (fetchMethod === "HEAD" || !response.body) {
+    if (fetchMethod === "HEAD" || !responseToStream.body) {
       return res.end();
     }
 
     const { Readable } = require("stream");
-    const nodeStream = Readable.fromWeb(response.body);
+    const nodeStream = Readable.fromWeb(responseToStream.body);
 
     // CRITICAL: Handle stream errors gracefully to prevent crashing the server.
     // Without this, a timeout/abort/disconnect emits an unhandled 'error' event
