@@ -488,17 +488,17 @@ const Dashboard = () => {
             </div>
 
             {/* Days Active this Month */}
-            <div className="px-4 py-2.5 rounded-2xl bg-emerald-50/90 border-2 border-emerald-200/90 dark:bg-emerald-500/10 dark:border-emerald-500/20 flex items-center gap-3 shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs dark:bg-emerald-500/20 dark:text-emerald-400">
+            <div className="px-4 py-2.5 rounded-2xl bg-emerald-50/90 border-2 border-emerald-200/90 dark:bg-emerald-950/50 dark:border-2 dark:border-emerald-500/40 flex items-center gap-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 dark:bg-emerald-500 text-white flex items-center justify-center shadow-xs dark:shadow-emerald-500/30">
                 <IoCheckmarkCircle size={20} />
               </div>
               <div>
-                <p className="text-[10px] text-emerald-950 dark:text-emerald-300 font-black uppercase tracking-wider">
+                <p className="text-[10px] text-emerald-950 dark:text-emerald-400 font-black uppercase tracking-wider">
                   Active This Month
                 </p>
                 <p className="text-xl font-black text-slate-950 dark:text-white font-display leading-tight">
                   {calendarInfo.activeThisMonthCount}{' '}
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-200">
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
                     / {calendarInfo.daysInMonth} Days
                   </span>
                 </p>
@@ -530,7 +530,7 @@ const Dashboard = () => {
                   key={item.key}
                   className={`relative h-16 sm:h-20 rounded-2xl p-2 flex flex-col justify-between border transition-all duration-200 ${
                     item.isActive
-                      ? 'bg-emerald-100/70 border-2 border-emerald-400/90 shadow-xs hover:border-emerald-500 dark:bg-gradient-to-br dark:from-emerald-500/15 dark:via-emerald-500/5 dark:to-transparent dark:border-emerald-500/40 dark:shadow-sm'
+                      ? 'bg-emerald-100/70 border-2 border-emerald-400/90 shadow-xs hover:border-emerald-500 dark:bg-emerald-950/80 dark:border-2 dark:border-emerald-500/90 dark:shadow-md dark:shadow-emerald-950/60 dark:hover:bg-emerald-900/70 dark:hover:border-emerald-400'
                       : item.isToday
                       ? 'bg-orange-50/80 border-2 border-accent shadow-md ring-2 ring-accent/30 dark:bg-surface-raised dark:border-accent'
                       : 'bg-white hover:bg-slate-50 border border-slate-200/90 dark:bg-surface-raised/40 dark:hover:bg-surface-raised/60 dark:border-subtle/60'
@@ -541,10 +541,10 @@ const Dashboard = () => {
                     <span
                       className={`text-xs sm:text-sm ${
                         item.isActive
-                          ? 'text-emerald-950 dark:text-emerald-300 font-black'
+                          ? 'text-emerald-950 dark:text-white font-black'
                           : item.isToday
                           ? 'text-accent font-black'
-                          : 'text-slate-800 dark:text-secondary font-bold'
+                          : 'text-slate-800 dark:text-zinc-200 font-bold'
                       }`}
                     >
                       {item.dayNum}
@@ -561,13 +561,13 @@ const Dashboard = () => {
                   <div className="flex items-center justify-end">
                     {item.isActive ? (
                       <span
-                        className="w-6 h-6 rounded-full bg-emerald-600 text-white shadow-xs flex items-center justify-center text-xs dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30"
+                        className="w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs dark:shadow-emerald-500/40 flex items-center justify-center text-xs"
                         title={`Active on ${item.dateStr}`}
                       >
-                        <IoFlame size={14} className="text-white dark:text-emerald-400" />
+                        <IoFlame size={14} className="text-white" />
                       </span>
                     ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-subtle" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-zinc-700" />
                     )}
                   </div>
                 </div>
@@ -579,8 +579,8 @@ const Dashboard = () => {
           <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-subtle mt-4 text-xs text-slate-600 dark:text-muted">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700 dark:bg-emerald-500/30 dark:border-emerald-500/50" />
-                <span className="font-semibold text-slate-700 dark:text-secondary">Logged In / Active Study</span>
+                <span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700 dark:bg-emerald-500 dark:border-emerald-400 shadow-xs" />
+                <span className="font-semibold text-slate-700 dark:text-zinc-200">Logged In / Active Study</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-accent ring-2 ring-accent/30" />
