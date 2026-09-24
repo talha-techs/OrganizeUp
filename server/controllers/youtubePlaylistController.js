@@ -219,9 +219,17 @@ const addPlaylist = async (req, res) => {
       // All user items are strictly private
       const visibility = "private";
 
+      const isGeneric =
+        !customTitle ||
+        customTitle.trim().toLowerCase().includes("resource") ||
+        customTitle.trim() === "Saved Link" ||
+        customTitle.trim() === "YouTube Video" ||
+        customTitle.trim().toLowerCase() === "youtube.com";
+      const resolvedTitle = (!isGeneric && customTitle.trim()) || details.title;
+
       const playlist = await YoutubePlaylist.create({
         type: "video",
-        title: (customTitle && customTitle.trim()) || details.title,
+        title: resolvedTitle,
         description: details.description || "",
         videoId,
         playlistId: "",

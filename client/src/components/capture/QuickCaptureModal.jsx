@@ -198,11 +198,16 @@ const QuickCaptureModal = () => {
     return () => window.removeEventListener('paste', handlePaste);
   }, [isQuickCaptureOpen]);
 
-  // Auto-fill title from scraped metadata
+  // Auto-fill title from scraped metadata (never use generic "resource" fallbacks)
   useEffect(() => {
-    if (scrapedData) {
-      if (!title && scrapedData.title) {
-        setTitle(scrapedData.title);
+    if (scrapedData && scrapedData.title) {
+      const cleanScrapedTitle = scrapedData.title.trim();
+      const isGeneric =
+        cleanScrapedTitle.toLowerCase().includes('resource') ||
+        cleanScrapedTitle.toLowerCase() === 'youtube' ||
+        cleanScrapedTitle === 'Saved Link';
+      if (!isGeneric && (!title || title.toLowerCase().includes('resource'))) {
+        setTitle(cleanScrapedTitle);
       }
     }
   }, [scrapedData, title]);
@@ -418,6 +423,14 @@ const QuickCaptureModal = () => {
               return;
             }
 
+            // Resolve clean title (ignore generic "resource" string if present)
+            const cleanTitle =
+              title && !title.toLowerCase().includes('resource') && title !== 'Saved Link' && title !== 'YouTube Video'
+                ? title.trim()
+                : scrapedData?.title && !scrapedData.title.toLowerCase().includes('resource')
+                ? scrapedData.title.trim()
+                : '';
+
             // Choice A: Save in Vault (playable right inside Vault)
             if (singleVideoChoice === 'vault') {
               await dispatch(
@@ -425,7 +438,7 @@ const QuickCaptureModal = () => {
                   sourceUrl: url.trim(),
                   platform: 'youtube',
                   mediaType: 'video',
-                  title: title || scrapedData?.title || 'YouTube Video',
+                  title: cleanTitle,
                   notes,
                   tags,
                   priority,
@@ -459,7 +472,7 @@ const QuickCaptureModal = () => {
                   url: url.trim(),
                   playlistUrl: url.trim(),
                   type: 'video',
-                  title: title || '',
+                  title: cleanTitle,
                   notes: notes || '',
                 }),
               );
@@ -673,9 +686,14 @@ const QuickCaptureModal = () => {
                       type="url"
                       value={url}
                       onChange={(e) => {
-                        setUrl(e.target.value);
+                        const val = e.target.value;
+                        setUrl(val);
                         setSingleVideoChoice(null);
                         setHasAttemptedSubmit(false);
+                        const trimmed = val.trim();
+                        if (trimmed && /(?:youtube\.com|youtu\.be)/i.test(trimmed)) {
+                          dispatch(scrapeMetadata(trimmed));
+                        }
                       }}
                       onBlur={handleUrlBlur}
                       placeholder="https://www.youtube.com/watch?v=... or https://instagram.com/reel/... or https://..."

@@ -1,5 +1,6 @@
 const CapturedResource = require("../models/CapturedResource");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+const { fetchVideoDetails } = require("../services/youtubeService");
 
 // Helper to decode HTML/XML entities and strip zero-width chars
 const decodeHtmlEntities = (str) => {
@@ -248,6 +249,76 @@ const fetchUrlMetadata = async (url) => {
     let siteName = "";
     let author = "";
     let finalUrl = url;
+
+    // Special scraper for YouTube links (Single Videos, Shorts, etc.)
+    if (detected.platform === "youtube") {
+      try {
+        let ytVideoId = detected.embedId;
+        if (!ytVideoId) {
+          const match = url.match(
+            /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/))([a-zA-Z0-9_-]{11})/i,
+          );
+          if (match) ytVideoId = match[1];
+        }
+
+        if (ytVideoId) {
+          const ytDetails = await fetchVideoDetails(ytVideoId);
+          if (ytDetails && ytDetails.title) {
+            finalTitle = decodeHtmlEntities(ytDetails.title);
+            finalDescription = decodeHtmlEntities(ytDetails.description || "");
+            author = ytDetails.channelTitle || "YouTube";
+            siteName = "YouTube";
+            finalImage =
+              ytDetails.thumbnail ||
+              `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg`;
+            directPosterUrl = finalImage;
+            detected.mediaType = "video";
+            detected.embedId = ytVideoId;
+            detected.embedUrl = `https://www.youtube.com/embed/${ytVideoId}`;
+
+            return {
+              url,
+              resolvedUrl: finalUrl,
+              title: finalTitle,
+              description: finalDescription,
+              rawContent: finalDescription,
+              thumbnailUrl: directPosterUrl || finalImage,
+              mediaUrl: detected.embedUrl,
+              siteName: "YouTube",
+              authorName: author,
+              ...detected,
+              mediaType: "video",
+            };
+          }
+        }
+      } catch (ytErr) {
+        console.warn("YouTube scraper error, falling back to oEmbed:", ytErr.message);
+        // Fallback directly to YouTube oEmbed
+        try {
+          const oembedRes = await fetch(
+            `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
+          );
+          if (oembedRes.ok) {
+            const data = await oembedRes.json();
+            if (data.title) {
+              return {
+                url,
+                resolvedUrl: finalUrl,
+                title: decodeHtmlEntities(data.title),
+                description: "",
+                rawContent: "",
+                thumbnailUrl: data.thumbnail_url || "",
+                mediaUrl: detected.embedUrl || "",
+                siteName: "YouTube",
+                authorName: data.author_name || "YouTube",
+                ...detected,
+                mediaType: "video",
+              };
+            }
+          }
+        } catch (_) {}
+      }
+    }
 
     // Special scraper for X.com / Twitter links
     if (detected.platform === "twitter" && detected.embedId) {
@@ -832,8 +903,28 @@ const createCapture = async (req, res) => {
       if (detected.mediaUrl) mediaUrl = detected.mediaUrl;
     }
 
-    // Auto-enrich metadata from sourceUrl if thumbnail/author/content missing, or for Facebook/LinkedIn
-    if (sourceUrl && (!thumbnailUrl || !authorName || !rawContent || platform === "facebook" || platform === "linkedin")) {
+    // Auto-enrich metadata from sourceUrl if thumbnail/author/content missing, or for Facebook/LinkedIn/YouTube
+    const isGenericTitle =
+      !title ||
+      title === "Saved Link" ||
+      title === "Saved Resource" ||
+      title === "Facebook Video" ||
+      title === "LinkedIn Post" ||
+      title === "YouTube Video" ||
+      title === "YouTube Short" ||
+      title.toLowerCase().includes("resource") ||
+      title.toLowerCase().includes("youtube.com");
+
+    if (
+      sourceUrl &&
+      (!thumbnailUrl ||
+        !authorName ||
+        !rawContent ||
+        isGenericTitle ||
+        platform === "facebook" ||
+        platform === "linkedin" ||
+        platform === "youtube")
+    ) {
       try {
         const meta = await fetchUrlMetadata(sourceUrl);
         if (meta) {
@@ -841,8 +932,8 @@ const createCapture = async (req, res) => {
           if (!mediaUrl && meta.mediaUrl) mediaUrl = meta.mediaUrl;
           if (!authorName && meta.authorName) authorName = meta.authorName;
           if (!rawContent && (meta.rawContent || meta.description)) rawContent = meta.rawContent || meta.description;
-          if (!title || title === "Saved Link" || title === "Saved Resource" || title === "Facebook Video" || title === "LinkedIn Post") {
-            if (meta.title) title = meta.title;
+          if (isGenericTitle && meta.title && !meta.title.toLowerCase().includes("resource")) {
+            title = meta.title;
           }
           if (platform === "facebook" && meta.embedUrl) {
             embedUrl = meta.embedUrl;
