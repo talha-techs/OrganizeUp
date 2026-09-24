@@ -14,6 +14,7 @@ import { getMe } from '../redux/slices/authSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ProgressBar from '../components/ui/ProgressBar';
 import Modal from '../components/ui/Modal';
+import PdfReader from '../components/books/PdfReader';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -33,6 +34,7 @@ const BookDetailPage = () => {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [completedVideoIndex, setCompletedVideoIndex] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(true);
+  const [useNativeEmbed, setUseNativeEmbed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -627,23 +629,50 @@ const BookDetailPage = () => {
           </div>
 
           {currentBook.embedLink ? (
-            <div className="relative w-full" style={{ height: '85vh' }}>
-              {/* Loading overlay */}
-              {pdfLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-raised/90 z-10">
-                  <div className="w-12 h-12 border-4 border-accent/30 border-t-accent rounded-full animate-spin mb-4" />
-                  <p className="text-primary text-sm font-medium">Loading PDF...</p>
-                  <p className="text-muted text-xs mt-1">This may take a moment for large files</p>
+            <div className="w-full">
+              {useNativeEmbed ? (
+                <div className="relative w-full" style={{ height: '85vh' }}>
+                  <div className="flex justify-between items-center p-2.5 bg-surface border-b border-subtle">
+                    <span className="text-xs text-secondary font-medium">Browser Native Embed Mode</span>
+                    <button
+                      onClick={() => setUseNativeEmbed(false)}
+                      className="text-xs text-accent hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                    >
+                      ← Switch to Mobile / In-App Canvas Reader
+                    </button>
+                  </div>
+                  <iframe
+                    src={`${currentBook.embedLink}${currentBook.embedLink.includes('/api/books/pdf/') && !currentBook.embedLink.endsWith('.pdf') ? `/${encodeURIComponent(currentBook.title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf` : ''}#toolbar=1&navpanes=1&scrollbar=1`}
+                    width="100%"
+                    height="100%"
+                    className="border-0 rounded-b-xl"
+                    title={currentBook.title}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <PdfReader
+                    pdfUrl={currentBook.embedLink}
+                    title={currentBook.title}
+                    initialPage={currentPage}
+                    onPageChange={(page) => setCurrentPage(page)}
+                    onTotalPages={(total) => {
+                      if (!totalPages || totalPages === 0 || totalPages !== total) {
+                        setTotalPages(total);
+                      }
+                    }}
+                    onSaveProgress={handleSaveReadingProgress}
+                  />
+                  <div className="flex justify-end px-3 py-1.5 bg-surface/40 rounded-b-xl border-t border-subtle">
+                    <button
+                      onClick={() => setUseNativeEmbed(true)}
+                      className="text-xs text-muted hover:text-secondary transition-colors cursor-pointer"
+                    >
+                      Need browser print or browser PDF toolbar? Switch to native embed
+                    </button>
+                  </div>
                 </div>
               )}
-              <iframe
-                src={`${currentBook.embedLink}${currentBook.embedLink.includes('/api/books/pdf/') && !currentBook.embedLink.endsWith('.pdf') ? `/${encodeURIComponent(currentBook.title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf` : ''}#toolbar=1&navpanes=1&scrollbar=1`}
-                width="100%"
-                height="100%"
-                className="border-0 rounded-xl"
-                title={currentBook.title}
-                onLoad={() => setPdfLoading(false)}
-              />
             </div>
           ) : (
             <div className="flex items-center justify-center py-20">
