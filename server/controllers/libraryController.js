@@ -194,6 +194,20 @@ const removeFromLibrary = async (req, res) => {
       }
     }
 
+    // If removing a book that was saved privately for this user (e.g. YouTube book), delete the private Book document
+    if (contentType === "book") {
+      await Book.deleteMany({
+        _id: deletedContentId,
+        addedBy: req.user._id,
+        $or: [
+          { type: "youtube" },
+          { source: "youtube" },
+          { description: "Modern Audiobook & Summary" },
+          { "videos.driveFileId": /^[a-zA-Z0-9_-]{11}$/ },
+        ],
+      });
+    }
+
     res.json({
       message: "Removed from library",
       id: deletedLibraryId,

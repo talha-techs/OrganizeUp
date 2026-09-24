@@ -207,17 +207,17 @@ const unsaveAudiobookFromLibrary = async (req, res) => {
 
 // @desc    Get Modern Audiobooks & Book Summaries (YouTube)
 // @route   GET /api/audiobooks/modern?topic=...&search=...
-// One-time sanitation: Ensure modern audiobooks mistakenly saved as public are private
+// One-time sanitation: Ensure modern audiobooks are type: "youtube", source: "youtube", visibility: "private"
 Book.updateMany(
   {
     $or: [
       { source: "youtube" },
       { description: "Modern Audiobook & Summary" },
+      { "videos.driveFileId": /^[a-zA-Z0-9_-]{11}$/, description: { $regex: /audiobook|summary/i } },
     ],
-    visibility: "public",
   },
-  { $set: { visibility: "private", source: "youtube" } }
-).catch((err) => console.warn("Audiobook visibility cleanup notice:", err.message));
+  { $set: { type: "youtube", source: "youtube", visibility: "private" } }
+).catch((err) => console.warn("Audiobook type/visibility cleanup notice:", err.message));
 
 // @desc    Get Modern Audiobooks & Summaries (YouTube)
 // @route   GET /api/audiobooks/modern
@@ -315,7 +315,7 @@ const saveModernAudiobookToLibrary = async (req, res) => {
       bookDoc = await Book.create({
         title: title || "Modern Audiobook",
         author: author || "Bestseller",
-        type: "video",
+        type: "youtube",
         description: description || "Modern Audiobook & Summary",
         coverImage: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
         source: "youtube",
@@ -331,10 +331,11 @@ const saveModernAudiobookToLibrary = async (req, res) => {
         ],
       });
     } else {
-      // Ensure existing is private and source is youtube
-      if (bookDoc.visibility !== "private" || bookDoc.source !== "youtube") {
+      // Ensure existing is private, source is youtube, and type is youtube
+      if (bookDoc.visibility !== "private" || bookDoc.source !== "youtube" || bookDoc.type !== "youtube") {
         bookDoc.visibility = "private";
         bookDoc.source = "youtube";
+        bookDoc.type = "youtube";
         await bookDoc.save();
       }
     }

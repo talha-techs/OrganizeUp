@@ -46,8 +46,10 @@ const BooksPage = () => {
   ];
 
   const isYouTubeBook = (b) =>
+    b.type === 'youtube' ||
     b.source === 'youtube' ||
-    (b.type === 'video' && b.videos?.some((v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId)));
+    (b.type === 'video' && b.videos?.some((v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId))) ||
+    b.description === 'Modern Audiobook & Summary';
 
   const filteredBooks = books.filter((b) => {
     if (activeTab === 'all') return true;
@@ -74,8 +76,15 @@ const BooksPage = () => {
   };
 
   const handleUnsaveBook = async (bookId) => {
+    const book = books.find((b) => String(b._id) === String(bookId));
+    const isYt = book && isYouTubeBook(book);
+
     const result = await dispatch(removeFromLibrary(bookId));
-    if (result.meta.requestStatus === 'fulfilled') {
+    if (isYt && book?.isOwner) {
+      // Also delete the user's private YouTube book document completely so it doesn't linger
+      await dispatch(deleteBook(bookId));
+    }
+    if (result.meta.requestStatus === 'fulfilled' || isYt) {
       toast.success('Removed from your books');
       dispatch(fetchBooks());
     } else {

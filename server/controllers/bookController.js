@@ -56,6 +56,14 @@ const getBooks = async (req, res) => {
         obj.isSaved = false;
       }
       obj.isOwner = isOwner;
+      // Ensure YouTube books have type: 'youtube' so they never appear in video books
+      if (
+        obj.source === "youtube" ||
+        obj.description === "Modern Audiobook & Summary" ||
+        obj.videos?.some((v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId))
+      ) {
+        obj.type = "youtube";
+      }
       return obj;
     });
 
@@ -339,6 +347,12 @@ const deleteBook = async (req, res) => {
     for (const af of book.audioFiles || []) {
       if (af.fileId) await deleteFromGridFS(af.fileId, "audio");
     }
+
+    // Clean up UserLibrary entries if any
+    await UserLibrary.deleteMany({
+      contentType: "book",
+      contentId: book._id,
+    });
 
     await book.deleteOne();
     res.json({ message: "Book deleted successfully" });

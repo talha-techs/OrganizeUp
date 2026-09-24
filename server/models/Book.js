@@ -14,7 +14,7 @@ const bookSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["video", "text", "audio"],
+      enum: ["video", "text", "audio", "youtube"],
       required: [true, "Book type is required"],
     },
     description: {

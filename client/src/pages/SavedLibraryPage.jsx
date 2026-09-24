@@ -24,6 +24,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 
 /* ── constants ─────────────────────────────────── */
 const TYPE_META = {
+  youtube_book: { label: 'YouTube Book', icon: IoLogoYoutube, color: 'text-red-400', bg: 'bg-red-500/10', route: (id) => `/books/${id}` },
   book:     { label: 'Book',     icon: IoBookOutline,    color: 'text-accent',     bg: 'bg-accent-subtle', route: (id) => `/books/${id}` },
   course:   { label: 'Course',   icon: IoSchoolOutline,  color: 'text-purple-400', bg: 'bg-purple-500/10', route: (id) => `/courses/${id}` },
   tool:     { label: 'Trick',    icon: IoBulbOutline,    color: 'text-amber-400',  bg: 'bg-amber-500/10',  route: (id) => `/tools/${id}` },
@@ -42,7 +43,7 @@ const SavedItem = ({ item, onRemove }) => {
   const [savingNotes, setSavingNotes] = useState(false);
 
   const content = item.content || {};
-  const meta    = TYPE_META[item.contentType] || TYPE_META.book;
+  const meta    = TYPE_META[item.displayType || item.contentType] || TYPE_META.book;
   const thumb   = content.bannerImage || content.coverImage || content.thumbnailUrl;
 
   const handleSaveNotes = async () => {
@@ -236,15 +237,25 @@ const SavedLibraryPage = () => {
     }
   };
 
-  // Group saved items by contentType
+  // Group saved items by contentType (separate YouTube Books into their own category)
   const grouped = saved.reduce((acc, item) => {
-    const key = item.contentType || 'book';
+    let key = item.contentType || 'book';
+    if (key === 'book') {
+      const c = item.content || {};
+      const isYt =
+        c.type === 'youtube' ||
+        c.source === 'youtube' ||
+        c.videos?.some((v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId));
+      if (isYt) {
+        key = 'youtube_book';
+      }
+    }
     if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
+    acc[key].push({ ...item, displayType: key });
     return acc;
   }, {});
 
-  const typeOrder = ['book', 'course', 'tool', 'section', 'playlist'];
+  const typeOrder = ['youtube_book', 'book', 'course', 'tool', 'section', 'playlist'];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

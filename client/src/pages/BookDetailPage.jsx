@@ -278,7 +278,7 @@ const BookDetailPage = () => {
     );
   }
 
-  const isVideoBook = currentBook.type === 'video';
+  const isVideoBook = currentBook.type === 'video' || currentBook.type === 'youtube';
   const isTextBook = currentBook.type === 'text';
   const isAudioBook = currentBook.type === 'audio';
   const isAdmin = user?.role === 'admin';
@@ -288,9 +288,17 @@ const BookDetailPage = () => {
 
   const handleToggleLibrary = async () => {
     if (isSavedInLibrary) {
+      const isYt = currentBook.type === 'youtube' || currentBook.source === 'youtube';
       const result = await dispatch(removeFromLibrary(id));
-      if (result.meta.requestStatus === 'fulfilled') {
+      if (isYt && isOwner) {
+        await dispatch(deleteBook(id));
+      }
+      if (result.meta.requestStatus === 'fulfilled' || isYt) {
         toast.success('Removed from your books');
+        if (isYt) {
+          navigate('/books');
+          return;
+        }
         dispatch(fetchBook(id));
       } else {
         toast.error(result.payload || 'Failed to remove from library');
