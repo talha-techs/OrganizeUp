@@ -7,7 +7,7 @@ const ProgressBar = ({ progress = 0, height = 'h-1.5', showLabel = false, classN
           <span className="text-xs font-medium text-accent">{Math.round(progress)}%</span>
         </div>
       )}
-      <div className={`w-full ${height} bg-surface-raised rounded-full overflow-hidden border border-subtle`}>
+      <div className={`w-full ${height} bg-zinc-200/80 dark:bg-surface-raised rounded-full overflow-hidden border border-subtle`}>
         <div
           className="h-full bg-gradient-to-r from-accent to-orange-400 rounded-full transition-all duration-500 ease-out"
           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}

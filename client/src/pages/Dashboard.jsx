@@ -241,7 +241,7 @@ const Dashboard = () => {
         <div className="relative z-10 flex flex-wrap items-center gap-3">
           {/* Streak Indicator Pill */}
           <div className="px-4 py-2.5 rounded-2xl bg-surface-raised border border-subtle flex items-center gap-3 shadow-md">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-500 dark:text-orange-400">
               <IoFlame size={22} className="animate-bounce" />
             </div>
             <div>
@@ -259,10 +259,10 @@ const Dashboard = () => {
             href={getDocsUrl()}
             target="_blank"
             rel="noopener noreferrer"
-            className="py-2.5 px-4 text-xs font-bold rounded-2xl bg-surface-raised border border-subtle hover:border-cyan-500/40 text-primary hover:text-cyan-400 transition-all shadow-md flex items-center gap-2 cursor-pointer"
+            className="py-2.5 px-4 text-xs font-bold rounded-2xl bg-surface-raised border border-subtle hover:border-cyan-500/40 text-primary hover:text-cyan-600 dark:hover:text-cyan-400 transition-all shadow-md flex items-center gap-2 cursor-pointer"
             title="Open Documentation & Procedures (opens in new tab)"
           >
-            <IoBookOutline size={16} className="text-cyan-400" />
+            <IoBookOutline size={16} className="text-cyan-600 dark:text-cyan-400" />
             <span>Docs & Guides</span>
             <IoOpenOutline size={12} className="text-muted opacity-70" />
           </a>
@@ -301,7 +301,7 @@ const Dashboard = () => {
                     >
                       {section.icon}
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-surface-raised border border-subtle text-secondary">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-surface-raised border border-zinc-200 dark:border-subtle text-zinc-700 dark:text-secondary">
                       {section.badge}
                     </span>
                   </div>
@@ -339,12 +339,12 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-cyan-950/40 via-surface to-accent/5 border border-cyan-500/20 shadow-lg relative overflow-hidden"
+        className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-cyan-500/10 via-surface to-accent/5 dark:from-cyan-950/40 dark:via-surface dark:to-accent/5 border border-cyan-500/30 dark:border-cyan-500/20 shadow-lg relative overflow-hidden"
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                 Help & Documentation
               </span>
               <span className="text-xs text-muted">docs.organizeup.app</span>
@@ -363,7 +363,7 @@ const Dashboard = () => {
               href={getDocsUrl('telegram-bot')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-[#24A1DE]/15 border border-subtle hover:border-[#24A1DE]/40 text-xs font-medium text-secondary hover:text-[#24A1DE] transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-[#24A1DE]/15 border border-subtle hover:border-[#24A1DE]/40 text-xs font-semibold text-secondary hover:text-[#0088cc] dark:hover:text-[#24A1DE] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>🤖 Telegram Bot</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -372,7 +372,7 @@ const Dashboard = () => {
               href={getDocsUrl('yt-notes')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-red-500/15 border border-subtle hover:border-red-500/40 text-xs font-medium text-secondary hover:text-red-400 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-red-500/15 border border-subtle hover:border-red-500/40 text-xs font-semibold text-secondary hover:text-red-600 dark:hover:text-red-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>🎬 YouTube Studio</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -381,7 +381,7 @@ const Dashboard = () => {
               href={getDocsUrl('audiobooks')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-cyan-500/15 border border-subtle hover:border-cyan-500/40 text-xs font-medium text-secondary hover:text-cyan-400 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-cyan-500/15 border border-subtle hover:border-cyan-500/40 text-xs font-semibold text-secondary hover:text-cyan-700 dark:hover:text-cyan-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>🎧 WaveSurfer Audio</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -390,7 +390,7 @@ const Dashboard = () => {
               href={getDocsUrl('shortcuts')}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-amber-500/15 border border-subtle hover:border-amber-500/40 text-xs font-medium text-secondary hover:text-amber-400 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-amber-500/15 border border-subtle hover:border-amber-500/40 text-xs font-semibold text-secondary hover:text-amber-700 dark:hover:text-amber-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>⚡ Shortcuts</span>
               <IoOpenOutline size={11} className="opacity-60" />
@@ -399,7 +399,7 @@ const Dashboard = () => {
               href={getDocsUrl()}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[#0d1117] text-xs font-bold transition-all shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-[#0d1117] text-xs font-bold transition-all shadow-md shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer"
             >
               <span>Browse All Docs</span>
               <IoOpenOutline size={13} />
@@ -452,47 +452,53 @@ const Dashboard = () => {
           {/* Streak Statistics Summary Panel (No Consistency Rate) */}
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             {/* Current Streak */}
-            <div className="px-4 py-2.5 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400">
+            <div className="px-4 py-2.5 rounded-2xl bg-orange-500/10 border border-orange-500/25 dark:bg-orange-500/10 dark:border-orange-500/20 flex items-center gap-3 shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
                 <IoFlame size={18} />
               </div>
               <div>
-                <p className="text-[10px] text-orange-300 font-semibold uppercase tracking-wider">
+                <p className="text-[10px] text-orange-800 dark:text-orange-300 font-bold uppercase tracking-wider">
                   Current Streak
                 </p>
-                <p className="text-base font-bold text-white font-display">
-                  {activity.currentStreak || 0} <span className="text-xs font-normal text-orange-200/80">Days</span>
+                <p className="text-base font-bold text-zinc-900 dark:text-white font-display">
+                  {activity.currentStreak || 0}{' '}
+                  <span className="text-xs font-medium text-orange-700/80 dark:text-orange-200/80">
+                    Days
+                  </span>
                 </p>
               </div>
             </div>
 
             {/* Max Record Streak */}
-            <div className="px-4 py-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="px-4 py-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 dark:bg-indigo-500/10 dark:border-indigo-500/20 flex items-center gap-3 shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                 <IoFlash size={18} />
               </div>
               <div>
-                <p className="text-[10px] text-indigo-300 font-semibold uppercase tracking-wider">
+                <p className="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold uppercase tracking-wider">
                   Max Streak
                 </p>
-                <p className="text-base font-bold text-white font-display">
-                  {activity.maxStreak || 0} <span className="text-xs font-normal text-indigo-200/80">Days Record</span>
+                <p className="text-base font-bold text-zinc-900 dark:text-white font-display">
+                  {activity.maxStreak || 0}{' '}
+                  <span className="text-xs font-medium text-indigo-700/80 dark:text-indigo-200/80">
+                    Days Record
+                  </span>
                 </p>
               </div>
             </div>
 
             {/* Days Active this Month */}
-            <div className="px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <div className="px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-500/10 dark:border-emerald-500/20 flex items-center gap-3 shadow-xs">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                 <IoCheckmarkCircle size={18} />
               </div>
               <div>
-                <p className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wider">
+                <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase tracking-wider">
                   Active This Month
                 </p>
-                <p className="text-base font-bold text-white font-display">
+                <p className="text-base font-bold text-zinc-900 dark:text-white font-display">
                   {calendarInfo.activeThisMonthCount}{' '}
-                  <span className="text-xs font-normal text-emerald-200/80">
+                  <span className="text-xs font-medium text-emerald-700/80 dark:text-emerald-200/80">
                     / {calendarInfo.daysInMonth} Days
                   </span>
                 </p>
@@ -506,7 +512,7 @@ const Dashboard = () => {
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-2 mb-2 text-center">
             {WEEKDAYS.map((day) => (
-              <div key={day} className="text-xs font-bold uppercase tracking-wider text-muted py-1">
+              <div key={day} className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-muted py-1">
                 {day}
               </div>
             ))}
@@ -524,10 +530,10 @@ const Dashboard = () => {
                   key={item.key}
                   className={`relative h-16 sm:h-20 rounded-2xl p-2 flex flex-col justify-between border transition-all duration-200 ${
                     item.isActive
-                      ? 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/40 shadow-sm'
+                      ? 'bg-emerald-50 border-emerald-300 shadow-xs dark:bg-gradient-to-br dark:from-emerald-500/15 dark:via-emerald-500/5 dark:to-transparent dark:border-emerald-500/40 dark:shadow-sm'
                       : item.isToday
-                      ? 'bg-surface-raised border-accent shadow-md ring-2 ring-accent/30'
-                      : 'bg-surface-raised/40 border-subtle/60 hover:border-subtle'
+                      ? 'bg-white dark:bg-surface-raised border-accent shadow-md ring-2 ring-accent/30'
+                      : 'bg-zinc-50/70 hover:bg-zinc-100/80 border-zinc-200 dark:bg-surface-raised/40 dark:hover:bg-surface-raised/60 dark:border-subtle/60'
                   } ${item.isFuture ? 'opacity-40' : ''}`}
                 >
                   {/* Top Day Number & Today Marker */}
@@ -535,17 +541,17 @@ const Dashboard = () => {
                     <span
                       className={`text-xs sm:text-sm font-bold ${
                         item.isActive
-                          ? 'text-emerald-400'
+                          ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
                           : item.isToday
                           ? 'text-accent font-extrabold'
-                          : 'text-secondary'
+                          : 'text-zinc-700 dark:text-secondary'
                       }`}
                     >
                       {item.dayNum}
                     </span>
 
                     {item.isToday && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-white uppercase tracking-wider">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent text-white uppercase tracking-wider shadow-xs">
                         Today
                       </span>
                     )}
@@ -555,13 +561,13 @@ const Dashboard = () => {
                   <div className="flex items-center justify-end">
                     {item.isActive ? (
                       <span
-                        className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs"
+                        className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 flex items-center justify-center text-xs shadow-xs"
                         title={`Active on ${item.dateStr}`}
                       >
-                        <IoFlame size={14} className="text-emerald-400" />
+                        <IoFlame size={14} className="text-emerald-600 dark:text-emerald-400" />
                       </span>
                     ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-subtle" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-subtle" />
                     )}
                   </div>
                 </div>
@@ -570,15 +576,15 @@ const Dashboard = () => {
           </div>
 
           {/* Calendar Legend */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-subtle mt-4 text-xs text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-subtle mt-4 text-xs text-zinc-600 dark:text-muted">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-500/30 border border-emerald-500/50" />
-                <span>Logged In / Active Study</span>
+                <span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 dark:bg-emerald-500/30 dark:border-emerald-500/50" />
+                <span className="font-medium text-zinc-700 dark:text-secondary">Logged In / Active Study</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-accent ring-2 ring-accent/30" />
-                <span>Current Day</span>
+                <span className="font-medium text-zinc-700 dark:text-secondary">Current Day</span>
               </span>
             </div>
             <span>Streaks increase when you log in or study on consecutive days</span>
@@ -649,15 +655,15 @@ const Dashboard = () => {
                 to={c.link}
                 className="glass-card p-4 rounded-3xl border border-subtle hover:border-purple-500/40 transition-all duration-300 flex items-center gap-4 group shadow-md hover:shadow-xl hover:-translate-y-1"
               >
-                <div className="w-16 h-20 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex-shrink-0 flex items-center justify-center text-purple-400">
+                <div className="w-16 h-20 rounded-2xl bg-purple-500/15 border border-purple-500/25 flex-shrink-0 flex items-center justify-center text-purple-600 dark:text-purple-400">
                   <IoSchoolOutline size={28} />
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">
                       {c.category}
                     </span>
-                    <h4 className="text-sm font-bold text-primary truncate group-hover:text-purple-300 transition-colors">
+                    <h4 className="text-sm font-bold text-primary truncate group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
                       {c.title}
                     </h4>
                   </div>
@@ -728,7 +734,7 @@ const Dashboard = () => {
                             {r.platform}
                           </span>
                           {r.isPriority && (
-                            <span className="text-[9px] font-bold text-red-400">★ High</span>
+                            <span className="text-[9px] font-bold text-red-600 dark:text-red-400">★ High</span>
                           )}
                         </div>
                         <h5 className="text-xs font-semibold text-primary truncate">
@@ -738,8 +744,8 @@ const Dashboard = () => {
                       <span
                         className={`text-[10px] font-semibold whitespace-nowrap px-2 py-1 rounded-lg ${
                           isPast
-                            ? 'bg-red-500/15 text-red-400 border border-red-500/25'
-                            : 'bg-surface text-muted'
+                            ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25'
+                            : 'bg-zinc-100 text-zinc-600 dark:bg-surface dark:text-muted'
                         }`}
                       >
                         {remDate.toLocaleDateString(undefined, {
@@ -797,7 +803,7 @@ const Dashboard = () => {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary">
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-zinc-200 text-zinc-800 dark:bg-primary/10 dark:text-primary">
                         {note.type}
                       </span>
                       <h5 className="text-xs font-bold text-primary truncate">
@@ -806,17 +812,17 @@ const Dashboard = () => {
                     </div>
                     <button
                       onClick={() => handleCopyText(note.content, note.id)}
-                      className="p-1 rounded-lg text-muted hover:text-white hover:bg-surface transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-zinc-200 dark:hover:bg-surface transition-colors cursor-pointer"
                       title="Copy Note"
                     >
                       {copiedNoteId === note.id ? (
-                        <IoCheckmark size={14} className="text-emerald-400" />
+                        <IoCheckmark size={14} className="text-emerald-500 dark:text-emerald-400" />
                       ) : (
                         <IoCopyOutline size={14} />
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-secondary leading-relaxed line-clamp-3 italic bg-surface/50 p-2.5 rounded-xl border border-subtle/40">
+                  <p className="text-xs text-zinc-700 dark:text-secondary leading-relaxed line-clamp-3 italic bg-zinc-50 dark:bg-surface/50 p-2.5 rounded-xl border border-zinc-200/80 dark:border-subtle/40">
                     "{note.content}"
                   </p>
                 </div>
