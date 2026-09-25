@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -20,7 +20,8 @@ import {
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
-import WorkspaceVideoCard, { isVideoLink, detectLinkMediaInfo, getPlatformBadge } from './WorkspaceVideoCard';
+import WorkspaceVideoCard from './WorkspaceVideoCard';
+import { isVideoLink, detectLinkMediaInfo, getPlatformBadge } from '../../utils/linkMediaUtils';
 import {
   updateSubSection,
   deleteSubSection,
@@ -821,11 +822,12 @@ const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
 
   return (
     <div className="space-y-3">
-      {links.map((link) => {
+      {links.map((link, idx) => {
+        if (!link) return null;
         if (isVideoLink(link)) {
           return (
             <WorkspaceVideoCard
-              key={link._id}
+              key={link._id || link.url || idx}
               link={link}
               sectionId={sectionId}
               subId={block._id}
@@ -840,11 +842,11 @@ const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
         // Standard Web Link Card
         return (
           <div
-            key={link._id}
+            key={link._id || link.url || idx}
             className="flex items-start gap-3 p-3.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle transition-colors group shadow-sm"
           >
             <img
-              src={`https://www.google.com/s2/favicons?domain=${getDomain(link.url)}&sz=32`}
+              src={`https://www.google.com/s2/favicons?domain=${getDomain(link.url || '')}&sz=32`}
               alt=""
               className="w-5 h-5 mt-0.5 flex-shrink-0 rounded"
               onError={(e) => {
@@ -852,32 +854,38 @@ const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
               }}
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-primary">{link.title}</p>
-              <p className="text-xs text-muted truncate">{link.url}</p>
+              <p className="text-sm font-semibold text-primary">{link.title || link.url || 'Saved Link'}</p>
+              <p className="text-xs text-muted truncate">{link.url || ''}</p>
               {link.description && <p className="text-xs text-muted mt-1 leading-relaxed">{link.description}</p>}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors"
-                title="Open in new tab"
-              >
-                <IoOpenOutline size={15} />
-              </a>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(link.url);
-                  toast.success('Copied to clipboard!');
-                }}
-                className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
-                title="Copy URL"
-              >
-                <IoCopyOutline size={15} />
-              </button>
+              {link.url && (
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors"
+                  title="Open in new tab"
+                >
+                  <IoOpenOutline size={15} />
+                </a>
+              )}
+              {link.url && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(link.url);
+                    toast.success('Copied to clipboard!');
+                  }}
+                  className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+                  title="Copy URL"
+                >
+                  <IoCopyOutline size={15} />
+                </button>
+              )}
               {canEdit && (
                 <button
+                  type="button"
                   onClick={() =>
                     dispatch(removeLink({ sectionId, subId: block._id, linkId: link._id }))
                   }

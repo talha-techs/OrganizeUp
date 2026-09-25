@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+void motion;
 import {
   IoTrashOutline,
   IoCopyOutline,
@@ -13,203 +14,13 @@ import {
   IoCheckmark,
   IoSparklesOutline,
 } from 'react-icons/io5';
-import {
-  FaYoutube,
-  FaInstagram,
-  FaFacebook,
-} from 'react-icons/fa';
-import { FaXTwitter } from 'react-icons/fa6';
 import toast from 'react-hot-toast';
 import UniversalVideoPlayer from '../capture/UniversalVideoPlayer';
 import { updateLink } from '../../redux/slices/sectionSlice';
-
-/**
- * Robust helper to inspect any URL and extract video/media metadata
- */
-export const detectLinkMediaInfo = (rawUrl = '') => {
-  if (!rawUrl || typeof rawUrl !== 'string') return null;
-  const url = rawUrl.trim();
-
-  // 1. YouTube (Videos, Shorts, Embeds)
-  const ytMatch = url.match(
-    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i,
-  );
-  if (ytMatch) {
-    const videoId = ytMatch[1];
-    const isShort = url.toLowerCase().includes('/shorts/');
-    return {
-      platform: 'youtube',
-      mediaType: 'video',
-      embedId: videoId,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?rel=0`,
-      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      aspectRatio: isShort ? '9/16' : '16/9',
-      label: isShort ? 'YouTube Short' : 'YouTube Video',
-    };
-  }
-
-  // 2. Instagram (Reels, Posts, TV)
-  const igMatch = url.match(
-    /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/i,
-  );
-  if (igMatch) {
-    const shortcode = igMatch[1];
-    const isReel = url.toLowerCase().includes('/reel');
-    return {
-      platform: 'instagram',
-      mediaType: 'video',
-      embedId: shortcode,
-      embedUrl: `https://www.instagram.com/reel/${shortcode}/embed`,
-      aspectRatio: isReel ? '9/16' : '16/9',
-      label: isReel ? 'Instagram Reel' : 'Instagram Video',
-    };
-  }
-
-  // 3. Facebook Video / Watch / Reel
-  if (/(?:facebook\.com|fb\.watch|fb\.me)/i.test(url)) {
-    let cleanUrl = url;
-    try {
-      const u = new URL(url);
-      if (u.pathname.includes('/reel/')) {
-        cleanUrl = `${u.origin}${u.pathname}`;
-      } else if (u.pathname.includes('/watch') && u.searchParams.has('v')) {
-        cleanUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get('v')}`;
-      }
-    } catch {}
-    const isReel = url.toLowerCase().includes('/reel');
-    return {
-      platform: 'facebook',
-      mediaType: 'video',
-      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=false&t=0`,
-      aspectRatio: isReel ? '9/16' : '16/9',
-      label: isReel ? 'Facebook Reel' : 'Facebook Video',
-    };
-  }
-
-  // 4. Twitter / X Video
-  const twMatch = url.match(
-    /(?:https?:\/\/)?(?:www\.|mobile\.)?(?:twitter\.com|x\.com)\/(?:#!\/)?([a-zA-Z0-9_]+)\/status(?:es)?\/(\d+)/i,
-  );
-  if (twMatch) {
-    const username = twMatch[1];
-    const tweetId = twMatch[2];
-    return {
-      platform: 'twitter',
-      mediaType: 'video',
-      embedId: tweetId,
-      authorName: `@${username}`,
-      embedUrl: `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}&theme=dark`,
-      aspectRatio: '16/9',
-      label: 'X (Twitter) Post',
-    };
-  }
-
-  // 5. Direct Video Streams (.mp4, .webm, .m3u8, etc.)
-  if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) || url.includes('/api/captures/stream')) {
-    return {
-      platform: 'web',
-      mediaType: 'video',
-      mediaUrl: url,
-      aspectRatio: '16/9',
-      label: 'Direct Video Stream',
-    };
-  }
-
-  // 6. Vimeo
-  const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/i);
-  if (vimeoMatch) {
-    const videoId = vimeoMatch[1];
-    return {
-      platform: 'web',
-      mediaType: 'video',
-      embedId: videoId,
-      embedUrl: `https://player.vimeo.com/video/${videoId}`,
-      aspectRatio: '16/9',
-      label: 'Vimeo Video',
-    };
-  }
-
-  // 7. Loom
-  const loomMatch = url.match(/(?:https?:\/\/)?(?:www\.)?loom\.com\/share\/([a-zA-Z0-9]+)/i);
-  if (loomMatch) {
-    const videoId = loomMatch[1];
-    return {
-      platform: 'web',
-      mediaType: 'video',
-      embedId: videoId,
-      embedUrl: `https://www.loom.com/embed/${videoId}`,
-      aspectRatio: '16/9',
-      label: 'Loom Video',
-    };
-  }
-
-  // 8. TikTok
-  const tiktokMatch = url.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^/]+\/video\/(\d+)/i);
-  if (tiktokMatch) {
-    const videoId = tiktokMatch[1];
-    return {
-      platform: 'web',
-      mediaType: 'video',
-      embedId: videoId,
-      embedUrl: `https://www.tiktok.com/embed/v2/${videoId}`,
-      aspectRatio: '9/16',
-      label: 'TikTok Video',
-    };
-  }
-
-  return null;
-};
-
-/**
- * Check if a link represents playable video media
- */
-export const isVideoLink = (link) => {
-  if (!link) return false;
-  if (link.mediaType === 'video') return true;
-  if (['youtube', 'instagram', 'facebook', 'twitter'].includes(link.platform)) return true;
-  if (link.embedUrl && !['linkedin', 'article'].includes(link.platform)) return true;
-  if (link.mediaUrl && /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)/i.test(link.mediaUrl)) return true;
-  if (detectLinkMediaInfo(link.url)) return true;
-  return false;
-};
-
-/**
- * Helper to get platform metadata badges
- */
-export const getPlatformBadge = (platform) => {
-  switch (platform) {
-    case 'youtube':
-      return {
-        icon: <FaYoutube className="text-red-500" size={15} />,
-        label: 'YouTube',
-        bgCls: 'bg-red-500/10 text-red-400 border-red-500/20',
-      };
-    case 'instagram':
-      return {
-        icon: <FaInstagram className="text-pink-400" size={15} />,
-        label: 'Instagram',
-        bgCls: 'bg-pink-500/10 text-pink-300 border-pink-500/20',
-      };
-    case 'facebook':
-      return {
-        icon: <FaFacebook className="text-blue-400" size={15} />,
-        label: 'Facebook',
-        bgCls: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
-      };
-    case 'twitter':
-      return {
-        icon: <FaXTwitter className="text-zinc-200" size={14} />,
-        label: 'X (Twitter)',
-        bgCls: 'bg-zinc-800 text-zinc-200 border-zinc-700',
-      };
-    default:
-      return {
-        icon: <IoVideocamOutline className="text-accent" size={15} />,
-        label: 'Video',
-        bgCls: 'bg-accent/10 text-accent border-accent/20',
-      };
-  }
-};
+import {
+  detectLinkMediaInfo,
+  getPlatformBadge,
+} from '../../utils/linkMediaUtils';
 
 /**
  * Workspace Wide & Adjustable Video Card Component
@@ -225,29 +36,30 @@ const WorkspaceVideoCard = ({
   const [copied, setCopied] = useState(false);
   const [showDesc, setShowDesc] = useState(false);
 
-  // Compute detected media data if not stored
+  // Safely compute detected media data if not stored
   const detected = useMemo(() => {
-    return detectLinkMediaInfo(link.url) || {};
-  }, [link.url]);
+    return detectLinkMediaInfo(link?.url) || {};
+  }, [link?.url]);
 
-  const resolvedPlatform = link.platform && link.platform !== 'web'
+  const resolvedPlatform = link?.platform && link?.platform !== 'web'
     ? link.platform
     : detected.platform || 'web';
 
-  const resolvedEmbedUrl = link.embedUrl || detected.embedUrl || '';
-  const resolvedMediaUrl = link.mediaUrl || detected.mediaUrl || '';
-  const resolvedThumbnail = link.thumbnailUrl || detected.thumbnailUrl || '';
+  const resolvedEmbedUrl = link?.embedUrl || detected.embedUrl || '';
+  const resolvedMediaUrl = link?.mediaUrl || detected.mediaUrl || '';
+  const resolvedThumbnail = link?.thumbnailUrl || detected.thumbnailUrl || '';
 
   // Local state for interactive size & aspect ratio adjustment
-  const [displayMode, setDisplayMode] = useState(link.displayMode || 'wide'); // 'wide' | 'theater' | 'compact'
+  const [displayMode, setDisplayMode] = useState(link?.displayMode || 'wide'); // 'wide' | 'theater' | 'compact'
   const [aspectRatio, setAspectRatio] = useState(
-    link.aspectRatio || detected.aspectRatio || (resolvedPlatform === 'instagram' ? '9/16' : '16/9')
+    link?.aspectRatio || detected.aspectRatio || (resolvedPlatform === 'instagram' ? '9/16' : '16/9')
   );
 
   const badge = getPlatformBadge(resolvedPlatform);
 
   const handleCopyLink = (e) => {
     e.stopPropagation();
+    if (!link?.url) return;
     navigator.clipboard.writeText(link.url);
     setCopied(true);
     toast.success('Link copied to clipboard!');
@@ -256,7 +68,7 @@ const WorkspaceVideoCard = ({
 
   const handleToggleDisplayMode = (newMode) => {
     setDisplayMode(newMode);
-    if (canEdit && sectionId && subId) {
+    if (canEdit && sectionId && subId && link?._id) {
       dispatch(
         updateLink({
           sectionId,
@@ -270,7 +82,7 @@ const WorkspaceVideoCard = ({
 
   const handleToggleAspectRatio = (newRatio) => {
     setAspectRatio(newRatio);
-    if (canEdit && sectionId && subId) {
+    if (canEdit && sectionId && subId && link?._id) {
       dispatch(
         updateLink({
           sectionId,
@@ -296,6 +108,8 @@ const WorkspaceVideoCard = ({
         return 'aspect-video min-h-[320px] max-h-[620px]';
     }
   };
+
+  if (!link) return null;
 
   return (
     <motion.div
@@ -323,7 +137,7 @@ const WorkspaceVideoCard = ({
           <h4
             className="text-sm font-semibold text-primary truncate leading-snug cursor-pointer hover:text-accent transition-colors"
             title={link.title || link.url}
-            onClick={() => window.open(link.url, '_blank')}
+            onClick={() => link.url && window.open(link.url, '_blank')}
           >
             {link.title || 'Video Resource'}
           </h4>
@@ -343,6 +157,7 @@ const WorkspaceVideoCard = ({
               {['16/9', '9/16', '21/9'].map((ratio) => (
                 <button
                   key={ratio}
+                  type="button"
                   onClick={() => handleToggleAspectRatio(ratio)}
                   className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
                     aspectRatio === ratio
@@ -359,6 +174,7 @@ const WorkspaceVideoCard = ({
 
           {/* Size / Theater Toggle */}
           <button
+            type="button"
             onClick={() =>
               handleToggleDisplayMode(displayMode === 'theater' ? 'wide' : 'theater')
             }
@@ -377,6 +193,7 @@ const WorkspaceVideoCard = ({
 
           {/* Compact / Expand Toggle */}
           <button
+            type="button"
             onClick={() =>
               handleToggleDisplayMode(displayMode === 'compact' ? 'wide' : 'compact')
             }
@@ -388,6 +205,7 @@ const WorkspaceVideoCard = ({
 
           {/* Copy Link */}
           <button
+            type="button"
             onClick={handleCopyLink}
             className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors cursor-pointer"
             title="Copy Video URL"
@@ -396,19 +214,22 @@ const WorkspaceVideoCard = ({
           </button>
 
           {/* Open Link */}
-          <a
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors"
-            title="Open in new tab"
-          >
-            <IoOpenOutline size={15} />
-          </a>
+          {link.url && (
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors"
+              title="Open in new tab"
+            >
+              <IoOpenOutline size={15} />
+            </a>
+          )}
 
           {/* Delete Link */}
           {canEdit && (
             <button
+              type="button"
               onClick={() => onDelete?.(link._id)}
               className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
               title="Remove Video Card"
@@ -435,7 +256,7 @@ const WorkspaceVideoCard = ({
               {resolvedThumbnail ? (
                 <img
                   src={resolvedThumbnail}
-                  alt={link.title}
+                  alt={link.title || 'Video'}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
               ) : (
@@ -475,7 +296,7 @@ const WorkspaceVideoCard = ({
             {resolvedPlatform === 'youtube' && (
               <div className={`w-full ${getAspectClass()} overflow-hidden relative`}>
                 <iframe
-                  src={resolvedEmbedUrl || `https://www.youtube-nocookie.com/embed/${detected.embedId}?rel=0`}
+                  src={resolvedEmbedUrl || (detected.embedId ? `https://www.youtube-nocookie.com/embed/${detected.embedId}?rel=0` : '')}
                   className="w-full h-full border-0 absolute inset-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
@@ -617,6 +438,7 @@ const WorkspaceVideoCard = ({
               <IoSparklesOutline size={12} className="text-accent" /> Notes & Context
             </span>
             <button
+              type="button"
               onClick={() => setShowDesc(!showDesc)}
               className="text-[11px] text-accent hover:underline cursor-pointer"
             >
