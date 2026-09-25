@@ -40,6 +40,12 @@ const UniversalVideoPlayer = ({
   forceProxy = false,
 }) => {
   const targetUrl = sourceUrl || embedUrl || src || '';
+  const isTargetVideo =
+    targetUrl.toLowerCase().includes('pmvhaven.com') ||
+    targetUrl.includes('.m3u8') ||
+    targetUrl.includes('mpegurl') ||
+    /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(targetUrl);
+  const actualSrc = src || (isTargetVideo ? targetUrl : '');
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = (e) => {
@@ -56,16 +62,17 @@ const UniversalVideoPlayer = ({
   // Detect sources that require proxying from the start
   const needsProxyFromStart = (url) => {
     if (!url || typeof url !== 'string') return false;
+    const lower = url.toLowerCase();
     return (
-      url.includes('twimg.com') ||
-      url.includes('video.twimg.com') ||
-      url.includes('fbcdn.net') ||
-      url.includes('cdninstagram.com') ||
-      url.includes('pmvhaven.com')
+      lower.includes('twimg.com') ||
+      lower.includes('video.twimg.com') ||
+      lower.includes('fbcdn.net') ||
+      lower.includes('cdninstagram.com') ||
+      lower.includes('pmvhaven.com')
     );
   };
 
-  const [useProxy, setUseProxy] = useState(forceProxy || needsProxyFromStart(src));
+  const [useProxy, setUseProxy] = useState(forceProxy || needsProxyFromStart(actualSrc));
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -99,7 +106,7 @@ const UniversalVideoPlayer = ({
     setSelectedQuality('');
     setAvailableQualities([]);
     setIsQualityMenuOpen(false);
-  }, [src]);
+  }, [actualSrc]);
 
   // Helper to deduplicate & sort HLS quality levels
   const processHlsLevels = (rawLevels) => {
@@ -112,20 +119,23 @@ const UniversalVideoPlayer = ({
       bitrate: lvl.bitrate || 0,
     }));
 
-    // Deduplicate by height, keeping highest bitrate for each height
+    // Deduplicate by height (or fallback key), keeping highest bitrate for each height
     const uniqueMap = new Map();
     for (const item of indexed) {
-      const key = item.height || `lvl_${item.index}`;
+      const key = item.height > 0 ? item.height : `lvl_${item.index}`;
       if (!uniqueMap.has(key) || item.bitrate > uniqueMap.get(key).bitrate) {
         uniqueMap.set(key, item);
       }
     }
 
-    // Sort descending (highest resolution first in dropdown)
-    return Array.from(uniqueMap.values()).sort((a, b) => b.height - a.height);
+    // Sort descending (highest resolution/bitrate first in dropdown)
+    return Array.from(uniqueMap.values()).sort((a, b) => {
+      if (b.height !== a.height) return b.height - a.height;
+      return b.bitrate - a.bitrate;
+    });
   };
 
-  // Helper to determine default quality: 720p (primary) or 480p (fallback), NEVER the highest
+  // Helper to determine default quality: 720p (primary) or lowest fetched quality, NEVER the highest
   const findDefaultLevel = (processedLevels) => {
     if (!processedLevels || processedLevels.length === 0) return null;
     if (processedLevels.length === 1) return { ...processedLevels[0], isDefault: true };
@@ -138,13 +148,13 @@ const UniversalVideoPlayer = ({
     const lvl480 = processedLevels.find((lvl) => lvl.height === 480);
     if (lvl480) return { ...lvl480, isDefault: true };
 
-    // 3. Closest <= 720p (list is sorted descending, so first item <= 720 is the highest below 720p)
-    const under720 = processedLevels.filter((lvl) => lvl.height > 0 && lvl.height <= 720);
+    // 3. Closest <= 720p
+    const under720 = processedLevels.filter((lvl) => lvl.height > 0 && lvl.height < 720);
     if (under720.length > 0) {
       return { ...under720[0], isDefault: true };
     }
 
-    // 4. If all are above 720p, pick the lowest available so it is NOT the highest
+    // 4. Lowest available fetched quality (never start with the highest / 4K)
     return { ...processedLevels[processedLevels.length - 1], isDefault: true };
   };
 
@@ -161,22 +171,23 @@ const UniversalVideoPlayer = ({
   }, []);
 
   const isHls =
-    typeof src === 'string' &&
-    (src.includes('.m3u8') || src.includes('mpegurl') || src.includes('pmvhaven.com'));
+    typeof actualSrc === 'string' &&
+    (actualSrc.includes('.m3u8') || actualSrc.includes('mpegurl') || actualSrc.toLowerCase().includes('pmvhaven.com'));
 
   // Check if the src is actually a playable direct video URL (not an embed page URL)
   const isDirectVideoUrl = (url) => {
     if (!url || typeof url !== 'string') return false;
+    const lower = url.toLowerCase();
     // If it's already a proxy URL, it's direct
     if (url.startsWith('/api/captures/stream')) return true;
     if (url.startsWith('blob:') || url.startsWith('data:video/')) return true;
     // Explicitly direct
-    if (url.includes('pmvhaven.com')) return true;
+    if (lower.includes('pmvhaven.com')) return true;
     // Check for known video file extensions or video CDN patterns
     if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url)) return true;
-    if (url.includes('video.twimg.com')) return true;
-    if (url.includes('.m3u8')) return true;
-    if (url.includes('fbcdn.net') && (url.includes('video') || url.includes('/v/'))) return true;
+    if (lower.includes('video.twimg.com')) return true;
+    if (lower.includes('.m3u8')) return true;
+    if (lower.includes('fbcdn.net') && (lower.includes('video') || lower.includes('/v/'))) return true;
     return false;
   };
 
@@ -220,9 +231,9 @@ const UniversalVideoPlayer = ({
   };
 
   // Determine if we should use the video element, an iframe embed, or an external video card
-  const hasDirect = isDirectVideoUrl(src);
+  const hasDirect = isDirectVideoUrl(actualSrc);
   const canEmbed = isEmbeddableUrl(embedUrl);
-  const effectiveSrc = getStreamUrl(src, useProxy);
+  const effectiveSrc = getStreamUrl(actualSrc, useProxy);
 
   // Cleanup HLS instance
   const destroyHls = useCallback(() => {
@@ -241,19 +252,11 @@ const UniversalVideoPlayer = ({
       userSelectedQualityRef.current = 'auto';
       setSelectedQuality('auto');
       hlsRef.current.currentLevel = -1;
-      // In auto mode, if using proxy, cap at 720p/default to avoid sudden 4K segment spikes
-      if (useProxy && availableQualities.length > 0) {
-        const defaultLvl = availableQualities.find((q) => q.isDefault);
-        if (defaultLvl) {
-          hlsRef.current.autoLevelCapping = defaultLvl.index;
-        }
-      } else {
-        hlsRef.current.autoLevelCapping = -1;
-      }
+      hlsRef.current.autoLevelCapping = -1;
     } else {
       // User explicitly selected a quality level (up to highest available)
-      userSelectedQualityRef.current = lvl.height;
-      setSelectedQuality(`${lvl.height}p`);
+      userSelectedQualityRef.current = lvl.height || lvl.index;
+      setSelectedQuality(lvl.height ? `${lvl.height}p` : `Level ${lvl.index + 1}`);
       hlsRef.current.autoLevelCapping = -1; // Uncap so explicit choice is honored
       hlsRef.current.currentLevel = lvl.index;
       hlsRef.current.loadLevel = lvl.index;
@@ -263,7 +266,7 @@ const UniversalVideoPlayer = ({
   // Initialize HLS for .m3u8 streams, or set src for MP4/WebM
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !src || !hasDirect) return;
+    if (!video || !actualSrc || !hasDirect) return;
 
     destroyHls();
     setHasError(false);
@@ -276,7 +279,7 @@ const UniversalVideoPlayer = ({
           enableWorker: true,
           lowLatencyMode: true,
           backBufferLength: 60,
-          startLevel: 0,
+          autoStartLoad: false, // Critical: don't buffer until starting level (720p or lowest) is set
           xhrSetup: (xhr) => {
             // Don't send credentials to avoid CORS preflight issues with proxied segments
             xhr.withCredentials = false;
@@ -298,33 +301,42 @@ const UniversalVideoPlayer = ({
             }));
             setAvailableQualities(qualitiesWithDefault);
 
-            // Honor user's manual choice if previously made, otherwise apply 720p/480p default
+            // Honor user's manual choice if previously made, otherwise apply 720p or lowest fetched default
             if (userSelectedQualityRef.current !== null) {
               if (userSelectedQualityRef.current === 'auto') {
                 hls.currentLevel = -1;
+                hls.autoLevelCapping = -1;
                 setSelectedQuality('auto');
               } else {
                 const matched = qualitiesWithDefault.find(
-                  (q) => q.height === userSelectedQualityRef.current
+                  (q) => (q.height || q.index) === userSelectedQualityRef.current
                 );
                 if (matched) {
                   hls.autoLevelCapping = -1;
+                  hls.startLevel = matched.index;
                   hls.currentLevel = matched.index;
                   hls.loadLevel = matched.index;
-                  setSelectedQuality(`${matched.height}p`);
+                  setSelectedQuality(matched.height ? `${matched.height}p` : `Level ${matched.index + 1}`);
                 } else if (defaultLvl) {
+                  hls.startLevel = defaultLvl.index;
                   hls.currentLevel = defaultLvl.index;
                   hls.loadLevel = defaultLvl.index;
-                  setSelectedQuality(`${defaultLvl.height}p`);
+                  hls.autoLevelCapping = defaultLvl.index;
+                  setSelectedQuality(defaultLvl.height ? `${defaultLvl.height}p` : `Level ${defaultLvl.index + 1}`);
                 }
               }
             } else if (defaultLvl) {
-              // Default video quality is 720p (primary) or 480p, NOT the highest
+              // Default video quality is 720p (primary) or lowest fetched quality, NOT the highest
+              hls.startLevel = defaultLvl.index;
               hls.currentLevel = defaultLvl.index;
               hls.loadLevel = defaultLvl.index;
-              setSelectedQuality(`${defaultLvl.height}p`);
+              hls.autoLevelCapping = defaultLvl.index;
+              setSelectedQuality(defaultLvl.height ? `${defaultLvl.height}p` : `Level ${defaultLvl.index + 1}`);
             }
           }
+
+          // Start loading video chunks safely at the designated 720p or lowest quality
+          hls.startLoad();
 
           if (autoPlay) {
             video.play().catch(() => {});
@@ -370,17 +382,17 @@ const UniversalVideoPlayer = ({
     return () => {
       destroyHls();
     };
-  }, [src, useProxy, isHls, effectiveSrc, hasDirect, autoPlay, destroyHls]);
+  }, [actualSrc, useProxy, isHls, effectiveSrc, hasDirect, autoPlay, destroyHls]);
 
   const handleVideoError = useCallback(() => {
-    if (!useProxy && src) {
+    if (!useProxy && actualSrc) {
       console.warn('Direct video playback error. Switching to Cloud Stream proxy...');
       setUseProxy(true);
     } else {
       setHasError(true);
       setErrorMessage('Unable to stream video. Please check connection or toggle stream mode.');
     }
-  }, [useProxy, src]);
+  }, [useProxy, actualSrc]);
 
   const handleToggleProxy = (e) => {
     e.stopPropagation();
@@ -391,7 +403,7 @@ const UniversalVideoPlayer = ({
   };
 
   // 1. Render iframe embed fallback if embedUrl is provided and is a valid embeddable player
-  if ((!src || !hasDirect) && canEmbed && embedUrl) {
+  if ((!actualSrc || !hasDirect) && canEmbed && embedUrl) {
     return (
       <div className={`w-full bg-black relative aspect-video overflow-hidden group ${className}`}>
         <iframe
@@ -515,7 +527,7 @@ const UniversalVideoPlayer = ({
 
   // 3. Direct Playable Stream:
   // If no src at all, render nothing
-  if (!src) return null;
+  if (!actualSrc) return null;
 
   return (
     <div className={`w-full bg-black relative aspect-video overflow-hidden group select-none ${className}`}>
@@ -533,32 +545,36 @@ const UniversalVideoPlayer = ({
       />
 
       {/* Floating Control Bar: Quality Selector & Cloud Stream Toggle */}
-      {src && (
+      {actualSrc && (
         <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 opacity-90 transition-opacity group-hover:opacity-100">
-          {/* Quality Selector Dropdown (shown when multi-quality HLS stream) */}
-          {availableQualities.length > 1 && (
+          {/* Quality Selector Dropdown (shown when multi-quality HLS stream or qualities detected) */}
+          {availableQualities.length > 0 && (
             <div className="relative" ref={qualityMenuRef}>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsQualityMenuOpen((prev) => !prev);
+                  if (availableQualities.length > 1) {
+                    setIsQualityMenuOpen((prev) => !prev);
+                  }
                 }}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide shadow-md transition-all cursor-pointer backdrop-blur-md border bg-black/60 hover:bg-black/85 text-gray-200 border-white/15 hover:border-white/30 active:scale-95"
-                title="Select video quality"
+                title={availableQualities.length > 1 ? "Select video quality" : `Quality: ${selectedQuality || 'Default'}`}
               >
                 <IoSettingsOutline size={12} className="text-gray-400" />
                 <span>{selectedQuality === 'auto' ? 'Auto' : selectedQuality || 'Quality'}</span>
-                <IoChevronDownOutline
-                  size={10}
-                  className={`text-gray-400 transition-transform duration-200 ${
-                    isQualityMenuOpen ? 'rotate-180' : ''
-                  }`}
-                />
+                {availableQualities.length > 1 && (
+                  <IoChevronDownOutline
+                    size={10}
+                    className={`text-gray-400 transition-transform duration-200 ${
+                      isQualityMenuOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                )}
               </button>
 
               {/* Quality Dropdown Menu */}
-              {isQualityMenuOpen && (
+              {isQualityMenuOpen && availableQualities.length > 1 && (
                 <div
                   onClick={(e) => e.stopPropagation()}
                   className="absolute right-0 mt-1.5 py-1 min-w-[130px] bg-neutral-900/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-xl z-30 overflow-hidden"
@@ -581,7 +597,8 @@ const UniversalVideoPlayer = ({
 
                   {/* Available levels from highest to lowest */}
                   {availableQualities.map((lvl) => {
-                    const isSelected = selectedQuality === `${lvl.height}p`;
+                    const label = lvl.height ? `${lvl.height}p` : `Level ${lvl.index + 1}`;
+                    const isSelected = selectedQuality === label;
                     return (
                       <button
                         key={lvl.index}
@@ -592,7 +609,7 @@ const UniversalVideoPlayer = ({
                         }`}
                       >
                         <span className="flex items-center gap-1.5">
-                          <span>{lvl.height}p</span>
+                          <span>{label}</span>
                           {lvl.height >= 2160 && (
                             <span className="px-1 py-0.5 text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded leading-none">
                               4K

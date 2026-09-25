@@ -1257,8 +1257,11 @@ const streamVideo = async (req, res) => {
       "Accept-Encoding": "identity",
     };
 
-    // Spoof Referer/Origin so CDNs that validate hotlinking don't reject us
-    if (targetOrigin) {
+    // Spoof Referer/Origin so CDNs that validate hotlinking don't reject requests
+    if (/pmvhaven/i.test(url)) {
+      headers["Referer"] = "https://pmvhaven.com/";
+      headers["Origin"] = "https://pmvhaven.com";
+    } else if (targetOrigin) {
       headers["Referer"] = targetOrigin + "/";
       headers["Origin"] = targetOrigin;
     }
@@ -1311,21 +1314,35 @@ const streamVideo = async (req, res) => {
     let urlToRewrite = url;
 
     // Explicit HTML scraping via stream proxy for in-app HLS playback
-    if (contentType.includes("text/html") && url.includes("pmvhaven.com") && fetchMethod !== "HEAD") {
+    if (contentType.includes("text/html") && /pmvhaven\.com/i.test(url) && fetchMethod !== "HEAD") {
       const htmlText = await response.text();
-      const m3u8Match = htmlText.match(/https?:\/\/[^\s"'`]+\.m3u8[^\s"'`]*/i);
+      // Clean up escaped forward slashes (e.g. \/ in JSON data)
+      const cleanHtml = htmlText.replace(/\\\//g, "/");
+      const m3u8Match = cleanHtml.match(/https?:\/\/[^\s"'`\\]+\.m3u8[^\s"'`\\]*/i);
       if (m3u8Match) {
-        urlToRewrite = m3u8Match[0].trim().replace(/&amp;/g, '&');
+        urlToRewrite = m3u8Match[0].trim().replace(/&amp;/g, "&");
         responseToStream = await fetch(urlToRewrite, {
           method: "GET",
-          headers: { ...headers, Referer: targetOrigin + "/" }
+          headers: { ...headers, Referer: "https://pmvhaven.com/" },
         });
         if (!responseToStream.ok) {
-           return res.status(responseToStream.status).set(corsHeaders).send("Failed to proxy extracted PMVHaven stream");
+          return res.status(responseToStream.status).set(corsHeaders).send("Failed to proxy extracted stream");
         }
         isM3u8 = true;
       } else {
-        return res.status(404).set(corsHeaders).send("No video stream found on PMVHaven page");
+        const mp4Match = cleanHtml.match(/https?:\/\/[^\s"'`\\]+\.mp4[^\s"'`\\]*/i);
+        if (mp4Match) {
+          urlToRewrite = mp4Match[0].trim().replace(/&amp;/g, "&");
+          responseToStream = await fetch(urlToRewrite, {
+            method: "GET",
+            headers: { ...headers, Referer: "https://pmvhaven.com/" },
+          });
+          if (!responseToStream.ok) {
+            return res.status(responseToStream.status).set(corsHeaders).send("Failed to proxy extracted stream");
+          }
+        } else {
+          return res.status(404).set(corsHeaders).send("No video stream found on page");
+        }
       }
     }
 
@@ -1407,6 +1424,7 @@ const streamVideo = async (req, res) => {
 
     // Clean up when the client disconnects mid-stream
     req.on("close", () => {
+      controller.abort();
       if (!nodeStream.destroyed) {
         nodeStream.destroy();
       }
