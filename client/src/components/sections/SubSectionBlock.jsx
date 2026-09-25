@@ -13,8 +13,14 @@ import {
   IoOpenOutline,
   IoCloudUploadOutline,
   IoImageOutline,
+  IoSparklesOutline,
+  IoRefreshOutline,
+  IoVideocamOutline,
+  IoTvOutline,
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
+import WorkspaceVideoCard, { isVideoLink, detectLinkMediaInfo, getPlatformBadge } from './WorkspaceVideoCard';
 import {
   updateSubSection,
   deleteSubSection,
@@ -676,140 +682,368 @@ const BoardEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
 // ─── Links ────────────────────────────────────────────────────────────────────
 const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
-  const [adding, setAdding]     = useState(false);
-  const [newUrl, setNewUrl]     = useState('');
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc]   = useState('');
+  const [adding, setAdding]                   = useState(false);
+  const [newUrl, setNewUrl]                   = useState('');
+  const [newTitle, setNewTitle]               = useState('');
+  const [newDesc, setNewDesc]                 = useState('');
+  const [isInspecting, setIsInspecting]       = useState(false);
+  const [inspectedMeta, setInspectedMeta]     = useState(null);
+  const [selectedDisplayMode, setSelectedDisplayMode] = useState('wide');
+  const [selectedRatio, setSelectedRatio]     = useState('16/9');
+  const inspectDebounceRef = useRef(null);
 
   const links = block.links || [];
 
+  // Instant client-side detection based on input URL
+  const detectedPreview = useMemo(() => {
+    return detectLinkMediaInfo(newUrl);
+  }, [newUrl]);
+
+  // Inspect URL using the Quick Capture inspection engine (calls /api/captures/scrape)
+  const inspectUrl = async (inputUrl) => {
+    const trimmed = (inputUrl || '').trim();
+    if (!trimmed) {
+      setInspectedMeta(null);
+      return;
+    }
+
+    // Immediate client-side fallback detection
+    const clientDetected = detectLinkMediaInfo(trimmed);
+    if (clientDetected?.aspectRatio) {
+      setSelectedRatio(clientDetected.aspectRatio);
+    }
+
+    setIsInspecting(true);
+    try {
+      const res = await api.post('/captures/scrape', { url: trimmed });
+      if (res.data?.success && res.data?.data) {
+        const d = res.data.data;
+        setInspectedMeta(d);
+
+        // Auto-fill title if user hasn't typed one
+        if (d.title && (!newTitle || newTitle === 'Saved Link')) {
+          setNewTitle(d.title);
+        }
+        // Auto-fill description if empty
+        if (d.description && !newDesc) {
+          setNewDesc(d.description);
+        }
+        // Auto-select aspect ratio for vertical shorts / reels
+        if (d.platform === 'instagram' && trimmed.includes('/reel')) {
+          setSelectedRatio('9/16');
+        } else if (d.platform === 'youtube' && trimmed.includes('/shorts')) {
+          setSelectedRatio('9/16');
+        } else if (d.platform === 'tiktok') {
+          setSelectedRatio('9/16');
+        }
+      }
+    } catch (err) {
+      console.warn('URL inspection warning:', err?.response?.data?.message || err.message);
+    } finally {
+      setIsInspecting(false);
+    }
+  };
+
+  const handleUrlChange = (val) => {
+    setNewUrl(val);
+    const clientDetected = detectLinkMediaInfo(val);
+    if (clientDetected?.aspectRatio) {
+      setSelectedRatio(clientDetected.aspectRatio);
+    }
+
+    if (inspectDebounceRef.current) {
+      clearTimeout(inspectDebounceRef.current);
+    }
+
+    if (val.trim() && val.trim().startsWith('http')) {
+      inspectDebounceRef.current = setTimeout(() => {
+        inspectUrl(val);
+      }, 500);
+    } else {
+      setInspectedMeta(null);
+    }
+  };
+
   const handleAdd = async () => {
-    if (!newUrl.trim() || !newTitle.trim() || !canEdit) return;
+    const trimmedUrl = newUrl.trim();
+    if (!trimmedUrl || !canEdit) return;
+
+    // Resolve title fallback
+    let resolvedTitle = newTitle.trim();
+    if (!resolvedTitle) {
+      if (inspectedMeta?.title) {
+        resolvedTitle = inspectedMeta.title;
+      } else if (detectedPreview?.label) {
+        resolvedTitle = detectedPreview.label;
+      } else {
+        try {
+          resolvedTitle = new URL(trimmedUrl).hostname.replace(/^www\./, '');
+        } catch {
+          resolvedTitle = 'Saved Link';
+        }
+      }
+    }
+
     await dispatch(
       addLink({
         sectionId,
         subId: block._id,
-        url: newUrl.trim(),
-        title: newTitle.trim(),
-        description: newDesc.trim(),
+        url: trimmedUrl,
+        title: resolvedTitle,
+        description: newDesc.trim() || (inspectedMeta?.description || ''),
+        platform: inspectedMeta?.platform || detectedPreview?.platform || 'web',
+        mediaType: inspectedMeta?.mediaType || detectedPreview?.mediaType || 'article',
+        embedUrl: inspectedMeta?.embedUrl || detectedPreview?.embedUrl || '',
+        embedId: inspectedMeta?.embedId || detectedPreview?.embedId || '',
+        mediaUrl: inspectedMeta?.mediaUrl || detectedPreview?.mediaUrl || '',
+        thumbnailUrl: inspectedMeta?.thumbnailUrl || detectedPreview?.thumbnailUrl || '',
+        authorName: inspectedMeta?.authorName || detectedPreview?.authorName || '',
+        siteName: inspectedMeta?.siteName || '',
+        rawContent: inspectedMeta?.rawContent || '',
+        displayMode: selectedDisplayMode,
+        aspectRatio: selectedRatio,
       }),
     );
+
     setNewUrl('');
     setNewTitle('');
     setNewDesc('');
+    setInspectedMeta(null);
     setAdding(false);
     onBlurBlock?.(block._id, 1500);
   };
 
+  const activeDetectedBadge = inspectedMeta?.platform
+    ? getPlatformBadge(inspectedMeta.platform)
+    : detectedPreview?.platform
+    ? getPlatformBadge(detectedPreview.platform)
+    : null;
+
   return (
-    <div className="space-y-2">
-      {links.map((link) => (
-        <div
-          key={link._id}
-          className="flex items-start gap-3 p-3 rounded-xl bg-surface hover:bg-surface-raised border border-subtle transition-colors group"
-        >
-          <img
-            src={`https://www.google.com/s2/favicons?domain=${getDomain(link.url)}&sz=32`}
-            alt=""
-            className="w-5 h-5 mt-0.5 flex-shrink-0 rounded"
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-primary">{link.title}</p>
-            <p className="text-xs text-muted truncate">{link.url}</p>
-            {link.description && <p className="text-xs text-muted mt-0.5">{link.description}</p>}
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors"
-              title="Open"
-            >
-              <IoOpenOutline size={14} />
-            </a>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(link.url);
-                toast.success('Copied!');
+    <div className="space-y-3">
+      {links.map((link) => {
+        if (isVideoLink(link)) {
+          return (
+            <WorkspaceVideoCard
+              key={link._id}
+              link={link}
+              sectionId={sectionId}
+              subId={block._id}
+              canEdit={canEdit}
+              onDelete={(linkId) =>
+                dispatch(removeLink({ sectionId, subId: block._id, linkId }))
+              }
+            />
+          );
+        }
+
+        // Standard Web Link Card
+        return (
+          <div
+            key={link._id}
+            className="flex items-start gap-3 p-3.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle transition-colors group shadow-sm"
+          >
+            <img
+              src={`https://www.google.com/s2/favicons?domain=${getDomain(link.url)}&sz=32`}
+              alt=""
+              className="w-5 h-5 mt-0.5 flex-shrink-0 rounded"
+              onError={(e) => {
+                e.target.style.display = 'none';
               }}
-              className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
-              title="Copy URL"
-            >
-              <IoCopyOutline size={14} />
-            </button>
-            {canEdit && (
-              <button
-                onClick={() =>
-                  dispatch(removeLink({ sectionId, subId: block._id, linkId: link._id }))
-                }
-                className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                title="Remove"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-primary">{link.title}</p>
+              <p className="text-xs text-muted truncate">{link.url}</p>
+              {link.description && <p className="text-xs text-muted mt-1 leading-relaxed">{link.description}</p>}
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg text-secondary hover:text-accent hover:bg-accent-subtle transition-colors"
+                title="Open in new tab"
               >
-                <IoTrashOutline size={14} />
+                <IoOpenOutline size={15} />
+              </a>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(link.url);
+                  toast.success('Copied to clipboard!');
+                }}
+                className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+                title="Copy URL"
+              >
+                <IoCopyOutline size={15} />
               </button>
-            )}
+              {canEdit && (
+                <button
+                  onClick={() =>
+                    dispatch(removeLink({ sectionId, subId: block._id, linkId: link._id }))
+                  }
+                  className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                  title="Remove link"
+                >
+                  <IoTrashOutline size={15} />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {links.length === 0 && !adding && (
-        <p className="text-sm text-muted italic text-center py-4">No links saved yet</p>
+        <div className="text-center py-6 px-4 rounded-xl border border-dashed border-subtle bg-surface/50">
+          <IoVideocamOutline size={28} className="mx-auto text-muted mb-2 opacity-50" />
+          <p className="text-sm font-medium text-secondary">No links or videos added yet</p>
+          <p className="text-xs text-muted mt-0.5">
+            Add YouTube, Instagram, Facebook, X (Twitter), or any web link.
+          </p>
+        </div>
       )}
 
       {canEdit && (
         <div className="mt-2">
           {adding ? (
-            <div className="bg-surface border border-subtle rounded-xl p-3 space-y-2">
-              <input
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                onFocus={() => onFocusBlock?.(block._id)}
-                onBlur={() => onBlurBlock?.(block._id, 1500)}
-                placeholder="https://…"
-                className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none border-b border-subtle pb-2"
-              />
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-surface border border-accent/30 rounded-2xl p-4 space-y-3 shadow-lg"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
+                  <IoSparklesOutline size={13} /> Add Video or Link
+                </span>
+                {isInspecting && (
+                  <span className="text-[11px] text-accent flex items-center gap-1.5 animate-pulse font-medium">
+                    <IoRefreshOutline size={12} className="animate-spin" /> Inspecting link…
+                  </span>
+                )}
+              </div>
+
+              {/* URL Input */}
+              <div className="relative">
+                <input
+                  autoFocus
+                  value={newUrl}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  onFocus={() => onFocusBlock?.(block._id)}
+                  onBlur={() => onBlurBlock?.(block._id, 1500)}
+                  placeholder="Paste URL (e.g. YouTube, Instagram Reel, Facebook Video, X post, direct video, or article)…"
+                  className="w-full bg-surface-raised border border-subtle rounded-xl px-3.5 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
+                />
+              </div>
+
+              {/* Live Detected Media Badge & Aspect Ratio Options */}
+              {(activeDetectedBadge || detectedPreview) && (
+                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-raised border border-subtle">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                        activeDetectedBadge?.bgCls || 'bg-accent/10 text-accent border-accent/20'
+                      }`}
+                    >
+                      {activeDetectedBadge?.icon || <IoVideocamOutline size={14} />}
+                      <span>{detectedPreview?.label || activeDetectedBadge?.label || 'Video Resource Detected'}</span>
+                    </span>
+                    <span className="text-[11px] text-muted hidden sm:inline">
+                      Playable in-app video card
+                    </span>
+                  </div>
+
+                  {/* Size & Ratio selector */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-subtle text-[11px]">
+                      <span className="text-muted px-1">Ratio:</span>
+                      {['16/9', '9/16', '21/9'].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setSelectedRatio(r)}
+                          className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                            selectedRatio === r
+                              ? 'bg-accent text-white shadow-sm'
+                              : 'text-muted hover:text-primary'
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-subtle text-[11px]">
+                      <span className="text-muted px-1">Size:</span>
+                      {['wide', 'theater'].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSelectedDisplayMode(m)}
+                          className={`px-2 py-0.5 rounded capitalize font-medium transition-colors cursor-pointer ${
+                            selectedDisplayMode === m
+                              ? 'bg-accent text-white shadow-sm'
+                              : 'text-muted hover:text-primary'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Title Input */}
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onFocus={() => onFocusBlock?.(block._id)}
                 onBlur={() => onBlurBlock?.(block._id, 1500)}
-                placeholder="Title (required)"
-                className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none"
+                placeholder="Title (auto-detected from link or enter custom title)"
+                className="w-full bg-surface-raised border border-subtle rounded-xl px-3.5 py-2 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent transition-colors"
               />
+
+              {/* Description Input */}
               <input
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
                 onFocus={() => onFocusBlock?.(block._id)}
                 onBlur={() => onBlurBlock?.(block._id, 1500)}
-                placeholder="Description (optional)"
-                className="w-full bg-transparent text-xs text-secondary placeholder-muted focus:outline-none"
+                placeholder="Description or notes (optional)"
+                className="w-full bg-surface-raised border border-subtle rounded-xl px-3.5 py-2 text-xs text-secondary placeholder-muted focus:outline-none focus:border-accent transition-colors"
               />
-              <div className="flex gap-2 pt-1">
+
+              {/* Buttons */}
+              <div className="flex items-center justify-between pt-1">
                 <button
-                  onClick={() => setAdding(false)}
-                  className="text-xs text-muted hover:text-primary cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    setAdding(false);
+                    setInspectedMeta(null);
+                    setNewUrl('');
+                    setNewTitle('');
+                    setNewDesc('');
+                  }}
+                  className="text-xs text-muted hover:text-primary cursor-pointer px-3 py-1.5 rounded-lg hover:bg-surface-raised transition-colors"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleAdd}
-                  disabled={!newUrl.trim() || !newTitle.trim()}
-                  className="text-xs text-accent hover:underline font-medium ml-auto disabled:opacity-40 cursor-pointer"
+                  disabled={!newUrl.trim()}
+                  className="btn-primary text-xs px-4 py-2 rounded-xl font-semibold shadow-md shadow-accent/20 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  Save Link
+                  <IoSparklesOutline size={13} />
+                  <span>Save Link & Video</span>
                 </button>
               </div>
-            </div>
+            </motion.div>
           ) : (
             <button
               onClick={() => setAdding(true)}
-              className="flex items-center gap-2 text-sm text-secondary hover:text-primary px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-colors w-full cursor-pointer"
+              className="flex items-center gap-2 text-sm text-secondary hover:text-primary px-3 py-2 rounded-xl hover:bg-surface-raised transition-colors w-full cursor-pointer border border-dashed border-subtle hover:border-accent/40 font-medium"
             >
-              <IoAddOutline size={14} /> Add link
+              <IoAddOutline size={16} className="text-accent" /> Add link or video
             </button>
           )}
         </div>

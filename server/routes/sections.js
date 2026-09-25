@@ -33,6 +33,7 @@ const {
   updateBoardItem,
   deleteBoardItem,
   addLink,
+  updateLink,
   removeLink,
 } = require("../controllers/subSectionController");
 const { protect } = require("../middleware/auth");
@@ -85,6 +86,7 @@ router.delete(
 
 // Links
 router.post("/:id/subsections/:subId/links", protect, addLink);
+router.patch("/:id/subsections/:subId/links/:linkId", protect, updateLink);
 router.delete("/:id/subsections/:subId/links/:linkId", protect, removeLink);
 
 module.exports = router;

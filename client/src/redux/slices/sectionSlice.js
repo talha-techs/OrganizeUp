@@ -385,6 +385,21 @@ export const removeLink = createAsyncThunk(
   },
 );
 
+export const updateLink = createAsyncThunk(
+  "sections/updateLink",
+  async ({ sectionId, subId, linkId, ...body }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(
+        `/sections/${sectionId}/subsections/${subId}/links/${linkId}`,
+        body,
+      );
+      return data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
+    }
+  },
+);
+
 // ── Team Collaboration & Invites ─────────────────────────────────────────────
 
 export const createInvite = createAsyncThunk(
@@ -837,6 +852,7 @@ const sectionSlice = createSlice({
       updateBoardItem,
       deleteBoardItem,
       addLink,
+      updateLink,
       removeLink,
     ].forEach((thunk) => {
       builder.addCase(thunk.fulfilled, mergeSubSection);

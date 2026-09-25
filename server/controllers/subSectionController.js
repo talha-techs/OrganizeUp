@@ -1,6 +1,7 @@
 const SubSection = require("../models/SubSection");
 const { checkSectionAccess } = require("../middleware/sectionAuth");
 const { broadcastToSection, broadcastActivity } = require("../socket");
+const { fetchUrlMetadata, detectPlatformAndEmbed } = require("./captureController");
 
 // Extract client socket ID to exclude sender from receiving duplicate broadcast echoes
 const getSocketId = (req) => req.headers["x-socket-id"] || null;
@@ -565,8 +566,97 @@ const addLink = async (req, res) => {
     });
     if (!sub) return res.status(404).json({ message: "Sub-section not found" });
 
-    const { title, url, description } = req.body;
-    sub.links.push({ title, url, description: description || "" });
+    let {
+      title,
+      url,
+      description,
+      platform,
+      mediaType,
+      embedUrl,
+      embedId,
+      mediaUrl,
+      thumbnailUrl,
+      authorName,
+      siteName,
+      rawContent,
+      displayMode,
+      aspectRatio,
+    } = req.body;
+
+    const trimmedUrl = (url || "").trim();
+    if (!trimmedUrl) {
+      return res.status(400).json({ message: "A valid URL is required" });
+    }
+
+    // If platform or embed details were not fully provided by client, auto-inspect via Quick Capture model
+    if (!platform || platform === "web" || !embedUrl) {
+      try {
+        const scraped = await fetchUrlMetadata(trimmedUrl);
+        if (scraped) {
+          platform = platform || scraped.platform || "web";
+          mediaType = mediaType || scraped.mediaType || "article";
+          embedUrl = embedUrl || scraped.embedUrl || "";
+          embedId = embedId || scraped.embedId || "";
+          mediaUrl = mediaUrl || scraped.mediaUrl || "";
+          thumbnailUrl = thumbnailUrl || scraped.thumbnailUrl || "";
+          authorName = authorName || scraped.authorName || "";
+          siteName = siteName || scraped.siteName || "";
+          rawContent = rawContent || scraped.rawContent || "";
+          if (!title && scraped.title) {
+            title = scraped.title;
+          }
+        } else {
+          const detected = detectPlatformAndEmbed(trimmedUrl);
+          platform = platform || detected.platform || "web";
+          mediaType = mediaType || detected.mediaType || "article";
+          embedUrl = embedUrl || detected.embedUrl || "";
+          embedId = embedId || detected.embedId || "";
+          mediaUrl = mediaUrl || detected.mediaUrl || "";
+        }
+      } catch (scrapeErr) {
+        console.warn("subSection addLink scrape warning:", scrapeErr.message);
+      }
+    }
+
+    if (!title || !title.trim()) {
+      try {
+        const u = new URL(trimmedUrl);
+        title = u.hostname.replace(/^www\./, "");
+      } catch {
+        title = "Saved Link";
+      }
+    }
+
+    // Default aspect ratio heuristic: vertical 9/16 for Instagram reels/shorts, 16/9 for standard videos
+    let resolvedRatio = aspectRatio;
+    if (!resolvedRatio) {
+      if (platform === "instagram" && /reel/i.test(trimmedUrl)) {
+        resolvedRatio = "9/16";
+      } else if (platform === "youtube" && /shorts/i.test(trimmedUrl)) {
+        resolvedRatio = "9/16";
+      } else if (platform === "tiktok") {
+        resolvedRatio = "9/16";
+      } else {
+        resolvedRatio = "16/9";
+      }
+    }
+
+    sub.links.push({
+      title: title.trim(),
+      url: trimmedUrl,
+      description: (description || "").trim(),
+      platform: platform || "web",
+      mediaType: mediaType || "article",
+      embedUrl: embedUrl || "",
+      embedId: embedId || "",
+      mediaUrl: mediaUrl || "",
+      thumbnailUrl: thumbnailUrl || "",
+      authorName: authorName || "",
+      siteName: siteName || "",
+      rawContent: rawContent || "",
+      displayMode: displayMode || "wide",
+      aspectRatio: resolvedRatio,
+    });
 
     sub.version = (sub.version || 1) + 1;
     sub.lastEditedBy = req.user._id;
@@ -589,6 +679,59 @@ const addLink = async (req, res) => {
     res.json({ subSection: populated });
   } catch (err) {
     console.error("addLink:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @route   PATCH /api/sections/:id/subsections/:subId/links/:linkId
+const updateLink = async (req, res) => {
+  try {
+    const { error, status, canEdit } = await checkAccess(req);
+    if (error) return res.status(status).json({ message: error });
+    if (!canEdit) return res.status(403).json({ message: "Not authorized to update links" });
+
+    const sub = await SubSection.findOne({
+      _id: req.params.subId,
+      sectionId: req.params.id,
+    });
+    if (!sub) return res.status(404).json({ message: "Sub-section not found" });
+
+    const link = sub.links.id(req.params.linkId);
+    if (!link) return res.status(404).json({ message: "Link not found" });
+
+    const allowedFields = [
+      "title",
+      "description",
+      "displayMode",
+      "aspectRatio",
+      "platform",
+      "mediaType",
+      "embedUrl",
+      "mediaUrl",
+      "thumbnailUrl",
+    ];
+
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        link[key] = req.body[key];
+      }
+    }
+
+    sub.version = (sub.version || 1) + 1;
+    sub.lastEditedBy = req.user._id;
+
+    await sub.save();
+
+    const populated = await SubSection.findById(sub._id)
+      .populate("lastEditedBy", "name avatar")
+      .populate("addedBy", "name avatar");
+
+    const senderSocketId = getSocketId(req);
+    broadcastToSection(req.params.id, "subsection_updated", { subSection: populated }, senderSocketId);
+
+    res.json({ subSection: populated });
+  } catch (err) {
+    console.error("updateLink:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -639,5 +782,6 @@ module.exports = {
   updateBoardItem,
   deleteBoardItem,
   addLink,
+  updateLink,
   removeLink,
 };
