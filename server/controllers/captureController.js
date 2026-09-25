@@ -547,10 +547,17 @@ const fetchUrlMetadata = async (url) => {
 
         // 6. Fallback regex search for HLS or MP4 stream if mediaType is video but no direct stream URL was captured
         if (!directVideoUrl && detected.mediaType === "video") {
-          const streamRegexMatch = html.match(/https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)(?:\?[^\s"'<>]*)?/i);
-          if (streamRegexMatch) {
-            directVideoUrl = streamRegexMatch[0].trim().replace(/&amp;/g, "&");
+          const cleanHtml = html.replace(/\\u002f/gi, "/").replace(/\\\//g, "/");
+          const allM3u8 = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.m3u8[^\s"'`<>\\]*/gi);
+          if (allM3u8 && allM3u8.length > 0) {
+            directVideoUrl = (allM3u8.find((u) => u.includes("master.m3u8")) || allM3u8[0]).trim().replace(/&amp;/g, "&");
             if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
+          } else {
+            const streamRegexMatch = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.(?:mp4|webm)(?:\?[^\s"'`<>\\]*)?/i);
+            if (streamRegexMatch) {
+              directVideoUrl = streamRegexMatch[0].trim().replace(/&amp;/g, "&");
+              if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
+            }
           }
         }
 
@@ -1316,11 +1323,12 @@ const streamVideo = async (req, res) => {
     // Explicit HTML scraping via stream proxy for in-app HLS playback
     if (contentType.includes("text/html") && /pmvhaven\.com/i.test(url) && fetchMethod !== "HEAD") {
       const htmlText = await response.text();
-      // Clean up escaped forward slashes (e.g. \/ in JSON data)
-      const cleanHtml = htmlText.replace(/\\\//g, "/");
-      const m3u8Match = cleanHtml.match(/https?:\/\/[^\s"'`\\]+\.m3u8[^\s"'`\\]*/i);
-      if (m3u8Match) {
-        urlToRewrite = m3u8Match[0].trim().replace(/&amp;/g, "&");
+      // Decode unicode-escaped slashes (\u002F) and escaped slashes (\/) in SSR JSON state
+      const cleanHtml = htmlText.replace(/\\u002f/gi, "/").replace(/\\\//g, "/");
+      const allM3u8 = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.m3u8[^\s"'`<>\\]*/gi);
+      if (allM3u8 && allM3u8.length > 0) {
+        // Prefer master.m3u8 so all quality levels are available in the player dropdown
+        urlToRewrite = (allM3u8.find((u) => u.includes("master.m3u8")) || allM3u8[0]).trim().replace(/&amp;/g, "&");
         responseToStream = await fetch(urlToRewrite, {
           method: "GET",
           headers: { ...headers, Referer: "https://pmvhaven.com/" },
@@ -1330,7 +1338,7 @@ const streamVideo = async (req, res) => {
         }
         isM3u8 = true;
       } else {
-        const mp4Match = cleanHtml.match(/https?:\/\/[^\s"'`\\]+\.mp4[^\s"'`\\]*/i);
+        const mp4Match = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.mp4[^\s"'`<>\\]*/i);
         if (mp4Match) {
           urlToRewrite = mp4Match[0].trim().replace(/&amp;/g, "&");
           responseToStream = await fetch(urlToRewrite, {
