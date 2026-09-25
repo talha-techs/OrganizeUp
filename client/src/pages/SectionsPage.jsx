@@ -410,7 +410,7 @@ const SectionsPage = () => {
                 >
                   {/* Banner media or color gradient */}
                   <div
-                    className={`h-32 relative flex items-center justify-center overflow-hidden ${
+                    className={`h-40 relative flex items-center justify-center overflow-hidden ${
                       section.bannerImage ? 'bg-canvas' : `bg-gradient-to-br ${col.from} ${col.to}`
                     }`}
                   >

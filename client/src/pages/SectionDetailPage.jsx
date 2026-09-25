@@ -832,7 +832,7 @@ const SectionDetailPage = () => {
       >
         {/* Banner Media Backdrop */}
         {currentSection.bannerImage ? (
-          <div className="h-48 sm:h-60 w-full relative overflow-hidden">
+          <div className="h-60 sm:h-[300px] w-full relative overflow-hidden">
             <img
               src={currentSection.bannerImage}
               alt={currentSection.name}
@@ -842,7 +842,7 @@ const SectionDetailPage = () => {
           </div>
         ) : (
           <div
-            className={`h-40 sm:h-52 w-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to} relative overflow-hidden`}
+            className={`h-52 sm:h-64 w-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to} relative overflow-hidden`}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
           </div>
