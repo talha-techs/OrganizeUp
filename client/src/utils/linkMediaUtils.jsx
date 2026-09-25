@@ -125,14 +125,18 @@ export const detectLinkMediaInfo = (rawUrl = '') => {
     };
   }
 
-  // 5. Direct Video Streams (.mp4, .webm, .m3u8, etc.)
-  if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) || url.includes('/api/captures/stream')) {
+  // 5. Direct Video Streams (.mp4, .webm, .m3u8, etc.) & Web Video Sites
+  if (
+    /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) ||
+    url.includes('/api/captures/stream') ||
+    /(?:pmvhaven\.com)/i.test(url)
+  ) {
     return {
       platform: 'web',
       mediaType: 'video',
       mediaUrl: url,
       aspectRatio: '16/9',
-      label: 'Direct Video Stream',
+      label: 'Web Video',
     };
   }
 

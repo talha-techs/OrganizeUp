@@ -589,21 +589,25 @@ const addLink = async (req, res) => {
     }
 
     // If platform or embed details were not fully provided by client, auto-inspect via Quick Capture model
-    if (!platform || platform === "web" || !embedUrl) {
+    if (!platform || platform === "web" || !embedUrl || mediaType !== "video") {
       try {
         const scraped = await fetchUrlMetadata(trimmedUrl);
         if (scraped) {
-          platform = platform || scraped.platform || "web";
-          mediaType = mediaType || scraped.mediaType || "article";
-          embedUrl = embedUrl || scraped.embedUrl || "";
-          embedId = embedId || scraped.embedId || "";
-          mediaUrl = mediaUrl || scraped.mediaUrl || "";
-          thumbnailUrl = thumbnailUrl || scraped.thumbnailUrl || "";
-          authorName = authorName || scraped.authorName || "";
-          siteName = siteName || scraped.siteName || "";
-          rawContent = rawContent || scraped.rawContent || "";
-          if (!title && scraped.title) {
-            title = scraped.title;
+          if (!platform || platform === "web") {
+            platform = scraped.platform || platform || "web";
+          }
+          if (!mediaType || mediaType === "article" || scraped.mediaType === "video") {
+            mediaType = scraped.mediaType || mediaType || "article";
+          }
+          if (!embedUrl) embedUrl = scraped.embedUrl || "";
+          if (!embedId) embedId = scraped.embedId || "";
+          if (!mediaUrl) mediaUrl = scraped.mediaUrl || "";
+          if (!thumbnailUrl) thumbnailUrl = scraped.thumbnailUrl || "";
+          if (!authorName) authorName = scraped.authorName || "";
+          if (!siteName) siteName = scraped.siteName || "";
+          if (!rawContent) rawContent = scraped.rawContent || "";
+          if (!title || title === "Saved Link" || title.includes(".")) {
+            if (scraped.title) title = scraped.title;
           }
         } else {
           const detected = detectPlatformAndEmbed(trimmedUrl);

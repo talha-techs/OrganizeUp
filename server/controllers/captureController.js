@@ -547,16 +547,18 @@ const fetchUrlMetadata = async (url) => {
         }
 
         // 6. Fallback regex search for HLS or MP4 stream if mediaType is video but no direct stream URL was captured
-        if (!directVideoUrl && detected.mediaType === "video") {
+        if (!directVideoUrl) {
           const cleanHtml = html.replace(/\\u002f/gi, "/").replace(/\\\//g, "/");
           const allM3u8 = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.m3u8[^\s"'`<>\\]*/gi);
           if (allM3u8 && allM3u8.length > 0) {
             directVideoUrl = (allM3u8.find((u) => u.includes("master.m3u8")) || allM3u8[0]).trim().replace(/&amp;/g, "&");
+            detected.mediaType = "video";
             if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
-          } else {
+          } else if (detected.mediaType === "video" || /(?:video|player|watch|reel|stream)/i.test(url)) {
             const streamRegexMatch = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.(?:mp4|webm)(?:\?[^\s"'`<>\\]*)?/i);
             if (streamRegexMatch) {
               directVideoUrl = streamRegexMatch[0].trim().replace(/&amp;/g, "&");
+              detected.mediaType = "video";
               if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
             }
           }
@@ -674,6 +676,13 @@ const fetchUrlMetadata = async (url) => {
 
     finalTitle = decodeHtmlEntities(finalTitle);
     finalDescription = decodeHtmlEntities(finalDescription);
+
+    const resolvedMediaType =
+      directVideoUrl ||
+      detected.mediaType === "video" ||
+      (detected.embedUrl && !["linkedin", "article"].includes(detected.platform))
+        ? "video"
+        : detected.mediaType || "article";
 
     const isMeta = detected.platform === "instagram" || detected.platform === "facebook";
     const resolvedMediaUrl = isMeta
