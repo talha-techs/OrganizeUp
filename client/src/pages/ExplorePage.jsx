@@ -17,7 +17,6 @@ import {
   IoTrendingUpOutline,
   IoTimeOutline,
   IoCloseCircleOutline,
-  IoFolderOutline,
   IoVideocamOutline,
   IoDocumentTextOutline,
   IoMusicalNotesOutline,
@@ -303,12 +302,6 @@ const ExplorePage = () => {
       count: totals.tools,
     },
     {
-      key: 'sections',
-      label: 'Workspaces',
-      icon: <IoFolderOutline size={16} />,
-      count: totals.sections,
-    },
-    {
       key: 'playlists',
       label: 'Playlists',
       icon: <IoLogoYoutube size={16} />,
@@ -338,8 +331,6 @@ const ExplorePage = () => {
           ? 'books'
           : contentType === 'course'
           ? 'courses'
-          : contentType === 'section'
-          ? 'sections'
           : 'tricks';
       return (
         <motion.div
@@ -381,9 +372,6 @@ const ExplorePage = () => {
           {contentType === 'tool' && (
             <IoConstructOutline className="text-amber-400" size={20} />
           )}
-          {contentType === 'section' && (
-            <IoFolderOutline className="text-emerald-400" size={20} />
-          )}
           {title}
           <span className="text-xs text-muted font-normal ml-1">
             (
@@ -393,8 +381,6 @@ const ExplorePage = () => {
               ? totals.books
               : contentType === 'course'
               ? totals.courses
-              : contentType === 'section'
-              ? totals.sections
               : totals.tools}
             )
           </span>
@@ -436,7 +422,7 @@ const ExplorePage = () => {
       >
         <h1 className="text-3xl font-bold text-primary font-display">Explore</h1>
         <p className="text-secondary text-sm mt-1">
-          Discover public books, modern bestsellers, classic audiobooks, courses, and workspaces
+          Discover public books, modern bestsellers, classic audiobooks, courses, and playlists
         </p>
       </motion.div>
 
@@ -557,13 +543,11 @@ const ExplorePage = () => {
               {renderSection('Books', results.books, 'book')}
               {renderSection('Courses', results.courses, 'course')}
               {renderSection('Tricks & Tools', results.tools, 'tool')}
-              {renderSection('Workspaces', results.sections, 'section')}
               {renderSection('YouTube Playlists', results.playlists, 'playlist')}
               {!search &&
                 results.books.length === 0 &&
                 results.courses.length === 0 &&
                 results.tools.length === 0 &&
-                results.sections.length === 0 &&
                 (!results.playlists || results.playlists.length === 0) && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -879,10 +863,6 @@ const ExplorePage = () => {
           {/* TRICKS TAB */}
           {activeTab === 'tools' &&
             renderSection('Tricks & Tools', results.tools, 'tool')}
-
-          {/* SECTIONS TAB */}
-          {activeTab === 'sections' &&
-            renderSection('Workspaces', results.sections, 'section')}
 
           {/* PLAYLISTS TAB */}
           {activeTab === 'playlists' &&

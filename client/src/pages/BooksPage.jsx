@@ -39,10 +39,10 @@ const BooksPage = () => {
 
   const tabs = [
     { key: 'all', label: 'All', icon: <IoBookOutline size={16} /> },
-    { key: 'youtube', label: 'YouTube Books', icon: <IoLogoYoutube size={16} className="text-red-500" /> },
     { key: 'video', label: 'Video Books', icon: <IoVideocamOutline size={16} /> },
     { key: 'text', label: 'Text Books', icon: <IoDocumentTextOutline size={16} /> },
     { key: 'audio', label: 'Audio Books', icon: <IoMusicalNotesOutline size={16} /> },
+    { key: 'youtube', label: 'YouTube Books', icon: <IoLogoYoutube size={16} className="text-red-500" /> },
   ];
 
   const isYouTubeBook = (b) =>
