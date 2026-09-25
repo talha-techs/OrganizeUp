@@ -9,6 +9,48 @@ import {
 import { FaXTwitter } from 'react-icons/fa6';
 
 /**
+ * Resolves a reliable direct embed URL for Instagram videos (Reels or Posts)
+ */
+export const getInstagramEmbedUrl = (url = '', existingEmbedUrl = '') => {
+  if (existingEmbedUrl && existingEmbedUrl.includes('instagram.com/') && existingEmbedUrl.includes('/embed')) {
+    return existingEmbedUrl;
+  }
+  const target = url || existingEmbedUrl || '';
+  const match = target.match(/(?:instagram\.com\/(?:reel|reels|p|tv)\/)([A-Za-z0-9_-]+)/i);
+  if (match) {
+    const shortcode = match[1];
+    const isReel = target.toLowerCase().includes('/reel');
+    return `https://www.instagram.com/${isReel ? 'reel' : 'p'}/${shortcode}/embed`;
+  }
+  return existingEmbedUrl || '';
+};
+
+/**
+ * Resolves a reliable direct embed URL for Facebook videos (Reels or Videos)
+ */
+export const getFacebookEmbedUrl = (url = '', existingEmbedUrl = '') => {
+  if (existingEmbedUrl && existingEmbedUrl.includes('facebook.com/plugins/video.php')) {
+    return existingEmbedUrl;
+  }
+  const target = url || '';
+  if (/(?:facebook\.com|fb\.watch|fb\.me)/i.test(target)) {
+    let cleanUrl = target;
+    try {
+      const u = new URL(target);
+      if (u.pathname.includes('/reel/')) {
+        cleanUrl = `${u.origin}${u.pathname}`;
+      } else if (u.pathname.includes('/watch') && u.searchParams.has('v')) {
+        cleanUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get('v')}`;
+      }
+    } catch {
+      // url parse fallback
+    }
+    return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=false&t=0`;
+  }
+  return existingEmbedUrl || '';
+};
+
+/**
  * Robust helper to inspect any URL and extract video/media metadata
  */
 export const detectLinkMediaInfo = (rawUrl = '') => {
@@ -44,7 +86,9 @@ export const detectLinkMediaInfo = (rawUrl = '') => {
       platform: 'instagram',
       mediaType: 'video',
       embedId: shortcode,
-      embedUrl: `https://www.instagram.com/reel/${shortcode}/embed`,
+      embedUrl: isReel
+        ? `https://www.instagram.com/reel/${shortcode}/embed`
+        : `https://www.instagram.com/p/${shortcode}/embed`,
       aspectRatio: isReel ? '9/16' : '16/9',
       label: isReel ? 'Instagram Reel' : 'Instagram Video',
     };
@@ -52,22 +96,12 @@ export const detectLinkMediaInfo = (rawUrl = '') => {
 
   // 3. Facebook Video / Watch / Reel
   if (/(?:facebook\.com|fb\.watch|fb\.me)/i.test(url)) {
-    let cleanUrl = url;
-    try {
-      const u = new URL(url);
-      if (u.pathname.includes('/reel/')) {
-        cleanUrl = `${u.origin}${u.pathname}`;
-      } else if (u.pathname.includes('/watch') && u.searchParams.has('v')) {
-        cleanUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get('v')}`;
-      }
-    } catch {
-      // url parse fallback
-    }
+    const fbEmbed = getFacebookEmbedUrl(url);
     const isReel = url.toLowerCase().includes('/reel');
     return {
       platform: 'facebook',
       mediaType: 'video',
-      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=false&t=0`,
+      embedUrl: fbEmbed,
       aspectRatio: isReel ? '9/16' : '16/9',
       label: isReel ? 'Facebook Reel' : 'Facebook Video',
     };

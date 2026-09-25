@@ -58,6 +58,7 @@ const UniversalVideoPlayer = ({
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const retryCountRef = useRef(0);
+  const userToggledProxyRef = useRef(false);
 
   // Detect sources that require proxying from the start
   const needsProxyFromStart = (url) => {
@@ -103,6 +104,7 @@ const UniversalVideoPlayer = ({
   // Reset quality state when video source changes
   useEffect(() => {
     userSelectedQualityRef.current = null;
+    userToggledProxyRef.current = false;
     setSelectedQuality('');
     setAvailableQualities([]);
     setIsQualityMenuOpen(false);
@@ -347,7 +349,7 @@ const UniversalVideoPlayer = ({
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                if (!useProxy) {
+                if (!useProxy && !userToggledProxyRef.current) {
                   console.warn('HLS direct stream blocked/failed. Auto-switching to Cloud Stream proxy...');
                   setUseProxy(true);
                 } else if (retryCountRef.current < 2) {
@@ -385,8 +387,9 @@ const UniversalVideoPlayer = ({
   }, [actualSrc, useProxy, isHls, effectiveSrc, hasDirect, autoPlay, destroyHls]);
 
   const handleVideoError = useCallback(() => {
-    if (!useProxy && actualSrc) {
-      console.warn('Direct video playback error. Switching to Cloud Stream proxy...');
+    // Only auto-switch to proxy on initial failure if the user hasn't explicitly clicked to switch to direct
+    if (!useProxy && actualSrc && !userToggledProxyRef.current) {
+      console.warn('Direct video playback error. Auto-switching to Cloud Stream proxy...');
       setUseProxy(true);
     } else {
       setHasError(true);
@@ -399,18 +402,22 @@ const UniversalVideoPlayer = ({
     setHasError(false);
     setErrorMessage('');
     retryCountRef.current = 0;
+    userToggledProxyRef.current = true;
     setUseProxy((prev) => !prev);
   };
 
   // 1. Render iframe embed fallback if embedUrl is provided and is a valid embeddable player
-  if ((!actualSrc || !hasDirect) && canEmbed && embedUrl) {
+  // Or for Meta platforms (Instagram, Facebook) where CDN stream tokens expire rapidly, always prefer the embedUrl iframe
+  const isMetaPlatform = platform === 'instagram' || platform === 'facebook';
+  if (((!actualSrc || !hasDirect) || isMetaPlatform) && canEmbed && embedUrl) {
     return (
-      <div className={`w-full bg-black relative aspect-video overflow-hidden group ${className}`}>
+      <div className={`w-full bg-black relative ${platform === 'instagram' ? 'aspect-[9/16] max-h-[640px] max-w-[400px] mx-auto' : 'aspect-video'} overflow-hidden group ${className}`}>
         <iframe
           src={embedUrl}
           className="w-full h-full border-0"
           scrolling="no"
-          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          allowTransparency="true"
+          allow="autoplay; encrypted-media; clipboard-write; picture-in-picture; web-share"
           allowFullScreen
           title={title}
           loading="lazy"

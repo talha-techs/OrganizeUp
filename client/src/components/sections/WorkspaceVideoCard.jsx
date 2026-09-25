@@ -20,6 +20,8 @@ import { updateLink } from '../../redux/slices/sectionSlice';
 import {
   detectLinkMediaInfo,
   getPlatformBadge,
+  getInstagramEmbedUrl,
+  getFacebookEmbedUrl,
 } from '../../utils/linkMediaUtils';
 
 /**
@@ -48,6 +50,17 @@ const WorkspaceVideoCard = ({
   const resolvedEmbedUrl = link?.embedUrl || detected.embedUrl || '';
   const resolvedMediaUrl = link?.mediaUrl || detected.mediaUrl || '';
   const resolvedThumbnail = link?.thumbnailUrl || detected.thumbnailUrl || '';
+
+  // Direct embeds for Meta videos (Instagram & Facebook) to guarantee reliable playback without expiring CDN URLs
+  const finalInstagramEmbed = useMemo(() => {
+    if (resolvedPlatform !== 'instagram') return '';
+    return getInstagramEmbedUrl(link?.url, resolvedEmbedUrl);
+  }, [resolvedPlatform, link?.url, resolvedEmbedUrl]);
+
+  const finalFacebookEmbed = useMemo(() => {
+    if (resolvedPlatform !== 'facebook') return '';
+    return getFacebookEmbedUrl(link?.url, resolvedEmbedUrl);
+  }, [resolvedPlatform, link?.url, resolvedEmbedUrl]);
 
   // Local state for interactive size & aspect ratio adjustment
   const [displayMode, setDisplayMode] = useState(link?.displayMode || 'wide'); // 'wide' | 'theater' | 'compact'
@@ -306,7 +319,7 @@ const WorkspaceVideoCard = ({
               </div>
             )}
 
-            {/* 2. Instagram Player (Reels / Posts) */}
+            {/* 2. Instagram Player (Reels / Posts) - Direct Embed */}
             {resolvedPlatform === 'instagram' && (
               <div
                 className={`w-full ${
@@ -315,49 +328,39 @@ const WorkspaceVideoCard = ({
                     : 'aspect-video min-h-[380px] max-h-[620px]'
                 } relative flex items-center justify-center overflow-hidden bg-black/80`}
               >
-                {resolvedMediaUrl && /\.(mp4|webm)/i.test(resolvedMediaUrl) ? (
-                  <UniversalVideoPlayer
-                    src={resolvedMediaUrl}
-                    poster={resolvedThumbnail}
-                    title={link.title || 'Instagram Video'}
-                    embedUrl={resolvedEmbedUrl}
-                    sourceUrl={link.url}
-                    platform="instagram"
-                    className="w-full h-full"
-                  />
-                ) : resolvedEmbedUrl ? (
+                {finalInstagramEmbed ? (
                   <iframe
-                    src={resolvedEmbedUrl}
+                    src={finalInstagramEmbed}
                     className="w-full h-full border-0 rounded-xl"
                     allowTransparency="true"
-                    allow="encrypted-media"
+                    allow="encrypted-media; clipboard-write;"
+                    scrolling="no"
                     title={link.title || 'Instagram Reel'}
                     loading="lazy"
                   />
                 ) : (
                   <div className="text-center p-6 text-muted">
-                    <p className="text-sm">Instagram player loading…</p>
+                    <p className="text-sm">Unable to load Instagram embed.</p>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 text-xs text-accent hover:underline"
+                    >
+                      <span>Open on Instagram</span>
+                      <IoOpenOutline size={12} />
+                    </a>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 3. Facebook Video Player */}
+            {/* 3. Facebook Video Player - Direct Embed */}
             {resolvedPlatform === 'facebook' && (
               <div className={`w-full ${getAspectClass()} relative flex items-center justify-center overflow-hidden bg-black/80`}>
-                {resolvedMediaUrl && /\.(mp4|webm)/i.test(resolvedMediaUrl) ? (
-                  <UniversalVideoPlayer
-                    src={resolvedMediaUrl}
-                    poster={resolvedThumbnail}
-                    title={link.title || 'Facebook Video'}
-                    embedUrl={resolvedEmbedUrl}
-                    sourceUrl={link.url}
-                    platform="facebook"
-                    className="w-full h-full"
-                  />
-                ) : resolvedEmbedUrl ? (
+                {finalFacebookEmbed ? (
                   <iframe
-                    src={resolvedEmbedUrl}
+                    src={finalFacebookEmbed}
                     className="w-full h-full border-0"
                     scrolling="no"
                     allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
@@ -367,7 +370,16 @@ const WorkspaceVideoCard = ({
                   />
                 ) : (
                   <div className="text-center p-6 text-muted">
-                    <p className="text-sm">Facebook video player</p>
+                    <p className="text-sm">Unable to load Facebook video embed.</p>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 text-xs text-accent hover:underline"
+                    >
+                      <span>Open on Facebook</span>
+                      <IoOpenOutline size={12} />
+                    </a>
                   </div>
                 )}
               </div>

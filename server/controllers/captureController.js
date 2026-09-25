@@ -84,11 +84,12 @@ const detectPlatformAndEmbed = (url = "") => {
   );
   if (igMatch) {
     const shortcode = igMatch[1];
+    const isReel = trimmed.toLowerCase().includes("/reel");
     return {
       platform: "instagram",
-      mediaType: trimmed.includes("/reel") ? "video" : "post",
+      mediaType: "video",
       embedId: shortcode,
-      embedUrl: `https://www.instagram.com/reel/${shortcode}/embed`,
+      embedUrl: `https://www.instagram.com/${isReel ? "reel" : "p"}/${shortcode}/embed`,
     };
   }
 
@@ -674,10 +675,10 @@ const fetchUrlMetadata = async (url) => {
     finalTitle = decodeHtmlEntities(finalTitle);
     finalDescription = decodeHtmlEntities(finalDescription);
 
-    const resolvedMediaType =
-      detected.mediaType === "video" || directVideoUrl || detected.embedUrl
-        ? "video"
-        : detected.mediaType || "article";
+    const isMeta = detected.platform === "instagram" || detected.platform === "facebook";
+    const resolvedMediaUrl = isMeta
+      ? (detected.embedUrl || "")
+      : (directVideoUrl || detected.mediaUrl || (resolvedMediaType === "video" ? (detected.embedUrl || "") : finalImage));
 
     return {
       url,
@@ -686,7 +687,7 @@ const fetchUrlMetadata = async (url) => {
       description: finalDescription,
       rawContent: finalDescription,
       thumbnailUrl: directPosterUrl || finalImage,
-      mediaUrl: directVideoUrl || detected.mediaUrl || (resolvedMediaType === "video" ? (detected.embedUrl || "") : finalImage),
+      mediaUrl: resolvedMediaUrl,
       siteName: siteName || detected.platform,
       authorName: author,
       ...detected,

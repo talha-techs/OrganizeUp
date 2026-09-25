@@ -21,7 +21,13 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import WorkspaceVideoCard from './WorkspaceVideoCard';
-import { isVideoLink, detectLinkMediaInfo, getPlatformBadge } from '../../utils/linkMediaUtils';
+import {
+  isVideoLink,
+  detectLinkMediaInfo,
+  getPlatformBadge,
+  getInstagramEmbedUrl,
+  getFacebookEmbedUrl,
+} from '../../utils/linkMediaUtils';
 import {
   updateSubSection,
   deleteSubSection,
@@ -785,6 +791,19 @@ const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
       }
     }
 
+    const resolvedPlatform = inspectedMeta?.platform || detectedPreview?.platform || 'web';
+    let resolvedEmbedUrl = inspectedMeta?.embedUrl || detectedPreview?.embedUrl || '';
+    let resolvedMediaUrl = inspectedMeta?.mediaUrl || detectedPreview?.mediaUrl || '';
+
+    // Direct embeds for Meta videos (Instagram & Facebook) to prevent expired CDN URLs
+    if (resolvedPlatform === 'instagram') {
+      resolvedEmbedUrl = getInstagramEmbedUrl(trimmedUrl, resolvedEmbedUrl);
+      resolvedMediaUrl = '';
+    } else if (resolvedPlatform === 'facebook') {
+      resolvedEmbedUrl = getFacebookEmbedUrl(trimmedUrl, resolvedEmbedUrl);
+      resolvedMediaUrl = '';
+    }
+
     await dispatch(
       addLink({
         sectionId,
@@ -792,11 +811,11 @@ const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
         url: trimmedUrl,
         title: resolvedTitle,
         description: newDesc.trim() || (inspectedMeta?.description || ''),
-        platform: inspectedMeta?.platform || detectedPreview?.platform || 'web',
+        platform: resolvedPlatform,
         mediaType: inspectedMeta?.mediaType || detectedPreview?.mediaType || 'article',
-        embedUrl: inspectedMeta?.embedUrl || detectedPreview?.embedUrl || '',
+        embedUrl: resolvedEmbedUrl,
         embedId: inspectedMeta?.embedId || detectedPreview?.embedId || '',
-        mediaUrl: inspectedMeta?.mediaUrl || detectedPreview?.mediaUrl || '',
+        mediaUrl: resolvedMediaUrl,
         thumbnailUrl: inspectedMeta?.thumbnailUrl || detectedPreview?.thumbnailUrl || '',
         authorName: inspectedMeta?.authorName || detectedPreview?.authorName || '',
         siteName: inspectedMeta?.siteName || '',

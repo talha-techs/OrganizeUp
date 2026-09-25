@@ -40,6 +40,7 @@ import {
 } from '../../redux/slices/captureSlice';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
+import { getInstagramEmbedUrl, getFacebookEmbedUrl } from '../../utils/linkMediaUtils';
 
 const isVideoUrl = (url) =>
   typeof url === 'string' &&
@@ -485,30 +486,40 @@ const CapturesPage = () => {
 
                 {/* 1. Instagram Reel Embed Player (Playable in-app) */}
                 {capture.platform === 'instagram' && (
-                  isVideoUrl(capture.mediaUrl) ? (
-                    <div className="w-full bg-black relative aspect-[9/16] max-h-[440px] overflow-hidden flex items-center justify-center border-b border-subtle">
-                      <video
-                        src={getVideoSrc(capture.mediaUrl)}
-                        poster={capture.thumbnailUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  ) : capture.embedUrl ? (
-                    <div className="w-full bg-black/40 relative aspect-[9/14] max-h-96 overflow-hidden flex items-center justify-center">
-                      <iframe
-                        src={capture.embedUrl}
-                        className="w-full h-full border-0"
-                        allowTransparency="true"
-                        allow="encrypted-media"
-                        title={capture.title || 'Instagram Reel'}
-                        loading="lazy"
-                      />
-                    </div>
-                  ) : null
+                  (() => {
+                    const igEmbed = capture.embedUrl || getInstagramEmbedUrl(capture.sourceUrl || capture.url);
+                    if (igEmbed) {
+                      return (
+                        <div className="w-full bg-black/40 relative aspect-[9/14] max-h-96 overflow-hidden flex items-center justify-center">
+                          <iframe
+                            src={igEmbed}
+                            className="w-full h-full border-0"
+                            allowTransparency="true"
+                            allow="encrypted-media; clipboard-write;"
+                            scrolling="no"
+                            title={capture.title || 'Instagram Reel'}
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    }
+                    if (isVideoUrl(capture.mediaUrl)) {
+                      return (
+                        <div className="w-full bg-black relative aspect-[9/16] max-h-[440px] overflow-hidden flex items-center justify-center border-b border-subtle">
+                          <video
+                            src={getVideoSrc(capture.mediaUrl)}
+                            poster={capture.thumbnailUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()
                 )}
 
                 {/* 2. Facebook Video / Reel / Post */}
@@ -518,7 +529,7 @@ const CapturesPage = () => {
                     {expandedEmbeds[capture._id] ? (
                       <div className="w-full bg-black/60 relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
                         <iframe
-                          src={capture.embedUrl}
+                          src={capture.embedUrl || getFacebookEmbedUrl(capture.sourceUrl || capture.url)}
                           className="w-full h-full border-0"
                           scrolling="no"
                           allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
