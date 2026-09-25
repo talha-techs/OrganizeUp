@@ -68,25 +68,25 @@ function getColorClasses(color) {
 
 // ─── Block type definitions ──────────────────────────────────────────────────
 const BLOCK_TYPES = [
-  { type: 'note',    icon: '📝', label: 'Note',         desc: 'Write notes, thoughts, or documentation',       accent: 'border-subtle hover:border-accent hover:bg-accent-subtle' },
-  { type: 'todo',    icon: '✅', label: 'To-Do List',   desc: 'Manage tasks with priorities and due dates',     accent: 'border-subtle hover:border-emerald-500/60 hover:bg-emerald-500/5' },
-  { type: 'board',   icon: '📋', label: 'Status Board', desc: 'Visual kanban to track work across stages',      accent: 'border-subtle hover:border-purple-500/60 hover:bg-purple-500/5' },
-  { type: 'links',   icon: '🔗', label: 'Links',        desc: 'Collect and organize important URLs',            accent: 'border-subtle hover:border-accent hover:bg-accent-subtle' },
-  { type: 'snippet', icon: '</>', label: 'Code Snippet', desc: 'Save reusable code with syntax highlighting',    accent: 'border-subtle hover:border-amber-500/60 hover:bg-amber-500/5' },
-  { type: 'image',   icon: '🖼️', label: 'Image',        desc: 'Add an image with an optional caption',          accent: 'border-subtle hover:border-rose-500/60 hover:bg-rose-500/5' },
+  { type: 'note', icon: '📝', label: 'Note', desc: 'Write notes, thoughts, or documentation', accent: 'border-subtle hover:border-accent hover:bg-accent-subtle' },
+  { type: 'todo', icon: '✅', label: 'To-Do List', desc: 'Manage tasks with priorities and due dates', accent: 'border-subtle hover:border-emerald-500/60 hover:bg-emerald-500/5' },
+  { type: 'board', icon: '📋', label: 'Status Board', desc: 'Visual kanban to track work across stages', accent: 'border-subtle hover:border-purple-500/60 hover:bg-purple-500/5' },
+  { type: 'links', icon: '🔗', label: 'Links', desc: 'Collect and organize important URLs', accent: 'border-subtle hover:border-accent hover:bg-accent-subtle' },
+  { type: 'snippet', icon: '</>', label: 'Code Snippet', desc: 'Save reusable code with syntax highlighting', accent: 'border-subtle hover:border-amber-500/60 hover:bg-amber-500/5' },
+  { type: 'image', icon: '🖼️', label: 'Image', desc: 'Add an image with an optional caption', accent: 'border-subtle hover:border-rose-500/60 hover:bg-rose-500/5' },
 ];
 
 // ─── Drive file icons ────────────────────────────────────────────────────────
 const FILE_ICONS = {
-  pdf:     <IoDocumentOutline  size={16} className="text-red-400" />,
-  html:    <IoCodeSlashOutline size={16} className="text-orange-400" />,
-  text:    <IoDocumentOutline  size={16} className="text-secondary" />,
-  image:   <IoImageOutline     size={16} className="text-emerald-400" />,
-  video:   <IoVideocamOutline  size={16} className="text-rose-400" />,
-  gdoc:    <IoDocumentOutline  size={16} className="text-amber-400" />,
-  gsheet:  <IoDocumentOutline  size={16} className="text-emerald-400" />,
-  gslides: <IoDocumentOutline  size={16} className="text-yellow-400" />,
-  other:   <IoDocumentOutline  size={16} className="text-muted" />,
+  pdf: <IoDocumentOutline size={16} className="text-red-400" />,
+  html: <IoCodeSlashOutline size={16} className="text-orange-400" />,
+  text: <IoDocumentOutline size={16} className="text-secondary" />,
+  image: <IoImageOutline size={16} className="text-emerald-400" />,
+  video: <IoVideocamOutline size={16} className="text-rose-400" />,
+  gdoc: <IoDocumentOutline size={16} className="text-amber-400" />,
+  gsheet: <IoDocumentOutline size={16} className="text-emerald-400" />,
+  gslides: <IoDocumentOutline size={16} className="text-yellow-400" />,
+  other: <IoDocumentOutline size={16} className="text-muted" />,
 };
 
 // ─── Folder tree ─────────────────────────────────────────────────────────────
@@ -124,8 +124,8 @@ const FolderTree = ({ folder, onFileClick, depth = 0 }) => {
 // ─── Add Block Modal ─────────────────────────────────────────────────────────
 const AddBlockModal = ({ onClose, onAdd }) => {
   const [selectedType, setSelectedType] = useState(null);
-  const [blockName, setBlockName]       = useState('');
-  const [creating, setCreating]         = useState(false);
+  const [blockName, setBlockName] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
     if (!selectedType || !blockName.trim()) return;
@@ -152,11 +152,10 @@ const AddBlockModal = ({ onClose, onAdd }) => {
           {BLOCK_TYPES.map((t) => (
             <button key={t.type}
               onClick={() => { setSelectedType(t.type); if (!blockName || BLOCK_TYPES.some((x) => x.label === blockName)) setBlockName(t.label); }}
-              className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border transition-all text-left cursor-pointer ${
-                selectedType === t.type
+              className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border transition-all text-left cursor-pointer ${selectedType === t.type
                   ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
                   : `border-subtle bg-surface ${t.accent}`
-              }`}>
+                }`}>
               <span className="text-xl leading-none">{t.icon}</span>
               <span className="text-sm font-semibold text-primary">{t.label}</span>
               <span className="text-[11px] text-muted leading-snug">{t.desc}</span>
@@ -292,31 +291,28 @@ const ChangeBannerModal = ({ isOpen, onClose, currentBanner, sectionId, sectionN
         <div className="flex border-b border-subtle gap-2">
           <button
             onClick={() => setTab('upload')}
-            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${
-              tab === 'upload'
+            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${tab === 'upload'
                 ? 'border-accent text-accent font-semibold'
                 : 'border-transparent text-secondary hover:text-primary'
-            }`}
+              }`}
           >
             <IoCloudUploadOutline size={14} /> Upload File
           </button>
           <button
             onClick={() => setTab('url')}
-            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${
-              tab === 'url'
+            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${tab === 'url'
                 ? 'border-accent text-accent font-semibold'
                 : 'border-transparent text-secondary hover:text-primary'
-            }`}
+              }`}
           >
             <IoLinkOutline size={14} /> Web URL
           </button>
           <button
             onClick={() => setTab('pexels')}
-            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${
-              tab === 'pexels'
+            className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${tab === 'pexels'
                 ? 'border-accent text-accent font-semibold'
                 : 'border-transparent text-secondary hover:text-primary'
-            }`}
+              }`}
           >
             <IoSparklesOutline size={14} /> Pexels Discover
           </button>
@@ -431,16 +427,16 @@ const SectionDetailPage = () => {
   useDocumentTitle(currentSection?.name || 'Workspace');
   const isAdmin = user?.role === 'admin';
 
-  const [showImport, setShowImport]           = useState(false);
-  const [selectedFile, setSelectedFile]       = useState(null);
-  const [showAddBlock, setShowAddBlock]       = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showAddBlock, setShowAddBlock] = useState(false);
   const [showBannerModal, setShowBannerModal] = useState(false);
-  const [showTeamModal, setShowTeamModal]     = useState(false);
-  const [showActivity, setShowActivity]       = useState(false);
-  const [conflictData, setConflictData]       = useState(null);
-  const [driveExpanded, setDriveExpanded]     = useState(true);
-  const [activeBlockId, setActiveBlockId]     = useState(null);
-  const [pasteNotice, setPasteNotice]         = useState(null); // { message, lastBlockId }
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
+  const [conflictData, setConflictData] = useState(null);
+  const [driveExpanded, setDriveExpanded] = useState(true);
+  const [activeBlockId, setActiveBlockId] = useState(null);
+  const [pasteNotice, setPasteNotice] = useState(null); // { message, lastBlockId }
 
   // ── Real-Time Synchronization & Presence ─────────────────────────────────
   const {
@@ -511,15 +507,14 @@ const SectionDetailPage = () => {
 
   const isOwner =
     myRole === 'owner' ||
-    isAdmin ||
-    !!(
+    Boolean(
       user?._id &&
       currentSection?.addedBy &&
       String(currentSection.addedBy?._id ?? currentSection.addedBy) === String(user._id)
     );
   const isViewer = myRole === 'viewer';
-  const canEdit = permissions?.canEdit ?? !isViewer;
-  const canManage = isOwner || isAdmin;
+  const canEdit = permissions?.canEdit ?? (isAdmin || !isViewer);
+  const canManage = permissions?.canManage ?? (isOwner || isAdmin);
 
   const colorClasses = getColorClasses(currentSection?.color);
 
@@ -818,8 +813,8 @@ const SectionDetailPage = () => {
     );
   }
 
-  const hasFolders   = currentSection.folders?.length > 0;
-  const hasFiles     = currentSection.files?.length > 0;
+  const hasFolders = currentSection.folders?.length > 0;
+  const hasFiles = currentSection.files?.length > 0;
   const hasDriveData = hasFolders || hasFiles;
 
   return (
@@ -842,7 +837,7 @@ const SectionDetailPage = () => {
           </div>
         ) : (
           <div
-            className={`h-52 sm:h-64 w-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to} relative overflow-hidden`}
+            className={`h-60 sm:h-78 w-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to} relative overflow-hidden`}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
           </div>
@@ -941,6 +936,10 @@ const SectionDetailPage = () => {
                 {myRole === 'owner' ? (
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/40 backdrop-blur-sm">
                     Owner
+                  </span>
+                ) : myRole === 'admin' ? (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-rose-500/25 text-rose-300 border border-rose-500/40 backdrop-blur-sm">
+                    Admin
                   </span>
                 ) : myRole === 'editor' ? (
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 backdrop-blur-sm">

@@ -20,26 +20,23 @@ const getSections = async (req, res) => {
     const isAdmin = req.user.role === "admin";
     const savedSectionIdMap = new Map();
 
+    const saved = await UserLibrary.find({
+      user: req.user._id,
+      contentType: "section",
+    }).select("contentId _id");
+    const savedIds = saved.map((s) => s.contentId);
+    saved.forEach((s) => savedSectionIdMap.set(s.contentId.toString(), s._id));
+
     let filter;
     if (req.query.mine === "true") {
       filter = { addedBy: req.user._id };
     } else if (req.query.shared === "true") {
       filter = { "collaborators.user": req.user._id };
-    } else if (isAdmin) {
+    } else if (isAdmin && req.query.all === "true") {
+      // Explicit administrative overview parameter only
       filter = {};
-      const saved = await UserLibrary.find({
-        user: req.user._id,
-        contentType: "section",
-      }).select("contentId _id");
-      saved.forEach((s) => savedSectionIdMap.set(s.contentId.toString(), s._id));
     } else {
-      const saved = await UserLibrary.find({
-        user: req.user._id,
-        contentType: "section",
-      }).select("contentId _id");
-      const savedIds = saved.map((s) => s.contentId);
-      saved.forEach((s) => savedSectionIdMap.set(s.contentId.toString(), s._id));
-
+      // User-scoped for all accounts (including admins): ONLY own workspaces, shared, or saved
       filter = {
         $or: [
           { addedBy: req.user._id },
@@ -59,6 +56,9 @@ const getSections = async (req, res) => {
       const sIdStr = s._id.toString();
       const role = resolveSectionRole(s, req.user);
       const permissions = getSectionPermissions(role, s.visibility);
+      const isActualOwner =
+        s.addedBy &&
+        String(s.addedBy._id || s.addedBy) === String(req.user._id);
 
       if (savedSectionIdMap.has(sIdStr)) {
         obj.isSaved = true;
@@ -67,7 +67,7 @@ const getSections = async (req, res) => {
         obj.isSaved = false;
       }
       obj.myRole = role;
-      obj.isOwner = role === "owner";
+      obj.isOwner = Boolean(isActualOwner);
       obj.isShared = Array.isArray(s.collaborators) && s.collaborators.length > 0;
       obj.collaboratorCount = s.collaborators?.length || 0;
       obj.permissions = permissions;
@@ -100,10 +100,14 @@ const getSection = async (req, res) => {
       contentId: section._id,
     });
 
+    const isActualOwner =
+      section.addedBy &&
+      String(section.addedBy._id || section.addedBy) === String(req.user._id);
+
     const sectionObj = section.toObject();
     sectionObj.isSaved = !!savedEntry;
     sectionObj.libraryEntryId = savedEntry?._id || null;
-    sectionObj.isOwner = role === "owner";
+    sectionObj.isOwner = Boolean(isActualOwner);
     sectionObj.myRole = role;
     sectionObj.permissions = permissions;
 
@@ -149,7 +153,15 @@ const createSection = async (req, res) => {
       "name avatar",
     );
 
-    res.status(201).json({ section: populated });
+    const sectionObj = populated.toObject();
+    sectionObj.myRole = "owner";
+    sectionObj.isOwner = true;
+    sectionObj.permissions = getSectionPermissions("owner", "private");
+    sectionObj.isSaved = false;
+    sectionObj.isShared = false;
+    sectionObj.collaboratorCount = 0;
+
+    res.status(201).json({ section: sectionObj });
   } catch (error) {
     console.error("Create section error:", error);
     res.status(500).json({ message: "Server error" });

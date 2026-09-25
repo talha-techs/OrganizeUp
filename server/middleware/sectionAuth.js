@@ -2,15 +2,12 @@ const CustomSection = require("../models/CustomSection");
 
 /**
  * Resolves user's role on a section.
- * @returns {'owner' | 'editor' | 'viewer' | 'none'}
+ * @returns {'owner' | 'editor' | 'viewer' | 'admin' | 'none'}
  */
 const resolveSectionRole = (section, user) => {
   if (!section || !user) return "none";
 
-  // Admins have full owner capabilities
-  if (user.role === "admin") return "owner";
-
-  // Creator is owner
+  // Creator is the sole true owner
   const ownerId = section.addedBy?._id || section.addedBy;
   if (ownerId && String(ownerId) === String(user._id)) {
     return "owner";
@@ -27,6 +24,9 @@ const resolveSectionRole = (section, user) => {
     }
   }
 
+  // Admins have admin override permissions for moderation/support, but are NOT the creator/owner
+  if (user.role === "admin") return "admin";
+
   return "none";
 };
 
@@ -34,11 +34,11 @@ const resolveSectionRole = (section, user) => {
  * Returns boolean permissions for a given role and section visibility
  */
 const getSectionPermissions = (role, visibility) => {
-  const isMember = ["owner", "editor", "viewer"].includes(role);
+  const isMember = ["owner", "editor", "viewer", "admin"].includes(role);
   return {
     canView: isMember || visibility === "public",
-    canEdit: ["owner", "editor"].includes(role),
-    canManage: role === "owner", // Invite, change roles, delete section, Drive sync, banners
+    canEdit: ["owner", "editor", "admin"].includes(role),
+    canManage: ["owner", "admin"].includes(role), // Invite, change roles, delete section, Drive sync, banners
     canLeave: ["editor", "viewer"].includes(role),
   };
 };

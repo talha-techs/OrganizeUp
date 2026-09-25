@@ -201,10 +201,14 @@ const SectionsPage = () => {
     }
   };
 
-  // Section categorization
-  const isSectionOwner = (s) =>
-    s.isOwner ??
-    (user?._id && s.addedBy && String(s.addedBy?._id ?? s.addedBy) === String(user._id));
+  // Section categorization - strictly verify addedBy matches the logged-in user
+  const isSectionOwner = (s) => {
+    const ownerId = s.addedBy?._id ?? s.addedBy;
+    if (ownerId && user?._id) {
+      return String(ownerId) === String(user._id);
+    }
+    return Boolean(s.isOwner);
+  };
 
   const mySections = sections.filter((s) => isSectionOwner(s));
   const sharedSections = sections.filter(
