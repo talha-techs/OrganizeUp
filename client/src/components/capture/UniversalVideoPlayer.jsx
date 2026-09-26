@@ -66,7 +66,7 @@ const UniversalVideoPlayer = ({
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const retryCountRef = useRef(0);
-  const userToggledProxyRef = useRef(false);
+  const userPreferenceRef = useRef(null); // 'direct' | 'cloud' | null
 
   // Detect sources that require proxying from the start
   const needsProxyFromStart = (url) => {
@@ -111,7 +111,7 @@ const UniversalVideoPlayer = ({
   // Reset quality state when video source changes
   useEffect(() => {
     userSelectedQualityRef.current = null;
-    userToggledProxyRef.current = false;
+    userPreferenceRef.current = null;
     setSelectedQuality('');
     setAvailableQualities([]);
     setIsQualityMenuOpen(false);
@@ -186,15 +186,54 @@ const UniversalVideoPlayer = ({
   // Check if the src is actually a playable direct video URL (not an embed page URL)
   const isDirectVideoUrl = (url) => {
     if (!url || typeof url !== 'string') return false;
+    if (/(?:pmvhaven\.com)/i.test(url)) return false;
     const lower = url.toLowerCase();
-    // If it's already a proxy URL, it's direct
+
+    // Reject known embed/plugin page URLs (these should render as iframes or preview cards)
+    if (
+      lower.includes('facebook.com/plugins/') ||
+      lower.includes('youtube.com/embed') ||
+      lower.includes('youtube-nocookie.com/embed') ||
+      lower.includes('instagram.com/reel/') ||
+      lower.includes('instagram.com/p/') ||
+      lower.includes('linkedin.com/embed') ||
+      lower.includes('platform.twitter.com/embed') ||
+      lower.includes('tiktok.com/embed') ||
+      lower.includes('player.vimeo.com/') ||
+      lower.includes('loom.com/embed/')
+    ) {
+      return false;
+    }
+
+    // If it's already a proxy URL, blob, or data URI
     if (url.startsWith('/api/captures/stream')) return true;
     if (url.startsWith('blob:') || url.startsWith('data:video/')) return true;
-    // Check for known video file extensions or video CDN patterns
-    if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url)) return true;
-    if (lower.includes('video.twimg.com')) return true;
-    if (lower.includes('.m3u8')) return true;
-    if (lower.includes('fbcdn.net') && (lower.includes('video') || lower.includes('/v/'))) return true;
+
+    // Check for known video file extensions or streaming playlist indicators
+    if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd|ts)(\?.*)?$/i.test(url)) return true;
+    if (lower.includes('.m3u8') || lower.includes('mpegurl')) return true;
+
+    // Known video CDN domains & direct streaming patterns
+    if (
+      lower.includes('video.twimg.com') ||
+      lower.includes('twimg.com') ||
+      lower.includes('fbcdn.net') ||
+      lower.includes('cdninstagram.com') ||
+      lower.includes('googlevideo.com') ||
+      lower.includes('videoplayback') ||
+      lower.includes('byteoversea.com') ||
+      lower.includes('tiktokcdn.com') ||
+      lower.includes('videodelivery.net') ||
+      lower.includes('vimeocdn.com')
+    ) {
+      return true;
+    }
+
+    // If an explicit src prop was provided and it is not an HTML webpage URL, treat as a playable direct video stream
+    if (src && url === src && !/\.(html?|php|asp)(\?.*)?$/i.test(url)) {
+      return true;
+    }
+
     return false;
   };
 
@@ -354,7 +393,7 @@ const UniversalVideoPlayer = ({
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                if (!useProxy && !userToggledProxyRef.current) {
+                if (!useProxy && userPreferenceRef.current !== 'direct') {
                   console.warn('HLS direct stream blocked/failed. Auto-switching to Cloud Stream proxy...');
                   setUseProxy(true);
                 } else if (retryCountRef.current < 2) {
@@ -392,8 +431,8 @@ const UniversalVideoPlayer = ({
   }, [actualSrc, useProxy, isHls, effectiveSrc, hasDirect, autoPlay, destroyHls]);
 
   const handleVideoError = useCallback(() => {
-    // Only auto-switch to proxy on initial failure if the user hasn't explicitly clicked to switch to direct
-    if (!useProxy && actualSrc && !userToggledProxyRef.current) {
+    // Only auto-switch to proxy on initial failure if the user hasn't explicitly chosen direct stream
+    if (!useProxy && actualSrc && userPreferenceRef.current !== 'direct') {
       console.warn('Direct video playback error. Auto-switching to Cloud Stream proxy...');
       setUseProxy(true);
     } else {
@@ -407,8 +446,9 @@ const UniversalVideoPlayer = ({
     setHasError(false);
     setErrorMessage('');
     retryCountRef.current = 0;
-    userToggledProxyRef.current = true;
-    setUseProxy((prev) => !prev);
+    const nextProxy = !useProxy;
+    userPreferenceRef.current = nextProxy ? 'cloud' : 'direct';
+    setUseProxy(nextProxy);
   };
 
   // 1. Render iframe embed fallback if embedUrl is provided and is a valid embeddable player
@@ -693,8 +733,11 @@ const UniversalVideoPlayer = ({
               type="button"
               onClick={() => {
                 setHasError(false);
+                setErrorMessage('');
                 retryCountRef.current = 0;
-                setUseProxy((prev) => !prev);
+                const nextProxy = !useProxy;
+                userPreferenceRef.current = nextProxy ? 'cloud' : 'direct';
+                setUseProxy(nextProxy);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
             >
