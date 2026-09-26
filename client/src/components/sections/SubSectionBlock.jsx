@@ -1476,7 +1476,7 @@ const SubSectionBlock = ({
   onConflict,
 }) => {
   const dispatch = useDispatch();
-  const [collapsed, setCollapsed]         = useState(false);
+  const [collapsed, setCollapsed]         = useState(true);
   const [renaming, setRenaming]           = useState(false);
   const [nameInput, setNameInput]         = useState(block.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1655,6 +1655,7 @@ const SubSectionBlock = ({
           <button
             onClick={() => setCollapsed((c) => !c)}
             className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+            title={collapsed ? 'Expand section' : 'Collapse section'}
           >
             {collapsed ? <IoChevronForward size={14} /> : <IoChevronDown size={14} />}
           </button>
