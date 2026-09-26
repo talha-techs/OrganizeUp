@@ -17,12 +17,16 @@ import {
   IoCloseOutline,
   IoLogOutOutline,
   IoFlashOutline,
+  IoChevronDown,
+  IoHelpCircleOutline,
+  IoOpenOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout } from '../../redux/slices/authSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
 import ThemeToggle from '../ui/ThemeToggle';
 import api from '../../utils/api';
+import { getDocsUrl } from '../../utils/docs';
 
 const MobileDrawer = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
@@ -30,6 +34,33 @@ const MobileDrawer = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const [telegramUnread, setTelegramUnread] = useState(0);
+
+  // Group collapsible dropdown states
+  const [openGroups, setOpenGroups] = useState(() => {
+    try {
+      const saved = localStorage.getItem('organizeup-sidebar-groups');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {
+      overview: true,
+      library: true,
+      knowledge: true,
+      inboxes: true,
+      account: true,
+    };
+  });
+
+  const toggleGroup = (groupId) => {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [groupId]: !prev[groupId] };
+      try {
+        localStorage.setItem('organizeup-sidebar-groups', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   // Auto-close on route change
   useEffect(() => {
@@ -58,13 +89,17 @@ const MobileDrawer = ({ isOpen, onClose }) => {
 
   const navGroups = [
     {
+      id: 'overview',
       title: 'Overview',
+      collapsible: false,
       items: [
         { to: '/dashboard', label: 'Dashboard', icon: IoGridOutline },
       ],
     },
     {
+      id: 'library',
       title: 'Library',
+      collapsible: true,
       items: [
         { to: '/books', label: 'Books', icon: IoBookOutline },
         { to: '/courses', label: 'Courses', icon: IoSchoolOutline },
@@ -74,14 +109,18 @@ const MobileDrawer = ({ isOpen, onClose }) => {
       ],
     },
     {
+      id: 'knowledge',
       title: 'Knowledge',
+      collapsible: true,
       items: [
         { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
         { to: '/explore', label: 'Explore Hub', icon: IoCompassOutline },
       ],
     },
     {
+      id: 'inboxes',
       title: 'Inboxes',
+      collapsible: true,
       items: [
         {
           to: '/captures',
@@ -103,15 +142,42 @@ const MobileDrawer = ({ isOpen, onClose }) => {
       ],
     },
     {
+      id: 'account',
       title: 'Account',
+      collapsible: true,
       items: [
         { to: '/profile', label: 'My Profile', icon: IoPersonOutline },
+        { href: getDocsUrl(), label: 'Documentation', icon: IoHelpCircleOutline, isExternal: true },
         ...(user?.role === 'admin'
           ? [{ to: '/admin', label: 'Admin Panel', icon: IoShieldCheckmarkOutline }]
           : []),
       ],
     },
   ];
+
+  const isItemActive = (item) => {
+    if (item.isExternal || !item.to) return false;
+    return (
+      location.pathname === item.to ||
+      (item.to !== '/dashboard' && location.pathname.startsWith(item.to))
+    );
+  };
+
+  // Auto-expand group if current route is active inside it
+  useEffect(() => {
+    const currentPath = location.pathname;
+    navGroups.forEach((group) => {
+      if (group.collapsible && openGroups[group.id] === false) {
+        const hasActive = group.items.some((item) => {
+          if (!item.to) return false;
+          return currentPath === item.to || (item.to !== '/dashboard' && currentPath.startsWith(item.to));
+        });
+        if (hasActive) {
+          setOpenGroups((prev) => ({ ...prev, [group.id]: true }));
+        }
+      }
+    });
+  }, [location.pathname]);
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -175,50 +241,123 @@ const MobileDrawer = ({ isOpen, onClose }) => {
                   </button>
                 </div>
 
-                {/* Navigation Items */}
-                <div className="flex-1 overflow-y-auto py-3 px-4 space-y-6">
-                  {navGroups.map((group, groupIdx) => (
-                    <div key={groupIdx} className="space-y-1.5">
-                      <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted font-display">
-                        {group.title}
-                      </h3>
-                      {group.items.map((item) => {
-                        const Icon = item.icon;
-                        const isActive =
-                          location.pathname === item.to ||
-                          (item.to !== '/dashboard' && location.pathname.startsWith(item.to));
+                {/* Navigation Items with Accordion Groups */}
+                <div className="flex-1 overflow-y-auto py-3 px-4 space-y-4 custom-scrollbar">
+                  {navGroups.map((group) => {
+                    const isOpen = openGroups[group.id] ?? true;
+                    const hasActiveItem = group.items.some(isItemActive);
+                    const unreadInGroup = group.items.reduce(
+                      (acc, it) => acc + (typeof it.badge === 'number' ? it.badge : 0),
+                      0
+                    );
 
-                        return (
-                          <NavLink
-                            key={item.to}
-                            to={item.to}
-                            onClick={() => {
-                              if (item.onClick) item.onClick();
-                              onClose();
-                            }}
-                            className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                              isActive
-                                ? 'bg-accent-subtle text-accent font-semibold shadow-sm'
-                                : 'text-secondary hover:text-primary hover:bg-surface-raised'
-                            }`}
+                    return (
+                      <div key={group.id} className="space-y-1">
+                        {group.collapsible ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group.id)}
+                            className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-muted hover:text-primary hover:bg-surface-raised/50 transition-colors cursor-pointer group/hdr select-none"
                           >
-                            <div className="relative flex-shrink-0 flex items-center justify-center">
-                              <Icon size={18} className={isActive ? 'text-accent' : 'text-secondary'} />
-                              {item.badge && (
-                                <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
-                                  {item.badge}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-display truncate">{group.title}</span>
+                              {!isOpen && unreadInGroup > 0 && (
+                                <span className="min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                                  {unreadInGroup}
                                 </span>
                               )}
+                              {!isOpen && hasActiveItem && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                              )}
                             </div>
-                            <span className="truncate flex-1">{item.label}</span>
-                            {isActive && (
-                              <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-                            )}
-                          </NavLink>
-                        );
-                      })}
-                    </div>
-                  ))}
+                            <div className="text-muted group-hover/hdr:text-primary transition-transform duration-200">
+                              <IoChevronDown
+                                size={14}
+                                className={`transition-transform duration-200 ${
+                                  isOpen ? 'rotate-0' : '-rotate-90'
+                                }`}
+                              />
+                            </div>
+                          </button>
+                        ) : (
+                          <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted font-display mb-1">
+                            {group.title}
+                          </h3>
+                        )}
+
+                        <AnimatePresence initial={false}>
+                          {(!group.collapsible || isOpen) && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                              className="overflow-hidden space-y-1"
+                            >
+                              {group.items.map((item) => {
+                                const Icon = item.icon;
+                                const isExt = item.isExternal;
+                                const isActive = isItemActive(item);
+
+                                const commonClasses = `flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                                  isActive
+                                    ? 'bg-accent-subtle text-accent font-semibold shadow-sm'
+                                    : 'text-secondary hover:text-primary hover:bg-surface-raised'
+                                }`;
+
+                                if (isExt) {
+                                  return (
+                                    <a
+                                      key={item.label}
+                                      href={item.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={onClose}
+                                      className={commonClasses}
+                                    >
+                                      <div className="relative flex-shrink-0 flex items-center justify-center">
+                                        <Icon size={18} className="text-secondary" />
+                                      </div>
+                                      <span className="truncate flex-1">{item.label}</span>
+                                      <IoOpenOutline size={13} className="text-muted opacity-60 flex-shrink-0" />
+                                    </a>
+                                  );
+                                }
+
+                                return (
+                                  <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    onClick={() => {
+                                      if (item.onClick) item.onClick();
+                                      onClose();
+                                    }}
+                                    className={commonClasses}
+                                  >
+                                    <div className="relative flex-shrink-0 flex items-center justify-center">
+                                      <Icon
+                                        size={18}
+                                        className={isActive ? 'text-accent' : 'text-secondary'}
+                                      />
+                                      {item.badge && (
+                                        <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                                          {item.badge}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="truncate flex-1">{item.label}</span>
+                                    {isActive && (
+                                      <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                                    )}
+                                  </NavLink>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Footer Section */}

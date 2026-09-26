@@ -32,7 +32,7 @@ const Layout = () => {
 
       {/* Main Content Area with Route-Aware Error Boundary */}
       <main
-        className={`flex-1 transition-all duration-300 pb-20 md:pb-8 ${
+        className={`flex-1 transition-[padding] duration-300 ease-in-out pb-20 md:pb-8 ${
           isCollapsed ? 'md:pl-20' : 'md:pl-64'
         }`}
       >
@@ -46,7 +46,7 @@ const Layout = () => {
 
       {/* Optional Footer */}
       {showFooter && (
-        <div className={`transition-all duration-300 ${isCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
+        <div className={`transition-[padding] duration-300 ease-in-out ${isCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
           <Footer />
         </div>
       )}
