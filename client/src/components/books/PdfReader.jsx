@@ -52,7 +52,7 @@ export default function PdfReader({
   const [currentPage, setCurrentPage] = useState(Math.max(1, parseInt(initialPage) || 1));
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.0);
-  const [fitMode, setFitMode] = useState('width'); // 'width' | 'auto'
+  const [fitMode, setFitMode] = useState('page'); // 'page' (default fits whole page) | 'width'
   const [isLoading, setIsLoading] = useState(true);
   const [isRendering, setIsRendering] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -196,16 +196,29 @@ export default function PdfReader({
       const containerWidth = containerRef.current?.clientWidth || 0;
       const availableWidth = Math.max(
         260,
-        containerWidth > 32 ? containerWidth - 24 : window.innerWidth - 32
+        containerWidth > 32 ? containerWidth - 28 : window.innerWidth - 32
+      );
+
+      const scrollContainer = scrollContainerRef.current;
+      const containerHeight = scrollContainer?.clientHeight || 0;
+      const availableHeight = Math.max(
+        320,
+        containerHeight > 32 ? containerHeight - 32 : window.innerHeight - 200
       );
 
       // Base unscaled viewport
       const unscaledViewport = page.getViewport({ scale: 1 });
 
+      const widthScale = availableWidth / unscaledViewport.width;
+      const heightScale = availableHeight / unscaledViewport.height;
+
       let effectiveScale = scale;
-      if (fitMode === 'width') {
-        const widthScale = availableWidth / unscaledViewport.width;
-        // Apply zoom multiplier on top of width fit
+      if (fitMode === 'page') {
+        // Fits whole page comfortably so at 100% default zoom the entire page is visible with no vertical clipping
+        const pageScale = Math.min(widthScale, heightScale);
+        effectiveScale = pageScale * scale;
+      } else {
+        // Fit width mode
         effectiveScale = widthScale * scale;
       }
 
@@ -353,7 +366,12 @@ export default function PdfReader({
 
   const resetZoom = () => {
     setScale(1.0);
-    setFitMode('width');
+    setFitMode('page');
+  };
+
+  const toggleFitMode = () => {
+    setFitMode((prev) => (prev === 'page' ? 'width' : 'page'));
+    setScale(1.0);
   };
 
   // Fullscreen Handler
@@ -424,7 +442,7 @@ export default function PdfReader({
     <div
       ref={containerRef}
       className={`relative flex flex-col w-full bg-surface-raised rounded-2xl border border-subtle overflow-hidden select-none transition-all ${
-        isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none h-screen' : 'min-h-[500px] h-[85vh]'
+        isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none h-screen' : 'min-h-[640px] h-[88vh] lg:h-[calc(100vh-140px)] lg:min-h-[820px]'
       }`}
     >
       {/* Top Header & Toolbar */}
@@ -509,11 +527,15 @@ export default function PdfReader({
             </button>
           </div>
 
-          {/* Fit Width shortcut */}
+          {/* Fit Toggle shortcut: Page vs Width */}
           <button
-            onClick={resetZoom}
-            className="p-1.5 sm:p-2 rounded-lg bg-surface border border-subtle text-secondary hover:text-primary hover:border-accent/40 transition-colors cursor-pointer"
-            title="Fit to Width"
+            onClick={toggleFitMode}
+            className={`p-1.5 sm:p-2 rounded-lg border transition-colors cursor-pointer ${
+              fitMode === 'page'
+                ? 'bg-accent/15 text-accent border-accent/30'
+                : 'bg-surface border-subtle text-secondary hover:text-primary hover:border-accent/40'
+            }`}
+            title={fitMode === 'page' ? 'Switch to Fit Width' : 'Switch to Fit Whole Page'}
           >
             <IoScanOutline size={16} />
           </button>

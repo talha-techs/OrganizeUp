@@ -32,6 +32,7 @@ import {
   IoRefreshOutline,
   IoContractOutline,
   IoExpandOutline,
+  IoBulbOutline,
 } from 'react-icons/io5';
 import {
   fetchBook,
@@ -74,10 +75,17 @@ const BookDetailPage = () => {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [completedVideoIndex, setCompletedVideoIndex] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(true);
-  const [useNativeEmbed, setUseNativeEmbed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Text Book Study Notes & Key Takeaways state
+  const [textBookNotes, setTextBookNotes] = useState('');
+  const [textNotesLastSaved, setTextNotesLastSaved] = useState(null);
+  const [isTextNotesCollapsed, setIsTextNotesCollapsed] = useState(false);
+  const [textBookMobileTab, setTextBookMobileTab] = useState('reader'); // 'reader' | 'notes'
+  const textNotesTextareaRef = useRef(null);
+  const textNotesTimeoutRef = useRef(null);
 
   // Resizable panes state for Video Book
   const [videoWidth, setVideoWidth] = useState(() => {
@@ -270,7 +278,7 @@ const BookDetailPage = () => {
     };
   }, [id, dispatch]);
 
-  // Sync reading progress from user data
+  // Sync reading progress and study notes from user data
   useEffect(() => {
     const rp = user?.readingProgress?.find(
       (rp) => rp.bookId === id || String(rp.bookId?._id || rp.bookId) === String(id)
@@ -278,8 +286,18 @@ const BookDetailPage = () => {
     if (rp) {
       setCurrentPage(rp.currentPage || 1);
       setTotalPages(rp.totalPages || currentBook?.totalPages || 0);
-    } else if (currentBook?.totalPages) {
-      setTotalPages(currentBook.totalPages);
+      if (rp.note !== undefined && rp.note !== null && rp.note !== '') {
+        setTextBookNotes(rp.note);
+      } else {
+        const cachedNote = localStorage.getItem(`organizeup_book_notes_${id}`);
+        if (cachedNote) setTextBookNotes(cachedNote);
+      }
+    } else {
+      if (currentBook?.totalPages) {
+        setTotalPages(currentBook.totalPages);
+      }
+      const cachedNote = localStorage.getItem(`organizeup_book_notes_${id}`);
+      if (cachedNote) setTextBookNotes(cachedNote);
     }
   }, [user, id, currentBook]);
 
@@ -327,17 +345,163 @@ const BookDetailPage = () => {
     }
   }, [dispatch, id, selectedVideo, localNotes, currentBook, getVideoProgress]);
 
+  // Save text book study notes
+  const handleSaveTextBookNotes = useCallback(
+    async (customNotes) => {
+      const noteToSave = customNotes !== undefined ? customNotes : textBookNotes;
+      try {
+        localStorage.setItem(`organizeup_book_notes_${id}`, noteToSave);
+        const page = Math.max(1, totalPages > 0 ? Math.min(currentPage, totalPages) : currentPage);
+        const progress = totalPages > 0 ? Math.round((page / totalPages) * 100) : 0;
+        await dispatch(
+          updateReadingProgress({
+            bookId: id,
+            progressData: {
+              currentPage: page,
+              totalPages,
+              progress,
+              note: noteToSave,
+            },
+          })
+        );
+        dispatch(getMe());
+        setTextNotesLastSaved(
+          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        );
+        toast.success('Study notes saved');
+      } catch (err) {
+        console.error('Error saving study notes:', err);
+        toast.error('Failed to save notes');
+      }
+    },
+    [textBookNotes, id, totalPages, currentPage, dispatch]
+  );
+
+  const handleSaveReadingProgress = useCallback(
+    async (overrides = {}) => {
+      const targetTotal = overrides.totalPages !== undefined ? overrides.totalPages : totalPages;
+      const targetPage = overrides.currentPage !== undefined ? overrides.currentPage : currentPage;
+      const targetNote = overrides.note !== undefined ? overrides.note : textBookNotes;
+
+      if (targetTotal <= 0 && overrides.silent !== true) {
+        toast.error('Please set total pages first');
+        return;
+      }
+      const page = Math.max(1, targetTotal > 0 ? Math.min(targetPage, targetTotal) : targetPage);
+      const progress = targetTotal > 0 ? Math.round((page / targetTotal) * 100) : 0;
+      await dispatch(
+        updateReadingProgress({
+          bookId: id,
+          progressData: { currentPage: page, totalPages: targetTotal, progress, note: targetNote },
+        })
+      );
+      dispatch(getMe());
+      if (overrides.silent !== true) {
+        toast.success(
+          targetTotal > 0
+            ? `Progress saved: Page ${page}/${targetTotal} (${progress}%)`
+            : `Progress saved: Page ${page}`
+        );
+      }
+    },
+    [currentPage, totalPages, textBookNotes, id, dispatch]
+  );
+
+  // Debounced auto-save for text book notes
+  const handleTextNotesChange = (e) => {
+    const val = e.target.value;
+    setTextBookNotes(val);
+    try {
+      localStorage.setItem(`organizeup_book_notes_${id}`, val);
+    } catch {
+      // Ignore
+    }
+
+    if (textNotesTimeoutRef.current) clearTimeout(textNotesTimeoutRef.current);
+    textNotesTimeoutRef.current = setTimeout(async () => {
+      const page = Math.max(1, totalPages > 0 ? Math.min(currentPage, totalPages) : currentPage);
+      const progress = totalPages > 0 ? Math.round((page / totalPages) * 100) : 0;
+      await dispatch(
+        updateReadingProgress({
+          bookId: id,
+          progressData: {
+            currentPage: page,
+            totalPages,
+            progress,
+            note: val,
+          },
+        })
+      );
+      dispatch(getMe());
+      setTextNotesLastSaved(
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      );
+    }, 2500);
+  };
+
+  const handleInsertTextSnippet = (snippet) => {
+    const textarea = textNotesTextareaRef.current;
+    if (!textarea) {
+      setTextBookNotes((prev) => (prev ? `${prev}\n\n${snippet}` : snippet));
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const prev = textBookNotes;
+    const next = prev.substring(0, start) + snippet + prev.substring(end);
+    setTextBookNotes(next);
+    try {
+      localStorage.setItem(`organizeup_book_notes_${id}`, next);
+    } catch {
+      // Ignore
+    }
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + snippet.length, start + snippet.length);
+    }, 50);
+  };
+
+  const handleCopyTextNotes = () => {
+    if (!textBookNotes.trim()) {
+      toast.error('No notes to copy');
+      return;
+    }
+    navigator.clipboard.writeText(textBookNotes);
+    toast.success('Notes copied to clipboard!');
+  };
+
+  const handleDownloadTextNotes = () => {
+    if (!textBookNotes.trim()) {
+      toast.error('No notes to export');
+      return;
+    }
+    const blob = new Blob([textBookNotes], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(currentBook?.title || 'book').replace(/[^a-zA-Z0-9_-]/g, '_')}_study_notes.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Notes exported as Markdown');
+  };
+
   // Ctrl+S / Cmd+S shortcut to save notes
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        handleSaveNotes();
+        if (currentBook?.type === 'text') {
+          handleSaveTextBookNotes();
+        } else {
+          handleSaveNotes();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSaveNotes]);
+  }, [handleSaveNotes, handleSaveTextBookNotes, currentBook?.type]);
 
   // Debounced auto-save (3 seconds of inactivity)
   const handleNotesChange = (e) => {
@@ -679,23 +843,6 @@ const BookDetailPage = () => {
       })
     );
   };
-
-  const handleSaveReadingProgress = useCallback(async () => {
-    if (totalPages <= 0) {
-      toast.error('Please set total pages first');
-      return;
-    }
-    const page = Math.max(1, Math.min(currentPage, totalPages));
-    const progress = Math.round((page / totalPages) * 100);
-    await dispatch(
-      updateReadingProgress({
-        bookId: id,
-        progressData: { currentPage: page, totalPages, progress },
-      })
-    );
-    dispatch(getMe());
-    toast.success(`Progress saved: Page ${page}/${totalPages} (${progress}%)`);
-  }, [currentPage, totalPages, id, dispatch]);
 
   if (isLoading || !currentBook) {
     return (
@@ -1541,85 +1688,260 @@ const BookDetailPage = () => {
                 />
               </div>
 
-              {/* Page tracking inputs */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <IoBookOutline className="text-accent" size={16} />
-                <span className="text-xs text-secondary">Page</span>
-                <input
-                  type="number"
-                  min="1"
-                  max={totalPages || 99999}
-                  value={currentPage}
-                  onChange={(e) => setCurrentPage(parseInt(e.target.value) || 1)}
-                  className="w-16 px-2 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-sm text-center focus:border-accent focus:outline-none transition-colors"
-                  placeholder="#"
-                />
-                <span className="text-muted text-sm">/</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={totalPages}
-                  onChange={(e) => setTotalPages(parseInt(e.target.value) || 0)}
-                  className="w-16 px-2 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-sm text-center focus:border-accent focus:outline-none transition-colors"
-                  placeholder="Total"
-                />
+              {/* Page tracking inputs & notes toggle */}
+              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <IoBookOutline className="text-accent" size={16} />
+                  <span className="text-xs text-secondary">Page</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages || 99999}
+                    value={currentPage}
+                    onChange={(e) => setCurrentPage(parseInt(e.target.value) || 1)}
+                    className="w-16 px-2 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-sm text-center focus:border-accent focus:outline-none transition-colors"
+                    placeholder="#"
+                  />
+                  <span className="text-muted text-sm">/</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={totalPages}
+                    onChange={(e) => setTotalPages(parseInt(e.target.value) || 0)}
+                    className="w-16 px-2 py-1.5 rounded-lg bg-surface border border-subtle text-primary text-sm text-center focus:border-accent focus:outline-none transition-colors"
+                    placeholder="Total"
+                  />
+                  <button
+                    onClick={() => handleSaveReadingProgress()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle text-accent hover:bg-accent/20 text-sm font-medium transition-colors cursor-pointer"
+                    title="Save reading progress"
+                  >
+                    <IoSaveOutline size={14} />
+                    Save
+                  </button>
+                </div>
+
+                {/* Desktop Notes toggle */}
                 <button
-                  onClick={handleSaveReadingProgress}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-subtle text-accent hover:bg-accent/20 text-sm font-medium transition-colors cursor-pointer"
-                  title="Save reading progress"
+                  type="button"
+                  onClick={() => setIsTextNotesCollapsed((prev) => !prev)}
+                  className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all cursor-pointer ${
+                    !isTextNotesCollapsed
+                      ? 'bg-accent/15 text-accent border-accent/40 shadow-sm'
+                      : 'bg-surface border-subtle text-secondary hover:text-primary hover:border-accent/30'
+                  }`}
+                  title={isTextNotesCollapsed ? 'Open Study Notes Panel' : 'Minimize Study Notes Panel'}
                 >
-                  <IoSaveOutline size={14} />
-                  Save
+                  <IoDocumentTextOutline size={15} />
+                  <span>{isTextNotesCollapsed ? 'Open Notes' : 'Hide Notes'}</span>
+                  {textBookNotes.trim().length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  )}
                 </button>
               </div>
             </div>
           </div>
 
-          {currentBook.embedLink ? (
-            <div className="w-full">
-              {useNativeEmbed ? (
-                <div className="relative w-full" style={{ height: '85vh' }}>
-                  <div className="flex justify-between items-center p-2.5 bg-surface border-b border-subtle">
-                    <span className="text-xs text-secondary font-medium">Browser Native Embed Mode</span>
-                    <button
-                      onClick={() => setUseNativeEmbed(false)}
-                      className="text-xs text-accent hover:underline flex items-center gap-1 cursor-pointer font-medium"
-                    >
-                      ← Switch to Mobile / In-App Canvas Reader
-                    </button>
-                  </div>
-                  <iframe
-                    src={`${currentBook.embedLink}${currentBook.embedLink.includes('/api/books/pdf/') && !currentBook.embedLink.endsWith('.pdf') ? `/${encodeURIComponent(currentBook.title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf` : ''}#toolbar=1&navpanes=1&scrollbar=1`}
-                    width="100%"
-                    height="100%"
-                    className="border-0 rounded-b-xl"
-                    title={currentBook.title}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <PdfReader
-                    pdfUrl={currentBook.embedLink}
-                    title={currentBook.title}
-                    initialPage={currentPage}
-                    onPageChange={(page) => setCurrentPage(page)}
-                    onTotalPages={(total) => {
-                      if (!totalPages || totalPages === 0 || totalPages !== total) {
-                        setTotalPages(total);
-                      }
-                    }}
-                    onSaveProgress={handleSaveReadingProgress}
-                  />
-                  <div className="flex justify-end px-3 py-1.5 bg-surface/40 rounded-b-xl border-t border-subtle">
-                    <button
-                      onClick={() => setUseNativeEmbed(true)}
-                      className="text-xs text-muted hover:text-secondary transition-colors cursor-pointer"
-                    >
-                      Need browser print or browser PDF toolbar? Switch to native embed
-                    </button>
-                  </div>
-                </div>
+          {/* Mobile Tab Switcher */}
+          <div className="flex lg:hidden items-center p-1.5 bg-surface-raised border-b border-subtle">
+            <button
+              type="button"
+              onClick={() => setTextBookMobileTab('reader')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                textBookMobileTab === 'reader'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-secondary hover:text-primary hover:bg-surface'
+              }`}
+            >
+              <IoBookOutline size={15} />
+              <span>Book Reader</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTextBookMobileTab('notes')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${
+                textBookMobileTab === 'notes'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-secondary hover:text-primary hover:bg-surface'
+              }`}
+            >
+              <IoDocumentTextOutline size={15} />
+              <span>Study Notes</span>
+              {textBookNotes.trim().length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
               )}
+            </button>
+          </div>
+
+          {currentBook.embedLink ? (
+            <div className="relative w-full flex flex-col lg:flex-row items-stretch">
+              {/* PDF Canvas Reader Container */}
+              <div
+                className={`w-full transition-all duration-300 min-w-0 ${
+                  isTextNotesCollapsed ? 'lg:w-full' : 'lg:flex-1'
+                } ${textBookMobileTab === 'notes' ? 'hidden lg:block' : 'block'}`}
+              >
+                <PdfReader
+                  pdfUrl={currentBook.embedLink}
+                  title={currentBook.title}
+                  initialPage={currentPage}
+                  onPageChange={(page) => setCurrentPage(page)}
+                  onTotalPages={(total) => {
+                    if (!totalPages || totalPages === 0 || totalPages !== total) {
+                      setTotalPages(total);
+                    }
+                  }}
+                  onSaveProgress={handleSaveReadingProgress}
+                />
+              </div>
+
+              {/* Floating Restore Badge when notes panel is collapsed on desktop */}
+              {isTextNotesCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setIsTextNotesCollapsed(false)}
+                  className="hidden lg:flex absolute right-4 top-4 z-20 items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-raised/95 border border-accent/40 shadow-xl text-primary hover:text-accent hover:border-accent font-medium text-xs backdrop-blur-md transition-all group cursor-pointer"
+                  title="Expand Study Notes Panel (Ctrl+S to save)"
+                >
+                  <div className="p-1 rounded-md bg-accent-subtle text-accent group-hover:scale-110 transition-transform">
+                    <IoDocumentTextOutline size={14} />
+                  </div>
+                  <span>Study Notes</span>
+                  {textBookNotes.trim().length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  )}
+                  <IoExpandOutline size={14} className="text-secondary group-hover:text-primary ml-0.5" />
+                </button>
+              )}
+
+              {/* Side Notes & Key Takeaways Panel */}
+              <div
+                className={`w-full lg:w-[380px] xl:w-[420px] 2xl:w-[450px] flex-shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l border-subtle bg-surface/85 backdrop-blur-md transition-all ${
+                  isTextNotesCollapsed ? 'hidden' : 'flex'
+                } ${textBookMobileTab === 'reader' ? 'hidden lg:flex' : 'flex'}`}
+              >
+                {/* Panel Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-subtle bg-surface-raised/90">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-accent-subtle text-accent flex-shrink-0">
+                      <IoDocumentTextOutline size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-primary truncate leading-tight">
+                        Study Notes & Takeaways
+                      </h3>
+                      <p className="text-[11px] text-muted truncate mt-0.5">
+                        {textNotesLastSaved
+                          ? `Saved at ${textNotesLastSaved}`
+                          : 'Auto-saves as you type'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyTextNotes}
+                      className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-subtle transition-colors cursor-pointer"
+                      title="Copy all notes to clipboard"
+                    >
+                      <IoClipboardOutline size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadTextNotes}
+                      className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-subtle transition-colors cursor-pointer"
+                      title="Export notes as Markdown file"
+                    >
+                      <IoDownloadOutline size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsTextNotesCollapsed(true)}
+                      className="hidden lg:flex p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-subtle transition-colors cursor-pointer"
+                      title="Minimize notes panel"
+                    >
+                      <IoContractOutline size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Snippet / Formatting Bar */}
+                <div className="flex flex-wrap items-center gap-1.5 px-3.5 py-2 border-b border-subtle bg-surface/50 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTextSnippet(`\n\n### 📖 Page ${currentPage}\n`)}
+                    className="px-2 py-1 rounded-md bg-accent-subtle text-accent hover:bg-accent/25 transition-colors font-medium flex items-center gap-1 text-[11px] cursor-pointer"
+                    title={`Insert Page ${currentPage} heading`}
+                  >
+                    <IoBookOutline size={12} />
+                    <span>+ Page {currentPage}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTextSnippet('\n> 💡 **Takeaway:** ')}
+                    className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors font-medium flex items-center gap-1 text-[11px] cursor-pointer"
+                    title="Insert Key Takeaway"
+                  >
+                    <IoBulbOutline size={12} />
+                    <span>Takeaway</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTextSnippet('\n> 📌 "Quote here"\n')}
+                    className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors font-medium text-[11px] cursor-pointer"
+                    title="Insert Blockquote"
+                  >
+                    📌 Quote
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertTextSnippet('\n- ')}
+                    className="px-2 py-1 rounded-md bg-surface border border-subtle text-secondary hover:text-primary transition-colors text-[11px] cursor-pointer"
+                    title="Insert Bullet Point"
+                  >
+                    • Bullet
+                  </button>
+                </div>
+
+                {/* Note Editor Area */}
+                <div className="flex-1 min-h-[360px] p-3 flex flex-col">
+                  <textarea
+                    ref={textNotesTextareaRef}
+                    value={textBookNotes}
+                    onChange={handleTextNotesChange}
+                    placeholder={`Capture your thoughts, reflections, chapter takeaways, and core concepts here...
+
+Formatting tips:
+• Use + Page button to tag notes by page
+• Auto-saves continuously
+• Press Ctrl+S / Cmd+S to save manually`}
+                    className="w-full flex-1 min-h-[320px] p-3 rounded-xl bg-surface border border-subtle text-primary placeholder-muted text-sm font-sans leading-relaxed resize-none focus:outline-none focus:border-accent transition-colors scrollbar-thin"
+                  />
+                </div>
+
+                {/* Panel Footer */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-t border-subtle bg-surface-raised/80">
+                  <div className="text-[11px] text-muted flex items-center gap-1.5">
+                    <span>
+                      {textBookNotes.trim()
+                        ? `${textBookNotes.trim().split(/\s+/).length} words`
+                        : '0 words'}
+                    </span>
+                    <span>•</span>
+                    <span>{textBookNotes.length} chars</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveTextBookNotes()}
+                    className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 font-medium shadow-sm cursor-pointer"
+                    title="Save notes (Ctrl+S)"
+                  >
+                    <IoSaveOutline size={13} />
+                    <span>Save Notes</span>
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center py-20">

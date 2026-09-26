@@ -424,6 +424,21 @@ const getCombinedBookNotes = async (req, res) => {
 
     const user = await User.findById(req.user._id);
     const bookIdStr = req.params.id.toString();
+
+    // If text book, return reading progress note
+    if (book.type === "text") {
+      const rp = (user?.readingProgress || []).find(
+        (p) => p.bookId && p.bookId.toString() === bookIdStr
+      );
+      const noteText = rp?.note?.trim() || "";
+      const combinedNotes = noteText ? `# ${book.title} — Study Notes\n\n${noteText}` : "";
+      return res.json({
+        combinedNotes,
+        bookTitle: book.title,
+        totalNotesCount: noteText ? 1 : 0,
+      });
+    }
+
     const userVideoProgress = (user?.videoProgress || []).filter(
       (vp) => vp.bookId && vp.bookId.toString() === bookIdStr,
     );
@@ -461,7 +476,7 @@ const getCombinedBookNotes = async (req, res) => {
 // @route   PUT /api/books/:id/reading-progress
 const updateReadingProgress = async (req, res) => {
   try {
-    const { currentPage, totalPages, progress } = req.body;
+    const { currentPage, totalPages, progress, note } = req.body;
     const user = await User.findById(req.user._id);
     const bookId = req.params.id;
 
@@ -475,18 +490,20 @@ const updateReadingProgress = async (req, res) => {
       (existingProgress && existingProgress.completed);
 
     if (existingProgress) {
-      existingProgress.currentPage = currentPage;
+      if (currentPage !== undefined) existingProgress.currentPage = currentPage;
       if (totalPages) existingProgress.totalPages = totalPages;
-      existingProgress.progress = progress;
+      if (progress !== undefined) existingProgress.progress = progress;
+      if (note !== undefined) existingProgress.note = note;
       existingProgress.completed = isCompleted;
       existingProgress.lastRead = new Date();
     } else {
       user.readingProgress.push({
         bookId,
-        currentPage,
+        currentPage: currentPage || 1,
         totalPages: totalPages || 0,
         progress: progress || 0,
         completed: isCompleted,
+        note: note || "",
         lastRead: new Date(),
       });
     }

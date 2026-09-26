@@ -121,6 +121,7 @@ const userSchema = new mongoose.Schema(
         totalPages: { type: Number, default: 0 },
         progress: { type: Number, default: 0 }, // percentage 0-100
         completed: { type: Boolean, default: false },
+        note: { type: String, default: "" },
         lastRead: { type: Date, default: Date.now },
       },
     ],

@@ -153,8 +153,8 @@ const AddBlockModal = ({ onClose, onAdd }) => {
             <button key={t.type}
               onClick={() => { setSelectedType(t.type); if (!blockName || BLOCK_TYPES.some((x) => x.label === blockName)) setBlockName(t.label); }}
               className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border transition-all text-left cursor-pointer ${selectedType === t.type
-                  ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
-                  : `border-subtle bg-surface ${t.accent}`
+                ? 'border-accent bg-accent-subtle ring-1 ring-accent/30'
+                : `border-subtle bg-surface ${t.accent}`
                 }`}>
               <span className="text-xl leading-none">{t.icon}</span>
               <span className="text-sm font-semibold text-primary">{t.label}</span>
@@ -292,8 +292,8 @@ const ChangeBannerModal = ({ isOpen, onClose, currentBanner, sectionId, sectionN
           <button
             onClick={() => setTab('upload')}
             className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${tab === 'upload'
-                ? 'border-accent text-accent font-semibold'
-                : 'border-transparent text-secondary hover:text-primary'
+              ? 'border-accent text-accent font-semibold'
+              : 'border-transparent text-secondary hover:text-primary'
               }`}
           >
             <IoCloudUploadOutline size={14} /> Upload File
@@ -301,8 +301,8 @@ const ChangeBannerModal = ({ isOpen, onClose, currentBanner, sectionId, sectionN
           <button
             onClick={() => setTab('url')}
             className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${tab === 'url'
-                ? 'border-accent text-accent font-semibold'
-                : 'border-transparent text-secondary hover:text-primary'
+              ? 'border-accent text-accent font-semibold'
+              : 'border-transparent text-secondary hover:text-primary'
               }`}
           >
             <IoLinkOutline size={14} /> Web URL
@@ -310,8 +310,8 @@ const ChangeBannerModal = ({ isOpen, onClose, currentBanner, sectionId, sectionN
           <button
             onClick={() => setTab('pexels')}
             className={`pb-2.5 text-xs font-medium cursor-pointer transition-colors border-b-2 flex items-center gap-1.5 ${tab === 'pexels'
-                ? 'border-accent text-accent font-semibold'
-                : 'border-transparent text-secondary hover:text-primary'
+              ? 'border-accent text-accent font-semibold'
+              : 'border-transparent text-secondary hover:text-primary'
               }`}
           >
             <IoSparklesOutline size={14} /> Pexels Discover
@@ -837,7 +837,7 @@ const SectionDetailPage = () => {
       >
         {/* Banner Media Backdrop */}
         {currentSection.bannerImage ? (
-          <div className="h-60 sm:h-[300px] w-full relative overflow-hidden">
+          <div className="h-70 sm:h-[300px] w-full relative overflow-hidden">
             <img
               src={currentSection.bannerImage}
               alt={currentSection.name}
