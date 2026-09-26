@@ -227,14 +227,6 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
-  // Non-embeddable video host (direct web page without dedicated iframe player)
-  if (/(?:pmvhaven\.com)/i.test(trimmed)) {
-    return {
-      platform: "web",
-      mediaType: "video",
-    };
-  }
-
   // Default web article/page
   return {
     platform: "web",
@@ -480,8 +472,7 @@ const fetchUrlMetadata = async (url) => {
           if (
             videoObj.embedUrl &&
             typeof videoObj.embedUrl === "string" &&
-            !detected.embedUrl &&
-            !/pmvhaven\.com/i.test(videoObj.embedUrl)
+            !detected.embedUrl
           ) {
             detected.embedUrl = videoObj.embedUrl.trim().replace(/&amp;/g, "&");
           }
@@ -524,8 +515,7 @@ const fetchUrlMetadata = async (url) => {
         if (
           ogPlayerMatch &&
           !detected.embedUrl &&
-          !directVideoUrl &&
-          !/pmvhaven\.com/i.test(ogPlayerMatch[1])
+          !directVideoUrl
         ) {
           const playerUrl = ogPlayerMatch[1].trim().replace(/&amp;/g, "&");
           if (/^https?:\/\//i.test(playerUrl)) {
@@ -677,15 +667,20 @@ const fetchUrlMetadata = async (url) => {
     finalTitle = decodeHtmlEntities(finalTitle);
     finalDescription = decodeHtmlEntities(finalDescription);
 
-    const resolvedMediaType =
-      directVideoUrl ||
-      detected.mediaType === "video" ||
-      (detected.embedUrl && !["linkedin", "article"].includes(detected.platform))
+    const isRestrictedDomain = /(?:pmvhaven\.com)/i.test(url);
+
+    const resolvedMediaType = isRestrictedDomain
+      ? "article"
+      : directVideoUrl ||
+        detected.mediaType === "video" ||
+        (detected.embedUrl && !["linkedin", "article"].includes(detected.platform))
         ? "video"
         : detected.mediaType || "article";
 
     const isMeta = detected.platform === "instagram" || detected.platform === "facebook";
-    const resolvedMediaUrl = isMeta
+    const resolvedMediaUrl = isRestrictedDomain
+      ? ""
+      : isMeta
       ? (detected.embedUrl || "")
       : (directVideoUrl || detected.mediaUrl || (resolvedMediaType === "video" ? (detected.embedUrl || "") : finalImage));
 
@@ -700,6 +695,7 @@ const fetchUrlMetadata = async (url) => {
       siteName: siteName || detected.platform,
       authorName: author,
       ...detected,
+      embedUrl: isRestrictedDomain ? "" : detected.embedUrl,
       mediaType: resolvedMediaType,
     };
   } catch (error) {
@@ -1260,6 +1256,10 @@ const streamVideo = async (req, res) => {
       return res.status(400).send("A valid video URL is required");
     }
 
+    if (/(?:pmvhaven\.com)/i.test(url)) {
+      return res.status(403).set(corsHeaders).send("Streaming from this domain is restricted");
+    }
+
     // Derive Referer and Origin from the target URL to satisfy CDN hotlink checks
     let targetOrigin = "";
     try {
@@ -1274,11 +1274,7 @@ const streamVideo = async (req, res) => {
       "Accept-Encoding": "identity",
     };
 
-    // Spoof Referer/Origin so CDNs that validate hotlinking don't reject requests
-    if (/pmvhaven/i.test(url)) {
-      headers["Referer"] = "https://pmvhaven.com/";
-      headers["Origin"] = "https://pmvhaven.com";
-    } else if (targetOrigin) {
+    if (targetOrigin) {
       headers["Referer"] = targetOrigin + "/";
       headers["Origin"] = targetOrigin;
     }
@@ -1329,40 +1325,6 @@ const streamVideo = async (req, res) => {
 
     let responseToStream = response;
     let urlToRewrite = url;
-
-    // Explicit HTML scraping via stream proxy for in-app HLS playback
-    if (contentType.includes("text/html") && /pmvhaven\.com/i.test(url) && fetchMethod !== "HEAD") {
-      const htmlText = await response.text();
-      // Decode unicode-escaped slashes (\u002F) and escaped slashes (\/) in SSR JSON state
-      const cleanHtml = htmlText.replace(/\\u002f/gi, "/").replace(/\\\//g, "/");
-      const allM3u8 = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.m3u8[^\s"'`<>\\]*/gi);
-      if (allM3u8 && allM3u8.length > 0) {
-        // Prefer master.m3u8 so all quality levels are available in the player dropdown
-        urlToRewrite = (allM3u8.find((u) => u.includes("master.m3u8")) || allM3u8[0]).trim().replace(/&amp;/g, "&");
-        responseToStream = await fetch(urlToRewrite, {
-          method: "GET",
-          headers: { ...headers, Referer: "https://pmvhaven.com/" },
-        });
-        if (!responseToStream.ok) {
-          return res.status(responseToStream.status).set(corsHeaders).send("Failed to proxy extracted stream");
-        }
-        isM3u8 = true;
-      } else {
-        const mp4Match = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.mp4[^\s"'`<>\\]*/i);
-        if (mp4Match) {
-          urlToRewrite = mp4Match[0].trim().replace(/&amp;/g, "&");
-          responseToStream = await fetch(urlToRewrite, {
-            method: "GET",
-            headers: { ...headers, Referer: "https://pmvhaven.com/" },
-          });
-          if (!responseToStream.ok) {
-            return res.status(responseToStream.status).set(corsHeaders).send("Failed to proxy extracted stream");
-          }
-        } else {
-          return res.status(404).set(corsHeaders).send("No video stream found on page");
-        }
-      }
-    }
 
     if (isM3u8) {
       // HLS playlist: rewrite child playlist and segment URLs so all playback requests flow through this cloud proxy

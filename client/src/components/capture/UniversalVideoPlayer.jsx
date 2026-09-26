@@ -40,8 +40,16 @@ const UniversalVideoPlayer = ({
   forceProxy = false,
 }) => {
   const targetUrl = sourceUrl || embedUrl || src || '';
+  const isRestrictedDomain = /(?:pmvhaven\.com)/i.test(targetUrl) || /(?:pmvhaven\.com)/i.test(src || '');
+  if (isRestrictedDomain) {
+    return (
+      <div className={`relative w-full rounded-2xl overflow-hidden bg-neutral-900/90 border border-neutral-800 flex flex-col items-center justify-center p-6 text-center aspect-video ${className}`}>
+        <p className="text-neutral-400 text-sm font-medium">Video playback is disabled for this domain.</p>
+      </div>
+    );
+  }
+
   const isTargetVideo =
-    targetUrl.toLowerCase().includes('pmvhaven.com') ||
     targetUrl.includes('.m3u8') ||
     targetUrl.includes('mpegurl') ||
     /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(targetUrl);
@@ -68,8 +76,7 @@ const UniversalVideoPlayer = ({
       lower.includes('twimg.com') ||
       lower.includes('video.twimg.com') ||
       lower.includes('fbcdn.net') ||
-      lower.includes('cdninstagram.com') ||
-      lower.includes('pmvhaven.com')
+      lower.includes('cdninstagram.com')
     );
   };
 
@@ -174,7 +181,7 @@ const UniversalVideoPlayer = ({
 
   const isHls =
     typeof actualSrc === 'string' &&
-    (actualSrc.includes('.m3u8') || actualSrc.includes('mpegurl') || actualSrc.toLowerCase().includes('pmvhaven.com'));
+    (actualSrc.includes('.m3u8') || actualSrc.includes('mpegurl'));
 
   // Check if the src is actually a playable direct video URL (not an embed page URL)
   const isDirectVideoUrl = (url) => {
@@ -183,8 +190,6 @@ const UniversalVideoPlayer = ({
     // If it's already a proxy URL, it's direct
     if (url.startsWith('/api/captures/stream')) return true;
     if (url.startsWith('blob:') || url.startsWith('data:video/')) return true;
-    // Explicitly direct
-    if (lower.includes('pmvhaven.com')) return true;
     // Check for known video file extensions or video CDN patterns
     if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url)) return true;
     if (lower.includes('video.twimg.com')) return true;

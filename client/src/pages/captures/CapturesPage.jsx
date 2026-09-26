@@ -42,26 +42,28 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
 import { getInstagramEmbedUrl, getFacebookEmbedUrl } from '../../utils/linkMediaUtils';
 
-const isVideoUrl = (url) =>
-  typeof url === 'string' &&
-  (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) ||
+const isVideoUrl = (url) => {
+  if (typeof url !== 'string' || /(?:pmvhaven\.com)/i.test(url)) return false;
+  return (
+    /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) ||
     url.includes('video.twimg.com') ||
     url.includes('twimg.com') ||
     url.includes('.m3u8') ||
     url.includes('fbcdn.net') ||
     url.includes('cdninstagram.com') ||
-    url.includes('/api/captures/stream'));
+    url.includes('/api/captures/stream')
+  );
+};
 
 // Stricter check: is the URL a direct video file/stream that a <video> element can play?
 // Returns false for embed/plugin page URLs (e.g. facebook.com/plugins/video.php)
 const isDirectVideoFile = (url) => {
-  if (!url || typeof url !== 'string') return false;
+  if (!url || typeof url !== 'string' || /(?:pmvhaven\.com)/i.test(url)) return false;
   // Reject known embed/plugin page URLs and non-direct video sites
   if (url.includes('facebook.com/plugins/') || url.includes('youtube.com/embed/') ||
       url.includes('instagram.com/') || url.includes('linkedin.com/embed/') ||
       url.includes('platform.twitter.com/embed/') || url.includes('tiktok.com/embed/') ||
-      url.includes('player.vimeo.com/') || url.includes('loom.com/embed/') ||
-      url.includes('pmvhaven.com/')) {
+      url.includes('player.vimeo.com/') || url.includes('loom.com/embed/')) {
     return false;
   }
   return isVideoUrl(url);

@@ -56,6 +56,7 @@ export const getFacebookEmbedUrl = (url = '', existingEmbedUrl = '') => {
 export const detectLinkMediaInfo = (rawUrl = '') => {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   const url = rawUrl.trim();
+  if (/(?:pmvhaven\.com)/i.test(url)) return null;
 
   // 1. YouTube (Videos, Shorts, Embeds)
   const ytMatch = url.match(
@@ -128,8 +129,7 @@ export const detectLinkMediaInfo = (rawUrl = '') => {
   // 5. Direct Video Streams (.mp4, .webm, .m3u8, etc.) & Web Video Sites
   if (
     /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(url) ||
-    url.includes('/api/captures/stream') ||
-    /(?:pmvhaven\.com)/i.test(url)
+    url.includes('/api/captures/stream')
   ) {
     return {
       platform: 'web',
@@ -190,6 +190,8 @@ export const detectLinkMediaInfo = (rawUrl = '') => {
  */
 export const isVideoLink = (link) => {
   if (!link) return false;
+  const url = link.url || link.mediaUrl || link.embedUrl || '';
+  if (/(?:pmvhaven\.com)/i.test(url)) return false;
   if (link.mediaType === 'video') return true;
   if (['youtube', 'instagram', 'facebook', 'twitter'].includes(link.platform)) return true;
   if (link.embedUrl && !['linkedin', 'article'].includes(link.platform)) return true;
