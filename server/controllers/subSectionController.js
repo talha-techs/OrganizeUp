@@ -142,13 +142,17 @@ const updateSubSection = async (req, res) => {
     const incomingVersion = req.body.version !== undefined ? Number(req.body.version) : null;
     const currentVersion = sub.version !== undefined ? Number(sub.version) : 1;
 
-    // Check if the current user is the one who made the previous edit
-    const isSameEditor = sub.lastEditedBy && String(sub.lastEditedBy) === String(req.user._id);
+    // Check if the current user is the one who made the previous edit or is the block creator
+    const isSameEditor =
+      (sub.lastEditedBy && String(sub.lastEditedBy) === String(req.user._id)) ||
+      (!sub.lastEditedBy && sub.addedBy && String(sub.addedBy) === String(req.user._id));
 
-    // Also check if content is unchanged
+    // Also check if content is unchanged (covering notes, code snippets, and image blocks)
     const isContentUnchanged =
       (req.body.content !== undefined && req.body.content === sub.content) ||
-      (req.body.code !== undefined && req.body.code === sub.code);
+      (req.body.code !== undefined && req.body.code === sub.code) ||
+      (req.body.imageUrl !== undefined && req.body.imageUrl === sub.imageUrl &&
+       (req.body.imageCaption === undefined || req.body.imageCaption === sub.imageCaption));
 
     // Conflict ONLY occurs if another collaborator touched the block and changed it
     if (
@@ -187,7 +191,28 @@ const updateSubSection = async (req, res) => {
     sub.version = (sub.version || 1) + 1;
     sub.lastEditedBy = req.user._id;
 
-    await sub.save();
+    try {
+      await sub.save();
+    } catch (saveErr) {
+      if (saveErr.name === "VersionError") {
+        // Document was concurrently updated; load latest state and apply fields cleanly
+        const latestSub = await SubSection.findById(sub._id);
+        if (latestSub) {
+          if (name !== undefined) latestSub.name = name;
+          if (content !== undefined) latestSub.content = content;
+          if (code !== undefined) latestSub.code = code;
+          if (language !== undefined) latestSub.language = language;
+          if (boardColumns !== undefined) latestSub.boardColumns = boardColumns;
+          if (imageUrl !== undefined) latestSub.imageUrl = imageUrl;
+          if (imageCaption !== undefined) latestSub.imageCaption = imageCaption;
+          latestSub.version = (latestSub.version || 1) + 1;
+          latestSub.lastEditedBy = req.user._id;
+          await latestSub.save();
+        }
+      } else {
+        throw saveErr;
+      }
+    }
 
     const populated = await SubSection.findById(sub._id)
       .populate("lastEditedBy", "name avatar")
@@ -198,14 +223,14 @@ const updateSubSection = async (req, res) => {
     broadcastActivity(req.params.id, {
       user: { name: req.user.name, avatar: req.user.avatar },
       action: "updated_block",
-      blockName: populated.name,
-      blockType: populated.type,
+      blockName: populated?.name || "block",
+      blockType: populated?.type || "block",
     });
 
     res.json({ subSection: populated });
   } catch (err) {
     console.error("updateSubSection:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: err.message || "Failed to update block" });
   }
 };
 

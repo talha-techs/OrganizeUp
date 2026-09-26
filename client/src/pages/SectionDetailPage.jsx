@@ -551,15 +551,25 @@ const SectionDetailPage = () => {
 
             if (activeBlock && activeBlock.type === 'image' && !activeBlock.imageUrl) {
               // Update existing empty image block
-              await dispatch(
+              const updateRes = await dispatch(
                 updateSubSection({
                   sectionId: id,
                   subId: activeBlock._id,
                   imageUrl,
                   imageCaption: `Pasted at ${timeStr}`,
+                  version: activeBlock.version,
                 }),
               );
-              toast.success('Image placed into active block!', { id: toastId });
+              if (updateRes.meta.requestStatus === 'fulfilled') {
+                toast.success('Image placed into active block!', { id: toastId });
+              } else {
+                toast.error(
+                  typeof updateRes.payload === 'string'
+                    ? updateRes.payload
+                    : updateRes.payload?.message || 'Failed to update image block',
+                  { id: toastId },
+                );
+              }
             } else if (activeBlock && activeBlock.type === 'note') {
               // Create linked Image block right below the Note block
               const createRes = await dispatch(
@@ -746,7 +756,7 @@ const SectionDetailPage = () => {
         }
       }
     },
-    [canManage, id, subSections, activeBlockId, dispatch],
+    [canEdit, canManage, id, subSections, activeBlockId, dispatch],
   );
 
   useEffect(() => {

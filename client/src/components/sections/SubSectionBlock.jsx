@@ -1201,9 +1201,27 @@ const SnippetEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, o
 };
 
 // ─── Image ────────────────────────────────────────────────────────────────────
+// Helper: convert data URI (base64) to a File object for clean multipart upload
+const dataUriToFile = (dataUri, filename = 'pasted_image.png') => {
+  try {
+    const arr = dataUri.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  } catch {
+    return null;
+  }
+};
+
 const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
+  const lastSavedVersionRef = useRef(block.version || 1);
   const [localUrl, setLocalUrl]         = useState(block.imageUrl || '');
   const [localCaption, setLocalCaption] = useState(block.imageCaption || '');
   const [saving, setSaving]             = useState(false);
@@ -1214,26 +1232,48 @@ const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
   useEffect(() => {
     setLocalUrl(block.imageUrl || '');
     setLocalCaption(block.imageCaption || '');
-  }, [block.imageUrl, block.imageCaption]);
+    if (block.version) {
+      lastSavedVersionRef.current = block.version;
+    }
+  }, [block.imageUrl, block.imageCaption, block.version]);
 
   const handleSave = async (newUrl = localUrl, newCaption = localCaption) => {
-    if (newUrl === block.imageUrl && newCaption === block.imageCaption) return;
+    // If user pasted a base64 data URI into the URL input, automatically upload it as a file to prevent payload limit errors
+    if (typeof newUrl === 'string' && newUrl.startsWith('data:image/')) {
+      const file = dataUriToFile(newUrl);
+      if (file) {
+        await handleUploadFile(file);
+        return true;
+      }
+    }
+
+    if (newUrl === block.imageUrl && newCaption === block.imageCaption) return true;
     setSaving(true);
+    const versionToSend = lastSavedVersionRef.current || block.version || 1;
     const res = await dispatch(
       updateSubSection({
         sectionId,
         subId: block._id,
         imageUrl: newUrl,
         imageCaption: newCaption,
-        version: block.version,
+        version: versionToSend,
       }),
     );
-    if (res.error) {
+    let success = false;
+    if (res.meta.requestStatus === 'fulfilled') {
+      success = true;
+      if (res.payload?.subSection?.version) {
+        lastSavedVersionRef.current = res.payload.subSection.version;
+      }
+    } else if (res.error) {
       if (res.payload?.isConflict) {
         toast.error('Block was modified by another collaborator. Synced with latest image.');
         if (res.payload?.currentBlock) {
           setLocalUrl(res.payload.currentBlock.imageUrl || '');
           setLocalCaption(res.payload.currentBlock.imageCaption || '');
+          if (res.payload.currentBlock.version) {
+            lastSavedVersionRef.current = res.payload.currentBlock.version;
+          }
         }
       } else {
         toast.error(
@@ -1245,6 +1285,7 @@ const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
     }
     setSaving(false);
     onBlurBlock?.(block._id, 1500);
+    return success;
   };
 
   const handleUploadFile = async (file) => {
@@ -1259,8 +1300,10 @@ const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
         const url = result.payload.imageUrl;
         setLocalUrl(url);
         setImgError(false);
-        await handleSave(url, localCaption);
-        toast.success('Image uploaded successfully');
+        const saveOk = await handleSave(url, localCaption);
+        if (saveOk) {
+          toast.success('Image uploaded successfully');
+        }
       } else {
         toast.error(result.payload || 'Failed to upload image');
       }
@@ -1278,6 +1321,7 @@ const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.startsWith('image/')) {
           e.preventDefault();
+          e.stopPropagation();
           const file = items[i].getAsFile();
           if (file) {
             await handleUploadFile(file);
@@ -1290,6 +1334,7 @@ const ImageEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
 
   const handleDrop = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
     if (!canEdit) return;
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
