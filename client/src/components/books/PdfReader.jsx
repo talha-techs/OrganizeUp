@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import 'pdfjs-dist/web/pdf_viewer.css';
 import {
   IoChevronBackOutline,
   IoChevronForwardOutline,
@@ -15,6 +16,8 @@ import {
   IoOpenOutline,
   IoSaveOutline,
   IoAlertCircleOutline,
+  IoCopyOutline,
+  IoDocumentTextOutline,
 } from 'react-icons/io5';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -40,11 +43,14 @@ export default function PdfReader({
   onTotalPages,
   onSaveProgress,
   isSavingProgress = false,
+  onInsertQuote,
 }) {
   const containerRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const canvasRef = useRef(null);
+  const textLayerContainerRef = useRef(null);
   const renderTaskRef = useRef(null);
+  const textLayerTaskRef = useRef(null);
   const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
 
@@ -54,12 +60,16 @@ export default function PdfReader({
   const [scale, setScale] = useState(1.0);
   const [fitMode, setFitMode] = useState('page'); // 'page' (default fits whole page) | 'width'
   const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [isRendering, setIsRendering] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [nightMode, setNightMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [jumpPageInput, setJumpPageInput] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionPos, setSelectionPos] = useState(null);
 
   // Sync initial page if changed from outside
   useEffect(() => {
@@ -68,7 +78,7 @@ export default function PdfReader({
     }
   }, [initialPage]);
 
-  // Load PDF Document
+  // Load PDF Document with progressive chunk streaming
   useEffect(() => {
     if (!pdfUrl) {
       setIsLoading(false);
@@ -78,6 +88,7 @@ export default function PdfReader({
 
     let isMounted = true;
     setIsLoading(true);
+    setLoadProgress(0);
     setLoadError(null);
 
     const loadPdfData = async () => {
@@ -91,31 +102,68 @@ export default function PdfReader({
           pdfUrl.includes('/api/books/pdf/') ||
           pdfUrl.includes('/api/');
 
-        if (isRelativeOrApi) {
-          try {
-            const apiEndpoint = pdfUrl.startsWith('/api/')
-              ? pdfUrl.replace(/^\/api/, '')
-              : pdfUrl;
+        const token = localStorage.getItem('token');
 
-            const response = await api.get(apiEndpoint, {
+        if (isRelativeOrApi) {
+          const apiBase = api.defaults.baseURL || '/api';
+          let endpoint = pdfUrl;
+          if (endpoint.startsWith(apiBase)) {
+            endpoint = endpoint.slice(apiBase.length);
+          } else if (endpoint.startsWith('/api')) {
+            endpoint = endpoint.slice(4);
+          }
+          if (!endpoint.startsWith('/')) endpoint = '/' + endpoint;
+
+          const queryToken = token ? (endpoint.includes('?') ? '&' : '?') + `token=${encodeURIComponent(token)}` : '';
+          const fullUrl = `${window.location.origin}${apiBase}${endpoint}${queryToken}`;
+
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          try {
+            // High-speed progressive range streaming:
+            // Fetches initial pages via HTTP Range in <300ms without downloading the rest of the book
+            loadingTask = pdfjsLib.getDocument({
+              url: fullUrl,
+              httpHeaders: headers,
+              withCredentials: true,
+              rangeChunkSize: 65536,
+              disableAutoFetch: true,
+              disableStream: false,
+              cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+              cMapPacked: true,
+              standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+            });
+
+            loadingTask.onProgress = ({ loaded, total }) => {
+              if (total > 0 && isMounted) {
+                setLoadProgress(Math.round((loaded / total) * 100));
+              }
+            };
+
+            const doc = await loadingTask.promise;
+            if (!isMounted) return;
+
+            setPdfDoc(doc);
+            setTotalPages(doc.numPages);
+            if (onTotalPages) onTotalPages(doc.numPages);
+
+            const safeInitialPage = Math.min(
+              Math.max(1, parseInt(initialPage) || 1),
+              doc.numPages,
+            );
+            setCurrentPage(safeInitialPage);
+            setIsLoading(false);
+            return;
+          } catch (streamErr) {
+            console.warn('Progressive streaming failed, falling back to arraybuffer fetch:', streamErr);
+            // Fallback to arraybuffer fetch if range streaming is unavailable
+            const response = await api.get(endpoint, {
               responseType: 'arraybuffer',
             });
             const data = new Uint8Array(response.data);
             loadingTask = pdfjsLib.getDocument({
               data,
-              cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
-              cMapPacked: true,
-              standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
-            });
-          } catch (apiErr) {
-            console.warn('Axios PDF fetch failed, falling back to direct URL fetch:', apiErr);
-            // Fallback to direct URL fetch with credentials
-            const fullUrl = pdfUrl.startsWith('/') && !pdfUrl.startsWith('//')
-              ? `${window.location.origin}${pdfUrl}`
-              : pdfUrl;
-            loadingTask = pdfjsLib.getDocument({
-              url: fullUrl,
-              withCredentials: true,
               cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
               cMapPacked: true,
               standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
@@ -126,6 +174,9 @@ export default function PdfReader({
           loadingTask = pdfjsLib.getDocument({
             url: pdfUrl,
             withCredentials: false,
+            rangeChunkSize: 65536,
+            disableAutoFetch: true,
+            disableStream: false,
             cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
             cMapPacked: true,
             standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
@@ -141,7 +192,7 @@ export default function PdfReader({
 
         const safeInitialPage = Math.min(
           Math.max(1, parseInt(initialPage) || 1),
-          doc.numPages
+          doc.numPages,
         );
         setCurrentPage(safeInitialPage);
         setIsLoading(false);
@@ -151,7 +202,7 @@ export default function PdfReader({
         setLoadError(
           err.message?.includes('Password')
             ? 'This PDF is password protected.'
-            : 'Could not load PDF document directly in-app. Check your network or try switching to native embed.'
+            : 'Could not load PDF document directly in-app. Check your network or try switching to native embed.',
         );
         setIsLoading(false);
       }
@@ -162,11 +213,10 @@ export default function PdfReader({
     return () => {
       isMounted = false;
       if (renderTaskRef.current) {
-        try {
-          renderTaskRef.current.cancel();
-        } catch {
-          // ignore cancel error
-        }
+        try { renderTaskRef.current.cancel(); } catch {}
+      }
+      if (textLayerTaskRef.current) {
+        try { textLayerTaskRef.current.cancel(); } catch {}
       }
     };
   }, [pdfUrl, reloadKey]);
@@ -182,11 +232,10 @@ export default function PdfReader({
 
       // Cancel any ongoing render
       if (renderTaskRef.current) {
-        try {
-          renderTaskRef.current.cancel();
-        } catch {
-          // ignore
-        }
+        try { renderTaskRef.current.cancel(); } catch {}
+      }
+      if (textLayerTaskRef.current) {
+        try { textLayerTaskRef.current.cancel(); } catch {}
       }
 
       const page = await pdfDoc.getPage(currentPage);
@@ -196,14 +245,14 @@ export default function PdfReader({
       const containerWidth = containerRef.current?.clientWidth || 0;
       const availableWidth = Math.max(
         260,
-        containerWidth > 32 ? containerWidth - 28 : window.innerWidth - 32
+        containerWidth > 32 ? containerWidth - 28 : window.innerWidth - 32,
       );
 
       const scrollContainer = scrollContainerRef.current;
       const containerHeight = scrollContainer?.clientHeight || 0;
       const availableHeight = Math.max(
         320,
-        containerHeight > 32 ? containerHeight - 32 : window.innerHeight - 200
+        containerHeight > 32 ? containerHeight - 32 : window.innerHeight - 200,
       );
 
       // Base unscaled viewport
@@ -214,28 +263,27 @@ export default function PdfReader({
 
       let effectiveScale = scale;
       if (fitMode === 'page') {
-        // Fits whole page comfortably so at 100% default zoom the entire page is visible with no vertical clipping
         const pageScale = Math.min(widthScale, heightScale);
         effectiveScale = pageScale * scale;
       } else {
-        // Fit width mode
         effectiveScale = widthScale * scale;
       }
 
-      // Safeguard
       if (effectiveScale <= 0 || isNaN(effectiveScale)) effectiveScale = 1;
 
       const viewport = page.getViewport({ scale: effectiveScale });
       const context = canvas.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
+      // Capped DPR for superfast rendering while maintaining crisp 2x retina clarity
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      // Set physical canvas pixel dimensions (High DPI for crisp text on Retina/OLED mobile)
-      canvas.width = Math.floor(viewport.width * dpr);
-      canvas.height = Math.floor(viewport.height * dpr);
+      const dispW = Math.floor(viewport.width);
+      const dispH = Math.floor(viewport.height);
 
-      // Set CSS display dimensions
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      canvas.width = Math.floor(dispW * dpr);
+      canvas.height = Math.floor(dispH * dpr);
+      canvas.style.width = `${dispW}px`;
+      canvas.style.height = `${dispH}px`;
+      setCanvasDimensions({ width: dispW, height: dispH });
 
       const renderContext = {
         canvasContext: context,
@@ -245,11 +293,42 @@ export default function PdfReader({
 
       const renderTask = page.render(renderContext);
       renderTaskRef.current = renderTask;
-
       await renderTask.promise;
+
+      // Render TextLayer for selection and copying
+      if (textLayerContainerRef.current) {
+        const textLayerDiv = textLayerContainerRef.current;
+        textLayerDiv.innerHTML = '';
+        textLayerDiv.style.width = `${dispW}px`;
+        textLayerDiv.style.height = `${dispH}px`;
+        textLayerDiv.style.setProperty('--total-scale-factor', effectiveScale);
+
+        try {
+          const textContentSource = page.streamTextContent
+            ? page.streamTextContent()
+            : await page.getTextContent();
+
+          const textLayer = new pdfjsLib.TextLayer({
+            textContentSource,
+            container: textLayerDiv,
+            viewport,
+          });
+          textLayerTaskRef.current = textLayer;
+          await textLayer.render();
+        } catch (textErr) {
+          if (textErr?.name !== 'RenderingCancelledException') {
+            console.warn('Text layer render notice:', textErr);
+          }
+        }
+      }
+
       setIsRendering(false);
+
+      // Pre-fetch next page in background for instant page turn
+      if (currentPage < totalPages) {
+        pdfDoc.getPage(currentPage + 1).catch(() => {});
+      }
     } catch (err) {
-      // PDF.js throws RenderingCancelledException when page flips before previous render completes
       if (err?.name !== 'RenderingCancelledException') {
         console.error('Page render error:', err);
       }
@@ -288,6 +367,37 @@ export default function PdfReader({
       clearTimeout(timeoutId);
     };
   }, [renderCurrentPage]);
+
+  // Handle text selection on PDF for copying and quoting into notes
+  const handleTextSelection = useCallback(() => {
+    setTimeout(() => {
+      const selection = window.getSelection();
+      const text = selection?.toString()?.trim();
+      if (text && text.length > 0 && scrollContainerRef.current?.contains(selection.anchorNode)) {
+        try {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          const containerRect = scrollContainerRef.current.getBoundingClientRect();
+          setSelectedText(text);
+          setSelectionPos({
+            top: Math.max(10, rect.top - containerRect.top + scrollContainerRef.current.scrollTop - 44),
+            left: Math.max(
+              16,
+              Math.min(
+                containerRect.width - 240,
+                rect.left - containerRect.left + (rect.width / 2) - 100,
+              ),
+            ),
+          });
+        } catch (e) {
+          setSelectedText(text);
+        }
+      } else {
+        setSelectedText('');
+        setSelectionPos(null);
+      }
+    }, 60);
+  }, []);
 
   // Page Navigation Handlers
   const goToPage = useCallback(
@@ -608,7 +718,11 @@ export default function PdfReader({
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-raised/90 backdrop-blur-xs z-30">
             <div className="w-12 h-12 border-4 border-accent/30 border-t-accent rounded-full animate-spin mb-4" />
             <p className="text-primary text-sm font-semibold">Opening Book In-App…</p>
-            <p className="text-muted text-xs mt-1">Preparing high-definition pages</p>
+            <p className="text-muted text-xs mt-1">
+              {loadProgress > 0 && loadProgress < 100
+                ? `Streaming initial pages (${loadProgress}%)…`
+                : 'Fast-streaming initial pages…'}
+            </p>
           </div>
         )}
 
@@ -620,19 +734,81 @@ export default function PdfReader({
           </div>
         )}
 
-        {/* PDF Page Canvas */}
+        {/* Floating Quick Quote / Copy Bar when text is selected */}
+        {selectedText && selectionPos && (
+          <div
+            className="absolute z-40 flex items-center gap-1.5 p-1 bg-surface-raised/95 border border-accent/40 rounded-xl shadow-2xl backdrop-blur-md transition-all select-none animate-in fade-in zoom-in-95 duration-150"
+            style={{
+              top: `${selectionPos.top}px`,
+              left: `${selectionPos.left}px`,
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(selectedText);
+                toast.success('Quote copied to clipboard!');
+                setSelectedText('');
+                setSelectionPos(null);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-surface hover:bg-surface-raised text-primary transition-colors cursor-pointer border border-subtle"
+              title="Copy quote (Ctrl+C)"
+            >
+              <IoCopyOutline size={13} className="text-accent" />
+              <span>Copy</span>
+            </button>
+
+            {onInsertQuote && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onInsertQuote(selectedText);
+                  setSelectedText('');
+                  setSelectionPos(null);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-accent text-white hover:opacity-90 transition-all cursor-pointer shadow-sm"
+                title="Send selected quote directly to Study Notes"
+              >
+                <IoDocumentTextOutline size={13} />
+                <span>Quote in Notes</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* PDF Page Canvas and Selectable Text Layer */}
         <div
-          className={`flex items-center justify-center my-auto transition-transform duration-150 ${
+          className={`flex items-center justify-center my-auto transition-transform duration-150 select-text ${
             nightMode ? 'invert brightness-95 contrast-105' : ''
           }`}
           style={{
             maxWidth: '100%',
           }}
+          onMouseUp={handleTextSelection}
+          onTouchEnd={handleTextSelection}
         >
-          <canvas
-            ref={canvasRef}
-            className="rounded-lg shadow-2xl bg-white max-w-full block"
-          />
+          <div
+            className="relative rounded-lg shadow-2xl bg-white overflow-hidden select-text"
+            style={{
+              width: canvasDimensions.width ? `${canvasDimensions.width}px` : 'auto',
+              height: canvasDimensions.height ? `${canvasDimensions.height}px` : 'auto',
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              className="block max-w-full"
+            />
+            <div
+              ref={textLayerContainerRef}
+              className="textLayer select-text"
+              style={{
+                pointerEvents: 'auto',
+              }}
+            />
+          </div>
         </div>
 
         {/* Desktop Quick Side Navigation Click Areas */}

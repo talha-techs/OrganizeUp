@@ -17,6 +17,10 @@ const protect = async (req, res, next) => {
     else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
+    // Check query param (allows streaming media & PDF range requests)
+    else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
 
     if (!token) {
       return res

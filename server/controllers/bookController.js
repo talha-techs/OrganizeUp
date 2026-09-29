@@ -556,7 +556,7 @@ const servePdf = async (req, res) => {
 
     // Only allow same-origin framing for owned/public PDFs
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
-    await streamFromGridFS(req.params.fileId, res, "pdf");
+    await streamFromGridFS(req.params.fileId, res, "pdf", req);
   } catch (error) {
     console.error("Serve PDF error:", error);
     res.status(500).json({ message: "Error serving PDF" });

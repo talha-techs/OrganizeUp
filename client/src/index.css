@@ -300,4 +300,17 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
+
+  /* PDF Text Layer Selection & Highlights */
+  .textLayer {
+    opacity: 1 !important;
+  }
+  .textLayer ::selection {
+    background: rgba(255, 87, 34, 0.35) !important;
+    color: transparent !important;
+  }
+  .textLayer ::-moz-selection {
+    background: rgba(255, 87, 34, 0.35) !important;
+    color: transparent !important;
+  }
 }

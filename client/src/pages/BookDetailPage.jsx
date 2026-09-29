@@ -1795,6 +1795,12 @@ const BookDetailPage = () => {
                     }
                   }}
                   onSaveProgress={handleSaveReadingProgress}
+                  onInsertQuote={(quoteText) => {
+                    setIsTextNotesCollapsed(false);
+                    const formatted = `\n\n> 📌 "${quoteText.trim()}"\n`;
+                    handleInsertTextSnippet(formatted);
+                    toast.success('Quote added to Study Notes');
+                  }}
                 />
               </div>
 

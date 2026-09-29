@@ -71,7 +71,7 @@ const uploadToGridFS = (buffer, filename, contentType, bucketType = "pdf") => {
  * @param {Response} res - Express response
  * @param {string} bucketType - "pdf" or "image"
  */
-const streamFromGridFS = async (fileId, res, bucketType = "pdf") => {
+const streamFromGridFS = async (fileId, res, bucketType = "pdf", req = null) => {
   const b = getBucket(bucketType);
   const _id = new mongoose.Types.ObjectId(fileId);
 
@@ -81,6 +81,7 @@ const streamFromGridFS = async (fileId, res, bucketType = "pdf") => {
   }
 
   const file = files[0];
+  const fileSize = file.length;
   let contentType =
     file.contentType || file.metadata?.contentType || "application/octet-stream";
     
@@ -89,20 +90,52 @@ const streamFromGridFS = async (fileId, res, bucketType = "pdf") => {
   }
 
   const filename = file.filename || (bucketType === "pdf" ? "document.pdf" : "file");
+  const rangeHeader = req?.headers?.range;
 
-  res.set("Content-Type", contentType);
-  res.set("Content-Disposition", `inline; filename="${filename}"`);
-  res.set("Content-Length", file.length);
-  res.set("Accept-Ranges", "bytes");
-  res.set("Cache-Control", "public, max-age=86400");
+  if (rangeHeader && fileSize > 0) {
+    const parts = rangeHeader.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSize = end - start + 1;
 
-  const downloadStream = b.openDownloadStream(_id);
-  downloadStream.pipe(res);
+    res.writeHead(206, {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunkSize,
+      "Content-Type": contentType,
+      "Content-Disposition": `inline; filename="${filename}"`,
+      "Cache-Control": "public, max-age=86400",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length",
+    });
 
-  downloadStream.on("error", (err) => {
-    console.error("GridFS stream error:", err);
-    res.status(500).json({ message: "Error streaming file" });
-  });
+    const downloadStream = b.openDownloadStream(_id, {
+      start,
+      end: end + 1,
+    });
+    downloadStream.pipe(res);
+    downloadStream.on("error", (err) => {
+      console.error("GridFS range stream error:", err);
+    });
+  } else {
+    res.set("Content-Type", contentType);
+    res.set("Content-Disposition", `inline; filename="${filename}"`);
+    res.set("Content-Length", fileSize);
+    res.set("Accept-Ranges", "bytes");
+    res.set("Cache-Control", "public, max-age=86400");
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length");
+
+    const downloadStream = b.openDownloadStream(_id);
+    downloadStream.pipe(res);
+
+    downloadStream.on("error", (err) => {
+      console.error("GridFS stream error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Error streaming file" });
+      }
+    });
+  }
 };
 
 /**
