@@ -261,7 +261,7 @@ export default function PdfReader({
     renderCurrentPage();
   }, [renderCurrentPage]);
 
-  // Window resize listener to re-fit page
+  // Window and container resize listener to re-fit page
   useEffect(() => {
     let timeoutId;
     const handleResize = () => {
@@ -272,8 +272,19 @@ export default function PdfReader({
     };
 
     window.addEventListener('resize', handleResize);
+
+    // Observe container width changes (e.g. collapsing/expanding side notes panel)
+    let resizeObserver;
+    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (resizeObserver) resizeObserver.disconnect();
       clearTimeout(timeoutId);
     };
   }, [renderCurrentPage]);

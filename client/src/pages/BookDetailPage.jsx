@@ -1758,7 +1758,10 @@ const BookDetailPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => setTextBookMobileTab('notes')}
+              onClick={() => {
+                setTextBookMobileTab('notes');
+                setIsTextNotesCollapsed(false);
+              }}
               className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${
                 textBookMobileTab === 'notes'
                   ? 'bg-accent text-white shadow-sm'
@@ -1816,9 +1819,14 @@ const BookDetailPage = () => {
 
               {/* Side Notes & Key Takeaways Panel */}
               <div
-                className={`w-full lg:w-[380px] xl:w-[420px] 2xl:w-[450px] flex-shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l border-subtle bg-surface/85 backdrop-blur-md transition-all ${
-                  isTextNotesCollapsed ? 'hidden' : 'flex'
-                } ${textBookMobileTab === 'reader' ? 'hidden lg:flex' : 'flex'}`}
+                className={`w-full lg:w-[380px] xl:w-[420px] 2xl:w-[450px] flex-shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-subtle bg-surface/85 backdrop-blur-md transition-all ${
+                  isTextNotesCollapsed
+                    ? 'hidden'
+                    : textBookMobileTab === 'reader'
+                    ? 'hidden lg:flex'
+                    : 'flex'
+                }`}
+                style={isTextNotesCollapsed ? { display: 'none' } : undefined}
               >
                 {/* Panel Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-subtle bg-surface-raised/90">
