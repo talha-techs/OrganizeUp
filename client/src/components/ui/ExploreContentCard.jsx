@@ -37,15 +37,26 @@ const ExploreContentCard = React.memo(
     // Sync / clear pendingVote whenever confirmed Redux props update
     useEffect(() => {
       setPendingVote(null);
-    }, [item.userVote, item.score]);
+    }, [item.userVote, item.upvotes, item.downvotes, item.score]);
+
+    const confirmedUpvotes = item.upvotes ?? (item.score > 0 ? item.score : 0);
+    const confirmedDownvotes = item.downvotes ?? (item.score < 0 ? Math.abs(item.score) : 0);
+    const confirmedUserVote = item.userVote || 0;
 
     const currentVote =
-      pendingVote !== null ? pendingVote : item.userVote || 0;
+      pendingVote !== null ? pendingVote : confirmedUserVote;
 
-    // Mathematically sound optimistic score:
-    // (Confirmed base score) + (active vote - confirmed vote)
-    const currentScore =
-      (item.score || 0) + (currentVote - (item.userVote || 0));
+    // Independent optimistic counts for likes and dislikes (no likes - dislikes subtraction)
+    let currentUpvotes = confirmedUpvotes;
+    let currentDownvotes = confirmedDownvotes;
+
+    if (currentVote !== confirmedUserVote) {
+      if (confirmedUserVote === 1) currentUpvotes = Math.max(0, currentUpvotes - 1);
+      if (confirmedUserVote === -1) currentDownvotes = Math.max(0, currentDownvotes - 1);
+
+      if (currentVote === 1) currentUpvotes += 1;
+      if (currentVote === -1) currentDownvotes += 1;
+    }
 
     const hasValidImage = (item.coverImage || item.bannerImage || item.thumbnail) && !imageError;
 
@@ -190,41 +201,35 @@ const ExploreContentCard = React.memo(
 
             {/* Voting, Comments & Save Library Footer */}
             <div className="flex items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-1 bg-surface-raised/60 px-1.5 py-1 rounded-xl border border-subtle">
+              <div className="flex items-center bg-surface-raised/70 p-1 rounded-xl border border-subtle divide-x divide-subtle/60">
+                {/* Likes / Upward Arrow */}
                 <button
                   type="button"
                   onClick={handleUpvote}
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                     currentVote === 1
-                      ? 'text-emerald-400 bg-emerald-500/10'
-                      : 'text-muted hover:text-emerald-400 hover:bg-emerald-500/5'
+                      ? 'text-emerald-400 bg-emerald-500/15 font-bold shadow-sm'
+                      : 'text-muted hover:text-emerald-400 hover:bg-emerald-500/10'
                   }`}
-                  title="Upvote"
+                  title="Like"
                 >
-                  <IoArrowUpOutline size={15} />
+                  <IoArrowUpOutline size={15} className={currentVote === 1 ? 'stroke-[2.5]' : ''} />
+                  <span className="text-xs font-semibold">{currentUpvotes}</span>
                 </button>
-                <span
-                  className={`text-xs font-bold min-w-[20px] text-center ${
-                    currentScore > 0
-                      ? 'text-emerald-400'
-                      : currentScore < 0
-                      ? 'text-red-400'
-                      : 'text-muted'
-                  }`}
-                >
-                  {currentScore}
-                </span>
+
+                {/* Dislikes / Downward Arrow */}
                 <button
                   type="button"
                   onClick={handleDownvote}
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                     currentVote === -1
-                      ? 'text-red-400 bg-red-500/10'
-                      : 'text-muted hover:text-red-400 hover:bg-red-500/5'
+                      ? 'text-red-400 bg-red-500/15 font-bold shadow-sm'
+                      : 'text-muted hover:text-red-400 hover:bg-red-500/10'
                   }`}
-                  title="Downvote"
+                  title="Dislike"
                 >
-                  <IoArrowDownOutline size={15} />
+                  <IoArrowDownOutline size={15} className={currentVote === -1 ? 'stroke-[2.5]' : ''} />
+                  <span className="text-xs font-semibold">{currentDownvotes}</span>
                 </button>
               </div>
 
