@@ -58,6 +58,7 @@ const SavedLibraryPage = lazyWithRetry(() => import('./pages/SavedLibraryPage'),
 const TelegramLibrary = lazyWithRetry(() => import('./pages/telegram/TelegramLibrary'), 'TelegramLibrary');
 const DiscordLibrary = lazyWithRetry(() => import('./pages/discord/DiscordLibrary'), 'DiscordLibrary');
 const CapturesPage = lazyWithRetry(() => import('./pages/captures/CapturesPage'), 'CapturesPage');
+const SuggestionsPage = lazyWithRetry(() => import('./pages/SuggestionsPage'), 'SuggestionsPage');
 
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
@@ -185,6 +186,7 @@ const App = () => {
               <Route path="/telegram-inbox" element={<TelegramLibrary />} />
               <Route path="/discord-inbox" element={<DiscordLibrary />} />
               <Route path="/captures" element={<CapturesPage />} />
+              <Route path="/suggestions" element={<SuggestionsPage />} />
               <Route
                 path="/admin"
                 element={

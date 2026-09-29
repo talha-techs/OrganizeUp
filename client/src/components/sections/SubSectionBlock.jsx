@@ -17,6 +17,7 @@ import {
   IoRefreshOutline,
   IoVideocamOutline,
   IoTvOutline,
+  IoReorderTwoOutline,
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -411,133 +412,329 @@ const TodoEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =>
 const BoardEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) => {
   const dispatch = useDispatch();
   const [addingInCol, setAddingInCol] = useState(null);
+  const [isAddingCard, setIsAddingCard] = useState(false);
   const [newTitle, setNewTitle]       = useState('');
+  const [newDesc, setNewDesc]         = useState('');
   const [newPriority, setNewPriority] = useState('medium');
   const [editingCard, setEditingCard] = useState(null);
   const [editTitle, setEditTitle]     = useState('');
   const [editDesc, setEditDesc]       = useState('');
 
+  // Drag and Drop state
+  const [draggedCardId, setDraggedCardId] = useState(null);
+  const [dragOverColId, setDragOverColId] = useState(null);
+
   const columns = block.boardColumns || [];
-  const items   = block.boardItems   || [];
-  const colItems = (colId) => items.filter((i) => i.status === colId);
+  const [localItems, setLocalItems] = useState(block.boardItems || []);
+
+  useEffect(() => {
+    setLocalItems(block.boardItems || []);
+  }, [block.boardItems]);
+
+  const colItems = (colId) => localItems.filter((i) => i.status === colId);
 
   const handleAddCard = async (colId) => {
-    if (!newTitle.trim() || !canEdit) return;
-    await dispatch(
-      addBoardItem({
-        sectionId,
-        subId: block._id,
-        title: newTitle.trim(),
-        status: colId,
-        priority: newPriority,
-      }),
-    );
+    const trimmedTitle = newTitle.trim();
+    if (!trimmedTitle || !canEdit || isAddingCard) return;
+
+    setIsAddingCard(true);
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const optimisticItem = {
+      _id: tempId,
+      title: trimmedTitle,
+      description: newDesc.trim(),
+      status: colId,
+      priority: newPriority,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+    };
+
+    // Instant optimistic UI feedback: card appears in column in 0ms!
+    setLocalItems((prev) => [...prev, optimisticItem]);
     setAddingInCol(null);
     setNewTitle('');
+    setNewDesc('');
     setNewPriority('medium');
-    onBlurBlock?.(block._id, 1500);
+
+    try {
+      const res = await dispatch(
+        addBoardItem({
+          sectionId,
+          subId: block._id,
+          title: trimmedTitle,
+          description: optimisticItem.description,
+          status: colId,
+          priority: optimisticItem.priority,
+        }),
+      );
+
+      if (res.meta.requestStatus === 'rejected') {
+        setLocalItems((prev) => prev.filter((i) => i._id !== tempId));
+        toast.error(res.payload || 'Failed to add card');
+      }
+    } catch (err) {
+      setLocalItems((prev) => prev.filter((i) => i._id !== tempId));
+      toast.error('Network error adding card');
+    } finally {
+      setIsAddingCard(false);
+      onBlurBlock?.(block._id, 1500);
+    }
   };
 
   const openEdit = (item) => {
     setEditingCard(item);
     setEditTitle(item.title);
-    setEditDesc(item.description);
+    setEditDesc(item.description || '');
     onFocusBlock?.(block._id);
   };
 
   const handleSaveCard = async () => {
     if (!editTitle.trim() || !canEdit) return;
-    await dispatch(
-      updateBoardItem({
-        sectionId,
-        subId: block._id,
-        itemId: editingCard._id,
-        title: editTitle.trim(),
-        description: editDesc.trim(),
-      }),
+    const trimmedTitle = editTitle.trim();
+    const trimmedDesc = editDesc.trim();
+
+    // Optimistic update
+    setLocalItems((prev) =>
+      prev.map((i) =>
+        i._id === editingCard._id
+          ? { ...i, title: trimmedTitle, description: trimmedDesc }
+          : i,
+      ),
     );
     setEditingCard(null);
-    onBlurBlock?.(block._id, 1500);
+
+    try {
+      await dispatch(
+        updateBoardItem({
+          sectionId,
+          subId: block._id,
+          itemId: editingCard._id,
+          title: trimmedTitle,
+          description: trimmedDesc,
+        }),
+      );
+    } catch (err) {
+      console.error('Failed to save card:', err);
+    } finally {
+      onBlurBlock?.(block._id, 1500);
+    }
   };
 
-  const handleMove = (item, newStatus) => {
-    if (!canEdit) return;
-    dispatch(
-      updateBoardItem({
-        sectionId,
-        subId: block._id,
-        itemId: item._id,
-        status: newStatus,
-      }),
+  const handleMove = async (item, newStatus) => {
+    if (!canEdit || item.status === newStatus) return;
+    const oldStatus = item.status;
+
+    // Optimistic move across columns immediately (0ms feedback)
+    setLocalItems((prev) =>
+      prev.map((i) => (i._id === item._id ? { ...i, status: newStatus } : i)),
     );
     setEditingCard(null);
-    onBlurBlock?.(block._id, 1500);
+
+    try {
+      const res = await dispatch(
+        updateBoardItem({
+          sectionId,
+          subId: block._id,
+          itemId: item._id,
+          status: newStatus,
+        }),
+      );
+      if (res.meta.requestStatus === 'rejected') {
+        setLocalItems((prev) =>
+          prev.map((i) => (i._id === item._id ? { ...i, status: oldStatus } : i)),
+        );
+        toast.error(res.payload || 'Failed to move card');
+      }
+    } catch (err) {
+      setLocalItems((prev) =>
+        prev.map((i) => (i._id === item._id ? { ...i, status: oldStatus } : i)),
+      );
+      toast.error('Network error moving card');
+    } finally {
+      onBlurBlock?.(block._id, 1500);
+    }
   };
 
-  const handleDeleteCard = (itemId) => {
+  const handleDeleteCard = async (itemId) => {
     if (!canEdit) return;
-    dispatch(deleteBoardItem({ sectionId, subId: block._id, itemId }));
+    const itemToDelete = localItems.find((i) => i._id === itemId);
+
+    // Optimistic delete
+    setLocalItems((prev) => prev.filter((i) => i._id !== itemId));
     if (editingCard?._id === itemId) setEditingCard(null);
-    onBlurBlock?.(block._id, 1500);
+
+    try {
+      const res = await dispatch(
+        deleteBoardItem({ sectionId, subId: block._id, itemId }),
+      );
+      if (res.meta.requestStatus === 'rejected') {
+        if (itemToDelete) setLocalItems((prev) => [...prev, itemToDelete]);
+        toast.error(res.payload || 'Failed to delete card');
+      }
+    } catch (err) {
+      if (itemToDelete) setLocalItems((prev) => [...prev, itemToDelete]);
+      toast.error('Network error deleting card');
+    } finally {
+      onBlurBlock?.(block._id, 1500);
+    }
   };
 
   return (
     <div className="overflow-x-auto pb-2">
-      <div className="flex gap-4" style={{ minWidth: `${columns.length * 256}px` }}>
+      <div className="flex gap-4" style={{ minWidth: `${columns.length * 260}px` }}>
         {columns.map((col) => {
           const cls = COL_CLS[col.color] || COL_CLS.slate;
+          const isOver = dragOverColId === col.id;
+
           return (
-            <div key={col.id} className="w-60 flex-shrink-0">
+            <div
+              key={col.id}
+              onDragOver={(e) => {
+                if (!canEdit || !draggedCardId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverColId !== col.id) setDragOverColId(col.id);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  if (dragOverColId === col.id) setDragOverColId(null);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverColId(null);
+                const currentDraggedId = draggedCardId;
+                setDraggedCardId(null);
+
+                let cardIdToMove = currentDraggedId;
+                try {
+                  const raw = e.dataTransfer.getData('text/plain');
+                  if (raw) {
+                    const data = JSON.parse(raw);
+                    if (data?.itemId) cardIdToMove = data.itemId;
+                  }
+                } catch (err) {
+                  // Fall back to state draggedCardId
+                }
+
+                if (cardIdToMove) {
+                  const itemToMove = localItems.find((i) => i._id === cardIdToMove);
+                  if (itemToMove && itemToMove.status !== col.id) {
+                    handleMove(itemToMove, col.id);
+                  }
+                }
+              }}
+              className={`w-64 flex-shrink-0 transition-all rounded-2xl p-2.5 -m-1 border ${
+                isOver
+                  ? 'bg-accent-subtle/25 border-accent/60 shadow-lg ring-2 ring-accent/30'
+                  : 'border-transparent'
+              }`}
+            >
               <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${cls}`}>
                 <span className={`text-[11px] font-bold uppercase tracking-widest ${cls.split(' ')[0]}`}>
                   {col.name}
                 </span>
-                <span className="text-xs text-muted ml-auto">{colItems(col.id).length}</span>
+                <span className="text-xs text-muted ml-auto font-mono">{colItems(col.id).length}</span>
               </div>
-              <div className="space-y-2">
-                {colItems(col.id).map((item) => (
-                  <div
-                    key={item._id}
-                    className={`glass-card p-3 cursor-pointer group border-l-2 hover:border-l-4 transition-all border border-subtle ${
-                      item.priority === 'high'
-                        ? 'border-l-red-500'
-                        : item.priority === 'low'
-                        ? 'border-l-emerald-500'
-                        : 'border-l-amber-500'
-                    }`}
-                    onClick={() => openEdit(item)}
-                  >
-                    <p className="text-sm text-primary font-medium leading-snug">{item.title}</p>
-                    {item.description && (
-                      <p className="text-xs text-muted mt-1 line-clamp-2">{item.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-[10px] font-medium ${PRIORITY_TXT[item.priority]}`}>
-                        {item.priority}
-                      </span>
-                      {item.dueDate && (
-                        <span className="text-[10px] text-muted">
-                          {new Date(item.dueDate).toLocaleDateString()}
+
+              <div className="space-y-2 min-h-[120px] flex flex-col">
+                {colItems(col.id).map((item) => {
+                  const isBeingDragged = draggedCardId === item._id;
+
+                  return (
+                    <div
+                      key={item._id}
+                      draggable={canEdit && !item.isOptimistic}
+                      onDragStart={(e) => {
+                        if (!canEdit || item.isOptimistic) return;
+                        e.dataTransfer.setData(
+                          'text/plain',
+                          JSON.stringify({ itemId: item._id, fromCol: col.id }),
+                        );
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDraggedCardId(item._id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedCardId(null);
+                        setDragOverColId(null);
+                      }}
+                      className={`glass-card p-3 group border-l-2 hover:border-l-4 transition-all border border-subtle select-none ${
+                        canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                      } ${
+                        isBeingDragged
+                          ? 'opacity-30 scale-95 border-dashed border-accent shadow-none'
+                          : ''
+                      } ${
+                        item.isOptimistic ? 'animate-pulse border-accent/40 bg-accent-subtle/10' : ''
+                      } ${
+                        item.priority === 'high'
+                          ? 'border-l-red-500'
+                          : item.priority === 'low'
+                          ? 'border-l-emerald-500'
+                          : 'border-l-amber-500'
+                      }`}
+                      onClick={() => !draggedCardId && openEdit(item)}
+                    >
+                      <div className="flex items-start justify-between gap-1.5">
+                        <p className="text-sm text-primary font-medium leading-snug flex-1">
+                          {item.title}
+                        </p>
+                        {canEdit && (
+                          <span
+                            className="text-muted/40 group-hover:text-muted shrink-0 pt-0.5"
+                            title="Drag to move card between columns"
+                          >
+                            <IoReorderTwoOutline size={15} />
+                          </span>
+                        )}
+                      </div>
+
+                      {item.description && (
+                        <p className="text-xs text-muted mt-1 line-clamp-2">{item.description}</p>
+                      )}
+
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`text-[10px] font-medium ${PRIORITY_TXT[item.priority]}`}>
+                          {item.priority}
                         </span>
-                      )}
-                      {canEdit && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCard(item._id);
-                          }}
-                          className="ml-auto text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                        >
-                          <IoTrashOutline size={12} />
-                        </button>
-                      )}
+                        {item.dueDate && (
+                          <span className="text-[10px] text-muted">
+                            {new Date(item.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                        {item.isOptimistic && (
+                          <span className="text-[10px] text-accent font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
+                            Saving…
+                          </span>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCard(item._id);
+                            }}
+                            className="ml-auto text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer p-0.5"
+                            title="Delete card"
+                          >
+                            <IoTrashOutline size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+
+                {/* Drop Target Placeholder */}
+                {isOver && (
+                  <div className="p-3 rounded-xl border-2 border-dashed border-accent/60 bg-accent-subtle/30 text-accent text-xs font-semibold text-center flex items-center justify-center gap-1.5 animate-pulse pointer-events-none">
+                    <span>Drop in {col.name}</span>
                   </div>
-                ))}
+                )}
 
                 {canEdit &&
                   (addingInCol === col.id ? (
-                    <div className="glass-card p-3 space-y-2 border border-subtle">
+                    <div className="glass-card p-3 space-y-2.5 border border-accent/40 bg-surface-raised shadow-lg rounded-xl mt-auto">
                       <input
                         autoFocus
                         value={newTitle}
@@ -545,37 +742,90 @@ const BoardEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
                         onFocus={() => onFocusBlock?.(block._id)}
                         onBlur={() => onBlurBlock?.(block._id, 1500)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddCard(col.id);
-                          if (e.key === 'Escape') setAddingInCol(null);
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddCard(col.id);
+                          }
+                          if (e.key === 'Escape') {
+                            setAddingInCol(null);
+                            setNewTitle('');
+                            setNewDesc('');
+                          }
                         }}
+                        disabled={isAddingCard}
                         placeholder="Card title…"
-                        className="w-full bg-transparent text-sm text-primary placeholder-muted focus:outline-none"
+                        className="w-full bg-surface border border-subtle focus:border-accent rounded-lg px-2.5 py-1.5 text-sm text-primary placeholder-muted focus:outline-none transition-colors"
                       />
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          {['low', 'medium', 'high'].map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => setNewPriority(p)}
-                              className={`w-3 h-3 rounded-full ${PRIORITY_DOT[p]} ${
-                                newPriority === p ? 'ring-2 ring-accent' : 'opacity-40'
-                              } cursor-pointer`}
-                              title={p}
-                            />
-                          ))}
+
+                      <textarea
+                        value={newDesc}
+                        onChange={(e) => setNewDesc(e.target.value)}
+                        onFocus={() => onFocusBlock?.(block._id)}
+                        onBlur={() => onBlurBlock?.(block._id, 1500)}
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCard(col.id);
+                          }
+                          if (e.key === 'Escape') {
+                            setAddingInCol(null);
+                            setNewTitle('');
+                            setNewDesc('');
+                          }
+                        }}
+                        disabled={isAddingCard}
+                        rows={2}
+                        placeholder="Description (optional, Ctrl+Enter to save)…"
+                        className="w-full bg-surface border border-subtle focus:border-accent rounded-lg px-2.5 py-1.5 text-xs text-primary placeholder-muted focus:outline-none resize-none transition-colors"
+                      />
+
+                      <div className="flex items-center justify-between pt-1 border-t border-subtle/50">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted font-medium">Priority:</span>
+                          <div className="flex gap-1">
+                            {['low', 'medium', 'high'].map((p) => (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => setNewPriority(p)}
+                                className={`w-3.5 h-3.5 rounded-full ${PRIORITY_DOT[p]} ${
+                                  newPriority === p ? 'ring-2 ring-accent scale-110 shadow-sm' : 'opacity-40 hover:opacity-70'
+                                } cursor-pointer transition-all`}
+                                title={`Set priority to ${p}`}
+                              />
+                            ))}
+                          </div>
                         </div>
-                        <button
-                          onClick={() => setAddingInCol(null)}
-                          className="text-xs text-muted ml-auto cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleAddCard(col.id)}
-                          className="text-xs text-accent font-medium cursor-pointer"
-                        >
-                          Add
-                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={isAddingCard}
+                            onClick={() => {
+                              setAddingInCol(null);
+                              setNewTitle('');
+                              setNewDesc('');
+                            }}
+                            className="text-xs text-muted hover:text-primary transition-colors cursor-pointer px-2 py-1 disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!newTitle.trim() || isAddingCard}
+                            onClick={() => handleAddCard(col.id)}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-white hover:opacity-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center gap-1.5"
+                          >
+                            {isAddingCard ? (
+                              <>
+                                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <span>Adding…</span>
+                              </>
+                            ) : (
+                              <span>Add Card</span>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -583,10 +833,12 @@ const BoardEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
                       onClick={() => {
                         setAddingInCol(col.id);
                         setNewTitle('');
+                        setNewDesc('');
                       }}
-                      className="flex items-center gap-2 text-xs text-secondary hover:text-primary px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-colors w-full cursor-pointer"
+                      className="flex items-center gap-2 text-xs text-secondary hover:text-primary px-2.5 py-2 rounded-xl hover:bg-surface-raised transition-colors w-full cursor-pointer border border-transparent hover:border-subtle mt-auto"
                     >
-                      <IoAddOutline size={12} /> Add card
+                      <IoAddOutline size={14} className="text-accent" />
+                      <span>Add card</span>
                     </button>
                   ))}
               </div>

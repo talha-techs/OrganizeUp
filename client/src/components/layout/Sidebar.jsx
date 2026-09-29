@@ -22,6 +22,7 @@ import {
   IoFlashOutline,
   IoHelpCircleOutline,
   IoOpenOutline,
+  IoBulbOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
@@ -162,6 +163,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       collapsible: true,
       items: [
         { to: '/profile', label: 'My Profile', icon: IoPersonOutline },
+        ...(user?.role !== 'admin'
+          ? [{ to: '/suggestions', label: 'Suggest a Feature', icon: IoBulbOutline }]
+          : []),
         { href: getDocsUrl(), label: 'Documentation', icon: IoHelpCircleOutline, isExternal: true },
         ...(user?.role === 'admin'
           ? [{ to: '/admin', label: 'Admin Panel', icon: IoShieldCheckmarkOutline }]

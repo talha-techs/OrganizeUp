@@ -31,6 +31,7 @@ const telegramRoutes = require("./routes/telegram");
 const discordRoutes = require("./routes/discord");
 const captureRoutes = require("./routes/captures");
 const whatsappRoutes = require("./routes/whatsapp");
+const suggestionRoutes = require("./routes/suggestions");
 const CapturedResource = require("./models/CapturedResource");
 const User = require("./models/User");
 const { initTelegramBot } = require("./bot/telegramBot");
@@ -190,6 +191,7 @@ app.use("/api/telegram", apiLimiter, telegramRoutes);
 app.use("/api/discord", apiLimiter, discordRoutes);
 app.use("/api/captures", apiLimiter, captureRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
+app.use("/api/suggestions", apiLimiter, suggestionRoutes);
 
 // Image serving from GridFS (authenticated)
 app.get("/api/images/:fileId", protect, serveImage);

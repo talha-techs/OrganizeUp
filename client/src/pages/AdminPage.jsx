@@ -42,6 +42,9 @@ import {
   IoSparklesOutline,
   IoBookmarkOutline,
   IoHeadsetOutline,
+  IoMailOutline,
+  IoPaperPlaneOutline,
+  IoChatbubbleEllipsesOutline,
 } from 'react-icons/io5';
 import {
   fetchStats,
@@ -56,6 +59,12 @@ import {
   adminDeleteContent,
   toggleVisibility,
 } from '../redux/slices/adminSlice';
+import {
+  fetchAllSuggestions,
+  fetchSuggestionStats,
+  updateSuggestionStatus,
+  deleteSuggestion,
+} from '../redux/slices/suggestionSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -91,7 +100,14 @@ const AdminPage = () => {
     isLoading,
   } = useSelector((state) => state.admin);
 
-  const [view, setView] = useState('dashboard'); // dashboard | users | userDetail | publishRequests | requestDetail | contentManagement
+  const {
+    allSuggestions,
+    stats: suggestionStats,
+    isLoading: suggestionsLoading,
+    isUpdating: isUpdatingSuggestion,
+  } = useSelector((state) => state.suggestions);
+
+  const [view, setView] = useState('dashboard'); // dashboard | users | userDetail | publishRequests | requestDetail | contentManagement | suggestions
   const [timeRange, setTimeRange] = useState('24h'); // '24h' | '7d' | '30d'
   const [chartMetric, setChartMetric] = useState('requests'); // 'requests' | 'latency'
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -109,10 +125,61 @@ const AdminPage = () => {
   const [contentMgmtType, setContentMgmtType] = useState('course');
   const [contentSearch, setContentSearch] = useState('');
 
+  // Feature Suggestions Admin State
+  const [suggestionFilter, setSuggestionFilter] = useState('all'); // all | pending | under_review | planned | completed | dismissed
+  const [suggestionSearch, setSuggestionSearch] = useState('');
+  const [suggestionTargetArea, setSuggestionTargetArea] = useState('all');
+  const [editingSuggestionId, setEditingSuggestionId] = useState(null);
+  const [editingStatus, setEditingStatus] = useState('');
+  const [editingNotes, setEditingNotes] = useState('');
+  const [deleteSuggestionModal, setDeleteSuggestionModal] = useState(null);
+
   useEffect(() => {
     dispatch(fetchStats());
     dispatch(fetchAnalytics(timeRange));
+    dispatch(fetchSuggestionStats());
   }, [dispatch, timeRange]);
+
+  const handleViewSuggestions = () => {
+    dispatch(fetchAllSuggestions());
+    dispatch(fetchSuggestionStats());
+    setView('suggestions');
+  };
+
+  const handleStartEditSuggestion = (item) => {
+    setEditingSuggestionId(item._id);
+    setEditingStatus(item.status);
+    setEditingNotes(item.adminNotes || '');
+  };
+
+  const handleSaveSuggestionStatus = async (id) => {
+    const res = await dispatch(
+      updateSuggestionStatus({
+        id,
+        status: editingStatus,
+        adminNotes: editingNotes,
+      })
+    );
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Suggestion updated and response saved');
+      setEditingSuggestionId(null);
+      dispatch(fetchSuggestionStats());
+    } else {
+      toast.error(res.payload || 'Failed to update suggestion');
+    }
+  };
+
+  const handleDeleteSuggestion = async () => {
+    if (!deleteSuggestionModal) return;
+    const res = await dispatch(deleteSuggestion(deleteSuggestionModal._id));
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Suggestion deleted');
+      setDeleteSuggestionModal(null);
+      dispatch(fetchSuggestionStats());
+    } else {
+      toast.error(res.payload || 'Failed to delete suggestion');
+    }
+  };
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -297,6 +364,7 @@ const AdminPage = () => {
                 {view === 'userDetail' && 'User Details'}
                 {view === 'publishRequests' && 'Publish Requests'}
                 {view === 'contentManagement' && 'Content Management'}
+                {view === 'suggestions' && 'User Feature Suggestions & Feedback'}
                 {view === 'requestDetail' && (
                   <span>
                     Review Request
@@ -319,12 +387,32 @@ const AdminPage = () => {
                   Real-time API traffic, Cloudflare edge intelligence, system health, and platform database telemetry.
                 </p>
               )}
+              {view === 'suggestions' && (
+                <p className="text-xs text-secondary mt-1">
+                  Direct problem statements, proposed solutions, and feature requests submitted by scholars.
+                </p>
+              )}
             </div>
           </div>
 
           {/* Controls toolbar for dashboard view */}
           {view === 'dashboard' && (
             <div className="flex flex-wrap items-center gap-2.5">
+              {/* User Suggestions Dedicated Button */}
+              <button
+                onClick={handleViewSuggestions}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/10 hover:from-amber-500/25 hover:to-orange-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all shadow-md shadow-amber-500/10 cursor-pointer"
+                title="View Feature Suggestions from Users"
+              >
+                <IoBulbOutline size={16} className="text-amber-400" />
+                <span>View Suggestions from Users</span>
+                {(suggestionStats?.pending || 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold animate-pulse">
+                    {suggestionStats.pending}
+                  </span>
+                )}
+              </button>
+
               {/* Time Range Pills */}
               <div className="flex items-center p-1 rounded-xl bg-surface border border-subtle">
                 {['24h', '7d', '30d'].map((tr) => (
@@ -1272,7 +1360,7 @@ const AdminPage = () => {
               {/* 8. QUICK ADMIN NAVIGATION CARDS */}
               <div className="glass-card p-6 border border-subtle">
                 <h2 className="text-lg font-semibold text-primary mb-4">Operations & Management</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <button
                     onClick={handleViewUsers}
                     className="flex items-center justify-between p-4 rounded-xl bg-surface hover:bg-surface-raised border border-subtle transition-colors group cursor-pointer"
@@ -1321,6 +1409,29 @@ const AdminPage = () => {
                         <div className="text-primary font-medium">Manage Content</div>
                         <div className="text-xs text-muted">
                           {(stats?.books || 0) + (stats?.courses || 0) + (stats?.tools || 0)} catalogue items
+                        </div>
+                      </div>
+                    </div>
+                    <IoChevronForward size={18} className="text-muted group-hover:text-primary transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={handleViewSuggestions}
+                    className="flex items-center justify-between p-4 rounded-xl bg-surface hover:bg-surface-raised border border-subtle transition-colors group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+                        <IoBulbOutline size={20} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-primary font-medium flex items-center gap-1.5">
+                          <span>User Suggestions</span>
+                          {(suggestionStats?.pending || 0) > 0 && (
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                          )}
+                        </div>
+                        <div className="text-xs text-muted">
+                          {(suggestionStats?.pending || 0)} pending • {suggestionStats?.total || 0} total
                         </div>
                       </div>
                     </div>
@@ -2135,6 +2246,423 @@ const AdminPage = () => {
               )}
             </motion.div>
           )}
+
+          {/* User Feature Suggestions & Feedback View */}
+          {view === 'suggestions' && (
+            <motion.div
+              key="suggestions"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-6"
+            >
+              {/* Header & KPI Summary Strip */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-surface border border-subtle">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                    <IoBulbOutline size={22} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-primary font-display flex items-center gap-2">
+                      <span>Feature Suggestions & Feedback Feed</span>
+                    </h2>
+                    <p className="text-xs text-secondary">
+                      Direct feature requests, problem reports, and ideas submitted by users.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      dispatch(fetchAllSuggestions());
+                      dispatch(fetchSuggestionStats());
+                      toast.success('Suggestions refreshed');
+                    }}
+                    className="p-2 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
+                    title="Refresh suggestions"
+                  >
+                    <IoRefreshOutline
+                      size={17}
+                      className={suggestionsLoading ? 'animate-spin text-accent' : ''}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Metrics Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div
+                  onClick={() => setSuggestionFilter('all')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    suggestionFilter === 'all'
+                      ? 'border-accent bg-accent-subtle ring-1 ring-accent'
+                      : 'bg-surface border-subtle hover:bg-surface-raised'
+                  }`}
+                >
+                  <span className="text-[10px] text-muted uppercase font-bold block">Total</span>
+                  <span className="text-xl font-bold text-primary block mt-0.5 font-display">
+                    {suggestionStats?.total || 0}
+                  </span>
+                  <span className="text-[10px] text-secondary">All submissions</span>
+                </div>
+
+                <div
+                  onClick={() => setSuggestionFilter('pending')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    suggestionFilter === 'pending'
+                      ? 'border-amber-500 bg-amber-500/15 ring-1 ring-amber-500'
+                      : 'bg-surface border-subtle hover:bg-surface-raised'
+                  }`}
+                >
+                  <span className="text-[10px] text-amber-400 uppercase font-bold block">Pending</span>
+                  <span className="text-xl font-bold text-amber-400 block mt-0.5 font-display">
+                    {suggestionStats?.pending || 0}
+                  </span>
+                  <span className="text-[10px] text-secondary">Awaiting review</span>
+                </div>
+
+                <div
+                  onClick={() => setSuggestionFilter('under_review')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    suggestionFilter === 'under_review'
+                      ? 'border-indigo-500 bg-indigo-500/15 ring-1 ring-indigo-500'
+                      : 'bg-surface border-subtle hover:bg-surface-raised'
+                  }`}
+                >
+                  <span className="text-[10px] text-indigo-400 uppercase font-bold block">Under Review</span>
+                  <span className="text-xl font-bold text-indigo-400 block mt-0.5 font-display">
+                    {suggestionStats?.underReview || 0}
+                  </span>
+                  <span className="text-[10px] text-secondary">Being considered</span>
+                </div>
+
+                <div
+                  onClick={() => setSuggestionFilter('planned')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    suggestionFilter === 'planned'
+                      ? 'border-sky-500 bg-sky-500/15 ring-1 ring-sky-500'
+                      : 'bg-surface border-subtle hover:bg-surface-raised'
+                  }`}
+                >
+                  <span className="text-[10px] text-sky-400 uppercase font-bold block">Planned</span>
+                  <span className="text-xl font-bold text-sky-400 block mt-0.5 font-display">
+                    {suggestionStats?.planned || 0}
+                  </span>
+                  <span className="text-[10px] text-secondary">On development roadmap</span>
+                </div>
+
+                <div
+                  onClick={() => setSuggestionFilter('completed')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    suggestionFilter === 'completed'
+                      ? 'border-emerald-500 bg-emerald-500/15 ring-1 ring-emerald-500'
+                      : 'bg-surface border-subtle hover:bg-surface-raised'
+                  }`}
+                >
+                  <span className="text-[10px] text-emerald-400 uppercase font-bold block">Completed</span>
+                  <span className="text-xl font-bold text-emerald-400 block mt-0.5 font-display">
+                    {suggestionStats?.completed || 0}
+                  </span>
+                  <span className="text-[10px] text-secondary">Shipped in app</span>
+                </div>
+
+                <div
+                  onClick={() => setSuggestionFilter('dismissed')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    suggestionFilter === 'dismissed'
+                      ? 'border-zinc-500 bg-zinc-500/20 ring-1 ring-zinc-500'
+                      : 'bg-surface border-subtle hover:bg-surface-raised'
+                  }`}
+                >
+                  <span className="text-[10px] text-zinc-400 uppercase font-bold block">Dismissed</span>
+                  <span className="text-xl font-bold text-zinc-400 block mt-0.5 font-display">
+                    {suggestionStats?.dismissed || 0}
+                  </span>
+                  <span className="text-[10px] text-secondary">Declined / archived</span>
+                </div>
+              </div>
+
+              {/* Search & Filter Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <IoSearchOutline size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Search by title, user name, email, or problem..."
+                    value={suggestionSearch}
+                    onChange={(e) => setSuggestionSearch(e.target.value)}
+                    className="input-dark w-full pl-11 text-xs"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={suggestionTargetArea}
+                    onChange={(e) => setSuggestionTargetArea(e.target.value)}
+                    className="bg-surface border border-subtle rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-accent cursor-pointer"
+                  >
+                    <option value="all">All Modules</option>
+                    <option value="workspaces">Workspaces & Blocks</option>
+                    <option value="books">Book Reader</option>
+                    <option value="courses">Courses & Drive</option>
+                    <option value="captures">Vault Captures</option>
+                    <option value="inboxes">Telegram / Discord</option>
+                    <option value="explore">Explore Hub</option>
+                    <option value="tools">Tools & Tricks</option>
+                    <option value="general">General UX / PWA</option>
+                    <option value="other">Other Ideas</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Suggestions List */}
+              {suggestionsLoading ? (
+                <div className="glass-card p-12 text-center border border-subtle rounded-2xl">
+                  <LoadingSpinner text="Loading suggestions..." />
+                </div>
+              ) : (
+                (() => {
+                  const filtered = allSuggestions.filter((item) => {
+                    if (suggestionFilter !== 'all' && item.status !== suggestionFilter) {
+                      return false;
+                    }
+                    if (suggestionTargetArea !== 'all' && item.targetArea !== suggestionTargetArea) {
+                      return false;
+                    }
+                    if (suggestionSearch.trim()) {
+                      const q = suggestionSearch.toLowerCase();
+                      const matchTitle = item.title?.toLowerCase().includes(q);
+                      const matchProblem = item.problemStatement?.toLowerCase().includes(q);
+                      const matchSolution = item.proposedSolution?.toLowerCase().includes(q);
+                      const matchUserName = item.user?.name?.toLowerCase().includes(q);
+                      const matchUserEmail = item.user?.email?.toLowerCase().includes(q);
+                      return matchTitle || matchProblem || matchSolution || matchUserName || matchUserEmail;
+                    }
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="glass-card p-12 text-center border border-subtle rounded-2xl space-y-3">
+                        <IoBulbOutline size={36} className="text-muted mx-auto" />
+                        <h3 className="text-sm font-bold text-primary">No Suggestions Found</h3>
+                        <p className="text-xs text-secondary">
+                          {suggestionSearch || suggestionFilter !== 'all' || suggestionTargetArea !== 'all'
+                            ? 'No feature suggestions match the selected filters.'
+                            : 'Users have not submitted any feature suggestions yet.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {filtered.map((item) => {
+                        const isEditing = editingSuggestionId === item._id;
+
+                        const impactCls =
+                          item.impact === 'high'
+                            ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                            : item.impact === 'medium'
+                            ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            : 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30';
+
+                        const statusBadge = {
+                          pending: { label: 'Pending Review', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
+                          under_review: { label: 'Under Review', cls: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30' },
+                          planned: { label: 'Planned', cls: 'bg-sky-500/15 text-sky-400 border-sky-500/30' },
+                          completed: { label: 'Completed', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+                          dismissed: { label: 'Dismissed', cls: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30' },
+                        }[item.status] || { label: item.status, cls: 'bg-surface text-secondary' };
+
+                        return (
+                          <div
+                            key={item._id}
+                            className="glass-card p-5 sm:p-6 border border-subtle rounded-2xl transition-all space-y-4 hover:border-strong"
+                          >
+                            {/* Top Row: User Attribution & Metadata */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-subtle">
+                              {/* User Details Pill */}
+                              <div className="flex items-center gap-3">
+                                {item.user?.avatar ? (
+                                  <img
+                                    src={item.user.avatar}
+                                    alt={item.user.name}
+                                    className="w-10 h-10 rounded-full object-cover border border-subtle shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-orange-400 text-white font-bold text-sm flex items-center justify-center shrink-0">
+                                    {(item.user?.name || 'U').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-primary text-sm">
+                                      {item.user?.name || 'Anonymous Scholar'}
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-surface-raised text-muted border border-subtle">
+                                      {item.user?.role || 'scholar'}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-xs text-secondary mt-0.5">
+                                    {item.user?.email && (
+                                      <a
+                                        href={`mailto:${item.user.email}`}
+                                        className="hover:text-accent flex items-center gap-1 font-mono text-[11px]"
+                                        title="Send email to user"
+                                      >
+                                        <IoMailOutline size={12} />
+                                        <span>{item.user.email}</span>
+                                      </a>
+                                    )}
+                                    <span>•</span>
+                                    <span className="text-[11px] text-muted">
+                                      {new Date(item.createdAt).toLocaleDateString()} at{' '}
+                                      {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Badges & Actions */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusBadge.cls}`}>
+                                  {statusBadge.label}
+                                </span>
+                                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-surface border border-subtle text-secondary">
+                                  {item.targetArea}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${impactCls}`}>
+                                  {item.impact === 'high' ? 'Critical' : item.impact === 'medium' ? 'Important' : 'Low'}
+                                </span>
+                                <button
+                                  onClick={() => setDeleteSuggestionModal(item)}
+                                  className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                  title="Delete suggestion"
+                                >
+                                  <IoTrashOutline size={15} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Core Idea Title */}
+                            <div>
+                              <h3 className="text-base font-bold text-primary font-display">
+                                {item.title}
+                              </h3>
+                            </div>
+
+                            {/* Comparison: Problem vs Proposed Solution */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+                              <div className="p-3.5 rounded-xl bg-surface/80 border border-subtle space-y-1.5">
+                                <div className="text-[11px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                                  <IoAlertCircleOutline className="text-amber-400" size={14} />
+                                  <span>Problem Encountered by User</span>
+                                </div>
+                                <p className="text-primary leading-relaxed whitespace-pre-line">
+                                  {item.problemStatement}
+                                </p>
+                              </div>
+
+                              <div className="p-3.5 rounded-xl bg-accent-subtle/30 border border-accent/20 space-y-1.5">
+                                <div className="text-[11px] font-bold text-accent uppercase tracking-wider flex items-center gap-1.5">
+                                  <IoBulbOutline size={14} />
+                                  <span>Where & How To Solve in Existing App</span>
+                                </div>
+                                <p className="text-primary leading-relaxed whitespace-pre-line">
+                                  {item.proposedSolution}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Admin Feedback & Status Management */}
+                            <div className="pt-2 border-t border-subtle space-y-3">
+                              {isEditing ? (
+                                <div className="space-y-3 p-4 rounded-xl bg-surface-raised border border-accent/40">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-secondary">Update Status:</span>
+                                      <select
+                                        value={editingStatus}
+                                        onChange={(e) => setEditingStatus(e.target.value)}
+                                        className="bg-surface border border-subtle rounded-lg px-2.5 py-1.5 text-xs text-primary font-semibold focus:outline-none focus:border-accent cursor-pointer"
+                                      >
+                                        <option value="pending">Pending Review</option>
+                                        <option value="under_review">Under Consideration</option>
+                                        <option value="planned">Planned for Roadmap</option>
+                                        <option value="completed">Shipped & Implemented</option>
+                                        <option value="dismissed">Declined</option>
+                                      </select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => setEditingSuggestionId(null)}
+                                        className="btn-secondary text-xs px-3 py-1.5 cursor-pointer"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleSaveSuggestionStatus(item._id)}
+                                        disabled={isUpdatingSuggestion}
+                                        className="btn-primary text-xs px-3.5 py-1.5 cursor-pointer font-bold disabled:opacity-50"
+                                      >
+                                        {isUpdatingSuggestion ? 'Saving...' : 'Save Changes'}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[11px] font-semibold text-secondary block mb-1">
+                                      Feedback / Note to User (visible in their &apos;My Suggestions&apos; tab):
+                                    </label>
+                                    <textarea
+                                      rows={2}
+                                      value={editingNotes}
+                                      onChange={(e) => setEditingNotes(e.target.value)}
+                                      placeholder="e.g. Thanks! We love this idea and have added it to our v2.4 sprint roadmap..."
+                                      className="w-full p-2.5 rounded-lg bg-surface border border-subtle text-xs text-primary placeholder-muted focus:outline-none focus:border-accent"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                                  <div className="text-secondary flex items-center gap-2 flex-wrap">
+                                    {item.adminNotes ? (
+                                      <div className="flex items-center gap-1.5 text-primary">
+                                        <span className="font-semibold text-accent">Team Note:</span>
+                                        <span className="italic">&ldquo;{item.adminNotes}&rdquo;</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted text-[11px]">No feedback reply added yet</span>
+                                    )}
+                                    {item.reviewedBy && (
+                                      <span className="text-[10px] text-muted">
+                                        • Reviewed by {item.reviewedBy.name || 'Admin'}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleStartEditSuggestion(item)}
+                                    className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-primary font-semibold text-xs transition-colors cursor-pointer shrink-0"
+                                  >
+                                    Update Status / Reply
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
+              )}
+            </motion.div>
+          )}
         </AnimatePresence>
       </motion.div>
 
@@ -2170,6 +2698,31 @@ const AdminPage = () => {
           <button onClick={() => setDeleteContentModal(null)} className="btn-secondary cursor-pointer">Cancel</button>
           <button onClick={handleAdminDeleteContent} className="btn-primary bg-red-500 hover:bg-red-600 cursor-pointer">
             Delete Permanently
+          </button>
+        </div>
+      </Modal>
+
+      {/* Delete Suggestion Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteSuggestionModal}
+        onClose={() => setDeleteSuggestionModal(null)}
+        title="Delete Feature Suggestion"
+      >
+        <p className="text-secondary mb-2">
+          Are you sure you want to delete this feature suggestion?
+        </p>
+        <p className="text-primary font-semibold mb-4 px-3 py-2 bg-surface rounded-xl border border-subtle">
+          &ldquo;{deleteSuggestionModal?.title}&rdquo;
+        </p>
+        <p className="text-xs text-muted mb-6">
+          Suggested by <span className="font-semibold text-primary">{deleteSuggestionModal?.user?.name || 'User'}</span> ({deleteSuggestionModal?.user?.email || 'N/A'}). This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button onClick={() => setDeleteSuggestionModal(null)} className="btn-secondary cursor-pointer">
+            Cancel
+          </button>
+          <button onClick={handleDeleteSuggestion} className="btn-primary bg-red-500 hover:bg-red-600 cursor-pointer">
+            Delete Suggestion
           </button>
         </div>
       </Modal>

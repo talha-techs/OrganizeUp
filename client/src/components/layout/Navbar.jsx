@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
-import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline, IoFlashOutline, IoOpenOutline } from 'react-icons/io5';
+import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline, IoFlashOutline, IoOpenOutline, IoBulbOutline } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
@@ -296,6 +296,17 @@ const Navbar = () => {
                         </div>
                         <IoOpenOutline size={14} className="opacity-70" />
                       </a>
+
+                      {user?.role !== 'admin' && (
+                        <Link
+                          to="/suggestions"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-secondary hover:text-primary hover:bg-surface transition-all"
+                        >
+                          <IoBulbOutline size={16} className="text-accent" />
+                          Suggest a Feature
+                        </Link>
+                      )}
 
                       {user?.role === 'admin' && (
                         <Link
