@@ -15,10 +15,13 @@ import {
   IoCheckmarkCircle,
   IoGlobeOutline,
   IoLockClosedOutline,
+  IoAlarmOutline,
+  IoClose,
 } from 'react-icons/io5';
 import {
   fetchPlaylists,
   addPlaylist,
+  updatePlaylist,
   deletePlaylist,
 } from '../redux/slices/youtubePlaylistSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
@@ -28,6 +31,21 @@ import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import {
+  scheduleClientReminder,
+  cancelClientReminder,
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendOSNotification,
+} from '../utils/notificationService';
+
+const toLocalISOString = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 const YouTubePlaylistsPage = () => {
   useDocumentTitle('YouTube Library');
@@ -40,6 +58,7 @@ const YouTubePlaylistsPage = () => {
   // Navigation & filter state
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'playlists' | 'videos'
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'remindAt' | 'oldest' | 'title'
 
   // Modal state
   const [showForm, setShowForm] = useState(false);
@@ -48,6 +67,12 @@ const YouTubePlaylistsPage = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [detectedType, setDetectedType] = useState(null);
 
+  // Reminder Modal state
+  const [reminderModalItem, setReminderModalItem] = useState(null);
+  const [newRemindDate, setNewRemindDate] = useState('');
+  const [newReminderNote, setNewReminderNote] = useState('');
+  const [notificationPerm, setNotificationPerm] = useState(() => getNotificationPermission());
+
   // Delete state
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,6 +80,101 @@ const YouTubePlaylistsPage = () => {
   useEffect(() => {
     dispatch(fetchPlaylists());
   }, [dispatch]);
+
+  const handleOpenReminderModal = (item) => {
+    setReminderModalItem(item);
+    setNewRemindDate(item.remindAt ? toLocalISOString(item.remindAt) : '');
+    setNewReminderNote(item.reminderNote || '');
+    setNotificationPerm(getNotificationPermission());
+  };
+
+  const handleRequestOSPermission = async () => {
+    const res = await requestNotificationPermission();
+    setNotificationPerm(res);
+    if (res === 'granted') {
+      toast.success('System notifications enabled!', { icon: '🔔' });
+    } else {
+      toast.error('Notification permission was blocked in browser settings');
+    }
+  };
+
+  const handleTestOSAlert = () => {
+    sendOSNotification('🔔 OrganizeUp Test Notification', {
+      body: 'Notifications are working! You will receive scheduled alerts on time.',
+      url: '/youtube-playlists',
+      platform: 'youtube',
+    });
+    toast.success('Test notification triggered!');
+  };
+
+  const setReminderPresetTime = (preset) => {
+    const now = new Date();
+    let target = new Date();
+    if (preset === '1h') {
+      target.setHours(target.getHours() + 1);
+    } else if (preset === 'tonight') {
+      target.setHours(20, 0, 0, 0);
+      if (target <= now) target.setDate(target.getDate() + 1);
+    } else if (preset === 'tomorrow') {
+      target.setDate(target.getDate() + 1);
+      target.setHours(9, 0, 0, 0);
+    } else if (preset === '2d') {
+      target.setDate(target.getDate() + 2);
+      target.setHours(9, 0, 0, 0);
+    }
+    setNewRemindDate(toLocalISOString(target));
+  };
+
+  const handleSaveReminder = async () => {
+    if (!reminderModalItem) return;
+    try {
+      const formattedDate = newRemindDate ? new Date(newRemindDate).toISOString() : null;
+      const res = await dispatch(
+        updatePlaylist({
+          id: reminderModalItem._id,
+          data: {
+            remindAt: formattedDate,
+            reminderNote: newReminderNote.trim(),
+            reminderFired: false,
+          },
+        }),
+      ).unwrap();
+
+      const updated = res.playlist || {
+        ...reminderModalItem,
+        remindAt: formattedDate,
+        reminderNote: newReminderNote.trim(),
+        reminderFired: false,
+      };
+
+      if (newRemindDate) {
+        if (isNotificationSupported() && getNotificationPermission() === 'default') {
+          await requestNotificationPermission();
+          setNotificationPerm(getNotificationPermission());
+        }
+        scheduleClientReminder({
+          _id: updated._id,
+          title: updated.title,
+          remindAt: formattedDate,
+          reminderNote: newReminderNote.trim(),
+          url: `/youtube-playlists/${updated._id}`,
+          platform: 'youtube',
+          thumbnailUrl: updated.thumbnail,
+          type: updated.type,
+        });
+        toast.success(
+          `${updated.type === 'video' ? 'Video' : 'Playlist'} reminder scheduled!`,
+          { icon: '⏰' },
+        );
+      } else {
+        cancelClientReminder(reminderModalItem._id);
+        toast.success('Reminder removed');
+      }
+      setReminderModalItem(null);
+    } catch (err) {
+      toast.error('Failed to update reminder');
+    }
+  };
 
   // Smart URL type auto-detection
   const handleUrlChange = (e) => {
@@ -159,7 +279,7 @@ const YouTubePlaylistsPage = () => {
 
   // Filtered lists
   const filteredItems = useMemo(() => {
-    return (playlists || []).filter((item) => {
+    const list = (playlists || []).filter((item) => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       const title = item.title?.toLowerCase() || '';
@@ -167,7 +287,23 @@ const YouTubePlaylistsPage = () => {
       const desc = item.description?.toLowerCase() || '';
       return title.includes(q) || channel.includes(q) || desc.includes(q);
     });
-  }, [playlists, searchQuery]);
+
+    return [...list].sort((a, b) => {
+      if (sortBy === 'remindAt') {
+        if (a.remindAt && !b.remindAt) return -1;
+        if (!a.remindAt && b.remindAt) return 1;
+        if (a.remindAt && b.remindAt) return new Date(a.remindAt) - new Date(b.remindAt);
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      if (sortBy === 'oldest') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      if (sortBy === 'title') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [playlists, searchQuery, sortBy]);
 
   const playlistList = useMemo(() => {
     return filteredItems.filter((item) => (item.type || 'playlist') === 'playlist');
@@ -180,6 +316,9 @@ const YouTubePlaylistsPage = () => {
   const totalAll = (playlists || []).length;
   const totalPlaylists = (playlists || []).filter((p) => (p.type || 'playlist') === 'playlist').length;
   const totalVideos = (playlists || []).filter((p) => p.type === 'video').length;
+  const totalDueReminders = (playlists || []).filter(
+    (p) => p.remindAt && new Date(p.remindAt) <= new Date() && !p.reminderFired,
+  ).length;
 
   // Single Item Card Component
   const renderItemCard = (item, index) => {
@@ -192,6 +331,9 @@ const YouTubePlaylistsPage = () => {
     const hasNotes = isVideo
       ? Boolean(singleVideoObj?.notes && singleVideoObj.notes.trim())
       : item.videos?.some((v) => v.notes && v.notes.trim());
+    const hasReminder = Boolean(item.remindAt);
+    const isReminderDue =
+      hasReminder && new Date(item.remindAt) <= new Date() && !item.reminderFired;
 
     return (
       <motion.div
@@ -227,8 +369,8 @@ const YouTubePlaylistsPage = () => {
               </div>
             </div>
 
-            {/* Top-left Type Badge */}
-            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+            {/* Top-left Type & Reminder Badges */}
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap max-w-[85%] z-10">
               <span
                 className={`px-2 py-0.5 rounded-md text-[11px] font-semibold backdrop-blur-md flex items-center gap-1 shadow-sm ${
                   isVideo
@@ -239,6 +381,36 @@ const YouTubePlaylistsPage = () => {
                 {isVideo ? <IoFilmOutline size={12} /> : <IoFolderOutline size={12} />}
                 {isVideo ? 'Single Video' : 'Playlist'}
               </span>
+
+              {hasReminder && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenReminderModal(item);
+                  }}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold backdrop-blur-md flex items-center gap-1 shadow-sm border transition-all cursor-pointer ${
+                    isReminderDue
+                      ? 'bg-amber-500 text-white border-amber-400 animate-pulse'
+                      : 'bg-black/75 text-amber-300 border-amber-500/30 hover:bg-black/90'
+                  }`}
+                  title={
+                    isReminderDue
+                      ? 'Reminder Due! Click to edit'
+                      : `Reminder scheduled for ${new Date(item.remindAt).toLocaleString()}`
+                  }
+                >
+                  <IoAlarmOutline size={12} />
+                  <span>
+                    {isReminderDue ? 'Due: ' : ''}
+                    {new Date(item.remindAt).toLocaleDateString([], {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </span>
+              )}
 
               {hasNotes && (
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/80 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
@@ -306,9 +478,28 @@ const YouTubePlaylistsPage = () => {
 
           {canManage && (
             <div
-              className="flex items-center gap-1"
+              className="flex items-center gap-1.5"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Reminder Button */}
+              <button
+                type="button"
+                onClick={() => handleOpenReminderModal(item)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs ${
+                  hasReminder
+                    ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25'
+                    : 'text-muted hover:text-primary hover:bg-surface-raised'
+                }`}
+                title={hasReminder ? 'Edit Scheduled Reminder' : 'Set Reminder'}
+              >
+                <IoAlarmOutline size={15} />
+                {hasReminder && (
+                  <span className="text-[10px] font-medium text-amber-400 hidden sm:inline">
+                    {isReminderDue ? 'Due' : 'Reminder'}
+                  </span>
+                )}
+              </button>
+
               {/* Only Admins can publish or unpublish to Explore */}
               {isAdmin && (
                 <button
@@ -457,27 +648,42 @@ const YouTubePlaylistsPage = () => {
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <IoSearchOutline
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search titles or channels..."
-            className="input-dark w-full pl-9 py-1.5 text-xs sm:text-sm"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-primary"
-            >
-              ×
-            </button>
-          )}
+        {/* Right Toolbar: Sort & Search */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          {/* Sort Dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="input-dark py-1.5 px-3 text-xs sm:text-sm bg-surface-raised cursor-pointer rounded-xl border border-subtle"
+          >
+            <option value="newest">Sort: Newest</option>
+            <option value="remindAt">Sort: Reminders (Due Soonest)</option>
+            <option value="oldest">Sort: Oldest</option>
+            <option value="title">Sort: Title (A-Z)</option>
+          </select>
+
+          {/* Search Bar */}
+          <div className="relative flex-1 sm:w-64">
+            <IoSearchOutline
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search titles or channels..."
+              className="input-dark w-full pl-9 py-1.5 text-xs sm:text-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted hover:text-primary"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -807,6 +1013,193 @@ const YouTubePlaylistsPage = () => {
         onCancel={() => setDeleteId(null)}
         isLoading={isDeleting}
       />
+
+      {/* Reminder Edit Modal */}
+      <AnimatePresence>
+        {reminderModalItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm rounded-3xl bg-surface-raised border border-strong p-6 space-y-4 shadow-2xl shadow-black/80"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <IoAlarmOutline size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-primary font-display">
+                      Schedule Reminder
+                    </h3>
+                    <p className="text-[10px] text-muted">
+                      Get notified when it's time to watch
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setReminderModalItem(null)}
+                  className="text-muted hover:text-primary p-1 cursor-pointer"
+                >
+                  <IoClose size={18} />
+                </button>
+              </div>
+
+              {/* Target Item Preview */}
+              <div className="p-2.5 rounded-xl bg-surface border border-subtle flex items-center gap-2.5">
+                {reminderModalItem.thumbnail ? (
+                  <img
+                    src={reminderModalItem.thumbnail}
+                    alt=""
+                    className="w-12 h-8 object-cover rounded-lg border border-subtle flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
+                    <IoLogoYoutube size={16} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-primary truncate">
+                    {reminderModalItem.title || 'Untitled Item'}
+                  </p>
+                  <p className="text-[10px] text-muted uppercase font-mono tracking-wider flex items-center gap-1">
+                    {reminderModalItem.type === 'video' ? 'Single Video' : 'Playlist'}
+                    {reminderModalItem.channelTitle && ` • ${reminderModalItem.channelTitle}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* OS System Notification Status / Permission Banner */}
+              <div className="rounded-xl border transition-all text-xs overflow-hidden">
+                {notificationPerm === 'granted' ? (
+                  <div className="flex items-center justify-between text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="text-[11px] font-semibold text-emerald-300">
+                        OS System Alerts Active
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTestOSAlert}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-colors cursor-pointer"
+                      title="Test push notification right on your OS"
+                    >
+                      Test Alert
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5">
+                    <span className="text-[11px] font-medium text-amber-300">
+                      OS notifications disabled
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRequestOSPermission}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-accent text-white shadow hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
+                    >
+                      🔔 Enable
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Presets */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-muted block">Quick Presets</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('1h')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    ⚡ +1 Hour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('tonight')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    🌙 Tonight (8 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('tomorrow')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    ☀️ Tomorrow (9 AM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('2d')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    📅 In 2 Days
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Date & Time */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted block mb-1">
+                  Custom Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={newRemindDate}
+                  onChange={(e) => setNewRemindDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent"
+                />
+              </div>
+
+              {/* Optional Reminder Note */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted block mb-1">
+                  Reminder Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newReminderNote}
+                  onChange={(e) => setNewReminderNote(e.target.value)}
+                  placeholder="e.g. Watch chapter 3 on React Hooks..."
+                  className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent placeholder:text-muted/60"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewRemindDate('');
+                    setNewReminderNote('');
+                  }}
+                  className="text-xs text-red-400 hover:underline cursor-pointer"
+                >
+                  Clear Reminder
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReminderModalItem(null)}
+                    className="px-3 py-1.5 rounded-xl text-xs text-secondary hover:bg-surface cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveReminder}
+                    className="px-4 py-1.5 rounded-xl bg-accent text-white text-xs font-bold shadow hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    Save Reminder
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

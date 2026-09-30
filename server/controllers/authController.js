@@ -675,16 +675,35 @@ const getDashboardData = async (req, res) => {
       };
     });
 
-    // 4. Actionable Reminders:
-    const dueReminders = await CapturedResource.find({
+    // 4. Actionable Reminders (Sorted from early ones to far ones):
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // First fetch upcoming & today's reminders, sorted ascending (early -> far)
+    const upcomingAndToday = await CapturedResource.find({
       user: user._id,
-      reminderAt: { $ne: null },
+      remindAt: { $gte: startOfToday },
       status: { $nin: ["archived", "completed"] },
     })
-      .sort({ reminderAt: 1 })
-      .limit(4)
-      .select("title platform reminderAt url isPriority notes")
+      .sort({ remindAt: 1 })
+      .limit(8)
+      .select("title platform remindAt sourceUrl priority notes thumbnailUrl documentInfo reminderFired")
       .lean();
+
+    let dueReminders = [...upcomingAndToday];
+    if (dueReminders.length < 6) {
+      const pastReminders = await CapturedResource.find({
+        user: user._id,
+        remindAt: { $lt: startOfToday, $ne: null },
+        status: { $nin: ["archived", "completed"] },
+      })
+        .sort({ remindAt: -1 })
+        .limit(6 - dueReminders.length)
+        .select("title platform remindAt sourceUrl priority notes thumbnailUrl documentInfo reminderFired")
+        .lean();
+
+      dueReminders = [...dueReminders, ...pastReminders];
+    }
 
     // 5. Recent Learning Reflections:
     const recentNotes = [];

@@ -63,6 +63,7 @@ const SuggestionsPage = lazyWithRetry(() => import('./pages/SuggestionsPage'), '
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
 import QuickCaptureModal from './components/capture/QuickCaptureModal';
+import GlobalReminderWatcher from './components/common/GlobalReminderWatcher';
 import { openQuickCapture } from './redux/slices/captureSlice';
 
 const App = () => {
@@ -146,6 +147,7 @@ const App = () => {
     <>
       <InstallPrompt />
       <QuickCaptureModal />
+      <GlobalReminderWatcher />
       <ErrorBoundary>
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>

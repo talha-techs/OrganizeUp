@@ -2,7 +2,7 @@ require("dotenv").config();
 const http = require("http");
 const express = require("express");
 const cors = require("cors");
-const { initSocket } = require("./socket");
+const { initSocket, emitToUser } = require("./socket");
 const cookieParser = require("cookie-parser");
 const compression = require("compression");
 const helmet = require("helmet");
@@ -33,6 +33,7 @@ const captureRoutes = require("./routes/captures");
 const whatsappRoutes = require("./routes/whatsapp");
 const suggestionRoutes = require("./routes/suggestions");
 const CapturedResource = require("./models/CapturedResource");
+const YoutubePlaylist = require("./models/YouTubePlaylist");
 const User = require("./models/User");
 const { initTelegramBot } = require("./bot/telegramBot");
 const { initDiscordBot } = require("./bot/discordBot");
@@ -269,6 +270,18 @@ server.listen(PORT, () => {
               createdAt: new Date(),
             });
             await user.save();
+
+            // Broadcast real-time reminder to user's devices & PWA
+            emitToUser(capture.user, "vault_reminder", {
+              id: capture._id.toString(),
+              title: notifTitle,
+              message: notifMsg,
+              url: `/captures?highlight=${capture._id}`,
+              platform: capture.platform,
+              thumbnailUrl: capture.thumbnailUrl,
+              remindAt: capture.remindAt,
+              priority: capture.priority,
+            });
           }
 
           capture.reminderFired = true;
@@ -278,13 +291,62 @@ server.listen(PORT, () => {
           console.error("Error processing individual reminder:", itemErr);
         }
       }
+      // Check YouTube Playlist & Single Video Reminders
+      const dueYouTube = await YoutubePlaylist.find({
+        remindAt: { $lte: now },
+        reminderFired: false,
+      });
+
+      for (const ytItem of dueYouTube) {
+        try {
+          const user = await User.findById(ytItem.addedBy);
+          if (user) {
+            const isVideo = ytItem.type === "video";
+            const itemTypeLabel = isVideo ? "YouTube Video" : "YouTube Playlist";
+            const notifTitle = `⏰ Reminder: ${ytItem.title || itemTypeLabel}`;
+            const notifMsg = ytItem.reminderNote?.trim()
+              ? ytItem.reminderNote.slice(0, 140)
+              : isVideo
+              ? `Time to watch your saved YouTube video: ${ytItem.title}`
+              : `Time to continue your YouTube playlist: ${ytItem.title}`;
+
+            user.notifications.unshift({
+              type: "reminder",
+              contentTitle: notifTitle,
+              message: notifMsg,
+              link: `/youtube-playlists/${ytItem._id}`,
+              read: false,
+              createdAt: new Date(),
+            });
+            await user.save();
+
+            // Broadcast real-time reminder to user's devices & PWA
+            emitToUser(ytItem.addedBy, "vault_reminder", {
+              id: ytItem._id.toString(),
+              title: notifTitle,
+              message: notifMsg,
+              url: `/youtube-playlists/${ytItem._id}`,
+              platform: "youtube",
+              thumbnailUrl: ytItem.thumbnail,
+              remindAt: ytItem.remindAt,
+              type: ytItem.type,
+            });
+          }
+
+          ytItem.reminderFired = true;
+          await ytItem.save();
+          console.log(`⏰ YouTube reminder triggered for ${ytItem.type} "${ytItem.title}"`);
+        } catch (ytErr) {
+          console.error("Error processing YouTube reminder:", ytErr);
+        }
+      }
     } catch (err) {
-      console.error("Error in vault reminder checker:", err);
+      console.error("Error in reminder checker:", err);
     }
   };
 
   setInterval(checkVaultReminders, 60 * 1000);
-  console.log("⏰ Vault reminder engine running (checked every 60s)");
+  console.log("⏰ Global reminder engine running (Vault & YouTube checked every 60s)");
 
   // Keep-alive: ping ourselves every 14 minutes to prevent Render free-tier cold starts
   if (process.env.NODE_ENV === "production" && process.env.RENDER_EXTERNAL_URL) {

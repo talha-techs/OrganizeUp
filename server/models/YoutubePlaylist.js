@@ -8,6 +8,9 @@ const videoSchema = new mongoose.Schema({
   position: { type: Number, default: 0 },
   notes: { type: String, default: "" },
   description: { type: String, default: "" },
+  remindAt: { type: Date, default: null },
+  reminderFired: { type: Boolean, default: false },
+  reminderNote: { type: String, default: "" },
 });
 
 const youtubePlaylistSchema = new mongoose.Schema(
@@ -65,6 +68,20 @@ const youtubePlaylistSchema = new mongoose.Schema(
       enum: ["public", "private", "pending"],
       default: "private",
     },
+    // Custom Reminder & Notification
+    remindAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    reminderFired: {
+      type: Boolean,
+      default: false,
+    },
+    reminderNote: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,
@@ -73,6 +90,7 @@ const youtubePlaylistSchema = new mongoose.Schema(
 
 youtubePlaylistSchema.index({ addedBy: 1, createdAt: -1 });
 youtubePlaylistSchema.index({ addedBy: 1, type: 1, createdAt: -1 });
+youtubePlaylistSchema.index({ remindAt: 1, reminderFired: 1 });
 youtubePlaylistSchema.index({ visibility: 1, createdAt: -1 });
 
-module.exports = mongoose.model("YoutubePlaylist", youtubePlaylistSchema);
+module.exports = mongoose.models.YoutubePlaylist || mongoose.model("YoutubePlaylist", youtubePlaylistSchema);

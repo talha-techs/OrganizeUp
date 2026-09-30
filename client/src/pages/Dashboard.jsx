@@ -33,6 +33,12 @@ import DefaultResourceCover from '../components/ui/DefaultResourceCover';
 import { openQuickCapture } from '../redux/slices/captureSlice';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import toast from 'react-hot-toast';
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  testOSNotification,
+} from '../utils/notificationService';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -45,6 +51,30 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [copiedNoteId, setCopiedNoteId] = useState(null);
+  const [osNotifPerm, setOsNotifPerm] = useState(() => getNotificationPermission());
+
+  const handleToggleOSNotif = async () => {
+    if (!isNotificationSupported()) {
+      toast.error('System notifications not supported in this browser.');
+      return;
+    }
+    if (osNotifPerm !== 'granted') {
+      const res = await requestNotificationPermission();
+      setOsNotifPerm(res);
+      if (res === 'granted') {
+        toast.success('OS notifications enabled! Reminders will pop up in Windows/OS.', { icon: '🔔' });
+      } else {
+        toast.error('Notification permission was denied in browser.');
+      }
+    } else {
+      const test = await testOSNotification();
+      if (test.success) {
+        toast.success('Test alert pushed to your operating system!');
+      } else {
+        toast.error('Could not push alert. Please check system notification settings.');
+      }
+    }
+  };
 
   // Calendar month state
   const [calendarDate, setCalendarDate] = useState(() => new Date());
@@ -162,8 +192,35 @@ const Dashboard = () => {
   };
   const continueBooks = dashboardData?.continueLearning?.books || [];
   const continueCourses = dashboardData?.continueLearning?.courses || [];
-  const dueReminders = dashboardData?.dueReminders || [];
+  const rawDueReminders = dashboardData?.dueReminders || [];
   const recentNotes = dashboardData?.recentNotes || [];
+
+  // Sort reminders from early ones (today / soonest upcoming) to far ones (further in future)
+  const dueReminders = useMemo(() => {
+    if (!rawDueReminders || !rawDueReminders.length) return [];
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    const upcomingOrToday = [];
+    const olderPast = [];
+
+    rawDueReminders.forEach((item) => {
+      const time = new Date(item.remindAt || item.reminderAt || 0).getTime();
+      if (time >= startOfToday) {
+        upcomingOrToday.push({ ...item, _time: time });
+      } else {
+        olderPast.push({ ...item, _time: time });
+      }
+    });
+
+    // Upcoming and today sorted from early ones to far ones (ascending: soonest first)
+    upcomingOrToday.sort((a, b) => a._time - b._time);
+
+    // Older past reminders sorted from most recent to oldest
+    olderPast.sort((a, b) => b._time - a._time);
+
+    return [...upcomingOrToday, ...olderPast];
+  }, [rawDueReminders]);
 
   const coreSections = [
     {
@@ -703,9 +760,32 @@ const Dashboard = () => {
                   </span>
                 )}
               </h3>
-              <Link to="/captures" className="text-xs text-accent font-semibold hover:underline">
-                View Vault
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleOSNotif}
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    osNotifPerm === 'granted'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                      : 'bg-accent/15 text-accent border-accent/30 hover:bg-accent/25'
+                  }`}
+                  title={
+                    osNotifPerm === 'granted'
+                      ? 'Click to send a test notification to your OS'
+                      : 'Enable system notifications for reminders'
+                  }
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      osNotifPerm === 'granted' ? 'bg-emerald-400 animate-pulse' : 'bg-accent'
+                    }`}
+                  />
+                  <span>{osNotifPerm === 'granted' ? 'Test OS Alert' : 'Enable OS Alerts'}</span>
+                </button>
+                <Link to="/captures" className="text-xs text-accent font-semibold hover:underline">
+                  View Vault
+                </Link>
+              </div>
             </div>
 
             {dueReminders.length === 0 ? (
@@ -713,46 +793,85 @@ const Dashboard = () => {
                 <div className="w-10 h-10 rounded-2xl bg-surface-raised flex items-center justify-center mx-auto text-muted">
                   <IoNotificationsOutline size={20} />
                 </div>
-                <p>No due reminders at this moment.</p>
-                <p className="text-[11px] text-muted">
-                  Set reminders on any WhatsApp, Reel, or Web capture in your Vault!
+                <p className="font-semibold text-primary">No due reminders at this moment.</p>
+                <p className="text-[11px] text-muted max-w-xs mx-auto">
+                  Set reminders on any capture in your Vault. Native OS alerts will notify you right on your desktop or device!
                 </p>
               </div>
             ) : (
               <div className="space-y-2.5">
                 {dueReminders.map((r) => {
-                  const remDate = new Date(r.reminderAt);
-                  const isPast = remDate < new Date();
+                  const dateVal = r.remindAt || r.reminderAt;
+                  const remDate = dateVal ? new Date(dateVal) : null;
+                  const now = new Date();
+                  const isPast = remDate && remDate < now;
+                  const isToday = remDate && remDate.toDateString() === now.toDateString();
+                  const isTomorrow =
+                    remDate &&
+                    new Date(now.getTime() + 86400000).toDateString() === remDate.toDateString();
+
+                  let formattedDate = 'Scheduled';
+                  if (remDate) {
+                    if (isToday) {
+                      formattedDate = `Today, ${remDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    } else if (isTomorrow) {
+                      formattedDate = `Tomorrow, ${remDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                    } else {
+                      formattedDate = remDate.toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                    }
+                  }
+
+                  const priority = r.priority || (r.isPriority ? 'high' : 'medium');
+                  const isUrgent = priority === 'urgent';
+                  const isHigh = priority === 'high';
+
                   return (
                     <Link
                       key={r._id}
-                      to="/captures"
-                      className="p-3 rounded-2xl bg-surface-raised border border-subtle hover:border-accent/40 transition-colors flex items-start justify-between gap-3 block"
+                      to={`/captures?highlight=${r._id}`}
+                      className="p-3 rounded-2xl bg-surface-raised border border-subtle hover:border-accent/50 hover:bg-surface-raised/80 transition-all flex items-start justify-between gap-3 block group"
                     >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-accent-subtle text-accent">
-                            {r.platform}
+                      <div className="min-w-0 space-y-1 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-accent/15 text-accent border border-accent/20">
+                            {r.platform || 'Vault'}
                           </span>
-                          {r.isPriority && (
-                            <span className="text-[9px] font-bold text-red-600 dark:text-red-400">★ High</span>
+                          {r.documentInfo && (
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/20">
+                              Doc
+                            </span>
                           )}
+                          {isUrgent ? (
+                            <span className="text-[9px] font-bold text-red-400 bg-red-500/15 px-1.5 py-0.5 rounded border border-red-500/25">
+                              🚨 Urgent
+                            </span>
+                          ) : isHigh ? (
+                            <span className="text-[9px] font-bold text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/25">
+                              ★ High
+                            </span>
+                          ) : null}
                         </div>
-                        <h5 className="text-xs font-semibold text-primary truncate">
+                        <h5 className="text-xs font-semibold text-primary truncate group-hover:text-accent transition-colors">
                           {r.title || r.notes || 'Captured Resource'}
                         </h5>
                       </div>
                       <span
-                        className={`text-[10px] font-semibold whitespace-nowrap px-2 py-1 rounded-lg ${
+                        className={`text-[10px] font-semibold whitespace-nowrap px-2.5 py-1 rounded-xl flex-shrink-0 border ${
                           isPast
-                            ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25'
-                            : 'bg-zinc-100 text-zinc-600 dark:bg-surface dark:text-muted'
+                            ? 'bg-red-500/15 text-red-400 border-red-500/25'
+                            : isToday
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/25'
+                              : isTomorrow
+                                ? 'bg-sky-500/15 text-sky-300 border-sky-500/25'
+                                : 'bg-surface text-secondary border-subtle'
                         }`}
                       >
-                        {remDate.toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
+                        {isPast ? `Due: ${formattedDate}` : formattedDate}
                       </span>
                     </Link>
                   );

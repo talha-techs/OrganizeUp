@@ -29,6 +29,14 @@ import {
   clearScrapedData,
 } from '../../redux/slices/captureSlice';
 import { addPlaylist } from '../../redux/slices/youtubePlaylistSlice';
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleClientReminder,
+  testOSNotification,
+} from '../../utils/notificationService';
+
 
 /**
  * Inspect a YouTube URL to determine its exact category:
@@ -219,6 +227,54 @@ const QuickCaptureModal = () => {
     }
   };
 
+  const [notificationPerm, setNotificationPerm] = useState(() => getNotificationPermission());
+
+  const handleSelectReminderPreset = async (presetId) => {
+    setReminderPreset(presetId);
+    if (presetId !== 'none' && isNotificationSupported() && getNotificationPermission() === 'default') {
+      const res = await requestNotificationPermission();
+      setNotificationPerm(res);
+      if (res === 'granted') {
+        toast.success('OS notifications enabled! System alerts are active.', { icon: '🔔' });
+      }
+    }
+  };
+
+  const handleRequestOSPermission = async () => {
+    const res = await requestNotificationPermission();
+    setNotificationPerm(res);
+    if (res === 'granted') {
+      toast.success('OS notifications enabled! System alerts are active.', { icon: '🔔' });
+    } else if (res === 'denied') {
+      toast.error('Notification permission was blocked in browser settings.');
+    }
+  };
+
+  const handleTestOSAlert = async () => {
+    const res = await testOSNotification();
+    if (res.success) {
+      toast.success('Test alert pushed to your operating system!');
+    } else if (res.reason === 'denied') {
+      toast.error('Browser blocked notification. Please allow notifications.');
+    } else {
+      toast.error('Failed to deliver test notification.');
+    }
+    setNotificationPerm(getNotificationPermission());
+  };
+
+  const handleReminderScheduled = async (createdCapture, remindAtDate) => {
+    if (!remindAtDate) return;
+    if (isNotificationSupported() && getNotificationPermission() === 'default') {
+      await requestNotificationPermission();
+      setNotificationPerm(getNotificationPermission());
+    }
+    scheduleClientReminder(createdCapture || {
+      title: title || 'Saved Resource',
+      remindAt: remindAtDate,
+      notes,
+    });
+  };
+
   // Helper for computing reminder date
   const computeRemindAt = () => {
     const now = new Date();
@@ -314,12 +370,13 @@ const QuickCaptureModal = () => {
         formData.append('priority', priority);
         if (remindAt) formData.append('remindAt', remindAt);
 
-        await dispatch(createCapture(formData)).unwrap();
-        toast.success('Saved to your Vault!', { icon: '⚡' });
+        const saved = await dispatch(createCapture(formData)).unwrap();
+        await handleReminderScheduled(saved, remindAt);
+        toast.success(remindAt ? 'Saved to Vault! OS reminder scheduled.' : 'Saved to your Vault!', { icon: '⚡' });
         dispatch(closeQuickCapture());
       } else if (activeTab === 'image' && webImageUrl) {
         // Web image URL
-        await dispatch(
+        const saved = await dispatch(
           createCapture({
             platform: 'web_image',
             mediaType: 'image',
@@ -331,7 +388,8 @@ const QuickCaptureModal = () => {
             remindAt,
           }),
         ).unwrap();
-        toast.success('Saved to your Vault!', { icon: '⚡' });
+        await handleReminderScheduled(saved, remindAt);
+        toast.success(remindAt ? 'Saved to Vault! OS reminder scheduled.' : 'Saved to your Vault!', { icon: '⚡' });
         dispatch(closeQuickCapture());
       } else {
         // TAB: 'link'
@@ -380,7 +438,7 @@ const QuickCaptureModal = () => {
 
           // 2. SHORTS: Add directly to the vault (playable in-app)
           if (ytInfo.type === 'shorts') {
-            await dispatch(
+            const saved = await dispatch(
               createCapture({
                 sourceUrl: url.trim(),
                 platform: 'youtube',
@@ -398,8 +456,9 @@ const QuickCaptureModal = () => {
                 authorName: scrapedData?.authorName || 'YouTube',
               }),
             ).unwrap();
+            await handleReminderScheduled(saved, remindAt);
 
-            toast.success('YouTube Short saved to your Vault! Playable directly in your Vault.', {
+            toast.success(remindAt ? 'YouTube Short saved to Vault with OS reminder!' : 'YouTube Short saved to your Vault! Playable directly in your Vault.', {
               icon: '⚡',
               style: {
                 borderRadius: '12px',
@@ -433,7 +492,7 @@ const QuickCaptureModal = () => {
 
             // Choice A: Save in Vault (playable right inside Vault)
             if (singleVideoChoice === 'vault') {
-              await dispatch(
+              const saved = await dispatch(
                 createCapture({
                   sourceUrl: url.trim(),
                   platform: 'youtube',
@@ -451,8 +510,9 @@ const QuickCaptureModal = () => {
                   authorName: scrapedData?.authorName || 'YouTube',
                 }),
               ).unwrap();
+              await handleReminderScheduled(saved, remindAt);
 
-              toast.success('Saved to your Vault! You can play the video directly in your Vault.', {
+              toast.success(remindAt ? 'Saved to Vault with OS reminder!' : 'Saved to your Vault! You can play the video directly in your Vault.', {
                 icon: '⚡',
                 style: {
                   borderRadius: '12px',
@@ -503,7 +563,7 @@ const QuickCaptureModal = () => {
 
           // 4. OTHER: Channel or other YouTube link -> save into Vault
           if (ytInfo.type === 'other') {
-            await dispatch(
+            const saved = await dispatch(
               createCapture({
                 sourceUrl: url.trim(),
                 platform: 'youtube',
@@ -518,8 +578,9 @@ const QuickCaptureModal = () => {
                 authorName: scrapedData?.authorName || 'YouTube',
               }),
             ).unwrap();
+            await handleReminderScheduled(saved, remindAt);
 
-            toast.success('YouTube link saved to your Vault!', {
+            toast.success(remindAt ? 'YouTube link saved with OS reminder!' : 'YouTube link saved to your Vault!', {
               icon: '⚡',
             });
             dispatch(closeQuickCapture());
@@ -544,16 +605,28 @@ const QuickCaptureModal = () => {
           ? 'instagram'
           : scrapedData?.platform;
 
-        const isVideo =
-          scrapedData?.mediaType === 'video' ||
-          /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(scrapedData?.mediaUrl || url) ||
-          Boolean(scrapedData?.embedUrl) ||
-          ['youtube', 'instagram', 'facebook'].includes(platform);
+        const isDocument =
+          scrapedData?.isDocument ||
+          scrapedData?.mediaType === 'document' ||
+          scrapedData?.mediaType === 'pdf' ||
+          Boolean(scrapedData?.documentInfo);
 
-        const mediaType = isVideo ? 'video' : (scrapedData?.mediaType || 'post');
+        const isVideo =
+          !isDocument &&
+          (scrapedData?.mediaType === 'video' ||
+            /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(scrapedData?.mediaUrl || url) ||
+            (Boolean(scrapedData?.embedUrl) && !['linkedin', 'twitter', 'article'].includes(platform)) ||
+            ['youtube', 'instagram', 'facebook'].includes(platform));
+
+        const mediaType = isDocument
+          ? 'document'
+          : isVideo
+          ? 'video'
+          : (scrapedData?.mediaType || 'post');
+
         const resolvedPlatform = (platform === 'web_image' && isVideo) ? 'web' : platform;
 
-        await dispatch(
+        const saved = await dispatch(
           createCapture({
             sourceUrl: url.trim(),
             platform: resolvedPlatform,
@@ -569,10 +642,12 @@ const QuickCaptureModal = () => {
             embedId: scrapedData?.embedId,
             embedUrl: scrapedData?.embedUrl,
             authorName: scrapedData?.authorName,
+            documentInfo: scrapedData?.documentInfo || null,
           }),
         ).unwrap();
+        await handleReminderScheduled(saved, remindAt);
 
-        toast.success('Saved to your Vault!', {
+        toast.success(remindAt ? 'Saved to Vault! OS reminder scheduled.' : 'Saved to your Vault!', {
           icon: '⚡',
           style: {
             borderRadius: '12px',
@@ -922,11 +997,16 @@ const QuickCaptureModal = () => {
                           alt="Preview"
                           className="w-20 h-20 object-cover rounded-lg bg-surface border border-subtle"
                         />
-                        {(scrapedData.mediaType === 'video' || scrapedData.embedUrl) && (
+                        {scrapedData.mediaType === 'video' && !scrapedData.documentInfo && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
                             <span className="w-6 h-6 rounded-full bg-accent/90 text-white flex items-center justify-center text-[10px] pl-0.5 shadow-md">
                               ▶
                             </span>
+                          </div>
+                        )}
+                        {(scrapedData.documentInfo || scrapedData.mediaType === 'document' || scrapedData.mediaType === 'pdf') && (
+                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-sky-950/80 backdrop-blur-sm border border-sky-400/40 text-[9px] font-bold text-sky-300 shadow">
+                            {scrapedData.documentInfo?.totalPages ? `${scrapedData.documentInfo.totalPages}P PDF` : 'PDF'}
                           </div>
                         )}
                       </div>
@@ -940,11 +1020,16 @@ const QuickCaptureModal = () => {
                         <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-surface border border-subtle text-accent">
                           {scrapedData.platform || 'WEB'}
                         </span>
-                        {(scrapedData.mediaType === 'video' || scrapedData.embedUrl) && (
+                        {(scrapedData.documentInfo || scrapedData.mediaType === 'document' || scrapedData.mediaType === 'pdf') ? (
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1">
+                            <IoDocumentTextOutline size={11} />
+                            <span>{scrapedData.documentInfo?.totalPages ? `${scrapedData.documentInfo.totalPages}P PDF` : 'PDF'}</span>
+                          </span>
+                        ) : scrapedData.mediaType === 'video' ? (
                           <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
                             VIDEO
                           </span>
-                        )}
+                        ) : null}
                         {scrapedData.authorName && (
                           <span className="text-xs font-semibold text-primary truncate">
                             · {scrapedData.authorName}
@@ -1087,7 +1172,7 @@ const QuickCaptureModal = () => {
                       Remind Me to View This
                     </span>
                     <span className="text-[11px] text-muted block">
-                      Get an in-app notification when it's time to review
+                      Get native OS & in-app alerts when it's time to review
                     </span>
                   </div>
                 </div>
@@ -1106,6 +1191,43 @@ const QuickCaptureModal = () => {
                 )}
               </div>
 
+              {/* OS System Notification Status / Permission Banner */}
+              {reminderPreset !== 'none' && (
+                <div className="rounded-xl border transition-all text-xs overflow-hidden">
+                  {notificationPerm === 'granted' ? (
+                    <div className="flex items-center justify-between text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span className="text-[11px] font-semibold text-emerald-300">
+                          OS System Alerts Active
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleTestOSAlert}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-colors cursor-pointer"
+                        title="Test push notification right on your OS"
+                      >
+                        Test Alert
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5">
+                      <span className="text-[11px] font-medium text-amber-300">
+                        OS notifications disabled in browser
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRequestOSPermission}
+                        className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-accent text-white shadow hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
+                      >
+                        🔔 Enable
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Reminder Presets Chips */}
               <div className="flex flex-wrap gap-1.5">
                 {[
@@ -1119,7 +1241,7 @@ const QuickCaptureModal = () => {
                   <button
                     key={chip.id}
                     type="button"
-                    onClick={() => setReminderPreset(chip.id)}
+                    onClick={() => handleSelectReminderPreset(chip.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                       reminderPreset === chip.id
                         ? 'bg-accent text-white shadow-sm font-semibold'

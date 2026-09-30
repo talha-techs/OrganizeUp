@@ -11,6 +11,7 @@ const {
   refreshPlaylist,
   updatePlaylistVideoProgress,
   saveFromExplore,
+  setPlaylistReminder,
 } = require("../controllers/youtubePlaylistController");
 const { protect } = require("../middleware/auth");
 
@@ -19,6 +20,7 @@ router.get("/:id", protect, getPlaylist);
 router.post("/", protect, addPlaylist);
 router.post("/save-from-explore/:id", protect, saveFromExplore);
 router.put("/:id", protect, updatePlaylist);
+router.put("/:id/reminder", protect, setPlaylistReminder);
 router.delete("/:id", protect, deletePlaylist);
 
 // Video Progress & Notes

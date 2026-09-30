@@ -26,8 +26,13 @@ const capturedResourceSchema = new mongoose.Schema(
     },
     mediaType: {
       type: String,
-      enum: ["video", "image", "post", "message", "article"],
+      enum: ["video", "image", "post", "message", "article", "document", "pdf"],
       default: "post",
+    },
+    // Document / PDF metadata (for LinkedIn presentations, PDFs, multi-page slides)
+    documentInfo: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     title: {
       type: String,

@@ -596,6 +596,107 @@ const fetchUrlMetadata = async (url) => {
           }
         }
 
+        // Document / PDF / Presentation detection on LinkedIn
+        if (detected.platform === "linkedin") {
+          let documentInfo = null;
+
+          // 1. Check data-native-document-config attribute
+          const docConfigMatch = html.match(/data-native-document-config="([^"]+)"/i);
+          if (docConfigMatch) {
+            try {
+              const decoded = docConfigMatch[1]
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, "&")
+                .replace(/&#39;/g, "'");
+              const parsed = JSON.parse(decoded);
+              if (parsed && parsed.doc) {
+                const coverPages = (parsed.doc.coverPages || [])
+                  .map((cp) => cp.config?.src)
+                  .filter(Boolean);
+                documentInfo = {
+                  title: parsed.doc.title || "",
+                  subtitle: parsed.doc.subtitle || "",
+                  totalPages: parsed.doc.totalPageCount || coverPages.length || 0,
+                  coverPages,
+                  manifestUrl: parsed.doc.manifestUrl || "",
+                  type: parsed.doc.type || "pdf",
+                };
+              }
+            } catch (docErr) {
+              console.warn("LinkedIn document config parse error:", docErr.message);
+            }
+          }
+
+          // 2. Check for PDF / Drive links in HTML or description
+          const linkMatches = html.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+          const driveLinks = linkMatches.filter(
+            (l) => l.includes("drive.google.com") || l.toLowerCase().endsWith(".pdf"),
+          );
+
+          if (driveLinks.length > 0) {
+            if (!documentInfo) {
+              documentInfo = {
+                title: finalTitle || "Attached Document",
+                subtitle: driveLinks[0].includes("drive.google.com") ? "Google Drive Document" : "PDF File",
+                totalPages: 1,
+                coverPages: [],
+                fileUrl: driveLinks[0],
+                type: "document",
+              };
+            } else if (!documentInfo.fileUrl) {
+              documentInfo.fileUrl = driveLinks[0];
+            }
+          }
+
+          // 3. Check for lnkd.in shortlink that redirects to external drive/pdf
+          if (finalDescription) {
+            const shortLinks = finalDescription.match(/https?:\/\/lnkd\.in\/[a-zA-Z0-9_-]+/gi) || [];
+            for (const sl of shortLinks) {
+              try {
+                const slRes = await fetch(sl, { signal: AbortSignal.timeout(3000) });
+                const slHtml = await slRes.text();
+                const extLinks = slHtml.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+                const extTarget = extLinks.find(
+                  (l) => l.includes("drive.google.com") || l.toLowerCase().endsWith(".pdf"),
+                );
+                if (extTarget) {
+                  if (!documentInfo) {
+                    documentInfo = {
+                      title: finalTitle || "Attached Document",
+                      subtitle: extTarget.includes("drive.google.com") ? "Google Drive Document" : "PDF File",
+                      totalPages: 1,
+                      coverPages: [],
+                      fileUrl: extTarget,
+                      type: "document",
+                    };
+                  } else if (!documentInfo.fileUrl) {
+                    documentInfo.fileUrl = extTarget;
+                  }
+                  break;
+                }
+              } catch {}
+            }
+          }
+
+          if (documentInfo) {
+            detected.isDocument = true;
+            detected.mediaType = "document";
+            detected.documentInfo = documentInfo;
+            if (
+              documentInfo.title &&
+              (!finalTitle ||
+                finalTitle.includes("posted on the topic") ||
+                finalTitle.includes("LinkedIn"))
+            ) {
+              finalTitle = documentInfo.title;
+            }
+            if (documentInfo.coverPages && documentInfo.coverPages.length > 0) {
+              finalImage = documentInfo.coverPages[0];
+              directPosterUrl = documentInfo.coverPages[0];
+            }
+          }
+        }
+
         // Facebook specific author, title and canonical embed handling
         if (detected.platform === "facebook" || /(?:facebook\.com|fb\.watch|fb\.me)/i.test(url)) {
           const canonicalFb = ogUrl || finalUrl || url;
@@ -671,11 +772,13 @@ const fetchUrlMetadata = async (url) => {
 
     const resolvedMediaType = isRestrictedDomain
       ? "article"
+      : detected.isDocument
+      ? "document"
       : directVideoUrl ||
-        detected.mediaType === "video" ||
-        (detected.embedUrl && !["linkedin", "article"].includes(detected.platform))
-        ? "video"
-        : detected.mediaType || "article";
+        (detected.mediaType === "video" && !["linkedin", "twitter"].includes(detected.platform)) ||
+        (detected.embedUrl && !["linkedin", "twitter", "article"].includes(detected.platform))
+      ? "video"
+      : detected.mediaType || "article";
 
     const isMeta = detected.platform === "instagram" || detected.platform === "facebook";
     const resolvedMediaUrl = isRestrictedDomain
@@ -797,10 +900,13 @@ const getCaptures = async (req, res) => {
       inbox: allUserCaptures.filter((c) => c.status === "inbox").length,
       completed: allUserCaptures.filter((c) => c.status === "completed").length,
       remindersDue: allUserCaptures.filter(
-        (c) => c.remindAt && new Date(c.remindAt) <= now && !c.reminderFired,
+        (c) => c.remindAt && new Date(c.remindAt) <= now && c.status !== "completed",
       ).length,
       activeReminders: allUserCaptures.filter(
-        (c) => c.remindAt && new Date(c.remindAt) > now,
+        (c) => c.remindAt && c.status !== "completed",
+      ).length,
+      upcomingReminders: allUserCaptures.filter(
+        (c) => c.remindAt && new Date(c.remindAt) > now && c.status !== "completed",
       ).length,
       platforms: {
         all: allUserCaptures.length,
@@ -867,6 +973,7 @@ const createCapture = async (req, res) => {
       tags,
       priority,
       remindAt,
+      documentInfo: rawDocumentInfo,
     } = req.body;
 
     let platform = rawPlatform;
@@ -875,6 +982,7 @@ const createCapture = async (req, res) => {
     let embedUrl = rawEmbedUrl || "";
     let mediaUrl = rawMediaUrl || "";
     let thumbnailUrl = rawThumbnailUrl || "";
+    let documentInfo = rawDocumentInfo || null;
     let mediaGridFsId = null;
 
     // Handle uploaded file (image file or clipboard paste)
@@ -970,19 +1078,25 @@ const createCapture = async (req, res) => {
             embedUrl = meta.embedUrl;
           }
           if (!embedId && meta.embedId) embedId = meta.embedId;
+          if (!documentInfo && meta.documentInfo) documentInfo = meta.documentInfo;
+          if (meta.documentInfo && (!mediaType || mediaType === "video" || mediaType === "post")) {
+            mediaType = "document";
+          }
         }
       } catch (autoErr) {
         console.warn("createCapture auto-scrape error:", autoErr.message);
       }
     }
 
-    // Auto-promote mediaType to "video" if video stream, video URL, or video platform detected
+    // Auto-promote mediaType to "video" ONLY if actual video file or YouTube
     const isVideoFile =
       /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(mediaUrl) ||
       /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(sourceUrl) ||
       (typeof mediaUrl === "string" && (mediaUrl.includes("video.twimg.com") || mediaUrl.includes(".m3u8") || mediaUrl.includes("/api/captures/stream")));
 
-    if (isVideoFile || ["youtube"].includes(platform) || rawMediaType === "video" || mediaType === "video") {
+    if (documentInfo || mediaType === "document" || mediaType === "pdf") {
+      mediaType = "document";
+    } else if (isVideoFile || ["youtube"].includes(platform) || (rawMediaType === "video" && !["linkedin", "twitter"].includes(platform))) {
       mediaType = "video";
       if (platform === "web_image") {
         platform = "web";
@@ -1043,7 +1157,7 @@ const createCapture = async (req, res) => {
       } else if (platform === "facebook") {
         computedTitle = "Facebook Video";
       } else if (platform === "linkedin") {
-        computedTitle = "LinkedIn Post";
+        computedTitle = documentInfo?.title || "LinkedIn Post";
       } else if (sourceUrl) {
         try {
           const u = new URL(sourceUrl);
@@ -1069,6 +1183,7 @@ const createCapture = async (req, res) => {
       mediaUrl,
       mediaGridFsId,
       thumbnailUrl: thumbnailUrl || "",
+      documentInfo: documentInfo || null,
       notes: notes?.trim() || "",
       tags: parsedTags,
       priority: priority || "medium",

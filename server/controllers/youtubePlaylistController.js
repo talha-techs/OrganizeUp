@@ -354,10 +354,15 @@ const updatePlaylist = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const { title, description, thumbnail, videos } = req.body;
+    const { title, description, thumbnail, videos, remindAt, reminderNote, reminderFired } = req.body;
     if (title) playlist.title = title;
     if (description !== undefined) playlist.description = description;
     if (thumbnail !== undefined) playlist.thumbnail = thumbnail;
+    if (remindAt !== undefined) {
+      playlist.remindAt = remindAt ? new Date(remindAt) : null;
+      playlist.reminderFired = reminderFired !== undefined ? reminderFired : false;
+    }
+    if (reminderNote !== undefined) playlist.reminderNote = reminderNote;
     if (videos) {
       playlist.videos = videos.map((v, i) => ({
         title: v.title || "",
@@ -366,6 +371,9 @@ const updatePlaylist = async (req, res) => {
         duration: v.duration || "",
         position: i,
         notes: v.notes || "",
+        remindAt: v.remindAt ? new Date(v.remindAt) : null,
+        reminderFired: v.reminderFired || false,
+        reminderNote: v.reminderNote || "",
       }));
       playlist.videoCount = videos.length;
     }
@@ -380,6 +388,40 @@ const updatePlaylist = async (req, res) => {
     res.json({ playlist: populated });
   } catch (error) {
     console.error("Update playlist error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Set or remove reminder for a playlist or single video
+// @route   PUT /api/youtube-playlists/:id/reminder
+const setPlaylistReminder = async (req, res) => {
+  try {
+    const playlist = await YoutubePlaylist.findById(req.params.id);
+    if (!playlist) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    const isOwner = playlist.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const { remindAt, reminderNote } = req.body;
+    playlist.remindAt = remindAt ? new Date(remindAt) : null;
+    playlist.reminderFired = false;
+    if (reminderNote !== undefined) playlist.reminderNote = reminderNote;
+
+    await playlist.save();
+
+    const populated = await YoutubePlaylist.findById(playlist._id).populate(
+      "addedBy",
+      "name avatar",
+    );
+
+    res.json({ playlist: populated });
+  } catch (error) {
+    console.error("Set playlist reminder error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -822,4 +864,5 @@ module.exports = {
   refreshPlaylist,
   updatePlaylistVideoProgress,
   saveFromExplore,
+  setPlaylistReminder,
 };

@@ -30,6 +30,12 @@ import {
   IoDocumentTextOutline,
   IoAddOutline,
   IoPlayCircleOutline,
+  IoChevronBack,
+  IoChevronForward,
+  IoOpenOutline,
+  IoExpandOutline,
+  IoContractOutline,
+  IoSaveOutline,
 } from 'react-icons/io5';
 import {
   fetchCaptures,
@@ -41,6 +47,23 @@ import {
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
 import { getInstagramEmbedUrl, getFacebookEmbedUrl } from '../../utils/linkMediaUtils';
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleClientReminder,
+  cancelClientReminder,
+  testOSNotification,
+} from '../../utils/notificationService';
+
+const toLocalISOString = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 
 const isVideoUrl = (url) => {
   if (typeof url !== 'string' || /(?:pmvhaven\.com)/i.test(url)) return false;
@@ -80,18 +103,17 @@ const getVideoSrc = (url) => {
   return url;
 };
 
-// Robust helper to extract/build a playable YouTube iframe embed URL
+// Robust helper to extract/build a playable YouTube iframe embed URL (ONLY genuine YouTube links)
 const getYouTubeEmbedUrl = (capture) => {
   if (!capture) return null;
+  const embedUrl = capture.embedUrl || '';
   if (
-    capture.embedUrl &&
-    (capture.embedUrl.includes('/embed/') ||
-      capture.embedUrl.includes('youtube.com/embed') ||
-      capture.embedUrl.includes('youtube-nocookie.com/embed'))
+    embedUrl.includes('youtube.com/embed') ||
+    embedUrl.includes('youtube-nocookie.com/embed')
   ) {
-    return capture.embedUrl;
+    return embedUrl;
   }
-  const rawUrl = capture.embedUrl || capture.sourceUrl || capture.mediaUrl;
+  const rawUrl = capture.sourceUrl || capture.url || capture.mediaUrl || embedUrl;
   if (rawUrl) {
     const match = rawUrl.match(
       /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/))([a-zA-Z0-9_-]{11})/,
@@ -100,7 +122,7 @@ const getYouTubeEmbedUrl = (capture) => {
       return `https://www.youtube.com/embed/${match[1]}`;
     }
   }
-  if (capture.embedId && /^[a-zA-Z0-9_-]{11}$/.test(capture.embedId)) {
+  if (capture.platform === 'youtube' && capture.embedId && /^[a-zA-Z0-9_-]{11}$/.test(capture.embedId)) {
     return `https://www.youtube.com/embed/${capture.embedId}`;
   }
   return null;
@@ -124,8 +146,81 @@ const CapturesPage = () => {
   const [newRemindDate, setNewRemindDate] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [expandedEmbeds, setExpandedEmbeds] = useState({});
+  const [docPageIndexes, setDocPageIndexes] = useState({});
   const [deleteCaptureItem, setDeleteCaptureItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [maximizedCapture, setMaximizedCapture] = useState(null);
+  const [maximizedNoteDraft, setMaximizedNoteDraft] = useState('');
+  const [isSavingMaximizedNote, setIsSavingMaximizedNote] = useState(false);
+  const [notificationPerm, setNotificationPerm] = useState(() => getNotificationPermission());
+
+  const handleRequestOSPermission = async () => {
+    const res = await requestNotificationPermission();
+    setNotificationPerm(res);
+    if (res === 'granted') {
+      toast.success('OS notifications enabled! System alerts are active.', { icon: '🔔' });
+    } else if (res === 'denied') {
+      toast.error('Notification permission was blocked in browser settings.');
+    }
+  };
+
+  const handleTestOSAlert = async () => {
+    const res = await testOSNotification();
+    if (res.success) {
+      toast.success('Test alert pushed to your operating system!');
+    } else if (res.reason === 'denied') {
+      toast.error('Browser blocked notification. Please allow notifications.');
+    } else {
+      toast.error('Failed to deliver test notification.');
+    }
+    setNotificationPerm(getNotificationPermission());
+  };
+
+  const setReminderPresetTime = (preset) => {
+    const now = new Date();
+    if (preset === '1h') {
+      setNewRemindDate(toLocalISOString(new Date(now.getTime() + 60 * 60 * 1000)));
+    } else if (preset === 'tonight') {
+      const d = new Date();
+      d.setHours(20, 0, 0, 0);
+      if (d <= now) d.setDate(d.getDate() + 1);
+      setNewRemindDate(toLocalISOString(d));
+    } else if (preset === 'tomorrow') {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+      setNewRemindDate(toLocalISOString(d));
+    } else if (preset === '2d') {
+      const d = new Date();
+      d.setDate(d.getDate() + 2);
+      d.setHours(9, 0, 0, 0);
+      setNewRemindDate(toLocalISOString(d));
+    }
+  };
+
+  const handleOpenMaximize = (capture) => {
+    setMaximizedCapture(capture);
+    setMaximizedNoteDraft(capture.notes || '');
+  };
+
+  const handleSaveMaximizedNote = async () => {
+    if (!maximizedCapture) return;
+    setIsSavingMaximizedNote(true);
+    try {
+      await dispatch(
+        updateCapture({
+          id: maximizedCapture._id,
+          notes: maximizedNoteDraft,
+        }),
+      ).unwrap();
+      toast.success('Note saved in Vault');
+      setMaximizedCapture((prev) => (prev ? { ...prev, notes: maximizedNoteDraft } : null));
+    } catch (err) {
+      toast.error('Failed to save note');
+    } finally {
+      setIsSavingMaximizedNote(false);
+    }
+  };
 
   const toggleEmbed = (id) => {
     setExpandedEmbeds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -203,14 +298,26 @@ const CapturesPage = () => {
   const handleSaveReminder = async () => {
     if (!reminderModalItem) return;
     try {
-      await dispatch(
+      const formattedDate = newRemindDate ? new Date(newRemindDate).toISOString() : null;
+      const res = await dispatch(
         updateCapture({
           id: reminderModalItem._id,
-          data: { remindAt: newRemindDate || null },
+          data: { remindAt: formattedDate },
         }),
       ).unwrap();
+
+      if (newRemindDate) {
+        if (isNotificationSupported() && getNotificationPermission() === 'default') {
+          await requestNotificationPermission();
+          setNotificationPerm(getNotificationPermission());
+        }
+        scheduleClientReminder(res || { ...reminderModalItem, remindAt: formattedDate });
+        toast.success('Reminder scheduled! You will receive an OS alert.', { icon: '⏰' });
+      } else {
+        cancelClientReminder(reminderModalItem._id);
+        toast.success('Reminder removed');
+      }
       setReminderModalItem(null);
-      toast.success(newRemindDate ? 'Reminder updated!' : 'Reminder removed');
     } catch (err) {
       toast.error('Failed to update reminder');
     }
@@ -467,7 +574,7 @@ const CapturesPage = () => {
             const isCompleted = capture.status === 'completed';
             const hasReminder = Boolean(capture.remindAt);
             const isReminderDue =
-              hasReminder && new Date(capture.remindAt) <= new Date() && !capture.reminderFired;
+              hasReminder && new Date(capture.remindAt) <= new Date() && !isCompleted;
 
             return (
               <motion.div
@@ -633,10 +740,10 @@ const CapturesPage = () => {
                 )}
 
                 {/* 3. YouTube Embed Video (Playable in-app) */}
-                {(capture.platform === 'youtube' || getYouTubeEmbedUrl(capture)) && (
+                {(capture.platform === 'youtube' || Boolean(getYouTubeEmbedUrl(capture))) && (
                   <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle">
                     <iframe
-                      src={getYouTubeEmbedUrl(capture) || capture.embedUrl}
+                      src={getYouTubeEmbedUrl(capture)}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
@@ -701,138 +808,235 @@ const CapturesPage = () => {
                   </div>
                 )}
 
-                {/* 6. LinkedIn Interactive Embed or Image Card */}
+                {/* 6. LinkedIn Interactive Embed, Document / PDF Viewer, or Image Card */}
                 {capture.platform === 'linkedin' && (
-                  <>
-                    {/* Media Display: Interactive Embed if expanded, else Direct Video if video stream, else High-Res Visual Banner */}
-                    {expandedEmbeds[capture._id] ? (
-                      <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
-                        <iframe
-                          src={capture.embedUrl}
-                          className="w-full h-full border-0"
-                          allowFullScreen={true}
-                          title={capture.title || 'LinkedIn Post'}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
-                      <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
-                        <video
-                          src={getVideoSrc(capture.mediaUrl)}
-                          poster={capture.thumbnailUrl}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            const apiBase = import.meta.env.VITE_API_URL || '';
-                            const currentSrc = e.currentTarget.src || '';
-                            if (!currentSrc.includes('/api/captures/stream') && capture.mediaUrl) {
-                              e.currentTarget.src = `${apiBase}/api/captures/stream?url=${encodeURIComponent(capture.mediaUrl)}`;
-                              e.currentTarget.load();
-                            }
-                          }}
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
-                      <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
-                        <iframe
-                          src={capture.embedUrl}
-                          className="w-full h-full border-0"
-                          allowFullScreen={true}
-                          title={capture.title || 'LinkedIn Post'}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
-                      <div
-                        onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
-                        className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
-                      >
-                        <img
-                          src={capture.mediaUrl || capture.thumbnailUrl}
-                          alt={capture.title || 'LinkedIn Post'}
-                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.parentElement.style.display = 'none';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
-                          <span>Click to Enlarge</span>
-                        </div>
-                      </div>
-                    ) : null}
+                  (() => {
+                    const isDoc =
+                      Boolean(capture.documentInfo) ||
+                      capture.mediaType === 'document' ||
+                      capture.mediaType === 'pdf';
+                    const coverPages = capture.documentInfo?.coverPages || [];
+                    const currentPageIdx = docPageIndexes[capture._id] || 0;
+                    const activeCover = coverPages[currentPageIdx] || capture.thumbnailUrl || capture.mediaUrl;
 
-                    {/* Author & Post Excerpt Header */}
-                    <div className="p-4 bg-sky-950/20 border-b border-subtle">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <FaLinkedin size={18} className="text-sky-400 flex-shrink-0" />
-                          <span className="text-xs font-bold text-sky-200 truncate">
-                            {capture.authorName || 'LinkedIn Post'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {capture.embedUrl && (
-                            <button
-                              onClick={() => toggleEmbed(capture._id)}
-                              className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/40 hover:bg-sky-800/60 text-sky-300 transition-colors cursor-pointer border border-sky-700/40"
-                              title={expandedEmbeds[capture._id] ? 'Show Video/Banner' : 'View Live Interactive Post'}
+                    return (
+                      <>
+                        {/* Media Display: Interactive Embed if expanded */}
+                        {expandedEmbeds[capture._id] ? (
+                          <div className="w-full bg-surface-raised relative h-[460px] overflow-hidden border-b border-subtle">
+                            <iframe
+                              src={capture.embedUrl}
+                              className="w-full h-full border-0"
+                              allowFullScreen={true}
+                              title={capture.title || 'LinkedIn Post'}
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : isDoc && activeCover ? (
+                          /* Document / PDF Cover Carousel & Multi-page Preview */
+                          <div className="w-full bg-neutral-950 relative overflow-hidden border-b border-subtle flex flex-col">
+                            <div
+                              onClick={() => setLightboxImage(activeCover)}
+                              className="relative w-full aspect-[4/3] max-h-72 bg-neutral-900 overflow-hidden cursor-zoom-in group/img flex items-center justify-center select-none"
                             >
-                              {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
-                            </button>
+                              <img
+                                src={activeCover}
+                                alt={capture.documentInfo?.title || capture.title || 'LinkedIn Document'}
+                                className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-300"
+                                onError={(e) => {
+                                  e.currentTarget.parentElement.style.display = 'none';
+                                }}
+                              />
+
+                              {/* Floating Document Badge & Actions */}
+                              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold backdrop-blur-md bg-sky-950/85 border border-sky-400/40 text-sky-200 shadow-md">
+                                  <IoDocumentTextOutline size={13} className="text-sky-400" />
+                                  <span>
+                                    {capture.documentInfo?.totalPages
+                                      ? `${capture.documentInfo.totalPages} Pages ${capture.documentInfo.type === 'presentation' ? 'Presentation' : 'PDF'}`
+                                      : 'PDF Document'}
+                                  </span>
+                                </div>
+
+                                <div className="pointer-events-auto flex items-center gap-1.5">
+                                  {capture.documentInfo?.fileUrl && (
+                                    <a
+                                      href={capture.documentInfo.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/85 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 backdrop-blur-md transition-all cursor-pointer shadow"
+                                      title="Open original PDF / Google Drive file"
+                                    >
+                                      <span>Open File</span>
+                                      <IoOpenOutline size={12} />
+                                    </a>
+                                  )}
+                                  {capture.embedUrl && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleEmbed(capture._id);
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/70 hover:bg-black border border-white/20 text-gray-200 backdrop-blur-md transition-all cursor-pointer shadow"
+                                      title="View live interactive LinkedIn post"
+                                    >
+                                      <span>Interactive</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Carousel Controls if multiple cover pages */}
+                              {coverPages.length > 1 && (
+                                <>
+                                  {currentPageIdx > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDocPageIndexes((prev) => ({
+                                          ...prev,
+                                          [capture._id]: Math.max(0, currentPageIdx - 1),
+                                        }));
+                                      }}
+                                      className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/75 hover:bg-black text-white border border-white/20 transition-all cursor-pointer z-10 shadow-lg"
+                                      title="Previous page"
+                                    >
+                                      <IoChevronBack size={16} />
+                                    </button>
+                                  )}
+                                  {currentPageIdx < coverPages.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDocPageIndexes((prev) => ({
+                                          ...prev,
+                                          [capture._id]: Math.min(coverPages.length - 1, currentPageIdx + 1),
+                                        }));
+                                      }}
+                                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/75 hover:bg-black text-white border border-white/20 transition-all cursor-pointer z-10 shadow-lg"
+                                      title="Next page"
+                                    >
+                                      <IoChevronForward size={16} />
+                                    </button>
+                                  )}
+                                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-sm border border-white/20 text-[10px] font-mono font-medium text-gray-200 z-10">
+                                    Page {currentPageIdx + 1} of {coverPages.length}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ) : isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
+                          <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
+                            <video
+                              src={getVideoSrc(capture.mediaUrl)}
+                              poster={capture.thumbnailUrl}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
+                          <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
+                            <iframe
+                              src={capture.embedUrl}
+                              className="w-full h-full border-0"
+                              allowFullScreen={true}
+                              title={capture.title || 'LinkedIn Post'}
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                          <div
+                            onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                            className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                          >
+                            <img
+                              src={capture.mediaUrl || capture.thumbnailUrl}
+                              alt={capture.title || 'LinkedIn Post'}
+                              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                              onError={(e) => {
+                                e.currentTarget.parentElement.style.display = 'none';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
+                              <span>Click to Enlarge</span>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {/* Author & Post Excerpt Header */}
+                        <div className="p-4 bg-sky-950/20 border-b border-subtle">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FaLinkedin size={18} className="text-sky-400 flex-shrink-0" />
+                              <span className="text-xs font-bold text-sky-200 truncate">
+                                {capture.authorName || 'LinkedIn Post'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                onClick={() => handleOpenMaximize(capture)}
+                                className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/60 hover:bg-sky-800 text-sky-200 transition-colors cursor-pointer border border-sky-700/50 flex items-center gap-1"
+                                title="Maximize to Wide Screen & Notes"
+                              >
+                                <IoExpandOutline size={11} />
+                                <span>Maximize</span>
+                              </button>
+                              {capture.embedUrl && !isDoc && (
+                                <button
+                                  onClick={() => toggleEmbed(capture._id)}
+                                  className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/40 hover:bg-sky-800/60 text-sky-300 transition-colors cursor-pointer border border-sky-700/40"
+                                  title={expandedEmbeds[capture._id] ? 'Show Media' : 'View Live Interactive Post'}
+                                >
+                                  {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
+                                </button>
+                              )}
+                              {capture.rawContent && (
+                                <button
+                                  onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                                  className="text-[10px] text-sky-400 hover:text-sky-200 transition-colors cursor-pointer flex items-center gap-1"
+                                  title="Copy post content"
+                                >
+                                  {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
+                                  <span>Copy</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {capture.documentInfo?.title && (
+                            <p className="text-xs font-bold text-sky-300 line-clamp-1 mb-1 flex items-center gap-1.5">
+                              <IoDocumentTextOutline size={13} className="text-sky-400 flex-shrink-0" />
+                              <span>{capture.documentInfo.title}</span>
+                            </p>
                           )}
                           {capture.rawContent && (
-                            <button
-                              onClick={() => handleCopyText(capture.rawContent, capture._id)}
-                              className="text-[10px] text-sky-400 hover:text-sky-200 transition-colors cursor-pointer flex items-center gap-1"
-                              title="Copy post content"
-                            >
-                              {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
-                              <span>Copy</span>
-                            </button>
+                            <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
+                              {capture.rawContent}
+                            </p>
                           )}
                         </div>
-                      </div>
-                      {capture.rawContent && (
-                        <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
-                          {capture.rawContent}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                      </>
+                    );
+                  })()
                 )}
 
-                {/* 7. Twitter / X Interactive Embed, Direct Video Player, or Image Card */}
+                {/* 7. Twitter / X Interactive Fast Embed or High-Res Image (CloudStream removed per user request) */}
                 {capture.platform === 'twitter' && (
                   <>
-                    {/* Media Display: Direct Video Player, Interactive Embed, or High-Res Image */}
-                    {expandedEmbeds[capture._id] ? (
-                      <div className="w-full bg-[#000000] relative h-[480px] overflow-hidden border-b border-subtle flex items-center justify-center">
+                    {/* Media Display: Fast Interactive Embed (clean single view without congested 3 panels) */}
+                    {capture.embedUrl ? (
+                      <div className="w-full bg-[#000000] relative min-h-[380px] max-h-[520px] overflow-y-auto border-b border-subtle flex items-center justify-center">
                         <iframe
                           src={capture.embedUrl}
-                          className="w-full h-full border-0"
-                          allowFullScreen={true}
-                          title={capture.title || 'X Post'}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (capture.mediaType === 'video' || isDirectVideoFile(capture.mediaUrl)) && capture.mediaUrl ? (
-                      <UniversalVideoPlayer
-                        src={capture.mediaUrl}
-                        poster={capture.thumbnailUrl}
-                        title={capture.title || 'X Post Video'}
-                        embedUrl={capture.embedUrl}
-                        sourceUrl={capture.sourceUrl || capture.url}
-                        platform="twitter"
-                        className="border-b border-subtle"
-                      />
-                    ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
-                      <div className="w-full bg-[#000000] relative h-[480px] overflow-hidden border-b border-subtle flex items-center justify-center">
-                        <iframe
-                          src={capture.embedUrl}
-                          className="w-full h-full border-0"
+                          className="w-full h-full min-h-[380px] border-0"
                           allowFullScreen={true}
                           title={capture.title || 'X Post'}
                           loading="lazy"
@@ -857,42 +1061,34 @@ const CapturesPage = () => {
                       </div>
                     ) : null}
 
-                    {/* Author & Post Excerpt Header */}
-                    <div className="p-4 bg-zinc-950/40 border-b border-subtle">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FaXTwitter size={16} className="text-white flex-shrink-0" />
-                          <span className="text-xs font-bold text-white truncate">
-                            {capture.authorName || 'Post on X'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {capture.embedUrl && (
-                            <button
-                              onClick={() => toggleEmbed(capture._id)}
-                              className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors cursor-pointer border border-zinc-700/50"
-                              title={expandedEmbeds[capture._id] ? 'Show Video/Banner' : 'View Live Interactive Post'}
-                            >
-                              {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
-                            </button>
-                          )}
-                          {capture.rawContent && (
-                            <button
-                              onClick={() => handleCopyText(capture.rawContent, capture._id)}
-                              className="text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
-                              title="Copy tweet text"
-                            >
-                              {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
-                              <span>Copy</span>
-                            </button>
-                          )}
-                        </div>
+                    {/* Compact Author & Actions Bar (without duplicate repeated text) */}
+                    <div className="px-4 py-2 bg-zinc-950/60 border-b border-subtle flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FaXTwitter size={14} className="text-white flex-shrink-0" />
+                        <span className="text-xs font-bold text-white truncate">
+                          {capture.authorName || 'Post on X'}
+                        </span>
                       </div>
-                      {capture.rawContent && (
-                        <p className="text-xs text-secondary line-clamp-4 leading-relaxed whitespace-pre-wrap font-sans">
-                          {capture.rawContent}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => handleOpenMaximize(capture)}
+                          className="text-[10px] text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/50"
+                          title="Maximize to Wide Screen & Notes"
+                        >
+                          <IoExpandOutline size={12} />
+                          <span>Maximize</span>
+                        </button>
+                        {capture.rawContent && (
+                          <button
+                            onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                            className="text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700/40"
+                            title="Copy tweet text"
+                          >
+                            {copiedId === capture._id ? <FaCheck size={11} className="text-emerald-400" /> : <FaRegCopy size={11} />}
+                            <span>Copy Text</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
@@ -909,11 +1105,16 @@ const CapturesPage = () => {
                           {meta.icon}
                           <span>{meta.label}</span>
                         </span>
-                        {(capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && (
+                        {capture.platform === 'linkedin' && (capture.documentInfo || capture.mediaType === 'document' || capture.mediaType === 'pdf') ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                            <IoDocumentTextOutline size={11} />
+                            <span>{capture.documentInfo?.totalPages ? `${capture.documentInfo.totalPages}P Document` : 'PDF / Doc'}</span>
+                          </span>
+                        ) : (capture.mediaType === 'video' || isVideoUrl(capture.mediaUrl)) && !['twitter', 'linkedin'].includes(capture.platform) ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                             Video
                           </span>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -929,6 +1130,15 @@ const CapturesPage = () => {
                         >
                           {capture.priority}
                         </span>
+
+                        {/* Maximize to Wide View Button */}
+                        <button
+                          onClick={() => handleOpenMaximize(capture)}
+                          title="Maximize to Wide Screen & Notes"
+                          className="p-1 rounded-lg text-muted hover:text-accent hover:bg-surface-raised transition-all cursor-pointer flex items-center justify-center"
+                        >
+                          <IoExpandOutline size={18} />
+                        </button>
 
                         {/* Status Checkbox Button */}
                         <button
@@ -1042,9 +1252,10 @@ const CapturesPage = () => {
                         setReminderModalItem(capture);
                         setNewRemindDate(
                           capture.remindAt
-                            ? new Date(capture.remindAt).toISOString().slice(0, 16)
-                            : '',
+                            ? toLocalISOString(capture.remindAt)
+                            : toLocalISOString(new Date(Date.now() + 60 * 60 * 1000)),
                         );
+                        setNotificationPerm(getNotificationPermission());
                       }}
                       className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
                         hasReminder
@@ -1057,7 +1268,8 @@ const CapturesPage = () => {
                       <IoTimeOutline size={14} />
                       <span>
                         {hasReminder
-                          ? new Date(capture.remindAt).toLocaleDateString([], {
+                          ? (isReminderDue ? 'Due: ' : '') +
+                            new Date(capture.remindAt).toLocaleDateString([], {
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',
@@ -1067,14 +1279,25 @@ const CapturesPage = () => {
                       </span>
                     </button>
 
-                    {/* Delete action */}
-                    <button
-                      onClick={() => setDeleteCaptureItem(capture)}
-                      className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Remove from Vault"
-                    >
-                      <FaTrashAlt size={13} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {/* Maximize action */}
+                      <button
+                        onClick={() => handleOpenMaximize(capture)}
+                        className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-surface-raised transition-colors cursor-pointer"
+                        title="Maximize to Wide Screen & Notes"
+                      >
+                        <IoExpandOutline size={15} />
+                      </button>
+
+                      {/* Delete action */}
+                      <button
+                        onClick={() => setDeleteCaptureItem(capture)}
+                        className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                        title="Remove from Vault"
+                      >
+                        <FaTrashAlt size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -1082,6 +1305,392 @@ const CapturesPage = () => {
           })}
         </div>
       )}
+
+      {/* Fullscreen Wide Screen / Maximize Modal with Side-by-Side Notes Workspace */}
+      <AnimatePresence>
+        {maximizedCapture && (() => {
+          const cap = maximizedCapture;
+          const meta = getPlatformMeta(cap.platform);
+          const isCompleted = cap.status === 'completed';
+          const isDoc = Boolean(cap.documentInfo) || cap.mediaType === 'document' || cap.mediaType === 'pdf';
+          const coverPages = cap.documentInfo?.coverPages || [];
+          const maxDocPageIdx = docPageIndexes[cap._id] || 0;
+          const activeCover = coverPages[maxDocPageIdx] || cap.thumbnailUrl || cap.mediaUrl;
+          const docFileUrl = cap.documentInfo?.fileUrl || (cap.sourceUrl && (cap.sourceUrl.includes('drive.google.com') || cap.sourceUrl.toLowerCase().endsWith('.pdf')) ? cap.sourceUrl : null);
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-xl">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 15 }}
+                transition={{ duration: 0.2 }}
+                className="relative w-full max-w-7xl h-[92vh] max-h-[920px] rounded-3xl bg-surface border border-subtle shadow-2xl flex flex-col overflow-hidden"
+              >
+                {/* Modal Header */}
+                <div className="px-5 py-3.5 bg-surface-raised/80 border-b border-subtle flex items-center justify-between gap-4 flex-shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider border ${meta.bg}`}>
+                      {meta.icon}
+                      <span>{meta.label}</span>
+                    </span>
+                    {isDoc && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                        <IoDocumentTextOutline size={11} />
+                        <span>{cap.documentInfo?.totalPages ? `${cap.documentInfo.totalPages}P Document` : 'Document / PDF'}</span>
+                      </span>
+                    )}
+                    <h2 className="text-sm sm:text-base font-bold text-primary truncate max-w-lg">
+                      {cap.title || 'Saved Resource'}
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Status Toggle */}
+                    <button
+                      onClick={() => {
+                        handleToggleComplete(cap._id);
+                        setMaximizedCapture((prev) => prev ? { ...prev, status: prev.status === 'completed' ? 'inbox' : 'completed' } : null);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                        isCompleted
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                          : 'bg-surface text-secondary border-subtle hover:text-emerald-400'
+                      }`}
+                      title={isCompleted ? 'Mark as Inbox' : 'Mark as Done'}
+                    >
+                      {isCompleted ? <IoCheckmarkCircle size={16} /> : <IoCheckmarkCircleOutline size={16} />}
+                      <span className="hidden sm:inline">{isCompleted ? 'Completed' : 'Mark as Done'}</span>
+                    </button>
+
+                    {/* Set Reminder */}
+                    <button
+                      onClick={() => {
+                        setReminderModalItem(cap);
+                        setNewRemindDate(cap.remindAt ? new Date(cap.remindAt).toISOString().slice(0, 16) : '');
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-surface border border-subtle text-secondary hover:text-primary transition-all cursor-pointer"
+                      title="Schedule Reminder"
+                    >
+                      <IoTimeOutline size={16} />
+                      <span className="hidden sm:inline">Reminder</span>
+                    </button>
+
+                    {/* Open External URL */}
+                    {cap.sourceUrl && (
+                      <a
+                        href={cap.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-xl text-muted hover:text-primary hover:bg-surface border border-subtle transition-colors"
+                        title="Open source in new tab"
+                      >
+                        <IoOpenOutline size={16} />
+                      </a>
+                    )}
+
+                    {/* Close Modal */}
+                    <button
+                      onClick={() => setMaximizedCapture(null)}
+                      className="p-2 rounded-xl text-muted hover:text-primary hover:bg-surface border border-subtle transition-colors cursor-pointer"
+                      title="Close"
+                    >
+                      <IoClose size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Body: Left Media Viewer (65%) + Right Notes & Meta Sidebar (35%) */}
+                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+                  {/* Left Viewer Section */}
+                  <div className="flex-1 lg:w-3/5 xl:w-2/3 bg-black flex flex-col justify-center items-center relative overflow-hidden border-b lg:border-b-0 lg:border-r border-subtle p-2 sm:p-4">
+                    {/* 1. YouTube */}
+                    {(cap.platform === 'youtube' || Boolean(getYouTubeEmbedUrl(cap))) ? (
+                      <div className="w-full h-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center bg-black">
+                        <iframe
+                          src={getYouTubeEmbedUrl(cap)}
+                          className="w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          title={cap.title || 'YouTube Video'}
+                        />
+                      </div>
+                    ) : cap.platform === 'twitter' ? (
+                      /* 2. Twitter / X Wide Embed */
+                      <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2 bg-black">
+                        {cap.embedUrl ? (
+                          <iframe
+                            src={cap.embedUrl}
+                            className="w-full max-w-xl h-full min-h-[520px] border-0 rounded-2xl shadow-2xl"
+                            allowFullScreen={true}
+                            title={cap.title || 'X Post'}
+                          />
+                        ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                          <img
+                            src={cap.mediaUrl || cap.thumbnailUrl}
+                            alt={cap.title || 'X Post'}
+                            className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                          />
+                        ) : (
+                          <div className="text-center p-8 text-muted">
+                            <p>Post on X</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : cap.platform === 'linkedin' ? (
+                      /* 3. LinkedIn Document Carousel or Embed */
+                      isDoc && activeCover ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center relative p-2 select-none">
+                          <div className="relative max-h-[72vh] max-w-full flex items-center justify-center group/docimg">
+                            <img
+                              src={activeCover}
+                              alt={cap.documentInfo?.title || cap.title || 'LinkedIn Document'}
+                              className="max-h-[72vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/10"
+                            />
+                            {/* Document actions & slide counter overlay */}
+                            <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10 pointer-events-none">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md bg-sky-950/85 border border-sky-400/40 text-sky-200 shadow-md">
+                                <IoDocumentTextOutline size={14} />
+                                <span>{cap.documentInfo?.totalPages ? `${cap.documentInfo.totalPages} Pages Document` : 'Presentation / PDF'}</span>
+                              </span>
+                              {docFileUrl && (
+                                <a
+                                  href={docFileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="pointer-events-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-400/40 text-emerald-200 backdrop-blur-md transition-all cursor-pointer shadow"
+                                >
+                                  <span>Open Original File</span>
+                                  <IoOpenOutline size={13} />
+                                </a>
+                              )}
+                            </div>
+
+                            {/* Carousel Next/Prev */}
+                            {coverPages.length > 1 && (
+                              <>
+                                {maxDocPageIdx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDocPageIndexes((prev) => ({ ...prev, [cap._id]: Math.max(0, maxDocPageIdx - 1) }))}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/80 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-xl z-20"
+                                    title="Previous slide"
+                                  >
+                                    <IoChevronBack size={20} />
+                                  </button>
+                                )}
+                                {maxDocPageIdx < coverPages.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDocPageIndexes((prev) => ({ ...prev, [cap._id]: Math.min(coverPages.length - 1, maxDocPageIdx + 1) }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/80 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-xl z-20"
+                                    title="Next slide"
+                                  >
+                                    <IoChevronForward size={20} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          {coverPages.length > 1 && (
+                            <div className="mt-3 px-3 py-1 rounded-full bg-black/80 backdrop-blur-sm border border-white/20 text-xs font-mono font-medium text-gray-200">
+                              Slide {maxDocPageIdx + 1} of {coverPages.length}
+                            </div>
+                          )}
+                        </div>
+                      ) : cap.embedUrl ? (
+                        <div className="w-full h-full max-w-2xl bg-surface-raised relative rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
+                          <iframe
+                            src={cap.embedUrl}
+                            className="w-full h-full border-0"
+                            allowFullScreen={true}
+                            title={cap.title || 'LinkedIn Post'}
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                        <img
+                          src={cap.mediaUrl || cap.thumbnailUrl}
+                          alt={cap.title || 'LinkedIn Post'}
+                          className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                        />
+                      ) : null
+                    ) : cap.platform === 'instagram' ? (
+                      /* 4. Instagram */
+                      <div className="w-full h-full flex items-center justify-center p-2 bg-black">
+                        {cap.embedUrl || getInstagramEmbedUrl(cap.sourceUrl || cap.url) ? (
+                          <iframe
+                            src={cap.embedUrl || getInstagramEmbedUrl(cap.sourceUrl || cap.url)}
+                            className="w-full max-w-[420px] h-full max-h-[80vh] border-0 rounded-2xl shadow-2xl"
+                            allowTransparency="true"
+                            allow="encrypted-media; clipboard-write;"
+                            scrolling="no"
+                            title={cap.title || 'Instagram Reel'}
+                          />
+                        ) : isVideoUrl(cap.mediaUrl) ? (
+                          <video
+                            src={getVideoSrc(cap.mediaUrl)}
+                            poster={cap.thumbnailUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            referrerPolicy="no-referrer"
+                            className="max-h-[80vh] max-w-full rounded-2xl shadow-2xl"
+                          />
+                        ) : null}
+                      </div>
+                    ) : cap.platform === 'facebook' ? (
+                      /* 5. Facebook */
+                      <div className="w-full h-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center bg-black">
+                        {cap.embedUrl || getFacebookEmbedUrl(cap.sourceUrl || cap.url) ? (
+                          <iframe
+                            src={cap.embedUrl || getFacebookEmbedUrl(cap.sourceUrl || cap.url)}
+                            className="w-full h-full border-0"
+                            scrolling="no"
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                            allowFullScreen={true}
+                            title={cap.title || 'Facebook Video'}
+                          />
+                        ) : isDirectVideoFile(cap.mediaUrl) ? (
+                          <UniversalVideoPlayer
+                            src={cap.mediaUrl}
+                            poster={cap.thumbnailUrl}
+                            title={cap.title || 'Facebook Video'}
+                            embedUrl={cap.embedUrl}
+                            sourceUrl={cap.sourceUrl || cap.url}
+                            platform="facebook"
+                            className="w-full h-full"
+                          />
+                        ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                          <img
+                            src={cap.mediaUrl || cap.thumbnailUrl}
+                            alt={cap.title}
+                            className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                          />
+                        ) : null}
+                      </div>
+                    ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                      /* 6. Default Image or Video */
+                      isDirectVideoFile(cap.mediaUrl) ? (
+                        <video
+                          src={getVideoSrc(cap.mediaUrl)}
+                          poster={cap.thumbnailUrl}
+                          controls
+                          playsInline
+                          className="max-h-[80vh] max-w-full rounded-2xl shadow-2xl"
+                        />
+                      ) : (
+                        <img
+                          src={cap.mediaUrl || cap.thumbnailUrl}
+                          alt={cap.title}
+                          className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                        />
+                      )
+                    ) : (
+                      <div className="text-center p-8 text-muted">
+                        <p className="text-sm">Resource content</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Notes & Details Sidebar */}
+                  <div className="w-full lg:w-2/5 xl:w-1/3 flex flex-col h-full bg-surface-raised/40 overflow-y-auto p-5 sm:p-6 space-y-6">
+                    {/* Meta & Excerpt */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs text-muted">
+                        <span className="font-semibold text-primary">{cap.authorName || meta.label}</span>
+                        <span>{new Date(cap.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-bold text-primary leading-snug">
+                        {cap.title || 'Saved Resource'}
+                      </h3>
+
+                      {cap.sourceUrl && (
+                        <a
+                          href={cap.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline font-medium break-all line-clamp-2"
+                        >
+                          <FaExternalLinkAlt size={11} />
+                          <span>{cap.sourceUrl}</span>
+                        </a>
+                      )}
+
+                      {/* Raw Content Excerpt if present */}
+                      {cap.rawContent && (
+                        <div className="p-3.5 rounded-2xl bg-surface border border-subtle space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-muted">
+                            <span className="font-semibold uppercase tracking-wider">Original Post Content</span>
+                            <button
+                              onClick={() => handleCopyText(cap.rawContent, `max-${cap._id}`)}
+                              className="text-accent hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                            >
+                              {copiedId === `max-${cap._id}` ? <FaCheck size={11} className="text-emerald-400" /> : <FaRegCopy size={11} />}
+                              <span>Copy</span>
+                            </button>
+                          </div>
+                          <p className="text-xs text-secondary leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap font-sans">
+                            {cap.rawContent}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dedicated Notes Workspace */}
+                    <div className="flex-1 flex flex-col space-y-3 pt-2 border-t border-subtle">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                          <IoDocumentTextOutline size={15} className="text-accent" />
+                          <span>Personal Notes & Reflections</span>
+                        </span>
+                        <span className="text-[11px] text-muted font-mono">
+                          {maximizedNoteDraft.length} chars
+                        </span>
+                      </div>
+
+                      <textarea
+                        rows={8}
+                        value={maximizedNoteDraft}
+                        onChange={(e) => setMaximizedNoteDraft(e.target.value)}
+                        placeholder="Capture key insights, quotes, action items, or study notes for this resource..."
+                        className="w-full flex-1 min-h-[160px] p-4 rounded-2xl bg-surface border border-subtle focus:border-accent text-xs text-primary leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-accent transition-all placeholder:text-muted/60"
+                      />
+
+                      <div className="flex items-center justify-between gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setMaximizedNoteDraft('')}
+                          className="text-xs text-muted hover:text-red-400 transition-colors cursor-pointer"
+                        >
+                          Clear Note
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSaveMaximizedNote}
+                          disabled={isSavingMaximizedNote}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent hover:bg-accent/90 active:scale-95 text-white text-xs font-bold shadow-md shadow-accent/20 transition-all cursor-pointer disabled:opacity-60"
+                        >
+                          {isSavingMaximizedNote ? (
+                            <span>Saving...</span>
+                          ) : (
+                            <>
+                              <IoSaveOutline size={15} />
+                              <span>Save Note</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Lightbox Modal for Full-Resolution Image Viewing */}
       <AnimatePresence>
@@ -1133,17 +1742,104 @@ const CapturesPage = () => {
                 </div>
                 <button
                   onClick={() => setReminderModalItem(null)}
-                  className="text-muted hover:text-primary p-1"
+                  className="text-muted hover:text-primary p-1 cursor-pointer"
                 >
                   <IoClose size={18} />
                 </button>
               </div>
 
-              <p className="text-xs text-muted">
-                Set a custom notification date and time to review "{reminderModalItem.title}".
-              </p>
+              <div className="p-2.5 rounded-xl bg-surface border border-subtle flex items-center gap-2.5">
+                {reminderModalItem.thumbnailUrl && (
+                  <img
+                    src={reminderModalItem.thumbnailUrl}
+                    alt=""
+                    className="w-9 h-9 object-cover rounded-lg border border-subtle flex-shrink-0"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-primary truncate">
+                    {reminderModalItem.title || 'Untitled Resource'}
+                  </p>
+                  <p className="text-[10px] text-muted uppercase font-mono tracking-wider">
+                    {reminderModalItem.platform}
+                  </p>
+                </div>
+              </div>
+
+              {/* OS System Notification Status / Permission Banner */}
+              <div className="rounded-xl border transition-all text-xs overflow-hidden">
+                {notificationPerm === 'granted' ? (
+                  <div className="flex items-center justify-between text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="text-[11px] font-semibold text-emerald-300">
+                        OS System Alerts Active
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTestOSAlert}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-colors cursor-pointer"
+                      title="Test push notification right on your OS"
+                    >
+                      Test Alert
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5">
+                    <span className="text-[11px] font-medium text-amber-300">
+                      OS notifications disabled
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRequestOSPermission}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-accent text-white shadow hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
+                    >
+                      🔔 Enable
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Presets */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-muted block">Quick Presets</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('1h')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    ⚡ +1 Hour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('tonight')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    🌙 Tonight (8 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('tomorrow')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    ☀️ Tomorrow (9 AM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPresetTime('2d')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    📅 In 2 Days
+                  </button>
+                </div>
+              </div>
 
               <div>
+                <label className="text-[11px] font-semibold text-muted block mb-1">
+                  Custom Date & Time
+                </label>
                 <input
                   type="datetime-local"
                   value={newRemindDate}
@@ -1156,24 +1852,24 @@ const CapturesPage = () => {
                 <button
                   type="button"
                   onClick={() => setNewRemindDate('')}
-                  className="text-xs text-red-400 hover:underline"
+                  className="text-xs text-red-400 hover:underline cursor-pointer"
                 >
-                  Remove
+                  Clear Reminder
                 </button>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setReminderModalItem(null)}
-                    className="px-3 py-1.5 rounded-xl text-xs text-secondary hover:bg-surface"
+                    className="px-3 py-1.5 rounded-xl text-xs text-secondary hover:bg-surface cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSaveReminder}
-                    className="px-4 py-1.5 rounded-xl bg-accent text-white text-xs font-bold shadow"
+                    className="px-4 py-1.5 rounded-xl bg-accent text-white text-xs font-bold shadow hover:opacity-90 transition-opacity cursor-pointer"
                   >
-                    Save
+                    Save Reminder
                   </button>
                 </div>
               </div>

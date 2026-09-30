@@ -163,6 +163,11 @@ const initSocket = (httpServer) => {
     const user = socket.user;
     socketSections.set(socket.id, new Set());
 
+    // Automatically join user's private notification & reminder room
+    if (user && user._id) {
+      socket.join(`user:${user._id.toString()}`);
+    }
+
     // ── Join Section Room ──
     socket.on("join_section", async ({ sectionId }) => {
       if (!sectionId) return;
@@ -308,9 +313,15 @@ const broadcastActivity = (sectionId, activity) => {
   });
 };
 
+const emitToUser = (userId, eventName, payload) => {
+  if (!io || !userId) return;
+  io.to(`user:${userId.toString()}`).emit(eventName, payload);
+};
+
 module.exports = {
   initSocket,
   getIO,
   broadcastToSection,
   broadcastActivity,
+  emitToUser,
 };
