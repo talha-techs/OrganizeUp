@@ -9,6 +9,7 @@ import {
   IoFlashOutline,
   IoPaperPlaneOutline,
   IoGlobeOutline,
+  IoNotificationsOutline,
   IoSearchOutline,
   IoCheckmarkOutline,
   IoCopyOutline,
@@ -35,6 +36,7 @@ const iconMap = {
   IoLogoYoutube: <IoLogoYoutube className="w-4 h-4" />,
   IoFolderOutline: <IoFolderOutline className="w-4 h-4" />,
   IoFlashOutline: <IoFlashOutline className="w-4 h-4" />,
+  IoNotificationsOutline: <IoNotificationsOutline className="w-4 h-4" />,
   IoPaperPlaneOutline: <IoPaperPlaneOutline className="w-4 h-4" />,
   IoGlobeOutline: <IoGlobeOutline className="w-4 h-4" />,
 };

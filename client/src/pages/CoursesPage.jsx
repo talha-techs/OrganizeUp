@@ -12,7 +12,6 @@ import ResourceCard from '../components/ui/ResourceCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import CourseForm from '../components/forms/CourseForm';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import toast from 'react-hot-toast';
@@ -29,7 +28,6 @@ const CoursesPage = () => {
   const [showDriveImport, setShowDriveImport] = useState(false);
   const [deleteCourseId, setDeleteCourseId] = useState(null);
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
-  const [commentResource, setCommentResource] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { courses, categories, isLoading } = useSelector((state) => state.courses);
@@ -47,10 +45,6 @@ const CoursesPage = () => {
 
   const handleDeleteCourse = (courseId) => {
     setDeleteCourseId(courseId);
-  };
-
-  const openComments = (course) => {
-    setCommentResource((prev) => (prev?._id === course._id ? null : course));
   };
 
   const confirmDeleteCourse = async () => {
@@ -178,9 +172,15 @@ const CoursesPage = () => {
               <div className="text-center py-20">
                 <IoSchoolOutline className="mx-auto text-muted mb-4" size={48} />
                 <h3 className="text-lg text-secondary mb-2">No courses yet</h3>
-                <p className="text-sm text-muted">
-                  {isAdmin ? 'Click "Add Course" to create a course' : 'Add your own courses or save courses from Explore'}
+                <p className="text-sm text-muted mb-4">
+                  {isAdmin ? 'Click "Add Course" to create a course or browse public courses in Explore' : 'Add your own courses or save courses from Explore'}
                 </p>
+                <button
+                  onClick={() => navigate('/explore?type=courses')}
+                  className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <IoSchoolOutline size={16} /> Explore Public Courses
+                </button>
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -200,8 +200,6 @@ const CoursesPage = () => {
                       onEdit={() => { setEditCourse(course); setShowForm(true); }}
                       onDelete={() => handleDeleteCourse(course._id)}
                       onClick={() => navigate(`/courses/${course._id}`)}
-                      onComment={() => openComments(course)}
-                      commentCount={course.commentCount}
                       onRequestPublish={async () => {
                         const result = await dispatch(requestPublish({ contentType: 'course', contentId: course._id }));
                         if (result.meta.requestStatus === 'fulfilled') {
@@ -315,8 +313,6 @@ const CoursesPage = () => {
                     onEdit={() => { setEditCourse(course); setShowForm(true); }}
                     onDelete={() => handleDeleteCourse(course._id)}
                     onClick={() => navigate(`/courses/${course._id}`)}
-                    onComment={() => openComments(course)}
-                    commentCount={course.commentCount}
                     onRequestPublish={async () => {
                       const result = await dispatch(requestPublish({ contentType: 'course', contentId: course._id }));
                       if (result.meta.requestStatus === 'fulfilled') {
@@ -472,13 +468,6 @@ const CoursesPage = () => {
         onConfirm={confirmDeleteCourse}
         onCancel={() => setDeleteCourseId(null)}
         isLoading={isDeletingCourse}
-      />
-
-      {/* Comment panel – rendered at page level to avoid re-rendering cards on keystroke */}
-      <ResourceCommentPanel
-        resource={commentResource}
-        contentType="course"
-        onClose={() => setCommentResource(null)}
       />
     </div>
   );

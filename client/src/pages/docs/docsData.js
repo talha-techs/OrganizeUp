@@ -16,13 +16,14 @@ export const DOCS_SECTIONS = [
 
 **OrganizeUp** is a high-performance personal knowledge engine designed for self-learners, developers, and knowledge workers. It solves the fragmentation problem where valuable learning materials get lost across Telegram channels, Discord servers, YouTube playlists, Google Drives, and browser bookmarks.
 
-### The 5 Core Pillars
+### The 6 Core Pillars
 
 1. **Universal Multi-Format Vault**: Ingest PDFs, audiobooks with waveforms, Google Drive videos, YouTube playlists, and developer tools in a unified, distraction-free interface.
 2. **Instant Capture Pipes**: Capture links and media without opening the app via the **Telegram Bot** (\`@OrganizeUpBot\`) and **Discord Context Menu App**.
 3. **Deep Study Workspaces**: High-focus study tools with memory — PDF reading position persistence, video watch progress with reflection prompts, and time-stamped video note taking.
 4. **Custom Knowledge Canvas**: Markdown wikis, interactive checklists, code snippets, and drag-and-drop Kanban boards.
-5. **Community Discovery**: Explore curated public resources, vote on top picks, and join nested discussions.
+5. **Intelligent Reminders & Notification Cockpit**: Universal study scheduling, native OS notifications, real-time alert chimes, and persistent uncompleted reminder tracking.
+6. **Community Discovery**: Explore curated public resources, vote on top picks, and join nested discussions.
         `,
         quickLinks: [
           { label: '5-Minute Quickstart', targetId: 'quickstart' },
@@ -51,10 +52,16 @@ Step 2: Add Your First Book or Learning Resource
    - **Audiobook**: Upload multi-track MP3 files or search the LibriVox catalog.
 4. Assign categories, tags, and set your reading goals.
 
-Step 3: Ingest Content with Quick Capture
-Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>Cmd</kbd> + <kbd>K</kbd> on macOS) anywhere inside the app to open the **Quick Capture Modal**. Paste any link, text note, or social media URL to automatically parse and store it in your Vault.
+Step 3: Ingest Content with Quick Capture & Smart Reminders
+Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>Cmd</kbd> + <kbd>K</kbd> on macOS) anywhere inside the app to open the **Quick Capture Modal**.
+1. Paste any link, text note, or social media URL to automatically parse and store it in your Vault.
+2. Toggle **Remind Me** to pick a quick preset (\`+1 Hour\`, \`Tonight 8 PM\`, \`Tomorrow 9 AM\`, \`In 2 Days\`) or set a custom study time.
+3. Add an optional reminder note (e.g., *"Review chapter 4 and write summary"*).
 
-Step 4: Explore Curated Community Knowledge
+Step 4: Track Due Items on the Dashboard
+Your Dashboard displays your study cockpit, upcoming and due reminders sorted from earliest to latest, reading streaks, and quick resume links.
+
+Step 5: Explore Curated Community Knowledge
 Visit the **Explore** page from the sidebar to browse verified playlists, audiobooks, and development tools shared by the community. Click **Add to Library** to clone any resource into your personal workspace with fresh, blank notes!
         `,
         callouts: [
@@ -123,6 +130,9 @@ Step 2: Video Books & Reflection Prompts
 2. Watch lectures in the embedded player. Progress is tracked incrementally.
 3. When the video reaches **100% completion**, OrganizeUp automatically triggers a **Reflective Note Modal**.
 4. Write your key takeaways, learnings, or summary. These are permanently attached to your user study profile!
+
+Step 3: Pure Personal Study Focus
+Your personal book cards are intentionally kept minimal and distraction-free — without comment noise or counter clutter — so you can focus entirely on learning. When you want to engage in community discussions, visit the public **Explore Hub**!
         `,
       },
       {
@@ -173,6 +183,7 @@ Step 2: Tracking Progress
 1. Click into any lesson to start watching.
 2. Check off lessons as you complete them.
 3. The course dashboard automatically recalculates your animated progress percentage, remaining hours, and estimated completion date.
+4. Cards in your personal Course library provide a clean, distraction-free view with direct access to your modules and edit controls.
         `,
       },
       {
@@ -191,9 +202,11 @@ Step 1: Adding a Developer Tool or Trick
 3. Choose the category (CLI, Web Development, DevOps, AI, Database).
 4. Enter the command or snippet along with a brief explanation and documentation link.
 
-Step 2: Copying Commands in 1-Click
+Step 2: Copying Commands & Quick Links
 1. Search your tools catalog using the search bar or tag filters.
 2. Click the **Copy Code** button on any snippet to copy it directly to your clipboard.
+3. Click **View Tool** for external reference documentation.
+4. Tool cards provide a clean layout focused entirely on rapid command retrieval.
         `,
       },
     ],
@@ -235,6 +248,12 @@ Step 3: Adaptive Video Resolution
 Step 4: Using the Cinema Player
 1. Click on any video episode to launch the **Cinema Player**.
 2. The player expands to maximize visual focus while keeping your interactive notes workspace alongside the video.
+
+Step 5: Scheduling Playlist & Video Reminders
+1. Never leave a series unfinished. Click the 3-dots menu on any playlist card and select **Set Reminder**, or click the **Reminder** button in the top right of the Cinema player header.
+2. Choose from 1-click presets: \`+1 Hour\`, \`Tonight (8 PM)\`, \`Tomorrow (9 AM)\`, \`In 2 Days\`, or choose a custom date & time.
+3. Add a focused study note (e.g. *"Watch episodes 4 to 6 on React Router"*).
+4. OrganizeUp displays an active reminder badge on the playlist card and fires native desktop alerts when your session begins!
         `,
         callouts: [
           {
@@ -469,6 +488,127 @@ Watch and study captured videos directly inside your Vault without getting pulle
     ],
   },
   {
+    id: 'reminders-notifications',
+    title: 'Smart Reminders & Notifications',
+    icon: 'IoNotificationsOutline',
+    description: 'Schedule study reminders, receive real-time audio-visual alerts, and manage tasks from the central notification drawer.',
+    items: [
+      {
+        id: 'vault-reminders',
+        title: 'Vault & Captures Reminders',
+        summary: 'Schedule study reminders for captured resources with quick presets, custom dates, and contextual notes.',
+        badge: 'Reminders',
+        readTime: '4 min read',
+        content: `
+### Frictionless Study Reminders
+Never let a saved article, tutorial, or resource slip through the cracks. OrganizeUp includes an intelligent reminder scheduler built directly into your knowledge pipeline.
+
+Step 1: Scheduling When Capturing (<kbd>Ctrl</kbd> + <kbd>K</kbd>)
+1. Press <kbd>Ctrl</kbd> + <kbd>K</kbd> anywhere in OrganizeUp.
+2. Paste a URL or type a note.
+3. Toggle the **Remind Me** switch.
+4. Choose from one of the **Quick Presets**:
+   - **+1 Hour**: Perfect for a short break or next focus block.
+   - **Tonight (8 PM)**: Ideal for evening reading.
+   - **Tomorrow (9 AM)**: Great for starting tomorrow's study session.
+   - **In 2 Days**: Ideal for spaced repetition.
+5. Or pick a **Custom Date & Time** using the built-in calendar picker.
+6. Add an optional reminder note (e.g. *"Read section 2 and test in code sandbox"*).
+
+Step 2: Scheduling from the Vault & Captures Page
+1. Open **Vault & Captures** from the sidebar.
+2. Every uncompleted capture card includes an active reminder badge or a **Set Reminder** action.
+3. Click the reminder button to modify, update, or clear the scheduled time.
+
+Step 3: Chronological Sorting & Due Counters
+1. **Earliest to Farthest**: On both your Dashboard cockpit and the Vault & Captures page, all reminders are sorted chronologically from earliest/overdue to far future.
+2. **Reminders Due Counter**: The "Reminders Due" stat card on your Captures page dynamically tracks overdue and due captures in real time.
+3. **Overdue Badges**: Overdue items glow with an amber/red indicator, ensuring high-priority items never get missed.
+        `,
+        callouts: [
+          {
+            type: 'tip',
+            title: 'Spaced Repetition Presets',
+            text: 'Use the "+1 Hour", "Tonight", and "Tomorrow" presets to queue up reading materials without ever touching a date-picker.',
+          },
+        ],
+        quickLinks: [
+          { label: 'YouTube Study Reminders', targetId: 'youtube-reminders' },
+          { label: 'Central Notifications Drawer', targetId: 'notifications-center' },
+        ],
+      },
+      {
+        id: 'youtube-reminders',
+        title: 'YouTube Study Reminders',
+        summary: 'Schedule study sessions for playlists and standalone videos directly from cards or player headers.',
+        badge: 'YouTube',
+        readTime: '3 min read',
+        content: `
+### Keep Long Video Series on Track
+Online course playlists and multi-hour tech tutorials often go unfinished. OrganizeUp brings dedicated study alarms to your YouTube learning experience.
+
+Step 1: Setting a Reminder on Playlists & Single Videos
+1. Navigate to **Playlists** from the sidebar.
+2. On any playlist or single video card, click the three-dots action menu and choose **Set Reminder**.
+3. Alternatively, when watching inside the **Cinema Player**, click the **Reminder** button in the top right actions bar!
+
+Step 2: Selecting Date & Presets
+1. Select from the quick presets (\`+1 Hour\`, \`Tonight\`, \`Tomorrow\`, \`In 2 Days\`) or select a custom date/time.
+2. Add custom study targets in the optional note field.
+3. Click **Save Reminder**.
+
+Step 3: Active Card Badges & Resumption
+1. Cards with active reminders display an illuminated reminder pill with the scheduled date and time.
+2. Overdue videos feature an alert red badge with *"Due"* status.
+3. Clicking on the notification automatically brings you right into the Cinema Player with your isolated notes workspace ready to go.
+        `,
+        quickLinks: [
+          { label: 'Central Notifications Drawer', targetId: 'notifications-center' },
+          { label: 'Playlists & Single Videos', targetId: 'yt-overview' },
+        ],
+      },
+      {
+        id: 'notifications-center',
+        title: 'Notifications Drawer & Desktop OS Alerts',
+        summary: 'High-contrast notification panel, filter tabs (All, Due, Upcoming), audio chimes, and native browser OS alerts.',
+        badge: 'Alerts',
+        readTime: '4 min read',
+        content: `
+### Real-Time Alerts & Notification Center
+OrganizeUp features a unified notification center that ensures you never miss a study deadline across all your devices.
+
+Step 1: The Central Notifications Drawer
+1. Click the **Notification Bell** in the sidebar (or top right on mobile).
+2. The high-contrast drawer opens instantly above your workspace without backdrop clipping.
+3. The pulsating red badge indicates the number of active due reminders.
+
+Step 2: Smart Filter Tabs
+1. **All**: View all recent notifications and captured reminders in one stream.
+2. **Reminders Due**: Dedicated filter displaying all pending and overdue reminders with priority red borders.
+3. **Upcoming**: Preview your scheduled study calendar for the next few days.
+
+Step 3: Native Desktop OS & Audio Alerts
+1. OrganizeUp integrates with the **Web Notification API** to deliver native system notifications even when the browser window is in the background or minimized.
+2. Includes a pleasant study chime audio alert when a reminder fires.
+3. Click **Enable / Test Alert** inside the notifications drawer to test your system permissions with one click!
+
+Step 4: Inline Actions on Cards
+Each notification card allows immediate action:
+- **Mark Done**: Mark the capture or study session as completed in 1 click.
+- **Snooze 1h**: Temporarily postpone the alert by 1 hour.
+- **Open Resource**: Click directly into the video player, article link, or workspace.
+        `,
+        callouts: [
+          {
+            type: 'info',
+            title: 'Cross-Device Socket Synchronization',
+            text: 'Reminders are checked by a background 60-second engine on the server and broadcast via real-time WebSockets, keeping your open tabs in immediate sync.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'bot-inboxes',
     title: 'Telegram & Discord Bots',
     icon: 'IoPaperPlaneOutline',
@@ -553,6 +693,11 @@ Step 2: Upvoting & Discussions
 1. Click the **Upvote (▲)** button on any resource card to boost its visibility for other learners.
 2. Click the **Comments** icon to open the discussion drawer to ask questions or share insights.
 3. Click **Add to Library** on any public resource to bookmark or clone it into your own workspace!
+
+Step 3: Personal Focus vs. Community Discovery
+OrganizeUp intentionally separates personal study focus from community collaboration:
+- **Personal Libraries (Books, Courses, Tools)**: Kept distraction-free with zero comment counter clutter, letting you read, practice, and code with deep focus.
+- **Explore Hub**: The central social space where learners discuss, vote, review, and exchange feedback on shared resources.
         `,
       },
     ],

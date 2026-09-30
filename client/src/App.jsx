@@ -27,10 +27,17 @@ const WorkspaceLegacyRedirect = () => {
 
 const DocsRedirect = () => {
   useEffect(() => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const topic = params.get('topic') || '';
     window.location.replace(getDocsUrl(topic));
   }, []);
+
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return <DocsPage />;
+  }
 
   return (
     <div className="min-h-screen bg-canvas flex items-center justify-center">

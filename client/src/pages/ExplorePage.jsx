@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExploreContentCard from '../components/ui/ExploreContentCard';
@@ -79,20 +79,82 @@ const MODERN_TOPICS = [
   'Leadership & Business',
 ];
 
+// Helper to resolve main tab from URL query params (?type=playlists|books|courses|tricks|all or ?tab=...)
+const parseTabFromParams = (params) => {
+  const raw = (params.get('type') || params.get('tab') || '').toLowerCase().trim();
+  if (['playlists', 'playlist', 'youtube'].includes(raw)) return 'playlists';
+  if (['books', 'book', 'audiobooks', 'audiobook', 'modern'].includes(raw)) return 'books';
+  if (['courses', 'course'].includes(raw)) return 'courses';
+  if (['tools', 'tool', 'tricks', 'trick'].includes(raw)) return 'tools';
+  return 'all';
+};
+
+// Helper to resolve book sub-tab from URL query params (?format=modern|audio|video|text or ?subtab=...)
+const parseBookSubTabFromParams = (params) => {
+  const rawType = (params.get('type') || params.get('tab') || '').toLowerCase().trim();
+  if (['audiobooks', 'audiobook', 'classics', 'librivox'].includes(rawType)) return 'audio';
+  if (['modern', 'modern-audiobooks', 'bestsellers'].includes(rawType)) return 'modern';
+
+  const rawFormat = (
+    params.get('format') ||
+    params.get('subtab') ||
+    params.get('subTab') ||
+    ''
+  ).toLowerCase().trim();
+  if (['modern', 'bestsellers', 'youtube'].includes(rawFormat)) return 'modern';
+  if (['audio', 'librivox', 'classic', 'classics', 'audiobook', 'audiobooks'].includes(rawFormat)) return 'audio';
+  if (['video', 'videobooks'].includes(rawFormat)) return 'video';
+  if (['text', 'pdf', 'pdfs'].includes(rawFormat)) return 'text';
+  return 'all';
+};
+
 const ExplorePage = () => {
   useDocumentTitle('Explore');
-  const [activeTab, setActiveTab] = useState('all');
-  const [bookSubTab, setBookSubTab] = useState('all'); // 'all' | 'video' | 'text' | 'audio' | 'modern'
-  const [sortBy, setSortBy] = useState('latest');
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState(() => parseTabFromParams(searchParams));
+  const [bookSubTab, setBookSubTab] = useState(() => parseBookSubTabFromParams(searchParams));
+  const [sortBy, setSortBy] = useState(() => {
+    const s = searchParams.get('sort');
+    return s === 'popular' ? 'popular' : 'latest';
+  });
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('search') || searchParams.get('q') || '');
+  const [search, setSearch] = useState(() => searchParams.get('search') || searchParams.get('q') || '');
   const [commentResource, setCommentResource] = useState(null); // { ...item, contentType }
   const [savingAudioId, setSavingAudioId] = useState(null);
   const debounceRef = useRef(null);
   const audiobooksTopRef = useRef(null);
 
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  // Synchronize state when URL query params change (e.g., back/forward buttons or external links)
+  useEffect(() => {
+    const tabFromUrl = parseTabFromParams(searchParams);
+    const subTabFromUrl = parseBookSubTabFromParams(searchParams);
+    setActiveTab((prev) => (prev !== tabFromUrl ? tabFromUrl : prev));
+    setBookSubTab((prev) => (prev !== subTabFromUrl ? subTabFromUrl : prev));
+
+    const urlSearch = searchParams.get('search') || searchParams.get('q');
+    if (urlSearch !== null && urlSearch !== undefined) {
+      setSearchInput((prev) => (prev !== urlSearch ? urlSearch : prev));
+      setSearch((prev) => (prev !== urlSearch ? urlSearch : prev));
+    }
+
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'latest' || urlSort === 'popular') {
+      setSortBy((prev) => (prev !== urlSort ? urlSort : prev));
+    }
+
+    const urlGenre = searchParams.get('genre');
+    if (urlGenre && AUDIOBOOK_GENRES.includes(urlGenre)) {
+      dispatch(setSelectedGenre(urlGenre));
+    }
+
+    const urlTopic = searchParams.get('topic');
+    if (urlTopic && MODERN_TOPICS.includes(urlTopic)) {
+      dispatch(setSelectedTopic(urlTopic));
+    }
+  }, [searchParams, dispatch]);
   const { results, totals, isLoading } = useSelector((state) => state.explore);
   const { saved } = useSelector((state) => state.library);
   const { user } = useSelector((state) => state.auth);
@@ -167,6 +229,19 @@ const ExplorePage = () => {
       if (bookSubTab === 'audio') {
         dispatch(setAudiobookPage(1));
       }
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value.trim()) {
+            next.set('search', value.trim());
+          } else {
+            next.delete('search');
+            next.delete('q');
+          }
+          return next;
+        },
+        { replace: true },
+      );
     }, 400);
   };
 
@@ -177,6 +252,15 @@ const ExplorePage = () => {
     if (bookSubTab === 'audio') {
       dispatch(setAudiobookPage(1));
     }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('search');
+        next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const handleVote = useCallback(
@@ -269,10 +353,94 @@ const ExplorePage = () => {
 
   const handleGenreChange = (genre) => {
     dispatch(setSelectedGenre(genre));
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (genre === 'All') {
+          next.delete('genre');
+        } else {
+          next.set('genre', genre);
+        }
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const handleTopicChange = (topic) => {
     dispatch(setSelectedTopic(topic));
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (topic === 'All') {
+          next.delete('topic');
+        } else {
+          next.set('topic', topic);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    if (newTab !== 'books') setBookSubTab('all');
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (newTab === 'all') {
+          next.delete('type');
+          next.delete('tab');
+        } else {
+          next.delete('tab');
+          next.set('type', newTab === 'tools' ? 'tricks' : newTab);
+        }
+        next.delete('format');
+        next.delete('subtab');
+        next.delete('subTab');
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const handleBookSubTabChange = (newSubTab) => {
+    setBookSubTab(newSubTab);
+
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('tab');
+        next.set('type', 'books');
+        if (newSubTab === 'all') {
+          next.delete('format');
+          next.delete('subtab');
+          next.delete('subTab');
+        } else {
+          next.set('format', newSubTab);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const handleSortChange = (newSort) => {
+    setSortBy(newSort);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (newSort === 'latest') {
+          next.delete('sort');
+        } else {
+          next.set('sort', newSort);
+        }
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const openComments = useCallback((item, contentType) => {
@@ -461,7 +629,7 @@ const ExplorePage = () => {
         {!(activeTab === 'books' && (bookSubTab === 'audio' || bookSubTab === 'modern')) && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setSortBy('latest')}
+              onClick={() => handleSortChange('latest')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 sortBy === 'latest'
                   ? 'bg-accent-subtle text-accent border border-accent/20 font-semibold'
@@ -471,7 +639,7 @@ const ExplorePage = () => {
               <IoTimeOutline size={15} /> Latest
             </button>
             <button
-              onClick={() => setSortBy('popular')}
+              onClick={() => handleSortChange('popular')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
                 sortBy === 'popular'
                   ? 'bg-accent-subtle text-accent border border-accent/20 font-semibold'
@@ -489,10 +657,7 @@ const ExplorePage = () => {
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => {
-              setActiveTab(tab.key);
-              if (tab.key !== 'books') setBookSubTab('all');
-            }}
+            onClick={() => handleTabChange(tab.key)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === tab.key
                 ? 'bg-accent-subtle text-accent border border-accent/30 font-semibold shadow-lg shadow-accent/5'
@@ -517,7 +682,7 @@ const ExplorePage = () => {
           {bookSubTabs.map((subTab) => (
             <button
               key={subTab.key}
-              onClick={() => setBookSubTab(subTab.key)}
+              onClick={() => handleBookSubTabChange(subTab.key)}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 bookSubTab === subTab.key
                   ? subTab.highlight
@@ -822,13 +987,13 @@ const ExplorePage = () => {
                   </p>
                   <div className="flex items-center justify-center gap-3">
                     <button
-                      onClick={() => setBookSubTab('modern')}
+                      onClick={() => handleBookSubTabChange('modern')}
                       className="btn-primary text-xs flex items-center gap-1.5 cursor-pointer"
                     >
                       <IoSparklesOutline size={14} /> Modern Bestsellers
                     </button>
                     <button
-                      onClick={() => setBookSubTab('audio')}
+                      onClick={() => handleBookSubTabChange('audio')}
                       className="btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
                     >
                       <IoMusicalNotesOutline size={14} /> Classic Audiobooks

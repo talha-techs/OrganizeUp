@@ -86,11 +86,18 @@ const getExploreContent = async (req, res) => {
       limit = 20,
     } = req.query;
 
+    let normalizedType = (type || "all").toLowerCase().trim();
+    if (normalizedType === "tricks" || normalizedType === "trick") normalizedType = "tools";
+    if (normalizedType === "playlist") normalizedType = "playlists";
+    if (normalizedType === "book") normalizedType = "books";
+    if (normalizedType === "course") normalizedType = "courses";
+    if (normalizedType === "tool") normalizedType = "tools";
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const lim = parseInt(limit);
     const isPopular = sort === "popular";
     // "all" view shows 6 items per category; specific type views use full pagination
-    const perType = type === "all" ? 6 : lim;
+    const perType = normalizedType === "all" ? 6 : lim;
 
     const filter = { visibility: "public" };
     if (search) {
@@ -157,9 +164,9 @@ const getExploreContent = async (req, res) => {
       playlists: [],
     };
 
-    if (type === "all" || type === "books") {
+    if (normalizedType === "all" || normalizedType === "books") {
       // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
-      const dbSkip = isPopular ? 0 : type === "books" ? skip : 0;
+      const dbSkip = isPopular ? 0 : normalizedType === "books" ? skip : 0;
       let bookQuery = Book.find(bookFilter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
@@ -176,8 +183,8 @@ const getExploreContent = async (req, res) => {
       }
     }
 
-    if (type === "all" || type === "courses") {
-      const dbSkip = isPopular ? 0 : type === "courses" ? skip : 0;
+    if (normalizedType === "all" || normalizedType === "courses") {
+      const dbSkip = isPopular ? 0 : normalizedType === "courses" ? skip : 0;
       let courseQuery = Course.find(filter)
         .populate("addedBy", "name avatar")
         .populate("category", "name")
@@ -195,8 +202,8 @@ const getExploreContent = async (req, res) => {
       }
     }
 
-    if (type === "all" || type === "tools") {
-      const dbSkip = isPopular ? 0 : type === "tools" ? skip : 0;
+    if (normalizedType === "all" || normalizedType === "tools") {
+      const dbSkip = isPopular ? 0 : normalizedType === "tools" ? skip : 0;
       let toolQuery = Tool.find(filter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
@@ -213,8 +220,8 @@ const getExploreContent = async (req, res) => {
       }
     }
 
-    if (type === "all" || type === "sections") {
-      const dbSkip = isPopular ? 0 : type === "sections" ? skip : 0;
+    if (normalizedType === "all" || normalizedType === "sections") {
+      const dbSkip = isPopular ? 0 : normalizedType === "sections" ? skip : 0;
       let sectionQuery = CustomSection.find(sectionFilter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
@@ -233,8 +240,8 @@ const getExploreContent = async (req, res) => {
       }
     }
 
-    if (type === "all" || type === "playlists") {
-      const dbSkip = isPopular ? 0 : type === "playlists" ? skip : 0;
+    if (normalizedType === "all" || normalizedType === "playlists") {
+      const dbSkip = isPopular ? 0 : normalizedType === "playlists" ? skip : 0;
       let playlistQuery = YoutubePlaylist.find(playlistFilter)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })

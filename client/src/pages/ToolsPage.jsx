@@ -12,7 +12,6 @@ import ResourceCard from '../components/ui/ResourceCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import ResourceCommentPanel from '../components/ui/ResourceCommentPanel';
 import ToolForm from '../components/forms/ToolForm';
 import DriveImportModal from '../components/forms/DriveImportModal';
 import toast from 'react-hot-toast';
@@ -25,7 +24,6 @@ const ToolsPage = () => {
   const [showDriveImport, setShowDriveImport] = useState(false);
   const [deleteToolId, setDeleteToolId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [commentResource, setCommentResource] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { tools, isLoading } = useSelector((state) => state.tools);
@@ -38,10 +36,6 @@ const ToolsPage = () => {
 
   const handleDelete = (toolId) => {
     setDeleteToolId(toolId);
-  };
-
-  const openComments = (tool) => {
-    setCommentResource((prev) => (prev?._id === tool._id ? null : tool));
   };
 
   const confirmDeleteTool = async () => {
@@ -94,9 +88,15 @@ const ToolsPage = () => {
         <div className="text-center py-20">
           <IoConstructOutline className="mx-auto text-muted mb-4" size={48} />
           <h3 className="text-lg text-secondary mb-2">No tools yet</h3>
-          <p className="text-sm text-muted">
-            {isAdmin ? 'Click "Add New" to get started' : 'Check back soon'}
+          <p className="text-sm text-muted mb-4">
+            {isAdmin ? 'Click "Add New" to get started or browse public tricks in Explore' : 'Explore developer tools and tricks shared by the community'}
           </p>
+          <button
+            onClick={() => navigate('/explore?type=tricks')}
+            className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
+          >
+            <IoConstructOutline size={16} /> Explore Public Tricks
+          </button>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -115,8 +115,6 @@ const ToolsPage = () => {
                 onEdit={() => { setEditTool(tool); setShowForm(true); }}
                 onDelete={() => handleDelete(tool._id)}
                 onClick={() => navigate(`/tools/${tool._id}`)}
-                onComment={() => openComments(tool)}
-                commentCount={tool.commentCount}
                 onRequestPublish={async () => {
                   const result = await dispatch(requestPublish({ contentType: 'tool', contentId: tool._id }));
                   if (result.meta.requestStatus === 'fulfilled') {
@@ -227,13 +225,6 @@ const ToolsPage = () => {
         onConfirm={confirmDeleteTool}
         onCancel={() => setDeleteToolId(null)}
         isLoading={isDeleting}
-      />
-
-      {/* Comment panel – rendered at page level to avoid re-rendering cards on keystroke */}
-      <ResourceCommentPanel
-        resource={commentResource}
-        contentType="tool"
-        onClose={() => setCommentResource(null)}
       />
     </div>
   );

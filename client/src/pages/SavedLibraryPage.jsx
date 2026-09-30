@@ -222,6 +222,7 @@ const TypeSection = ({ type, items, onRemove }) => {
 const SavedLibraryPage = () => {
   useDocumentTitle('Saved Library');
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { saved, isLoading } = useSelector((state) => state.library);
 
   useEffect(() => {
@@ -280,9 +281,15 @@ const SavedLibraryPage = () => {
           <div className="text-center py-24 glass-card border border-subtle">
             <IoBookmarkOutline className="mx-auto text-muted mb-4" size={52} />
             <h3 className="text-lg font-medium text-secondary mb-2">Nothing saved yet</h3>
-            <p className="text-sm text-muted">
-              Browse <span className="text-accent font-medium">Explore</span> and save public resources to build your library.
+            <p className="text-sm text-muted mb-5">
+              Browse public resources in Explore and save them to build your personal knowledge shelf.
             </p>
+            <button
+              onClick={() => navigate('/explore')}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
+            >
+              <IoBookmarkOutline size={16} /> Explore Public Hub
+            </button>
           </div>
         ) : (
           <div className="space-y-10">

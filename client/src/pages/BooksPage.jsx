@@ -172,25 +172,33 @@ const BooksPage = () => {
           </p>
           {activeTab === 'audio' ? (
             <button
-              onClick={() => navigate('/explore')}
-              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2"
+              onClick={() => navigate('/explore?type=books&format=audio')}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
             >
               <IoMusicalNotesOutline size={16} /> Explore LibriVox Audiobooks
             </button>
           ) : activeTab === 'youtube' ? (
             <button
-              onClick={() => navigate('/explore')}
-              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2"
+              onClick={() => navigate('/explore?type=books&format=modern')}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
             >
               <IoLogoYoutube size={16} className="text-red-500" /> Explore YouTube Audiobooks
             </button>
           ) : (
-            <button
-              onClick={() => setShowForm(true)}
-              className="btn-secondary text-xs py-2.5 px-4 inline-flex items-center gap-2"
-            >
-              <IoAdd size={16} /> Add a Book
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setShowForm(true)}
+                className="btn-secondary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
+              >
+                <IoAdd size={16} /> Add a Book
+              </button>
+              <button
+                onClick={() => navigate('/explore?type=books')}
+                className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
+              >
+                <IoBookOutline size={16} /> Explore Public Books
+              </button>
+            </div>
           )}
         </motion.div>
       ) : (
