@@ -20,6 +20,8 @@ const ResourceCard = ({
   onRequestPublish, onToggleVisibility, onMakePrivate,
   onComment, commentCount,
   commentSection,  // React node rendered inline at the bottom of the card
+  type,
+  contentType,
   children,
 }) => {
   const { user } = useSelector((state) => state.auth);
@@ -72,7 +74,7 @@ const ResourceCard = ({
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent rounded-t-2xl pointer-events-none" />
           </>
         ) : (
-          <DefaultResourceCover title={title} className="rounded-t-2xl" />
+          <DefaultResourceCover title={title} type={type} contentType={contentType} className="rounded-t-2xl" />
         )}
       </div>
 

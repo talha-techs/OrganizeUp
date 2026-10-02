@@ -27,12 +27,11 @@ router.get("/categories", protect, getCategories);
 router.post(
   "/categories",
   protect,
-  adminOnly,
   categoryRules,
   validate,
   createCategory,
 );
-router.delete("/categories/:id", protect, adminOnly, deleteCategory);
+router.delete("/categories/:id", protect, deleteCategory);
 
 // Course routes
 router.get("/", protect, getCourses);

@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/ThemeContext';
 const ThemeToggle = ({ className = '', showLabel = false, size = 'default' }) => {
   const { isDark, toggleTheme } = useTheme();
 
+  const isIconOnly = size === 'icon';
   const isSmall = size === 'sm';
 
   return (
@@ -14,9 +15,9 @@ const ThemeToggle = ({ className = '', showLabel = false, size = 'default' }) =>
       onClick={toggleTheme}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className={`relative inline-flex items-center gap-2.5 rounded-xl border border-subtle bg-surface hover:bg-surface-raised transition-all duration-200 cursor-pointer ${
-        isSmall ? 'p-1.5 text-xs' : 'px-3 py-2 text-sm'
-      } ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-xl border border-subtle bg-surface hover:bg-surface-raised transition-all duration-200 cursor-pointer ${
+        isIconOnly ? 'w-10 h-10 p-0' : isSmall ? 'p-1.5 text-xs' : 'px-3 py-2 text-sm'
+      } ${!isIconOnly && showLabel ? 'gap-2.5' : ''} ${className}`}
     >
       <div className="relative w-5 h-5 flex items-center justify-center">
         <motion.div
@@ -35,7 +36,7 @@ const ThemeToggle = ({ className = '', showLabel = false, size = 'default' }) =>
         </motion.div>
       </div>
 
-      {showLabel && (
+      {showLabel && !isIconOnly && (
         <span className="text-secondary font-medium select-none">
           {isDark ? 'Light mode' : 'Dark mode'}
         </span>

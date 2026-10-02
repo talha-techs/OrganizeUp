@@ -107,16 +107,23 @@ const CourseForm = ({ course, onClose }) => {
         >
           <option value="">Select category or type new below</option>
           {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
+            <option key={cat._id} value={cat._id}>
+              {cat.name} {!cat.isGlobal ? '(Personal)' : ''}
+            </option>
           ))}
         </select>
         <input
           type="text"
           value={formData.newCategory}
           onChange={(e) => setFormData({ ...formData, newCategory: e.target.value, category: '' })}
-          placeholder="Or type a new category name"
+          placeholder="Or type a new category name (auto-fetches Pexels cover)"
           className="input-dark mt-2"
         />
+        {formData.newCategory.trim() && (
+          <p className="text-[11px] text-accent mt-1 flex items-center gap-1">
+            <span>✨ Real-time Pexels cover will be generated for "{formData.newCategory.trim()}" (saved to your personal space)</span>
+          </p>
+        )}
       </div>
 
       <div>

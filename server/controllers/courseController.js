@@ -3,6 +3,7 @@ const Category = require("../models/Category");
 const User = require("../models/User");
 const UserLibrary = require("../models/UserLibrary");
 const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+const { fetchPexelsBanner } = require("../services/pexelsService");
 
 // Escape special regex chars to prevent ReDoS / injection
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -113,24 +114,40 @@ const createCourse = async (req, res) => {
 
     let categoryId = category;
 
-    // If new category name is provided, create it
+    // If new category name is provided, find or create it
     if (newCategory && newCategory.trim()) {
-      // Only admin can create new categories inline
-      if (req.user.role !== "admin") {
-        return res
-          .status(403)
-          .json({ message: "Only admins can create new categories" });
-      }
+      const trimmedName = newCategory.trim();
+      const isAdmin = req.user && req.user.role === "admin";
+
+      // 1. Check if matching global category exists
       let existingCategory = await Category.findOne({
         name: {
-          $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i"),
+          $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, "i"),
         },
+        isGlobal: true,
       });
 
-      if (!existingCategory) {
-        existingCategory = await Category.create({
-          name: newCategory.trim(),
+      // 2. If not, check if user already has this category in their personal space
+      if (!existingCategory && req.user) {
+        existingCategory = await Category.findOne({
+          name: {
+            $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, "i"),
+          },
           createdBy: req.user._id,
+        });
+      }
+
+      // 3. If still not found, create a new category (global if admin, personal if user)
+      if (!existingCategory) {
+        let pexelsQuery = trimmedName;
+        if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+        const pexelsUrl = await fetchPexelsBanner(pexelsQuery);
+        existingCategory = await Category.create({
+          name: trimmedName,
+          createdBy: req.user._id,
+          isGlobal: isAdmin,
+          image: pexelsUrl || "",
+          bannerImage: pexelsUrl || "",
         });
       }
       categoryId = existingCategory._id;
@@ -152,6 +169,10 @@ const createCourse = async (req, res) => {
       bannerImage = `/api/images/${bannerImageId}`;
     } else if (req.body.bannerImage) {
       bannerImage = req.body.bannerImage;
+    }
+
+    if (!bannerImage) {
+      bannerImage = (await fetchPexelsBanner(title.trim())) || "";
     }
 
     const visibility = req.user.role === "admin" ? "public" : "private";
@@ -200,15 +221,38 @@ const updateCourse = async (req, res) => {
     const { title, description, driveLink, category, newCategory } = req.body;
 
     if (newCategory && newCategory.trim()) {
+      const trimmedName = newCategory.trim();
+      const isAdmin = req.user && req.user.role === "admin";
+
+      // 1. Check if matching global category exists
       let existingCategory = await Category.findOne({
         name: {
-          $regex: new RegExp(`^${escapeRegex(newCategory.trim())}$`, "i"),
+          $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, "i"),
         },
+        isGlobal: true,
       });
-      if (!existingCategory) {
-        existingCategory = await Category.create({
-          name: newCategory.trim(),
+
+      // 2. If not, check if user already has this category in their personal space
+      if (!existingCategory && req.user) {
+        existingCategory = await Category.findOne({
+          name: {
+            $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, "i"),
+          },
           createdBy: req.user._id,
+        });
+      }
+
+      // 3. If still not found, create a new category (global if admin, personal if user)
+      if (!existingCategory) {
+        let pexelsQuery = trimmedName;
+        if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+        const pexelsUrl = await fetchPexelsBanner(pexelsQuery);
+        existingCategory = await Category.create({
+          name: trimmedName,
+          createdBy: req.user._id,
+          isGlobal: isAdmin,
+          image: pexelsUrl || "",
+          bannerImage: pexelsUrl || "",
         });
       }
       course.category = existingCategory._id;
@@ -369,46 +413,114 @@ const removeFileFromCourse = async (req, res) => {
 
 // === Category Controllers ===
 
-// @desc    Get all categories
-// @route   GET /api/categories
+// @desc    Get categories (Global categories + current user's personal categories)
+// @route   GET /api/courses/categories
 const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ name: 1 });
+    let filter = {};
+    if (req.user) {
+      if (req.user.role === "admin") {
+        // Admins can see all categories
+        filter = {};
+      } else {
+        // Regular users only see global categories and their own personal categories
+        filter = {
+          $or: [
+            { isGlobal: true },
+            { createdBy: req.user._id },
+          ],
+        };
+      }
+    } else {
+      filter = { isGlobal: true };
+    }
+
+    const categories = await Category.find(filter)
+      .populate("createdBy", "name email")
+      .sort({ isGlobal: -1, name: 1 });
+
+    // Asynchronously backfill any categories missing images
+    categories.forEach((cat) => {
+      if (!cat.image && !cat.bannerImage) {
+        let pexelsQuery = cat.name;
+        if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+        fetchPexelsBanner(pexelsQuery)
+          .then(async (url) => {
+            if (url) {
+              cat.image = url;
+              cat.bannerImage = url;
+              await cat.save().catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+    });
     res.json({ categories });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// @desc    Create category (Admin only)
-// @route   POST /api/categories
+// @desc    Create category (Admin creates global, User creates personal)
+// @route   POST /api/courses/categories
 const createCategory = async (req, res) => {
   try {
-    const { name, description, icon } = req.body;
+    let { name, description, icon, image, bannerImage } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Category name is required" });
+    }
 
+    const trimmedName = name.trim();
+    const isAdmin = req.user && req.user.role === "admin";
+    const isGlobal = isAdmin ? true : false;
+
+    // Check if category already exists in user's visible scope
     const existing = await Category.findOne({
-      name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, "i") },
+      name: { $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, "i") },
+      ...(isAdmin
+        ? { isGlobal: true }
+        : {
+            $or: [{ isGlobal: true }, { createdBy: req.user._id }],
+          }),
     });
 
     if (existing) {
-      return res.status(400).json({ message: "Category already exists" });
+      return res.status(400).json({
+        message: existing.isGlobal
+          ? `Global category "${existing.name}" already exists`
+          : `You already have a personal category named "${existing.name}"`,
+      });
+    }
+
+    let pexelsQuery = trimmedName;
+    if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+    let finalImage = image || bannerImage || "";
+    if (!finalImage) {
+      finalImage = (await fetchPexelsBanner(pexelsQuery)) || "";
     }
 
     const category = await Category.create({
-      name: name.trim(),
-      description,
-      icon,
+      name: trimmedName,
+      description: description || "",
+      icon: icon || "",
+      image: finalImage,
+      bannerImage: finalImage,
       createdBy: req.user._id,
+      isGlobal,
     });
 
-    res.status(201).json({ message: "Category created", category });
+    res.status(201).json({
+      message: isGlobal ? "Global category created" : "Personal category created",
+      category,
+    });
   } catch (error) {
+    console.error("Create category error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// @desc    Delete category (Admin only)
-// @route   DELETE /api/categories/:id
+// @desc    Delete category (Admin or Category Owner for personal category)
+// @route   DELETE /api/courses/categories/:id
 const deleteCategory = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
@@ -416,13 +528,27 @@ const deleteCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
     }
 
+    const isAdmin = req.user.role === "admin";
+    const isOwner =
+      category.createdBy &&
+      category.createdBy.toString() === req.user._id.toString();
+
+    // Regular users can only delete their own personal categories
+    if (!isAdmin && (!isOwner || category.isGlobal)) {
+      return res.status(403).json({
+        message: "You can only delete your own personal categories",
+      });
+    }
+
     // Check if courses exist in this category
-    const courseCount = await Course.countDocuments({
-      category: req.params.id,
-    });
+    const courseFilter = isAdmin
+      ? { category: req.params.id }
+      : { category: req.params.id, addedBy: req.user._id };
+
+    const courseCount = await Course.countDocuments(courseFilter);
     if (courseCount > 0) {
       return res.status(400).json({
-        message: `Cannot delete category with ${courseCount} course(s). Remove courses first.`,
+        message: `Cannot delete category with ${courseCount} course(s). Remove or reassign courses first.`,
       });
     }
 

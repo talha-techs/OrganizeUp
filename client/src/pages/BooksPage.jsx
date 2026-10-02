@@ -207,6 +207,8 @@ const BooksPage = () => {
             {filteredBooks.map((book) => (
               <ResourceCard
                 key={book._id}
+                type={book.type || 'book'}
+                contentType="book"
                 title={book.title}
                 subtitle={book.author}
                 image={book.coverImage}

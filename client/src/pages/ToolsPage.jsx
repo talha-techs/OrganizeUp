@@ -104,6 +104,8 @@ const ToolsPage = () => {
             {tools.map((tool) => (
               <ResourceCard
                 key={tool._id}
+                type="tool"
+                contentType="tool"
                 title={tool.title}
                 image={tool.bannerImage}
                 description={tool.description}

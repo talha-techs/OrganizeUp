@@ -459,162 +459,338 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       {/* Footer User & Utility Controls */}
       <div className="border-t border-subtle p-3 space-y-2 flex-shrink-0 bg-surface-raised/30 relative">
         {/* Notifications & Theme Toggle Toolbar */}
-        <div className="flex items-center justify-between px-1 h-9">
-          {/* Notification Button */}
-          <div ref={notifRef} className="relative">
-            <button
-              onClick={() => {
-                setNotifOpen((prev) => !prev);
-                if (unreadCount > 0) dispatch(markNotificationsRead());
-              }}
-              className="relative p-2 rounded-xl text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer flex items-center justify-center"
-              title="Notifications"
-            >
-              <IoNotificationsOutline size={20} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-1.5 w-full">
+            {/* Notification Button */}
+            <div ref={notifRef} className="relative w-full flex justify-center">
+              <button
+                onClick={() => {
+                  setNotifOpen((prev) => !prev);
+                  if (unreadCount > 0) dispatch(markNotificationsRead());
+                }}
+                className="relative w-10 h-10 rounded-xl text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer flex items-center justify-center"
+                title="Notifications"
+              >
+                <IoNotificationsOutline size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
 
-            {/* Notification Popover */}
-            <AnimatePresence>
-              {notifOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 8 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute bottom-full mb-2.5 left-0 w-80 sm:w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-surface-raised/98 backdrop-blur-2xl border border-strong shadow-2xl shadow-black/70 overflow-hidden z-50 flex flex-col"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-subtle bg-surface/60">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
-                        <IoNotificationsOutline size={14} />
-                      </div>
-                      <span className="text-sm font-semibold text-primary font-display">Notifications</span>
-                    </div>
-                    {unreadCount === 0 ? (
-                      <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/20">
-                        <IoCheckmarkDoneOutline size={12} /> All caught up
-                      </span>
-                    ) : (
-                      <span className="text-[11px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">
-                        {unreadCount} new
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Notification List */}
-                  <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-subtle/50">
-                    {!user?.notifications?.length ? (
-                      <div className="py-8 px-6 text-center space-y-2">
-                        <div className="w-10 h-10 rounded-2xl bg-surface border border-subtle flex items-center justify-center mx-auto text-muted">
-                          <IoNotificationsOffOutline size={20} />
+              {/* Notification Popover */}
+              <AnimatePresence>
+                {notifOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, x: -8 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, x: -8 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-full ml-3 bottom-0 w-80 sm:w-96 max-w-[calc(100vw-6rem)] rounded-2xl border border-subtle shadow-2xl shadow-black/60 overflow-hidden z-50 flex flex-col"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
+                    {/* Header */}
+                    <div
+                      className="flex items-center justify-between px-4 py-3 border-b border-subtle"
+                      style={{ backgroundColor: 'var(--bg-surface-raised)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                          <IoNotificationsOutline size={14} />
                         </div>
-                        <p className="text-xs font-semibold text-primary">No notifications yet</p>
-                        <p className="text-[11px] text-muted max-w-[200px] mx-auto">
-                          Scheduled reminders and vault alerts will appear right here.
-                        </p>
+                        <span className="text-sm font-semibold text-primary font-display">Notifications</span>
                       </div>
-                    ) : (
-                      [...(user.notifications)].reverse().map((n, i) => {
-                        const isReminder = n.type === 'reminder';
-                        const isApproval = n.type === 'approval';
-                        const isRejection = n.type === 'rejection';
+                      {unreadCount === 0 ? (
+                        <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/20">
+                          <IoCheckmarkDoneOutline size={12} /> All caught up
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
 
-                        return (
-                          <div
-                            key={i}
-                            onClick={() => {
-                              setNotifOpen(false);
-                              if (n.link) navigate(n.link);
-                            }}
-                            className={`px-3.5 py-3 transition-colors ${
-                              n.link ? 'cursor-pointer hover:bg-surface/80' : ''
-                            } ${!n.read ? 'bg-accent-subtle/20' : ''}`}
-                          >
-                            <div className="flex items-start gap-2.5">
-                              <div
-                                className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                  isReminder
-                                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
-                                    : isApproval
-                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
-                                    : isRejection
-                                    ? 'bg-red-500/15 text-red-400 border border-red-500/25'
-                                    : 'bg-accent/15 text-accent border border-accent/25'
-                                }`}
-                              >
-                                {isReminder ? (
-                                  <IoTimeOutline size={15} />
-                                ) : isApproval ? (
-                                  <IoCheckmarkCircleOutline size={15} />
-                                ) : isRejection ? (
-                                  <IoAlertCircleOutline size={15} />
-                                ) : (
-                                  <IoNotificationsOutline size={15} />
-                                )}
-                              </div>
+                    {/* Notification List */}
+                    <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-subtle/50">
+                      {!user?.notifications?.length ? (
+                        <div className="py-8 px-6 text-center space-y-2">
+                          <div className="w-10 h-10 rounded-2xl bg-surface border border-subtle flex items-center justify-center mx-auto text-muted">
+                            <IoNotificationsOffOutline size={20} />
+                          </div>
+                          <p className="text-xs font-semibold text-primary">No notifications yet</p>
+                          <p className="text-[11px] text-muted max-w-[200px] mx-auto">
+                            Scheduled reminders and vault alerts will appear right here.
+                          </p>
+                        </div>
+                      ) : (
+                        [...(user.notifications)].reverse().map((n, i) => {
+                          const isReminder = n.type === 'reminder';
+                          const isApproval = n.type === 'approval';
+                          const isRejection = n.type === 'rejection';
 
-                              <div className="flex-1 min-w-0">
-                                {n.contentTitle && (
-                                  <p className="text-xs font-semibold text-primary truncate leading-snug">
-                                    {n.contentTitle}
-                                  </p>
-                                )}
-                                <p className="text-xs text-secondary mt-0.5 leading-relaxed line-clamp-2">
-                                  {n.message}
-                                </p>
-                                {n.adminNote && (
-                                  <p className="text-[11px] text-muted italic mt-1 bg-surface/60 px-2 py-1 rounded-lg border border-subtle">
-                                    "{n.adminNote}"
-                                  </p>
-                                )}
-                                <div className="flex items-center justify-between mt-1.5 pt-0.5">
-                                  <p className="text-[10px] text-muted">
-                                    {formatTimeAgo(n.createdAt)}
-                                  </p>
-                                  {n.link && (
-                                    <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 hover:underline">
-                                      View <IoArrowForwardOutline size={10} />
-                                    </span>
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => {
+                                setNotifOpen(false);
+                                if (n.link) navigate(n.link);
+                              }}
+                              className={`px-3.5 py-3 transition-colors ${
+                                n.link ? 'cursor-pointer hover:bg-surface-raised/60' : ''
+                              } ${!n.read ? 'bg-accent-subtle/20' : ''}`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <div
+                                  className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                    isReminder
+                                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                                      : isApproval
+                                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                                      : isRejection
+                                      ? 'bg-red-500/15 text-red-400 border border-red-500/25'
+                                      : 'bg-accent/15 text-accent border border-accent/25'
+                                  }`}
+                                >
+                                  {isReminder ? (
+                                    <IoTimeOutline size={15} />
+                                  ) : isApproval ? (
+                                    <IoCheckmarkCircleOutline size={15} />
+                                  ) : isRejection ? (
+                                    <IoAlertCircleOutline size={15} />
+                                  ) : (
+                                    <IoNotificationsOutline size={15} />
                                   )}
                                 </div>
+
+                                <div className="flex-1 min-w-0">
+                                  {n.contentTitle && (
+                                    <p className="text-xs font-semibold text-primary truncate leading-snug">
+                                      {n.contentTitle}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-secondary mt-0.5 leading-relaxed line-clamp-2">
+                                    {n.message}
+                                  </p>
+                                  {n.adminNote && (
+                                    <p className="text-[11px] text-muted italic mt-1 bg-surface px-2 py-1 rounded-lg border border-subtle">
+                                      "{n.adminNote}"
+                                    </p>
+                                  )}
+                                  <div className="flex items-center justify-between mt-1.5 pt-0.5">
+                                    <p className="text-[10px] text-muted">
+                                      {formatTimeAgo(n.createdAt)}
+                                    </p>
+                                    {n.link && (
+                                      <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 hover:underline">
+                                        View <IoArrowForwardOutline size={10} />
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {!n.read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 mt-1.5 shadow-[0_0_6px_rgba(255,87,34,0.6)]" />
+                                )}
                               </div>
-
-                              {!n.read && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 mt-1.5 shadow-[0_0_6px_rgba(255,87,34,0.6)]" />
-                              )}
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                          );
+                        })
+                      )}
+                    </div>
 
-                  {/* Popover Footer */}
-                  <div className="px-4 py-2 border-t border-subtle bg-surface/70 flex items-center justify-between">
-                    <Link
-                      to="/captures"
-                      onClick={() => setNotifOpen(false)}
-                      className="text-xs text-accent hover:text-accent-hover font-medium flex items-center gap-1 transition-colors"
+                    {/* Popover Footer */}
+                    <div
+                      className="px-4 py-2 border-t border-subtle flex items-center justify-between"
+                      style={{ backgroundColor: 'var(--bg-surface-raised)' }}
                     >
-                      <IoFlashOutline size={13} /> Open Vault Reminders
-                    </Link>
-                    <span className="text-[10px] text-muted">
-                      {user?.notifications?.length || 0} total
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                      <Link
+                        to="/captures"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-xs text-accent hover:text-accent-hover font-medium flex items-center gap-1 transition-colors"
+                      >
+                        <IoFlashOutline size={13} /> Open Vault Reminders
+                      </Link>
+                      <span className="text-[10px] text-muted">
+                        {user?.notifications?.length || 0} total
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-          <ThemeToggle />
-        </div>
+            {/* Centered Theme Toggle Icon */}
+            <div className="w-full flex justify-center">
+              <ThemeToggle size="icon" />
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-1 h-9">
+            {/* Notification Button */}
+            <div ref={notifRef} className="relative">
+              <button
+                onClick={() => {
+                  setNotifOpen((prev) => !prev);
+                  if (unreadCount > 0) dispatch(markNotificationsRead());
+                }}
+                className="relative p-2 rounded-xl text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer flex items-center justify-center"
+                title="Notifications"
+              >
+                <IoNotificationsOutline size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Popover */}
+              <AnimatePresence>
+                {notifOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full mb-2.5 left-0 w-80 sm:w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-subtle shadow-2xl shadow-black/60 overflow-hidden z-50 flex flex-col"
+                    style={{ backgroundColor: 'var(--bg-surface)' }}
+                  >
+                    {/* Header */}
+                    <div
+                      className="flex items-center justify-between px-4 py-3 border-b border-subtle"
+                      style={{ backgroundColor: 'var(--bg-surface-raised)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                          <IoNotificationsOutline size={14} />
+                        </div>
+                        <span className="text-sm font-semibold text-primary font-display">Notifications</span>
+                      </div>
+                      {unreadCount === 0 ? (
+                        <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/20">
+                          <IoCheckmarkDoneOutline size={12} /> All caught up
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Notification List */}
+                    <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-subtle/50">
+                      {!user?.notifications?.length ? (
+                        <div className="py-8 px-6 text-center space-y-2">
+                          <div className="w-10 h-10 rounded-2xl bg-surface border border-subtle flex items-center justify-center mx-auto text-muted">
+                            <IoNotificationsOffOutline size={20} />
+                          </div>
+                          <p className="text-xs font-semibold text-primary">No notifications yet</p>
+                          <p className="text-[11px] text-muted max-w-[200px] mx-auto">
+                            Scheduled reminders and vault alerts will appear right here.
+                          </p>
+                        </div>
+                      ) : (
+                        [...(user.notifications)].reverse().map((n, i) => {
+                          const isReminder = n.type === 'reminder';
+                          const isApproval = n.type === 'approval';
+                          const isRejection = n.type === 'rejection';
+
+                          return (
+                            <div
+                              key={i}
+                              onClick={() => {
+                                setNotifOpen(false);
+                                if (n.link) navigate(n.link);
+                              }}
+                              className={`px-3.5 py-3 transition-colors ${
+                                n.link ? 'cursor-pointer hover:bg-surface-raised/60' : ''
+                              } ${!n.read ? 'bg-accent-subtle/20' : ''}`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <div
+                                  className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                    isReminder
+                                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                                      : isApproval
+                                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                                      : isRejection
+                                      ? 'bg-red-500/15 text-red-400 border border-red-500/25'
+                                      : 'bg-accent/15 text-accent border border-accent/25'
+                                  }`}
+                                >
+                                  {isReminder ? (
+                                    <IoTimeOutline size={15} />
+                                  ) : isApproval ? (
+                                    <IoCheckmarkCircleOutline size={15} />
+                                  ) : isRejection ? (
+                                    <IoAlertCircleOutline size={15} />
+                                  ) : (
+                                    <IoNotificationsOutline size={15} />
+                                  )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  {n.contentTitle && (
+                                    <p className="text-xs font-semibold text-primary truncate leading-snug">
+                                      {n.contentTitle}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-secondary mt-0.5 leading-relaxed line-clamp-2">
+                                    {n.message}
+                                  </p>
+                                  {n.adminNote && (
+                                    <p className="text-[11px] text-muted italic mt-1 bg-surface px-2 py-1 rounded-lg border border-subtle">
+                                      "{n.adminNote}"
+                                    </p>
+                                  )}
+                                  <div className="flex items-center justify-between mt-1.5 pt-0.5">
+                                    <p className="text-[10px] text-muted">
+                                      {formatTimeAgo(n.createdAt)}
+                                    </p>
+                                    {n.link && (
+                                      <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 hover:underline">
+                                        View <IoArrowForwardOutline size={10} />
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {!n.read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 mt-1.5 shadow-[0_0_6px_rgba(255,87,34,0.6)]" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Popover Footer */}
+                    <div
+                      className="px-4 py-2 border-t border-subtle flex items-center justify-between"
+                      style={{ backgroundColor: 'var(--bg-surface-raised)' }}
+                    >
+                      <Link
+                        to="/captures"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-xs text-accent hover:text-accent-hover font-medium flex items-center gap-1 transition-colors"
+                      >
+                        <IoFlashOutline size={13} /> Open Vault Reminders
+                      </Link>
+                      <span className="text-[10px] text-muted">
+                        {user?.notifications?.length || 0} total
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <ThemeToggle size="sm" />
+          </div>
+        )}
 
         {/* User Profile Card & Logout */}
         <div className="flex items-center h-12 w-full rounded-xl bg-surface border border-subtle overflow-hidden">
