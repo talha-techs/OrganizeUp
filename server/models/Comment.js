@@ -5,7 +5,7 @@ const commentSchema = new mongoose.Schema(
     // What type of content is being commented on
     contentType: {
       type: String,
-      enum: ["book", "course", "tool", "section"],
+      enum: ["book", "course", "tool", "section", "playlist", "video"],
       required: true,
     },
     contentId: {

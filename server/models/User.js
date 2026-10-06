@@ -30,6 +30,15 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
+    avatarR2Key: {
+      type: String,
+      default: null,
+    },
+    avatarStorageProvider: {
+      type: String,
+      enum: ["gridfs", "r2", "external"],
+      default: "gridfs",
+    },
     googleId: {
       type: String,
       default: null,

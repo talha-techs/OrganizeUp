@@ -12,6 +12,7 @@ const models = {
   tool: Tool,
   section: CustomSection,
   playlist: YoutubePlaylist,
+  video: YoutubePlaylist,
 };
 
 // @desc    Get user's library (saved public items + own private items)
@@ -81,7 +82,8 @@ const getLibrary = async (req, res) => {
 const addToLibrary = async (req, res) => {
   try {
     const { contentType, contentId } = req.params;
-    const Model = models[contentType];
+    const normType = contentType === "video" ? "playlist" : contentType;
+    const Model = models[normType] || models[contentType];
 
     if (!Model) {
       return res.status(400).json({ message: "Invalid content type" });
@@ -93,20 +95,29 @@ const addToLibrary = async (req, res) => {
     }
 
     // Don't add your own content
-    if (content.addedBy.toString() === req.user._id.toString()) {
+    const ownerId = content.addedBy?._id || content.addedBy;
+    if (ownerId && String(ownerId) === String(req.user._id)) {
       return res.status(400).json({
         message: "This is your own content — it's already in your space",
       });
     }
 
-    const saved = await UserLibrary.create({
+    let saved = await UserLibrary.findOne({
       user: req.user._id,
-      contentType,
+      contentType: normType,
       contentId,
     });
 
+    if (!saved) {
+      saved = await UserLibrary.create({
+        user: req.user._id,
+        contentType: normType,
+        contentId,
+      });
+    }
+
     // If saving a published playlist, also auto-create a user-isolated private copy with BLANK notes
-    if (contentType === "playlist") {
+    if (normType === "playlist") {
       let existingClone = null;
       if (content.playlistId) {
         existingClone = await YoutubePlaylist.findOne({
@@ -122,14 +133,14 @@ const addToLibrary = async (req, res) => {
 
       if (!existingClone) {
         await YoutubePlaylist.create({
-          type: content.type || "playlist",
+          type: content.type || (contentType === "video" ? "video" : "playlist"),
           title: content.title,
           description: content.description || "",
           playlistId: content.playlistId || "",
           videoId: content.videoId || "",
           url: content.url || content.playlistUrl || "",
           playlistUrl: content.playlistUrl || "",
-          thumbnail: content.thumbnail || "",
+          thumbnail: content.thumbnail || (content.videos?.[0]?.thumbnail || ""),
           channelTitle: content.channelTitle || "",
           videoCount:
             content.videoCount || (content.videos ? content.videos.length : 0),
@@ -150,7 +161,7 @@ const addToLibrary = async (req, res) => {
     res.status(201).json({ message: "Added to your library", saved });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ message: "Already in your library" });
+      return res.status(200).json({ message: "Already in your library" });
     }
     console.error("Add to library error:", error);
     res.status(500).json({ message: "Server error" });

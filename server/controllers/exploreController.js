@@ -99,7 +99,7 @@ const getExploreContent = async (req, res) => {
     // "all" view shows 6 items per category; specific type views use full pagination
     const perType = normalizedType === "all" ? 6 : lim;
 
-    const filter = { visibility: "public" };
+    const filter = { visibility: /^public$/i };
     if (search) {
       const safe = escapeRegex(search);
       filter.$or = [
@@ -109,7 +109,7 @@ const getExploreContent = async (req, res) => {
     }
 
     // Section search uses 'name' instead of 'title'
-    const sectionFilter = { visibility: "public" };
+    const sectionFilter = { visibility: /^public$/i };
     if (search) {
       const safe = escapeRegex(search);
       sectionFilter.$or = [
@@ -119,7 +119,7 @@ const getExploreContent = async (req, res) => {
     }
 
     // Playlist search includes channelTitle
-    const playlistFilter = { visibility: "public" };
+    const playlistFilter = { visibility: /^public$/i };
     if (search) {
       const safe = escapeRegex(search);
       playlistFilter.$or = [
@@ -283,6 +283,7 @@ const getExploreItem = async (req, res) => {
       tool: Tool,
       section: CustomSection,
       playlist: YoutubePlaylist,
+      video: YoutubePlaylist,
     };
     const Model = models[contentType];
 

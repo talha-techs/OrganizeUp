@@ -124,7 +124,8 @@ const getPlaylist = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    const isOwner = playlist.addedBy._id.toString() === req.user._id.toString();
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && playlist.visibility !== "public") {
       return res.status(403).json({ message: "Not authorized" });
@@ -214,10 +215,14 @@ const addPlaylist = async (req, res) => {
           .json({ message: "You have already saved this video" });
       }
 
-      // Fetch video details (Google API with zero-key oEmbed fallback)
+      // Fetch details from YouTube
       const details = await fetchVideoDetails(videoId);
-      // All user items are strictly private
-      const visibility = "private";
+
+      // Admins can optionally publish directly to Explore
+      const visibility =
+        req.user.role === "admin" && req.body.visibility === "public"
+          ? "public"
+          : "private";
 
       const isGeneric =
         !customTitle ||
@@ -289,8 +294,11 @@ const addPlaylist = async (req, res) => {
       fetchPlaylistVideos(playlistId),
     ]);
 
-    // All user playlists are strictly private
-    const visibility = "private";
+    // Admins can optionally publish directly to Explore
+    const visibility =
+      req.user.role === "admin" && req.body.visibility === "public"
+        ? "public"
+        : "private";
 
     const playlist = await YoutubePlaylist.create({
       type: "playlist",
@@ -348,16 +356,24 @@ const updatePlaylist = async (req, res) => {
       return res.status(404).json({ message: "Playlist not found" });
     }
 
-    const isOwner = playlist.addedBy.toString() === req.user._id.toString();
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const { title, description, thumbnail, videos, remindAt, reminderNote, reminderFired } = req.body;
+    const { title, description, thumbnail, videos, remindAt, reminderNote, reminderFired, visibility } = req.body;
     if (title) playlist.title = title;
     if (description !== undefined) playlist.description = description;
     if (thumbnail !== undefined) playlist.thumbnail = thumbnail;
+    if (visibility !== undefined && ["public", "private"].includes(visibility)) {
+      if (visibility === "public" && !isAdmin) {
+        // Only admin can publish to public Explore
+      } else {
+        playlist.visibility = visibility;
+      }
+    }
     if (remindAt !== undefined) {
       playlist.remindAt = remindAt ? new Date(remindAt) : null;
       playlist.reminderFired = reminderFired !== undefined ? reminderFired : false;
@@ -401,7 +417,8 @@ const setPlaylistReminder = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    const isOwner = playlist.addedBy.toString() === req.user._id.toString();
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Not authorized" });
@@ -437,7 +454,8 @@ const saveVideoNotes = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    const isOwner = playlist.addedBy.toString() === req.user._id.toString();
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
 
     // CRITICAL PRIVACY PROTECTION:
     // If not the owner of this playlist, user cannot modify someone else's document!
@@ -577,7 +595,7 @@ const saveFromExplore = async (req, res) => {
       videoId: template.videoId || "",
       url: template.url || template.playlistUrl || "",
       playlistUrl: template.playlistUrl || "",
-      thumbnail: template.thumbnail || "",
+      thumbnail: template.thumbnail || (template.videos?.[0]?.thumbnail || ""),
       channelTitle: template.channelTitle || "",
       videoCount: template.videoCount || template.videos.length,
       videos: (template.videos || []).map((v, i) => ({
@@ -591,6 +609,14 @@ const saveFromExplore = async (req, res) => {
       addedBy: req.user._id,
       visibility: "private",
     });
+
+    // Also link in UserLibrary for consistent Explore & Library page state
+    const UserLibrary = require("../models/UserLibrary");
+    await UserLibrary.findOneAndUpdate(
+      { user: req.user._id, contentType: "playlist", contentId: template._id },
+      { user: req.user._id, contentType: "playlist", contentId: template._id },
+      { upsert: true, new: true },
+    );
 
     const populated = await YoutubePlaylist.findById(clone._id).populate(
       "addedBy",
@@ -616,7 +642,8 @@ const getCombinedNotes = async (req, res) => {
       return res.status(404).json({ message: "Playlist not found" });
     }
 
-    const isOwner = playlist.addedBy.toString() === req.user._id.toString();
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && playlist.visibility !== "public") {
       return res.status(403).json({ message: "Not authorized" });
@@ -650,7 +677,8 @@ const refreshPlaylist = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    const isOwner = playlist.addedBy.toString() === req.user._id.toString();
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Not authorized" });
@@ -743,10 +771,9 @@ const deletePlaylist = async (req, res) => {
     if (!playlist) {
       return res.status(404).json({ message: "Playlist not found" });
     }
-    if (
-      req.user.role !== "admin" &&
-      playlist.addedBy.toString() !== req.user._id.toString()
-    ) {
+    const ownerId = playlist.addedBy?._id || playlist.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    if (req.user.role !== "admin" && !isOwner) {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this playlist" });

@@ -560,7 +560,7 @@ const ExplorePage = () => {
               item={item}
               contentType={contentType}
               isSaved={!!savedMap[String(item._id)]}
-              isOwn={!!(user?._id && String(item.addedBy?._id) === String(user._id))}
+              isOwn={!!(user?._id && String(item.addedBy?._id || item.addedBy) === String(user._id))}
               onVote={handleVote}
               onOpenComments={openComments}
               onAddToLibrary={handleAddToLibrary}
@@ -1008,7 +1008,7 @@ const ExplorePage = () => {
                       item={item}
                       contentType="book"
                       isSaved={!!savedMap[String(item._id)]}
-                      isOwn={!!(user?._id && String(item.addedBy?._id) === String(user._id))}
+                      isOwn={!!(user?._id && String(item.addedBy?._id || item.addedBy) === String(user._id))}
                       onVote={handleVote}
                       onOpenComments={openComments}
                       onAddToLibrary={handleAddToLibrary}

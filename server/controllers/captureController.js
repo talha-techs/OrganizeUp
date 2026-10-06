@@ -1,5 +1,5 @@
 const CapturedResource = require("../models/CapturedResource");
-const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+const { uploadFile, deleteFile } = require("../services/storageService");
 const { fetchVideoDetails } = require("../services/youtubeService");
 
 // Helper to decode HTML/XML entities and strip zero-width chars
@@ -984,16 +984,23 @@ const createCapture = async (req, res) => {
     let thumbnailUrl = rawThumbnailUrl || "";
     let documentInfo = rawDocumentInfo || null;
     let mediaGridFsId = null;
+    let mediaR2Key = null;
+    let storageProvider = "gridfs";
 
     // Handle uploaded file (image file or clipboard paste)
     if (req.file) {
-      mediaGridFsId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
-        "image",
-      );
-      mediaUrl = `/api/images/${mediaGridFsId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        folder: "captures",
+        isPublic: false,
+        bucketType: "image",
+      });
+      mediaGridFsId = uploaded.fileId;
+      mediaR2Key = uploaded.key;
+      storageProvider = uploaded.provider;
+      mediaUrl = uploaded.url;
       platform = "web_image";
       mediaType = "image";
     }
@@ -1182,6 +1189,8 @@ const createCapture = async (req, res) => {
       embedUrl,
       mediaUrl,
       mediaGridFsId,
+      mediaR2Key,
+      storageProvider,
       thumbnailUrl: thumbnailUrl || "",
       documentInfo: documentInfo || null,
       notes: notes?.trim() || "",
@@ -1326,13 +1335,17 @@ const deleteCapture = async (req, res) => {
       return res.status(404).json({ message: "Capture not found" });
     }
 
-    // Clean up GridFS storage if local file was uploaded
-    if (capture.mediaGridFsId) {
-      try {
-        await deleteFromGridFS(capture.mediaGridFsId, "image");
-      } catch (gridErr) {
-        console.warn("GridFS delete warning:", gridErr.message);
-      }
+    // Clean up media storage (R2 and GridFS) if local file was uploaded
+    if (capture.mediaR2Key || capture.mediaGridFsId) {
+      await deleteFile({
+        provider: capture.storageProvider,
+        key: capture.mediaR2Key,
+        fileId: capture.mediaGridFsId,
+        isPublic: false,
+        bucketType: "image",
+      }).catch((gridErr) => {
+        console.warn("Media delete warning:", gridErr.message);
+      });
     }
 
     await CapturedResource.findByIdAndDelete(capture._id);

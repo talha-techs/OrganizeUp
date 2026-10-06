@@ -63,6 +63,7 @@ const YouTubePlaylistsPage = () => {
   // Modal state
   const [showForm, setShowForm] = useState(false);
   const [addType, setAddType] = useState('playlist'); // 'playlist' | 'video'
+  const [addVisibility, setAddVisibility] = useState('private'); // 'private' | 'public'
   const [inputUrl, setInputUrl] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [detectedType, setDetectedType] = useState(null);
@@ -211,6 +212,7 @@ const YouTubePlaylistsPage = () => {
     }
     setInputUrl('');
     setDetectedType(null);
+    setAddVisibility('private');
     setShowForm(true);
   };
 
@@ -226,6 +228,7 @@ const YouTubePlaylistsPage = () => {
         url: inputUrl.trim(),
         playlistUrl: inputUrl.trim(),
         type: addType,
+        visibility: isAdmin ? addVisibility : 'private',
       }),
     );
     setIsAdding(false);
@@ -272,8 +275,10 @@ const YouTubePlaylistsPage = () => {
       }),
     );
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success(`Set to ${newVis}`);
+      toast.success(newVis === 'public' ? 'Published to Explore!' : 'Set to private');
       dispatch(fetchPlaylists());
+    } else {
+      toast.error(result.payload || 'Failed to update visibility');
     }
   };
 
@@ -953,6 +958,27 @@ const YouTubePlaylistsPage = () => {
                 : 'Paste a playlist link. All videos, durations, and thumbnails will be retrieved automatically.'}
             </p>
           </div>
+
+          {/* Admin Publish to Explore Toggle */}
+          {isAdmin && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-surface-raised border border-subtle">
+              <div className="flex items-center gap-2">
+                <IoGlobeOutline size={18} className="text-accent" />
+                <div>
+                  <p className="text-xs font-semibold text-primary">Publish to Explore</p>
+                  <p className="text-[11px] text-secondary">
+                    Make this available immediately in the public Explore feed
+                  </p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={addVisibility === 'public'}
+                onChange={(e) => setAddVisibility(e.target.checked ? 'public' : 'private')}
+                className="w-4 h-4 rounded text-accent focus:ring-accent cursor-pointer"
+              />
+            </div>
+          )}
 
           {/* Modal Actions */}
           <div className="flex justify-end gap-3 pt-3 border-t border-subtle">

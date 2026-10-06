@@ -35,6 +35,19 @@ const bookSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
+    pdfR2Key: {
+      type: String,
+      default: null,
+    },
+    coverR2Key: {
+      type: String,
+      default: null,
+    },
+    storageProvider: {
+      type: String,
+      enum: ["gridfs", "r2"],
+      default: "gridfs",
+    },
     // For video books - list of video episodes
     videos: [
       {
@@ -44,13 +57,22 @@ const bookSchema = new mongoose.Schema(
         order: { type: Number, default: 0 },
       },
     ],
-    // For audio books — each track uploaded to GridFS or streamed via audioUrl
+    // For audio books — each track uploaded to GridFS/R2 or streamed via audioUrl
     audioFiles: [
       {
         title: { type: String, default: "" },
         fileId: {
           type: mongoose.Schema.Types.ObjectId,
           default: null,
+        },
+        r2Key: {
+          type: String,
+          default: null,
+        },
+        storageProvider: {
+          type: String,
+          enum: ["gridfs", "r2"],
+          default: "gridfs",
         },
         audioUrl: {
           type: String,

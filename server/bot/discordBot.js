@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Partials, ApplicationCommandType, ContextMenu
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const DiscordMessage = require('../models/DiscordMessage');
+const { uploadFile } = require('../services/storageService');
 const { Readable } = require('stream');
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -123,10 +124,19 @@ client.on('interactionCreate', async interaction => {
             if (response.ok) {
               const arrayBuffer = await response.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
-              const gridFsId = await uploadToGridFS(buffer, attachment.name || `discord_img_${Date.now()}.jpg`, contentType);
+              const uploaded = await uploadFile({
+                buffer,
+                originalname: attachment.name || `discord_img_${Date.now()}.jpg`,
+                mimetype: contentType,
+                folder: "discord",
+                isPublic: false,
+                bucketType: "image",
+              });
               
               messageData.media.push({
-                gridFsId: gridFsId.toString(),
+                gridFsId: uploaded.fileId,
+                r2Key: uploaded.key,
+                storageProvider: uploaded.provider,
                 type: contentType,
                 filename: attachment.name
               });

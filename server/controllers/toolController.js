@@ -1,6 +1,6 @@
 const Tool = require("../models/Tool");
 const UserLibrary = require("../models/UserLibrary");
-const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+const { uploadFile, deleteFile } = require("../services/storageService");
 
 // @desc    Get tools (user sees own + saved from library; admin sees all)
 // @route   GET /api/tools?mine=true
@@ -103,16 +103,25 @@ const createTool = async (req, res) => {
 
     let bannerImage = "";
     let bannerImageId = null;
+    let bannerR2Key = null;
+    let storageProvider = "gridfs";
+
     if (req.file) {
-      bannerImageId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
-        "image",
-      );
-      bannerImage = `/api/images/${bannerImageId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        folder: "tools",
+        isPublic: true,
+        bucketType: "image",
+      });
+      bannerImage = uploaded.url;
+      bannerImageId = uploaded.fileId;
+      bannerR2Key = uploaded.key;
+      storageProvider = uploaded.provider;
     } else if (req.body.bannerImage) {
       bannerImage = req.body.bannerImage;
+      storageProvider = "external";
     }
 
     const visibility = req.user.role === "admin" ? "public" : "private";
@@ -122,6 +131,8 @@ const createTool = async (req, res) => {
       description,
       bannerImage,
       bannerImageId,
+      bannerR2Key,
+      storageProvider,
       link,
       addedBy: req.user._id,
       visibility,
@@ -153,19 +164,41 @@ const updateTool = async (req, res) => {
     const { title, description, link } = req.body;
 
     if (req.file) {
-      if (tool.bannerImageId) {
-        await deleteFromGridFS(tool.bannerImageId, "image");
+      if (tool.bannerR2Key || tool.bannerImageId) {
+        await deleteFile({
+          provider: tool.storageProvider,
+          key: tool.bannerR2Key,
+          fileId: tool.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
       }
-      const bannerImageId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
-        "image",
-      );
-      tool.bannerImageId = bannerImageId;
-      tool.bannerImage = `/api/images/${bannerImageId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        folder: "tools",
+        isPublic: true,
+        bucketType: "image",
+      });
+      tool.bannerImageId = uploaded.fileId;
+      tool.bannerR2Key = uploaded.key;
+      tool.storageProvider = uploaded.provider;
+      tool.bannerImage = uploaded.url;
     } else if (req.body.bannerImage !== undefined) {
+      if (tool.bannerR2Key || tool.bannerImageId) {
+        await deleteFile({
+          provider: tool.storageProvider,
+          key: tool.bannerR2Key,
+          fileId: tool.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
+        tool.bannerImageId = null;
+        tool.bannerR2Key = null;
+      }
       tool.bannerImage = req.body.bannerImage;
+      tool.storageProvider = "external";
     }
 
     if (title) tool.title = title;
@@ -197,8 +230,14 @@ const deleteTool = async (req, res) => {
         .json({ message: "Not authorized to delete this tool" });
     }
 
-    if (tool.bannerImageId) {
-      await deleteFromGridFS(tool.bannerImageId, "image");
+    if (tool.bannerR2Key || tool.bannerImageId) {
+      await deleteFile({
+        provider: tool.storageProvider,
+        key: tool.bannerR2Key,
+        fileId: tool.bannerImageId,
+        isPublic: true,
+        bucketType: "image",
+      });
     }
 
     await tool.deleteOne();

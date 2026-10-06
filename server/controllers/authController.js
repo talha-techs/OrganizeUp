@@ -7,7 +7,7 @@ const CapturedResource = require("../models/CapturedResource");
 const CustomSection = require("../models/CustomSection");
 const SectionInvite = require("../models/SectionInvite");
 const { generateToken } = require("../middleware/auth");
-const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+const { uploadFile, deleteFile } = require("../services/storageService");
 
 // Calculate consecutive streak statistics from a set of YYYY-MM-DD date strings
 function calculateStreaks(daysSet) {
@@ -347,25 +347,43 @@ const updateProfile = async (req, res) => {
 
     // Handle avatar image upload
     if (req.file) {
-      // Delete old avatar from GridFS if it exists
-      if (user.avatarImageId) {
-        await deleteFromGridFS(user.avatarImageId, "image");
+      // Delete old avatar from R2 or GridFS if it exists
+      if (user.avatarR2Key || user.avatarImageId) {
+        await deleteFile({
+          provider: user.avatarStorageProvider,
+          key: user.avatarR2Key,
+          fileId: user.avatarImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
       }
-      const avatarImageId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
-        "image",
-      );
-      user.avatarImageId = avatarImageId;
-      user.avatar = `/api/images/${avatarImageId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        folder: "avatars",
+        isPublic: true,
+        bucketType: "image",
+      });
+      user.avatarStorageProvider = uploaded.provider;
+      user.avatarR2Key = uploaded.key;
+      user.avatarImageId = uploaded.fileId;
+      user.avatar = uploaded.url;
     } else if (req.body.removeAvatar === "true") {
       // Allow removing avatar
-      if (user.avatarImageId) {
-        await deleteFromGridFS(user.avatarImageId, "image");
+      if (user.avatarR2Key || user.avatarImageId) {
+        await deleteFile({
+          provider: user.avatarStorageProvider,
+          key: user.avatarR2Key,
+          fileId: user.avatarImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
       }
       user.avatarImageId = null;
+      user.avatarR2Key = null;
       user.avatar = "";
+      user.avatarStorageProvider = "gridfs";
     }
 
     await user.save();

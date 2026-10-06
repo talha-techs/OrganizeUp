@@ -26,6 +26,7 @@ router.put("/toggle-visibility", protect, async (req, res) => {
       tool: Tool,
       section: CustomSection,
       playlist: YoutubePlaylist,
+      video: YoutubePlaylist,
     };
 
     const Model = models[contentType];
@@ -38,7 +39,8 @@ router.put("/toggle-visibility", protect, async (req, res) => {
       return res.status(404).json({ message: "Content not found" });
     }
 
-    const isOwner = doc.addedBy.toString() === req.user._id.toString();
+    const ownerId = doc.addedBy?._id || doc.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {

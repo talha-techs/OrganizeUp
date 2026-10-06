@@ -194,7 +194,8 @@ app.use("/api/captures", apiLimiter, captureRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/suggestions", apiLimiter, suggestionRoutes);
 
-// Image serving from GridFS (authenticated)
+// Image serving from GridFS or R2 (authenticated)
+app.get("/api/images/r2/*key", protect, serveImage);
 app.get("/api/images/:fileId", protect, serveImage);
 
 // Health check

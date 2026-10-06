@@ -44,7 +44,7 @@ const SavedItem = ({ item, onRemove }) => {
 
   const content = item.content || {};
   const meta    = TYPE_META[item.displayType || item.contentType] || TYPE_META.book;
-  const thumb   = content.bannerImage || content.coverImage || content.thumbnailUrl;
+  const thumb   = content.bannerImage || content.coverImage || content.thumbnailUrl || content.thumbnail || content.videos?.[0]?.thumbnail;
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);

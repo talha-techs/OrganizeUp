@@ -2,7 +2,7 @@ const tg = require("node-telegram-bot-api");
 const TelegramBot = tg.default || tg;
 const User = require("../models/User");
 const TelegramMessage = require("../models/TelegramMessage");
-const { uploadToGridFS } = require("../config/gridfs");
+const { uploadFile } = require("../services/storageService");
 
 let bot;
 
@@ -108,6 +108,8 @@ const initTelegramBot = () => {
 
       // Process attached image if present
       let bannerImageId = null;
+      let bannerR2Key = null;
+      let storageProvider = "gridfs";
       console.log("DEBUG: msg.photo =", msg.photo ? "Exists" : "Undefined");
       console.log("DEBUG: extractedUrl =", extractedUrl);
       
@@ -120,12 +122,17 @@ const initTelegramBot = () => {
           if (response.ok) {
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            bannerImageId = await uploadToGridFS(
+            const uploaded = await uploadFile({
               buffer,
-              `telegram_${photo.file_id}.jpg`,
-              "image/jpeg",
-              "image"
-            );
+              originalname: `telegram_${photo.file_id}.jpg`,
+              mimetype: "image/jpeg",
+              folder: "telegram",
+              isPublic: false,
+              bucketType: "image",
+            });
+            bannerImageId = uploaded.fileId;
+            bannerR2Key = uploaded.key;
+            storageProvider = uploaded.provider;
           }
         } catch (imgError) {
           console.error("Error processing telegram image:", imgError);
@@ -165,17 +172,22 @@ const initTelegramBot = () => {
               });
               
               if (imgResponse.ok) {
-                console.log("Successfully downloaded image. Saving to GridFS...");
+                console.log("Successfully downloaded image. Saving via storageService...");
                 const contentType = imgResponse.headers.get('content-type') || 'image/jpeg';
                 const arrayBuffer = await imgResponse.arrayBuffer();
                 const buffer = Buffer.from(arrayBuffer);
-                bannerImageId = await uploadToGridFS(
+                const uploaded = await uploadFile({
                   buffer,
-                  `telegram_og_${Date.now()}.jpg`,
-                  contentType,
-                  "image"
-                );
-                console.log("Image saved with ID:", bannerImageId);
+                  originalname: `telegram_og_${Date.now()}.jpg`,
+                  mimetype: contentType,
+                  folder: "telegram",
+                  isPublic: false,
+                  bucketType: "image",
+                });
+                bannerImageId = uploaded.fileId;
+                bannerR2Key = uploaded.key;
+                storageProvider = uploaded.provider;
+                console.log("Image saved with ID/key:", bannerImageId || bannerR2Key);
               } else {
                 console.warn(`Failed to download image. Status: ${imgResponse.status}`);
               }
@@ -198,6 +210,8 @@ const initTelegramBot = () => {
         extractedUrl: extractedUrl,
         senderName: senderName,
         bannerImageId: bannerImageId,
+        bannerR2Key: bannerR2Key,
+        storageProvider: storageProvider,
         status: "saved",
       });
 

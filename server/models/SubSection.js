@@ -96,6 +96,12 @@ const subSectionSchema = new mongoose.Schema(
 
     // ── Image ─────────────────────────────────────────────
     imageUrl: { type: String, default: "" },
+    imageR2Key: { type: String, default: null },
+    storageProvider: {
+      type: String,
+      enum: ["gridfs", "r2", "external"],
+      default: "gridfs",
+    },
     imageCaption: { type: String, default: "" },
 
     // ── Concurrency & Attribution ─────────────────────────

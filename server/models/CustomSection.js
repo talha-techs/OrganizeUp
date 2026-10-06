@@ -77,6 +77,15 @@ const customSectionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    bannerR2Key: {
+      type: String,
+      default: null,
+    },
+    storageProvider: {
+      type: String,
+      enum: ["gridfs", "r2", "external"],
+      default: "gridfs",
+    },
     driveLink: {
       type: String,
       default: "",

@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const DiscordMessage = require('../models/DiscordMessage');
 const { protect } = require('../middleware/auth');
+const { getPresignedDownloadUrl, deleteFile } = require('../services/storageService');
 const mongoose = require('mongoose');
 
 let gridfsBucket;
@@ -26,23 +27,44 @@ router.get('/messages', protect, async (req, res) => {
   }
 });
 
-// @desc    Stream Discord media from GridFS
+// @desc    Stream Discord media from R2 or GridFS
 // @route   GET /api/discord/media/:id
-// @access  Public (or semi-private if token provided in query)
-router.get('/media/:id', async (req, res) => {
+// @access  Private
+router.get('/media/:id', protect, async (req, res) => {
   try {
-    const fileId = new mongoose.Types.ObjectId(req.params.id);
-    const files = await gridfsBucket.find({ _id: fileId }).toArray();
-    
-    if (!files || files.length === 0) {
-      return res.status(404).json({ message: 'File not found' });
+    const rawParam = decodeURIComponent(req.params.id);
+
+    // Check if this matches an R2 key in any discord message
+    const msg = await DiscordMessage.findOne({
+      "media.r2Key": rawParam,
+    });
+
+    if (msg) {
+      const item = msg.media.find((m) => m.r2Key === rawParam);
+      if (item && item.r2Key) {
+        const signedUrl = await getPresignedDownloadUrl(item.r2Key, {
+          expiresIn: 3600,
+          isPublic: false,
+        });
+        return res.redirect(302, signedUrl);
+      }
     }
 
-    const file = files[0];
-    res.set('Content-Type', file.contentType || 'application/octet-stream');
-    
-    const readStream = gridfsBucket.openDownloadStream(fileId);
-    readStream.pipe(res);
+    // GridFS fallback
+    if (mongoose.isValidObjectId(rawParam) && gridfsBucket) {
+      const fileId = new mongoose.Types.ObjectId(rawParam);
+      const files = await gridfsBucket.find({ _id: fileId }).toArray();
+      
+      if (files && files.length > 0) {
+        const file = files[0];
+        res.set('Content-Type', file.contentType || 'application/octet-stream');
+        
+        const readStream = gridfsBucket.openDownloadStream(fileId);
+        return readStream.pipe(res);
+      }
+    }
+
+    res.status(404).json({ message: 'File not found' });
   } catch (error) {
     console.error('Error streaming discord media:', error);
     res.status(500).json({ message: 'Server error' });
@@ -180,9 +202,16 @@ router.delete('/messages/:id', protect, async (req, res) => {
     const msg = await DiscordMessage.findOne({ _id: req.params.id, user: req.user._id });
     if (!msg) return res.status(404).json({ message: 'Message not found' });
     
-    // Optionally delete files from GridFS
+    // Clean up media files from R2 or GridFS
     for (const media of msg.media) {
-      if (media.gridFsId) {
+      if (media.r2Key) {
+        await deleteFile({
+          provider: "r2",
+          key: media.r2Key,
+          isPublic: false,
+        });
+      }
+      if (media.gridFsId && gridfsBucket) {
         try {
           await gridfsBucket.delete(new mongoose.Types.ObjectId(media.gridFsId));
         } catch(err) {

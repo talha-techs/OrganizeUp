@@ -1807,7 +1807,7 @@ const AdminPage = () => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted mb-3">{contentTotal} item{contentTotal !== 1 ? 's' : ''} total</p>
                   {contentItems.map((item) => {
-                    const thumb = item.bannerImage || item.coverImage || item.thumbnailUrl;
+                    const thumb = item.bannerImage || item.coverImage || item.thumbnailUrl || item.thumbnail;
                     const isPublic = item.visibility === 'public';
                     return (
                       <div

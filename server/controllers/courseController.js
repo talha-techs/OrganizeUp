@@ -2,7 +2,7 @@ const Course = require("../models/Course");
 const Category = require("../models/Category");
 const User = require("../models/User");
 const UserLibrary = require("../models/UserLibrary");
-const { uploadToGridFS, deleteFromGridFS } = require("../config/gridfs");
+const { uploadFile, deleteFile } = require("../services/storageService");
 const { fetchPexelsBanner } = require("../services/pexelsService");
 
 // Escape special regex chars to prevent ReDoS / injection
@@ -159,20 +159,30 @@ const createCourse = async (req, res) => {
 
     let bannerImage = "";
     let bannerImageId = null;
+    let bannerR2Key = null;
+    let storageProvider = "gridfs";
+
     if (req.file) {
-      bannerImageId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
-        "image",
-      );
-      bannerImage = `/api/images/${bannerImageId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        folder: "courses",
+        isPublic: true,
+        bucketType: "image",
+      });
+      bannerImage = uploaded.url;
+      bannerImageId = uploaded.fileId;
+      bannerR2Key = uploaded.key;
+      storageProvider = uploaded.provider;
     } else if (req.body.bannerImage) {
       bannerImage = req.body.bannerImage;
+      storageProvider = "external";
     }
 
     if (!bannerImage) {
       bannerImage = (await fetchPexelsBanner(title.trim())) || "";
+      if (bannerImage) storageProvider = "external";
     }
 
     const visibility = req.user.role === "admin" ? "public" : "private";
@@ -182,6 +192,8 @@ const createCourse = async (req, res) => {
       description,
       bannerImage,
       bannerImageId,
+      bannerR2Key,
+      storageProvider,
       driveLink,
       category: categoryId,
       addedBy: req.user._id,
@@ -261,20 +273,42 @@ const updateCourse = async (req, res) => {
     }
 
     if (req.file) {
-      // Delete old image from GridFS
-      if (course.bannerImageId) {
-        await deleteFromGridFS(course.bannerImageId, "image");
+      // Delete old image from R2 or GridFS
+      if (course.bannerR2Key || course.bannerImageId) {
+        await deleteFile({
+          provider: course.storageProvider,
+          key: course.bannerR2Key,
+          fileId: course.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
       }
-      const bannerImageId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
-        "image",
-      );
-      course.bannerImageId = bannerImageId;
-      course.bannerImage = `/api/images/${bannerImageId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        folder: "courses",
+        isPublic: true,
+        bucketType: "image",
+      });
+      course.bannerImageId = uploaded.fileId;
+      course.bannerR2Key = uploaded.key;
+      course.storageProvider = uploaded.provider;
+      course.bannerImage = uploaded.url;
     } else if (req.body.bannerImage !== undefined) {
+      if (course.bannerR2Key || course.bannerImageId) {
+        await deleteFile({
+          provider: course.storageProvider,
+          key: course.bannerR2Key,
+          fileId: course.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
+        course.bannerImageId = null;
+        course.bannerR2Key = null;
+      }
       course.bannerImage = req.body.bannerImage;
+      course.storageProvider = "external";
     }
 
     if (title) course.title = title;
@@ -312,8 +346,14 @@ const deleteCourse = async (req, res) => {
         .json({ message: "Not authorized to delete this course" });
     }
 
-    if (course.bannerImageId) {
-      await deleteFromGridFS(course.bannerImageId, "image");
+    if (course.bannerR2Key || course.bannerImageId) {
+      await deleteFile({
+        provider: course.storageProvider,
+        key: course.bannerR2Key,
+        fileId: course.bannerImageId,
+        isPublic: true,
+        bucketType: "image",
+      });
     }
 
     await course.deleteOne();

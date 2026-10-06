@@ -1,12 +1,14 @@
+const mongoose = require("mongoose");
 const Book = require("../models/Book");
 const User = require("../models/User");
 const UserLibrary = require("../models/UserLibrary");
 const {
-  uploadToGridFS,
+  uploadFile,
+  deleteFile,
+  getPresignedDownloadUrl,
   streamFromGridFS,
   streamAudioFromGridFS,
-  deleteFromGridFS,
-} = require("../config/gridfs");
+} = require("../services/storageService");
 
 // @desc    Get books (user sees own + saved from library; admin sees all)
 // @route   GET /api/books?type=video|text|audio&mine=true
@@ -130,32 +132,47 @@ const createBook = async (req, res) => {
       videos,
     } = req.body;
 
-    // Handle PDF file upload to MongoDB GridFS
+    // Handle PDF file upload
     let pdfFileId = null;
+    let pdfR2Key = null;
+    let bookStorageProvider = "gridfs";
+
     const pdfFile =
       req.files?.pdfFile?.[0] ||
       (req.file?.fieldname === "pdfFile" ? req.file : null);
     if (pdfFile && pdfFile.mimetype === "application/pdf") {
-      pdfFileId = await uploadToGridFS(
-        pdfFile.buffer,
-        pdfFile.originalname,
-        pdfFile.mimetype,
-        "pdf",
-      );
+      const uploadedPdf = await uploadFile({
+        buffer: pdfFile.buffer,
+        originalname: pdfFile.originalname,
+        mimetype: pdfFile.mimetype,
+        folder: "books/pdfs",
+        isPublic: false,
+        bucketType: "pdf",
+      });
+      pdfFileId = uploadedPdf.fileId;
+      pdfR2Key = uploadedPdf.key;
+      bookStorageProvider = uploadedPdf.provider;
     }
 
-    // Handle cover image upload to GridFS
+    // Handle cover image upload
     let coverImageId = null;
+    let coverR2Key = null;
+    let coverImageUrl = req.body.coverImage || "";
     const coverFile =
       req.files?.coverImage?.[0] ||
       (req.file?.fieldname === "coverImage" ? req.file : null);
     if (coverFile) {
-      coverImageId = await uploadToGridFS(
-        coverFile.buffer,
-        coverFile.originalname,
-        coverFile.mimetype,
-        "image",
-      );
+      const uploadedCover = await uploadFile({
+        buffer: coverFile.buffer,
+        originalname: coverFile.originalname,
+        mimetype: coverFile.mimetype,
+        folder: "books/covers",
+        isPublic: true,
+        bucketType: "image",
+      });
+      coverImageId = uploadedCover.fileId;
+      coverR2Key = uploadedCover.key;
+      coverImageUrl = uploadedCover.url;
     }
 
     // All uploaded content is private by default, unless explicitly passed in the request
@@ -170,15 +187,19 @@ const createBook = async (req, res) => {
     for (let i = 0; i < audioFileUploads.length; i++) {
       const af = audioFileUploads[i];
       const meta = parsedAudioMeta[i] || {};
-      const fileId = await uploadToGridFS(
-        af.buffer,
-        af.originalname,
-        af.mimetype,
-        "audio",
-      );
+      const uploadedAudio = await uploadFile({
+        buffer: af.buffer,
+        originalname: af.originalname,
+        mimetype: af.mimetype,
+        folder: "books/audios",
+        isPublic: false,
+        bucketType: "audio",
+      });
       audioFiles.push({
         title: meta.title || af.originalname.replace(/\.[^.]+$/, ""),
-        fileId,
+        fileId: uploadedAudio.fileId,
+        r2Key: uploadedAudio.key,
+        storageProvider: uploadedAudio.provider,
         originalName: af.originalname,
         duration: meta.duration || "",
         size: af.size || af.buffer?.length || 0,
@@ -186,17 +207,23 @@ const createBook = async (req, res) => {
       });
     }
 
+    const targetPdfIdentifier = pdfFileId || (pdfR2Key ? encodeURIComponent(pdfR2Key) : null);
+    const generatedEmbedLink = targetPdfIdentifier
+      ? `/api/books/pdf/${targetPdfIdentifier}/${encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`
+      : embedLink || "";
+
     const book = await Book.create({
       title,
       author,
       type,
       description,
-      coverImage: coverImageId
-        ? `/api/images/${coverImageId}`
-        : req.body.coverImage || "",
+      coverImage: coverImageUrl,
       coverImageId,
-      embedLink: pdfFileId ? `/api/books/pdf/${pdfFileId}/${encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf` : embedLink || "",
+      coverR2Key,
+      embedLink: generatedEmbedLink,
       pdfFileId: pdfFileId || null,
+      pdfR2Key: pdfR2Key || null,
+      storageProvider: bookStorageProvider,
       driveLink,
       totalPages: totalPages || 0,
       videos: videos ? JSON.parse(videos) : [],
@@ -240,41 +267,72 @@ const updateBook = async (req, res) => {
       videos,
     } = req.body;
 
-    // Handle new PDF file upload to GridFS
+    // Handle new PDF file upload
     const pdfFile =
       req.files?.pdfFile?.[0] ||
       (req.file?.fieldname === "pdfFile" ? req.file : null);
     if (pdfFile && pdfFile.mimetype === "application/pdf") {
-      if (book.pdfFileId) {
-        await deleteFromGridFS(book.pdfFileId, "pdf");
+      if (book.pdfR2Key || book.pdfFileId) {
+        await deleteFile({
+          provider: book.storageProvider,
+          key: book.pdfR2Key,
+          fileId: book.pdfFileId,
+          isPublic: false,
+          bucketType: "pdf",
+        });
       }
-      const pdfFileId = await uploadToGridFS(
-        pdfFile.buffer,
-        pdfFile.originalname,
-        pdfFile.mimetype,
-        "pdf",
-      );
-      book.pdfFileId = pdfFileId;
-      book.embedLink = `/api/books/pdf/${pdfFileId}/${encodeURIComponent((title || book.title).replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
+      const uploadedPdf = await uploadFile({
+        buffer: pdfFile.buffer,
+        originalname: pdfFile.originalname,
+        mimetype: pdfFile.mimetype,
+        folder: "books/pdfs",
+        isPublic: false,
+        bucketType: "pdf",
+      });
+      book.pdfFileId = uploadedPdf.fileId;
+      book.pdfR2Key = uploadedPdf.key;
+      book.storageProvider = uploadedPdf.provider;
+      const targetPdfId = uploadedPdf.fileId || encodeURIComponent(uploadedPdf.key);
+      book.embedLink = `/api/books/pdf/${targetPdfId}/${encodeURIComponent((title || book.title).replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
     }
 
-    // Handle cover image upload to GridFS
+    // Handle cover image upload
     const coverFile =
       req.files?.coverImage?.[0] ||
       (req.file?.fieldname === "coverImage" ? req.file : null);
     if (coverFile) {
-      if (book.coverImageId) {
-        await deleteFromGridFS(book.coverImageId, "image");
+      if (book.coverR2Key || book.coverImageId) {
+        await deleteFile({
+          provider: book.storageProvider,
+          key: book.coverR2Key,
+          fileId: book.coverImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
       }
-      const coverImageId = await uploadToGridFS(
-        coverFile.buffer,
-        coverFile.originalname,
-        coverFile.mimetype,
-        "image",
-      );
-      book.coverImageId = coverImageId;
-      book.coverImage = `/api/images/${coverImageId}`;
+      const uploadedCover = await uploadFile({
+        buffer: coverFile.buffer,
+        originalname: coverFile.originalname,
+        mimetype: coverFile.mimetype,
+        folder: "books/covers",
+        isPublic: true,
+        bucketType: "image",
+      });
+      book.coverImageId = uploadedCover.fileId;
+      book.coverR2Key = uploadedCover.key;
+      book.coverImage = uploadedCover.url;
     } else if (req.body.coverImage !== undefined) {
+      if (book.coverR2Key || book.coverImageId) {
+        await deleteFile({
+          provider: book.storageProvider,
+          key: book.coverR2Key,
+          fileId: book.coverImageId,
+          isPublic: true,
+          bucketType: "image",
+        });
+        book.coverImageId = null;
+        book.coverR2Key = null;
+      }
       book.coverImage = req.body.coverImage;
     }
 
@@ -295,15 +353,19 @@ const updateBook = async (req, res) => {
     for (let i = 0; i < newAudioUploads.length; i++) {
       const af = newAudioUploads[i];
       const meta = parsedAudioMeta[i] || {};
-      const fileId = await uploadToGridFS(
-        af.buffer,
-        af.originalname,
-        af.mimetype,
-        "audio",
-      );
+      const uploadedAudio = await uploadFile({
+        buffer: af.buffer,
+        originalname: af.originalname,
+        mimetype: af.mimetype,
+        folder: "books/audios",
+        isPublic: false,
+        bucketType: "audio",
+      });
       book.audioFiles.push({
         title: meta.title || af.originalname.replace(/\.[^.]+$/, ""),
-        fileId,
+        fileId: uploadedAudio.fileId,
+        r2Key: uploadedAudio.key,
+        storageProvider: uploadedAudio.provider,
         originalName: af.originalname,
         duration: meta.duration || "",
         size: af.size || af.buffer?.length || 0,
@@ -336,16 +398,36 @@ const deleteBook = async (req, res) => {
         .json({ message: "Not authorized to delete this book" });
     }
 
-    // Clean up GridFS files
-    if (book.pdfFileId) {
-      await deleteFromGridFS(book.pdfFileId, "pdf");
+    // Clean up files (R2 and GridFS)
+    if (book.pdfR2Key || book.pdfFileId) {
+      await deleteFile({
+        provider: book.storageProvider,
+        key: book.pdfR2Key,
+        fileId: book.pdfFileId,
+        isPublic: false,
+        bucketType: "pdf",
+      });
     }
-    if (book.coverImageId) {
-      await deleteFromGridFS(book.coverImageId, "image");
+    if (book.coverR2Key || book.coverImageId) {
+      await deleteFile({
+        provider: book.storageProvider,
+        key: book.coverR2Key,
+        fileId: book.coverImageId,
+        isPublic: true,
+        bucketType: "image",
+      });
     }
     // Clean up audio files
     for (const af of book.audioFiles || []) {
-      if (af.fileId) await deleteFromGridFS(af.fileId, "audio");
+      if (af.r2Key || af.fileId) {
+        await deleteFile({
+          provider: af.storageProvider,
+          key: af.r2Key,
+          fileId: af.fileId,
+          isPublic: false,
+          bucketType: "audio",
+        });
+      }
     }
 
     // Clean up UserLibrary entries if any
@@ -539,11 +621,20 @@ const getBookProgress = async (req, res) => {
   }
 };
 
-// @desc    Serve a PDF file from GridFS
+// @desc    Serve a PDF file from R2 or GridFS (with Range/chunk streaming support)
 // @route   GET /api/books/pdf/:fileId
 const servePdf = async (req, res) => {
   try {
-    const book = await Book.findOne({ pdfFileId: req.params.fileId });
+    const rawParam = decodeURIComponent(req.params.fileId);
+    const isValidId = mongoose.isValidObjectId(rawParam);
+
+    const queryConditions = [{ pdfR2Key: rawParam }];
+    if (isValidId) {
+      queryConditions.push({ pdfFileId: rawParam });
+      queryConditions.push({ _id: rawParam });
+    }
+
+    const book = await Book.findOne({ $or: queryConditions });
     if (!book) return res.status(404).json({ message: "PDF not found" });
 
     const isOwner = book.addedBy.toString() === req.user._id.toString();
@@ -556,7 +647,22 @@ const servePdf = async (req, res) => {
 
     // Only allow same-origin framing for owned/public PDFs
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
-    await streamFromGridFS(req.params.fileId, res, "pdf", req);
+
+    // Dual-Read Resolution: If stored in R2, generate a presigned URL with Range support and redirect
+    if (book.pdfR2Key && (book.storageProvider === "r2" || !book.pdfFileId)) {
+      const signedUrl = await getPresignedDownloadUrl(book.pdfR2Key, {
+        expiresIn: 3600,
+        isPublic: false,
+      });
+      return res.redirect(302, signedUrl);
+    }
+
+    // GridFS fallback
+    if (book.pdfFileId) {
+      await streamFromGridFS(book.pdfFileId, res, "pdf", req);
+    } else {
+      res.status(404).json({ message: "PDF file unavailable" });
+    }
   } catch (error) {
     console.error("Serve PDF error:", error);
     res.status(500).json({ message: "Error serving PDF" });
@@ -597,11 +703,20 @@ const removeVideoFromBook = async (req, res) => {
   }
 };
 
-// @desc    Serve an audio file from GridFS (with Range/seek support)
+// @desc    Serve an audio file from R2 or GridFS (with Range/seek support)
 // @route   GET /api/books/audio/:fileId
 const serveAudio = async (req, res) => {
   try {
-    const book = await Book.findOne({ "audioFiles.fileId": req.params.fileId });
+    const rawParam = decodeURIComponent(req.params.fileId);
+    const isValidId = mongoose.isValidObjectId(rawParam);
+
+    const queryConditions = [{ "audioFiles.r2Key": rawParam }];
+    if (isValidId) {
+      queryConditions.push({ "audioFiles.fileId": rawParam });
+      queryConditions.push({ "audioFiles._id": rawParam });
+    }
+
+    const book = await Book.findOne({ $or: queryConditions });
     if (!book) return res.status(404).json({ message: "Audio not found" });
 
     const isOwner = book.addedBy.toString() === req.user._id.toString();
@@ -612,7 +727,30 @@ const serveAudio = async (req, res) => {
         .json({ message: "Not authorized to access this file" });
     }
 
-    await streamAudioFromGridFS(req.params.fileId, req, res, "audio");
+    const track = book.audioFiles.find(
+      (a) =>
+        (a.fileId && a.fileId.toString() === rawParam) ||
+        a.r2Key === rawParam ||
+        a._id.toString() === rawParam
+    );
+
+    if (!track) return res.status(404).json({ message: "Audio track not found" });
+
+    // Dual-Read Resolution: If stored in R2, redirect to presigned URL (4 hours TTL)
+    if (track.r2Key && (track.storageProvider === "r2" || !track.fileId)) {
+      const signedUrl = await getPresignedDownloadUrl(track.r2Key, {
+        expiresIn: 14400,
+        isPublic: false,
+      });
+      return res.redirect(302, signedUrl);
+    }
+
+    // GridFS fallback
+    if (track.fileId) {
+      await streamAudioFromGridFS(track.fileId, req, res, "audio");
+    } else {
+      res.status(404).json({ message: "Audio track unavailable" });
+    }
   } catch (error) {
     console.error("Serve audio error:", error);
     res.status(500).json({ message: "Error serving audio" });
@@ -637,8 +775,16 @@ const removeAudioFromBook = async (req, res) => {
     );
     if (!track) return res.status(404).json({ message: "Track not found" });
 
-    // Delete the file from GridFS
-    if (track.fileId) await deleteFromGridFS(track.fileId, "audio");
+    // Delete the file from R2 or GridFS
+    if (track.r2Key || track.fileId) {
+      await deleteFile({
+        provider: track.storageProvider,
+        key: track.r2Key,
+        fileId: track.fileId,
+        isPublic: false,
+        bucketType: "audio",
+      });
+    }
 
     book.audioFiles = book.audioFiles.filter(
       (a) => a._id.toString() !== req.params.audioId,
@@ -651,11 +797,25 @@ const removeAudioFromBook = async (req, res) => {
   }
 };
 
-// @desc    Serve an image from GridFS
-// @route   GET /api/images/:fileId
+// @desc    Serve an image from GridFS or redirect to R2
+// @route   GET /api/images/:fileId and GET /api/images/r2/*
 const serveImage = async (req, res) => {
   try {
-    await streamFromGridFS(req.params.fileId, res, "image");
+    let rawParam = req.params.key || req.params[0] || req.params.fileId;
+    if (rawParam) rawParam = decodeURIComponent(rawParam);
+
+    if (rawParam && mongoose.isValidObjectId(rawParam)) {
+      await streamFromGridFS(rawParam, res, "image");
+    } else if (rawParam) {
+      // If it's an R2 key or public asset
+      const signedUrl = await getPresignedDownloadUrl(rawParam, {
+        expiresIn: 86400,
+        isPublic: true,
+      });
+      res.redirect(302, signedUrl);
+    } else {
+      res.status(404).json({ message: "Image not found" });
+    }
   } catch (error) {
     console.error("Serve image error:", error);
     res.status(500).json({ message: "Error serving image" });

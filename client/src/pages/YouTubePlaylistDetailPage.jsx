@@ -22,6 +22,7 @@ import {
   IoChevronUpOutline,
   IoAlarmOutline,
   IoClose,
+  IoGlobeOutline,
 } from 'react-icons/io5';
 import {
   fetchPlaylist,
@@ -32,6 +33,7 @@ import {
   refreshPlaylist,
   updatePlaylistVideoProgress,
 } from '../redux/slices/youtubePlaylistSlice';
+import { toggleVisibility } from '../redux/slices/adminSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -360,6 +362,30 @@ const YouTubePlaylistDetailPage = () => {
     }
   };
 
+  const isAdmin = user?.role === 'admin';
+
+  const handleToggleVisibility = async () => {
+    if (!currentPlaylist?._id) return;
+    const newVis = currentPlaylist.visibility === 'public' ? 'private' : 'public';
+    try {
+      const result = await dispatch(
+        toggleVisibility({
+          contentType: 'playlist',
+          contentId: currentPlaylist._id,
+          visibility: newVis,
+        }),
+      );
+      if (result.meta.requestStatus === 'fulfilled') {
+        toast.success(newVis === 'public' ? 'Published to Explore!' : 'Made Private');
+        dispatch(fetchPlaylist(id));
+      } else {
+        toast.error(result.payload || 'Failed to update visibility');
+      }
+    } catch (err) {
+      toast.error('Failed to update visibility');
+    }
+  };
+
   // Auto-save on Ctrl+S
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -649,6 +675,27 @@ const YouTubePlaylistDetailPage = () => {
                         })}`
                     : 'Set Reminder'}
                 </span>
+              </button>
+            )}
+
+            {/* Admin Explore Publish Toggle */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleToggleVisibility}
+                className={`btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer transition-colors ${
+                  currentPlaylist?.visibility === 'public'
+                    ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                    : 'text-secondary hover:text-primary hover:border-accent/40'
+                }`}
+                title={
+                  currentPlaylist?.visibility === 'public'
+                    ? 'Published on Explore (click to make private)'
+                    : 'Publish to Explore'
+                }
+              >
+                <IoGlobeOutline size={15} />
+                <span>{currentPlaylist?.visibility === 'public' ? 'Public' : 'Publish'}</span>
               </button>
             )}
 

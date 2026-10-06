@@ -9,7 +9,7 @@ const PublishRequest = require("../models/PublishRequest");
 const CapturedResource = require("../models/CapturedResource");
 const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
-const { deleteFromGridFS } = require("../config/gridfs");
+const { deleteFile, extractGridFsId } = require("../services/storageService");
 const { getTrafficMetrics } = require("../middleware/trafficTracker");
 
 // In-memory cache for user storage metrics (TTL: 3 minutes)
@@ -380,7 +380,8 @@ const toggleVisibility = async (req, res) => {
         Model = CustomSection;
         break;
       }
-      case "playlist": {
+      case "playlist":
+      case "video": {
         const YoutubePlaylist = require("../models/YoutubePlaylist");
         Model = YoutubePlaylist;
         break;
@@ -432,7 +433,8 @@ const getAllContent = async (req, res) => {
         Model = CustomSection;
         break;
       }
-      case "playlist": {
+      case "playlist":
+      case "video": {
         const YoutubePlaylist = require("../models/YoutubePlaylist");
         Model = YoutubePlaylist;
         break;
@@ -509,19 +511,71 @@ const adminDeleteContent = async (req, res) => {
     const doc = await Model.findById(id);
     if (!doc) return res.status(404).json({ message: "Content not found" });
 
-    // Cascade-delete associated GridFS files to prevent orphaned storage
+    // Cascade-delete associated files (R2 and GridFS) to prevent orphaned storage
     if (type === "book") {
-      if (doc.pdfFileId)
-        await deleteFromGridFS(doc.pdfFileId, "pdf").catch(() => {});
-      if (doc.coverImageId)
-        await deleteFromGridFS(doc.coverImageId, "image").catch(() => {});
+      if (doc.pdfR2Key || doc.pdfFileId) {
+        await deleteFile({
+          provider: doc.storageProvider,
+          key: doc.pdfR2Key,
+          fileId: doc.pdfFileId,
+          isPublic: false,
+          bucketType: "pdf",
+        }).catch(() => {});
+      }
+      if (doc.coverR2Key || doc.coverImageId) {
+        await deleteFile({
+          provider: doc.storageProvider,
+          key: doc.coverR2Key,
+          fileId: doc.coverImageId,
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
+      }
       for (const af of doc.audioFiles || []) {
-        if (af.fileId)
-          await deleteFromGridFS(af.fileId, "audio").catch(() => {});
+        if (af.r2Key || af.fileId) {
+          await deleteFile({
+            provider: af.storageProvider,
+            key: af.r2Key,
+            fileId: af.fileId,
+            isPublic: false,
+            bucketType: "audio",
+          }).catch(() => {});
+        }
       }
     } else if (type === "course" || type === "tool") {
-      if (doc.bannerImageId)
-        await deleteFromGridFS(doc.bannerImageId, "image").catch(() => {});
+      if (doc.bannerR2Key || doc.bannerImageId) {
+        await deleteFile({
+          provider: doc.storageProvider,
+          key: doc.bannerR2Key,
+          fileId: doc.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
+      }
+    } else if (type === "section") {
+      if (doc.bannerR2Key || doc.bannerImage) {
+        await deleteFile({
+          provider: doc.storageProvider,
+          key: doc.bannerR2Key,
+          fileId: extractGridFsId(doc.bannerImage),
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
+      }
+      const imageSubSections = await SubSection.find({
+        sectionId: doc._id,
+        type: "image",
+      }).select("imageUrl imageR2Key storageProvider");
+      for (const sub of imageSubSections) {
+        await deleteFile({
+          provider: sub.storageProvider,
+          key: sub.imageR2Key,
+          fileId: extractGridFsId(sub.imageUrl),
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
+      }
+      await SubSection.deleteMany({ sectionId: doc._id });
     }
 
     await doc.deleteOne();

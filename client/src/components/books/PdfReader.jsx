@@ -117,16 +117,13 @@ export default function PdfReader({
           const queryToken = token ? (endpoint.includes('?') ? '&' : '?') + `token=${encodeURIComponent(token)}` : '';
           const fullUrl = `${window.location.origin}${apiBase}${endpoint}${queryToken}`;
 
-          const headers = {};
-          if (token) headers['Authorization'] = `Bearer ${token}`;
-
           try {
-            // High-speed progressive range streaming:
-            // Fetches initial pages via HTTP Range in <300ms without downloading the rest of the book
+            // High-speed progressive range streaming from Cloudflare R2:
+            // Token is verified via query parameter ?token=... on the initial redirect.
+            // Do not send Authorization header or withCredentials, which S3/R2 rejects on 302 redirects.
             loadingTask = pdfjsLib.getDocument({
               url: fullUrl,
-              httpHeaders: headers,
-              withCredentials: true,
+              withCredentials: false,
               rangeChunkSize: 65536,
               disableAutoFetch: true,
               disableStream: false,

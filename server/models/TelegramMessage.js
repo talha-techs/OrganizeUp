@@ -27,6 +27,15 @@ const telegramMessageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    bannerR2Key: {
+      type: String,
+      default: null,
+    },
+    storageProvider: {
+      type: String,
+      enum: ["gridfs", "r2"],
+      default: "gridfs",
+    },
     note: {
       type: String,
       default: "",

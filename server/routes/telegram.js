@@ -4,7 +4,11 @@ const router = express.Router();
 const User = require("../models/User");
 const TelegramMessage = require("../models/TelegramMessage");
 const { protect } = require("../middleware/auth");
-const { streamFromGridFS } = require("../config/gridfs");
+const {
+  streamFromGridFS,
+  deleteFile,
+  getPresignedDownloadUrl,
+} = require("../services/storageService");
 
 // @desc    Generate a link code for Telegram
 // @route   POST /api/telegram/link
@@ -66,11 +70,24 @@ router.delete("/unlink", protect, async (req, res) => {
 
 // @desc    Serve banner image for Telegram message
 // @route   GET /api/telegram/image/:fileId
-// @access  Public (or protected if needed, but usually images are fine)
-router.get("/image/:fileId", async (req, res) => {
+// @access  Private
+router.get("/image/:fileId", protect, async (req, res) => {
   try {
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
-    await streamFromGridFS(req.params.fileId, res, "image");
+    const rawParam = decodeURIComponent(req.params.fileId);
+
+    // Check if any TelegramMessage has this bannerR2Key
+    const msg = await TelegramMessage.findOne({ bannerR2Key: rawParam });
+    if (msg && msg.bannerR2Key) {
+      const signedUrl = await getPresignedDownloadUrl(msg.bannerR2Key, {
+        expiresIn: 3600,
+        isPublic: false,
+      });
+      return res.redirect(302, signedUrl);
+    }
+
+    // GridFS fallback
+    await streamFromGridFS(rawParam, res, "image");
   } catch (error) {
     console.error("Serve telegram image error:", error);
     res.status(500).json({ message: "Error serving image" });
@@ -137,6 +154,16 @@ router.delete("/messages/:id", protect, async (req, res) => {
 
     if (!message) {
       return res.status(404).json({ message: "Message not found" });
+    }
+
+    if (message.bannerR2Key || message.bannerImageId) {
+      await deleteFile({
+        provider: message.storageProvider,
+        key: message.bannerR2Key,
+        fileId: message.bannerImageId,
+        isPublic: false,
+        bucketType: "image",
+      });
     }
 
     res.json({ message: "Message dismissed" });

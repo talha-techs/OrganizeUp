@@ -58,7 +58,8 @@ const ExploreContentCard = React.memo(
       if (currentVote === -1) currentDownvotes += 1;
     }
 
-    const hasValidImage = (item.coverImage || item.bannerImage || item.thumbnail) && !imageError;
+    const thumbUrl = item.coverImage || item.bannerImage || item.thumbnail || item.videos?.[0]?.thumbnail || '';
+    const hasValidImage = Boolean(thumbUrl) && !imageError;
 
     const handleVoteClick = async (targetVote) => {
       if (isVotingRef.current) return;
@@ -94,6 +95,7 @@ const ExploreContentCard = React.memo(
 
     const formatBadgeText = useMemo(() => {
       if (contentType === 'playlist') {
+        if (item.type === 'video') return '📹 Single Video';
         const count = item.videoCount || (item.videos ? item.videos.length : 0);
         return `📹 Playlist${count ? ` • ${count} vids` : ''}`;
       }
@@ -121,7 +123,7 @@ const ExploreContentCard = React.memo(
         <div className="relative h-56 sm:h-64 bg-surface-raised overflow-hidden flex-shrink-0 border-b border-subtle">
           {hasValidImage ? (
             <img
-              src={item.coverImage || item.bannerImage || item.thumbnail}
+              src={thumbUrl}
               alt={item.title}
               onError={() => setImageError(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"

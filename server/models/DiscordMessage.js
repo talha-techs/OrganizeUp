@@ -38,6 +38,12 @@ const discordMessageSchema = new mongoose.Schema(
     media: [
       {
         gridFsId: String,
+        r2Key: { type: String, default: null },
+        storageProvider: {
+          type: String,
+          enum: ["gridfs", "r2"],
+          default: "gridfs",
+        },
         type: { type: String }, // e.g. 'image/png'
         filename: String,
       }

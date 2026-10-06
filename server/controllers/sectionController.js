@@ -4,7 +4,11 @@ const SubSection = require("../models/SubSection");
 const UserLibrary = require("../models/UserLibrary");
 const User = require("../models/User");
 const SectionInvite = require("../models/SectionInvite");
-const { uploadToGridFS } = require("../config/gridfs");
+const {
+  uploadFile,
+  deleteFile,
+  extractGridFsId,
+} = require("../services/storageService");
 const { fetchPexelsBanner } = require("../services/pexelsService");
 const {
   resolveSectionRole,
@@ -124,18 +128,27 @@ const createSection = async (req, res) => {
   try {
     const { name, description, icon, color } = req.body;
     let bannerImage = req.body.bannerImage || "";
+    let bannerR2Key = null;
+    let storageProvider = "gridfs";
 
     if (req.file) {
-      const fileId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname || `section_banner_${Date.now()}.jpg`,
-        req.file.mimetype,
-        "image",
-      );
-      bannerImage = `/api/images/${fileId}`;
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname || `section_banner_${Date.now()}.jpg`,
+        mimetype: req.file.mimetype || "image/jpeg",
+        folder: "sections/banners",
+        isPublic: true,
+        bucketType: "image",
+      });
+      bannerImage = uploaded.url;
+      bannerR2Key = uploaded.key;
+      storageProvider = uploaded.provider;
     } else if (!bannerImage && name) {
       // Auto-fetch banner from Pexels if API key is provided
       bannerImage = await fetchPexelsBanner(name);
+      if (bannerImage) storageProvider = "external";
+    } else if (bannerImage) {
+      storageProvider = "external";
     }
 
     const section = await CustomSection.create({
@@ -144,6 +157,8 @@ const createSection = async (req, res) => {
       icon: icon || "folder",
       color: color || "indigo",
       bannerImage: bannerImage || "",
+      bannerR2Key,
+      storageProvider,
       addedBy: req.user._id,
       visibility: "private",
     });
@@ -289,6 +304,36 @@ const deleteSection = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this section" });
+    }
+
+    // Clean up images: section banner (R2 and GridFS)
+    if (section.bannerR2Key || section.bannerImage) {
+      await deleteFile({
+        provider: section.storageProvider,
+        key: section.bannerR2Key,
+        fileId: extractGridFsId(section.bannerImage),
+        isPublic: true,
+        bucketType: "image",
+      }).catch((err) =>
+        console.warn("Section banner cleanup warning:", err.message)
+      );
+    }
+
+    // Clean up images: all subsection image blocks (R2 and GridFS)
+    const imageSubSections = await SubSection.find({
+      sectionId: section._id,
+      type: "image",
+    }).select("imageUrl imageR2Key storageProvider");
+    for (const sub of imageSubSections) {
+      await deleteFile({
+        provider: sub.storageProvider,
+        key: sub.imageR2Key,
+        fileId: extractGridFsId(sub.imageUrl),
+        isPublic: true,
+        bucketType: "image",
+      }).catch((err) =>
+        console.warn("Subsection image cleanup warning:", err.message)
+      );
     }
 
     await SubSection.deleteMany({ sectionId: section._id });
@@ -448,15 +493,21 @@ const uploadSectionImage = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to upload to this section" });
     }
 
-    const fileId = await uploadToGridFS(
-      req.file.buffer,
-      req.file.originalname || `section_img_${Date.now()}.png`,
-      req.file.mimetype || "image/png",
-      "image",
-    );
+    const uploaded = await uploadFile({
+      buffer: req.file.buffer,
+      originalname: req.file.originalname || `section_img_${Date.now()}.png`,
+      mimetype: req.file.mimetype || "image/png",
+      folder: "sections/blocks",
+      isPublic: true,
+      bucketType: "image",
+    });
 
-    const imageUrl = `/api/images/${fileId}`;
-    res.json({ imageUrl, fileId: fileId.toString() });
+    res.json({
+      imageUrl: uploaded.url,
+      fileId: uploaded.fileId || uploaded.key,
+      key: uploaded.key,
+      provider: uploaded.provider,
+    });
   } catch (error) {
     console.error("Upload section image error:", error);
     res.status(500).json({ message: "Server error uploading image" });
@@ -478,14 +529,32 @@ const updateSectionBanner = async (req, res) => {
 
     const { bannerImage, query, autoFetch } = req.body || {};
 
+    // Delete old banner (R2 or GridFS) if replacing with a new upload, Pexels, or URL
+    const hasOldImage = section.bannerR2Key || section.bannerImage;
+
     if (req.file) {
-      const fileId = await uploadToGridFS(
-        req.file.buffer,
-        req.file.originalname || `banner_${Date.now()}.jpg`,
-        req.file.mimetype,
-        "image",
-      );
-      section.bannerImage = `/api/images/${fileId}`;
+      if (hasOldImage) {
+        await deleteFile({
+          provider: section.storageProvider,
+          key: section.bannerR2Key,
+          fileId: extractGridFsId(section.bannerImage),
+          isPublic: true,
+          bucketType: "image",
+        }).catch((err) =>
+          console.warn("Section banner cleanup warning:", err.message)
+        );
+      }
+      const uploaded = await uploadFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname || `banner_${Date.now()}.jpg`,
+        mimetype: req.file.mimetype,
+        folder: "sections/banners",
+        isPublic: true,
+        bucketType: "image",
+      });
+      section.bannerImage = uploaded.url;
+      section.bannerR2Key = uploaded.key;
+      section.storageProvider = uploaded.provider;
     } else if (autoFetch || query) {
       const pexelsUrl = await fetchPexelsBanner(query || section.name);
       if (!pexelsUrl) {
@@ -495,9 +564,35 @@ const updateSectionBanner = async (req, res) => {
             : "Pexels API key not configured in server .env",
         });
       }
+      if (hasOldImage) {
+        await deleteFile({
+          provider: section.storageProvider,
+          key: section.bannerR2Key,
+          fileId: extractGridFsId(section.bannerImage),
+          isPublic: true,
+          bucketType: "image",
+        }).catch((err) =>
+          console.warn("Section banner cleanup warning:", err.message)
+        );
+      }
       section.bannerImage = pexelsUrl;
+      section.bannerR2Key = null;
+      section.storageProvider = "external";
     } else if (bannerImage !== undefined) {
+      if (hasOldImage && bannerImage !== section.bannerImage) {
+        await deleteFile({
+          provider: section.storageProvider,
+          key: section.bannerR2Key,
+          fileId: extractGridFsId(section.bannerImage),
+          isPublic: true,
+          bucketType: "image",
+        }).catch((err) =>
+          console.warn("Section banner cleanup warning:", err.message)
+        );
+        section.bannerR2Key = null;
+      }
       section.bannerImage = bannerImage;
+      section.storageProvider = "external";
     }
 
     await section.save();

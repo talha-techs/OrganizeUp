@@ -10,7 +10,7 @@ const userLibrarySchema = new mongoose.Schema(
     },
     contentType: {
       type: String,
-      enum: ["book", "course", "tool", "section"],
+      enum: ["book", "course", "tool", "section", "playlist", "video"],
       required: true,
     },
     contentId: {

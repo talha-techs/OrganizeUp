@@ -35,13 +35,13 @@ const connectDB = async () => {
       primaryErr.message.includes("ssl3_read_bytes") ||
       primaryErr.message.includes("tlsv1 alert");
 
-    if (isDnsError && fallbackUri) {
-      console.warn("[DB] SRV DNS lookup failed → retrying with direct URI...");
+    if (fallbackUri) {
+      console.warn(`[DB] Primary connection failed (${primaryErr.message}) → retrying with fallback URI...`);
       try {
-        await tryConnect(fallbackUri, "DIRECT");
+        await tryConnect(fallbackUri, "FALLBACK");
       } catch (fallbackErr) {
         console.error(
-          `MongoDB Connection Error (direct): ${fallbackErr.message}`,
+          `MongoDB Connection Error (fallback): ${fallbackErr.message}`,
         );
         process.exit(1);
       }

@@ -2,13 +2,12 @@ import React from 'react';
 import {
   IoBookOutline,
   IoSchoolOutline,
-  IoConstructOutline,
   IoHeadsetOutline,
   IoVideocamOutline,
   IoPlayOutline,
   IoFolderOutline,
-  IoSparklesOutline,
 } from 'react-icons/io5';
+import ResourceContainerIcon from './ResourceContainerIcon';
 
 // Configuration for each card category's sharp, clean aesthetic
 // No text, no neon glows, sharp graphics matching both light and dark themes
@@ -32,7 +31,7 @@ const CATEGORY_CONFIG = {
     darkBorder: 'border-emerald-500/25',
   },
   tool: {
-    icon: IoConstructOutline,
+    icon: ResourceContainerIcon,
     lightColor: 'text-amber-600',
     darkColor: 'text-amber-400',
     lightBg: 'bg-amber-500/[0.08]',
@@ -77,7 +76,7 @@ const CATEGORY_CONFIG = {
     darkBorder: 'border-teal-500/25',
   },
   default: {
-    icon: IoSparklesOutline,
+    icon: ResourceContainerIcon,
     lightColor: 'text-orange-600',
     darkColor: 'text-orange-400',
     lightBg: 'bg-orange-500/[0.08]',
