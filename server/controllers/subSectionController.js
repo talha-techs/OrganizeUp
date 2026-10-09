@@ -2,6 +2,7 @@ const SubSection = require("../models/SubSection");
 const { checkSectionAccess } = require("../middleware/sectionAuth");
 const { broadcastToSection, broadcastActivity } = require("../socket");
 const { fetchUrlMetadata, detectPlatformAndEmbed } = require("./captureController");
+const { deleteFile, extractGridFsId } = require("../services/storageService");
 
 // Extract client socket ID to exclude sender from receiving duplicate broadcast echoes
 const getSocketId = (req) => req.headers["x-socket-id"] || null;
@@ -245,6 +246,18 @@ const deleteSubSection = async (req, res) => {
       _id: req.params.subId,
       sectionId: req.params.id,
     });
+
+    if (deleted && deleted.type === "image" && (deleted.imageR2Key || deleted.imageUrl)) {
+      await deleteFile({
+        provider: deleted.storageProvider,
+        key: deleted.imageR2Key,
+        fileId: extractGridFsId(deleted.imageUrl),
+        isPublic: true,
+        bucketType: "image",
+      }).catch((err) =>
+        console.warn("SubSection image cleanup warning:", err.message)
+      );
+    }
     const senderSocketId = getSocketId(req);
     broadcastToSection(req.params.id, "subsection_deleted", { subId: req.params.subId }, senderSocketId);
     broadcastActivity(req.params.id, {
