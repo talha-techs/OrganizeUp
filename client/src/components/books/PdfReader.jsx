@@ -70,6 +70,7 @@ export default function PdfReader({
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [selectedText, setSelectedText] = useState('');
   const [selectionPos, setSelectionPos] = useState(null);
+  const [externalDirectUrl, setExternalDirectUrl] = useState('');
 
   // Sync initial page if changed from outside
   useEffect(() => {
@@ -95,37 +96,53 @@ export default function PdfReader({
       try {
         let loadingTask;
 
-        // Strip /api prefix if present because api.baseURL already contains /api
-        const isRelativeOrApi =
-          pdfUrl.startsWith('/') ||
-          pdfUrl.startsWith('./') ||
-          pdfUrl.includes('/api/books/pdf/') ||
-          pdfUrl.includes('/api/');
-
+        // Normalize URL: if given full URL pointing to our origin or /api/, convert to clean path
         const token = localStorage.getItem('token');
+        let normalizedPath = pdfUrl;
+        if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
+          try {
+            const parsed = new URL(pdfUrl);
+            if (
+              parsed.hostname === window.location.hostname ||
+              parsed.pathname.includes('/api/') ||
+              parsed.pathname.includes('/books/pdf/')
+            ) {
+              normalizedPath = parsed.pathname + parsed.search;
+            }
+          } catch (_) {}
+        }
+
+        const isRelativeOrApi =
+          normalizedPath.startsWith('/') ||
+          normalizedPath.startsWith('./') ||
+          normalizedPath.includes('/api/') ||
+          normalizedPath.includes('/books/pdf/');
 
         if (isRelativeOrApi) {
-          const apiBase = api.defaults.baseURL || '/api';
-          let endpoint = pdfUrl;
-          if (endpoint.startsWith(apiBase)) {
-            endpoint = endpoint.slice(apiBase.length);
-          } else if (endpoint.startsWith('/api')) {
-            endpoint = endpoint.slice(4);
+          let pathWithApi = normalizedPath;
+          if (!pathWithApi.startsWith('/api') && !pathWithApi.startsWith('api')) {
+            pathWithApi = `/api${pathWithApi.startsWith('/') ? '' : '/'}${pathWithApi}`;
+          } else if (pathWithApi.startsWith('api/')) {
+            pathWithApi = `/${pathWithApi}`;
           }
-          if (!endpoint.startsWith('/')) endpoint = '/' + endpoint;
 
-          const queryToken = token ? (endpoint.includes('?') ? '&' : '?') + `token=${encodeURIComponent(token)}` : '';
-          const fullUrl = `${window.location.origin}${apiBase}${endpoint}${queryToken}`;
+          // Endpoint relative to axios baseURL (which already contains /api)
+          const endpoint = pathWithApi.startsWith('/api') ? pathWithApi.slice(4) : pathWithApi;
+
+          const queryToken = token
+            ? (pathWithApi.includes('?') ? '&' : '?') + `token=${encodeURIComponent(token)}`
+            : '';
+          const fullUrl = `${window.location.origin}${pathWithApi}${queryToken}`;
+          setExternalDirectUrl(fullUrl);
 
           try {
-            // High-speed progressive range streaming from Cloudflare R2:
-            // Token is verified via query parameter ?token=... on the initial redirect.
-            // Do not send Authorization header or withCredentials, which S3/R2 rejects on 302 redirects.
+            // High-speed progressive range streaming directly from Express proxy
             loadingTask = pdfjsLib.getDocument({
               url: fullUrl,
-              withCredentials: false,
+              withCredentials: true,
+              httpHeaders: token ? { Authorization: `Bearer ${token}` } : {},
               rangeChunkSize: 65536,
-              disableAutoFetch: true,
+              disableAutoFetch: false,
               disableStream: false,
               cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
               cMapPacked: true,
@@ -168,6 +185,7 @@ export default function PdfReader({
           }
         } else {
           // Direct external URL
+          setExternalDirectUrl(pdfUrl);
           loadingTask = pdfjsLib.getDocument({
             url: pdfUrl,
             withCredentials: false,
@@ -544,7 +562,7 @@ export default function PdfReader({
             <IoRefreshOutline size={16} /> Retry In-App
           </button>
           <a
-            href={pdfUrl}
+            href={externalDirectUrl || pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-secondary text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer"

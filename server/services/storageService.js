@@ -192,11 +192,88 @@ const getPresignedDownloadUrl = async (
   return await getSignedUrl(client, command, { expiresIn });
 };
 
+/**
+ * Stream an object from R2 to an Express HTTP response with Range/chunk streaming support
+ *
+ * @param {Object} params
+ * @param {string} params.key - R2 object key
+ * @param {Response} params.res - Express response
+ * @param {Request} [params.req] - Express request (inspects Range header)
+ * @param {string} [params.bucket] - Target bucket (defaults to privateBucket)
+ * @param {string} [params.contentType] - Fallback content type
+ * @param {string} [params.filename] - Inline disposition filename
+ */
+const streamFromR2 = async ({
+  key,
+  res,
+  req = null,
+  bucket = null,
+  contentType = "application/pdf",
+  filename = "document.pdf",
+}) => {
+  const client = getR2Client();
+  if (!client) {
+    throw new Error("R2 Client is not configured. Cannot stream from R2.");
+  }
+
+  const targetBucket = bucket || R2_CONFIG.privateBucket;
+  const rangeHeader = req?.headers?.range;
+
+  const commandInput = {
+    Bucket: targetBucket,
+    Key: key,
+  };
+  if (rangeHeader) {
+    commandInput.Range = rangeHeader;
+  }
+
+  const s3Response = await client.send(new GetObjectCommand(commandInput));
+
+  const resolvedContentType = s3Response.ContentType || contentType;
+  const isPartial = s3Response.$metadata.httpStatusCode === 206 || Boolean(s3Response.ContentRange);
+
+  res.status(isPartial ? 206 : 200);
+
+  const headers = {
+    "Content-Type": resolvedContentType,
+    "Content-Disposition": `inline; filename="${filename}"`,
+    "Accept-Ranges": "bytes",
+    "Cache-Control": "public, max-age=86400",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length",
+  };
+
+  if (s3Response.ContentLength !== undefined) {
+    headers["Content-Length"] = String(s3Response.ContentLength);
+  }
+  if (s3Response.ContentRange) {
+    headers["Content-Range"] = s3Response.ContentRange;
+  }
+  if (s3Response.ETag) {
+    headers["ETag"] = s3Response.ETag;
+  }
+
+  res.set(headers);
+
+  if (s3Response.Body) {
+    s3Response.Body.pipe(res);
+    s3Response.Body.on("error", (err) => {
+      console.error("[storageService] R2 stream error:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Error streaming file" });
+      }
+    });
+  } else {
+    res.end();
+  }
+};
+
 module.exports = {
   isR2Active,
   uploadFile,
   deleteFile,
   getPresignedDownloadUrl,
+  streamFromR2,
   extractGridFsId,
   streamFromGridFS,
   streamAudioFromGridFS,

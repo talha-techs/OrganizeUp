@@ -6,6 +6,7 @@ const {
   uploadFile,
   deleteFile,
   getPresignedDownloadUrl,
+  streamFromR2,
   streamFromGridFS,
   streamAudioFromGridFS,
 } = require("../services/storageService");
@@ -637,7 +638,8 @@ const servePdf = async (req, res) => {
     const book = await Book.findOne({ $or: queryConditions });
     if (!book) return res.status(404).json({ message: "PDF not found" });
 
-    const isOwner = book.addedBy.toString() === req.user._id.toString();
+    const ownerId = book.addedBy?._id || book.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
       return res
@@ -648,13 +650,17 @@ const servePdf = async (req, res) => {
     // Only allow same-origin framing for owned/public PDFs
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
 
-    // Dual-Read Resolution: If stored in R2, generate a presigned URL with Range support and redirect
+    const filename = `${encodeURIComponent((book.title || 'document').replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
+
+    // Dual-Read Resolution: If stored in R2, stream from R2 with Range/chunk support
     if (book.pdfR2Key && (book.storageProvider === "r2" || !book.pdfFileId)) {
-      const signedUrl = await getPresignedDownloadUrl(book.pdfR2Key, {
-        expiresIn: 3600,
-        isPublic: false,
+      return await streamFromR2({
+        key: book.pdfR2Key,
+        res,
+        req,
+        contentType: "application/pdf",
+        filename,
       });
-      return res.redirect(302, signedUrl);
     }
 
     // GridFS fallback
@@ -719,7 +725,8 @@ const serveAudio = async (req, res) => {
     const book = await Book.findOne({ $or: queryConditions });
     if (!book) return res.status(404).json({ message: "Audio not found" });
 
-    const isOwner = book.addedBy.toString() === req.user._id.toString();
+    const ownerId = book.addedBy?._id || book.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
       return res
@@ -736,13 +743,16 @@ const serveAudio = async (req, res) => {
 
     if (!track) return res.status(404).json({ message: "Audio track not found" });
 
-    // Dual-Read Resolution: If stored in R2, redirect to presigned URL (4 hours TTL)
+    // Dual-Read Resolution: If stored in R2, stream from R2 with Range/seek support
     if (track.r2Key && (track.storageProvider === "r2" || !track.fileId)) {
-      const signedUrl = await getPresignedDownloadUrl(track.r2Key, {
-        expiresIn: 14400,
-        isPublic: false,
+      const filename = `${encodeURIComponent((track.title || 'audio').replace(/[^a-zA-Z0-9-]/g, '-'))}.mp3`;
+      return await streamFromR2({
+        key: track.r2Key,
+        res,
+        req,
+        contentType: track.contentType || "audio/mpeg",
+        filename,
       });
-      return res.redirect(302, signedUrl);
     }
 
     // GridFS fallback

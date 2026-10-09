@@ -60,7 +60,7 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://unpkg.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         mediaSrc: ["'self'", "data:", "blob:", "https:"],
         frameSrc: [
@@ -91,6 +91,10 @@ app.use(
         connectSrc: [
           "'self'",
           process.env.CLIENT_URL || "http://localhost:5173",
+          "https://*.organizeup.app",
+          "https://cdn.organizeup.app",
+          "https://*.r2.cloudflarestorage.com",
+          "https://unpkg.com",
         ],
       },
     },
