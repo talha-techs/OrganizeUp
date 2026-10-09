@@ -24,22 +24,20 @@ const getBooks = async (req, res) => {
 
     const savedBookIdMap = new Map();
 
+    const isAdmin = req.user.role === "admin";
+    const saved = await UserLibrary.find({
+      user: req.user._id,
+      contentType: "book",
+    }).select("contentId _id");
+    const savedIds = saved.map((s) => s.contentId);
+    saved.forEach((s) => savedBookIdMap.set(s.contentId.toString(), s._id));
+
     if (req.query.mine === "true") {
       filter.addedBy = req.user._id;
-    } else if (req.user.role === "admin") {
-      const saved = await UserLibrary.find({
-        user: req.user._id,
-        contentType: "book",
-      }).select("contentId _id");
-      saved.forEach((s) => savedBookIdMap.set(s.contentId.toString(), s._id));
+    } else if (isAdmin && req.query.all === "true") {
+      // Explicit administrative overview parameter only
     } else {
-      const saved = await UserLibrary.find({
-        user: req.user._id,
-        contentType: "book",
-      }).select("contentId _id");
-      const savedIds = saved.map((s) => s.contentId);
-      saved.forEach((s) => savedBookIdMap.set(s.contentId.toString(), s._id));
-
+      // Personal library for all users (including admins): authored books + saved books
       filter.$or = [
         { addedBy: req.user._id },
         { _id: { $in: savedIds } },
@@ -392,13 +390,14 @@ const deleteBook = async (req, res) => {
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
-    if (
-      req.user.role !== "admin" &&
-      book.addedBy.toString() !== req.user._id.toString()
-    ) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to delete this book" });
+    const isOwner =
+      book.addedBy &&
+      book.addedBy.toString() === req.user._id.toString();
+    if (!isOwner) {
+      return res.status(403).json({
+        message:
+          "Only the author can delete this book. To remove saved content from your library, unsave it. To moderate content as admin, use Content Management.",
+      });
     }
 
     // Clean up files (R2 and GridFS)

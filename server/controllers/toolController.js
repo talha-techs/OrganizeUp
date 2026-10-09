@@ -9,22 +9,20 @@ const getTools = async (req, res) => {
     const filter = {};
     const savedToolIdMap = new Map();
 
+    const isAdmin = req.user.role === "admin";
+    const saved = await UserLibrary.find({
+      user: req.user._id,
+      contentType: "tool",
+    }).select("contentId _id");
+    const savedIds = saved.map((s) => s.contentId);
+    saved.forEach((s) => savedToolIdMap.set(s.contentId.toString(), s._id));
+
     if (req.query.mine === "true") {
       filter.addedBy = req.user._id;
-    } else if (req.user.role === "admin") {
-      const saved = await UserLibrary.find({
-        user: req.user._id,
-        contentType: "tool",
-      }).select("contentId _id");
-      saved.forEach((s) => savedToolIdMap.set(s.contentId.toString(), s._id));
+    } else if (isAdmin && req.query.all === "true") {
+      // Explicit administrative overview parameter only
     } else {
-      const saved = await UserLibrary.find({
-        user: req.user._id,
-        contentType: "tool",
-      }).select("contentId _id");
-      const savedIds = saved.map((s) => s.contentId);
-      saved.forEach((s) => savedToolIdMap.set(s.contentId.toString(), s._id));
-
+      // Personal library for all users (including admins): authored tools + saved tools
       filter.$or = [
         { addedBy: req.user._id },
         { _id: { $in: savedIds } },
@@ -221,13 +219,14 @@ const deleteTool = async (req, res) => {
     if (!tool) {
       return res.status(404).json({ message: "Tool not found" });
     }
-    if (
-      req.user.role !== "admin" &&
-      tool.addedBy.toString() !== req.user._id.toString()
-    ) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to delete this tool" });
+    const isOwner =
+      tool.addedBy &&
+      tool.addedBy.toString() === req.user._id.toString();
+    if (!isOwner) {
+      return res.status(403).json({
+        message:
+          "Only the author can delete this tool. To remove saved content from your library, unsave it. To moderate content as admin, use Content Management.",
+      });
     }
 
     if (tool.bannerR2Key || tool.bannerImageId) {

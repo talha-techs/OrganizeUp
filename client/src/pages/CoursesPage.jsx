@@ -90,6 +90,12 @@ const CoursesPage = () => {
 
   const confirmDeleteCourse = async () => {
     if (!deleteCourseId) return;
+    const targetCourse = courses.find((c) => String(c._id) === String(deleteCourseId));
+    if (targetCourse && !targetCourse.isOwner) {
+      toast.error('Only the author can delete this course. To remove it from your space, unsave it.');
+      setDeleteCourseId(null);
+      return;
+    }
     setIsDeletingCourse(true);
     const result = await dispatch(deleteCourse(deleteCourseId));
     setIsDeletingCourse(false);
@@ -539,16 +545,17 @@ const CoursesPage = () => {
                       description={course.description}
                       isAdmin={isAdmin}
                       ownerId={course.addedBy}
+                      isOwner={course.isOwner}
                       visibility={course.visibility}
                       isSaved={course.isSaved}
                       onUnsave={() => handleUnsaveCourse(course._id)}
-                      onEdit={() => {
+                      onEdit={course.isOwner ? () => {
                         setEditCourse(course);
                         setShowForm(true);
-                      }}
-                      onDelete={() => handleDeleteCourse(course._id)}
+                      } : undefined}
+                      onDelete={course.isOwner ? () => handleDeleteCourse(course._id) : undefined}
                       onClick={() => navigate(`/courses/${course._id}`)}
-                      onRequestPublish={async () => {
+                      onRequestPublish={course.isOwner ? async () => {
                         const result = await dispatch(requestPublish({ contentType: 'course', contentId: course._id }));
                         if (result.meta.requestStatus === 'fulfilled') {
                           toast.success('Publish request sent!');
@@ -556,9 +563,9 @@ const CoursesPage = () => {
                         } else {
                           toast.error(result.payload || 'Failed to request publish');
                         }
-                      }}
+                      } : undefined}
                       onToggleVisibility={
-                        isAdmin
+                        course.isOwner && isAdmin
                           ? async () => {
                               const newVis = course.visibility === 'public' ? 'private' : 'public';
                               const result = await dispatch(
@@ -575,7 +582,7 @@ const CoursesPage = () => {
                             }
                           : undefined
                       }
-                      onMakePrivate={async () => {
+                      onMakePrivate={course.isOwner ? async () => {
                         try {
                           await api.put('/content/toggle-visibility', {
                             contentType: 'course',
@@ -587,7 +594,7 @@ const CoursesPage = () => {
                         } catch (err) {
                           toast.error(err.response?.data?.message || 'Failed to update');
                         }
-                      }}
+                      } : undefined}
                     >
                       <div className="flex items-center gap-1.5 mt-3 text-xs text-accent font-semibold">
                         <IoOpenOutline size={13} />
@@ -654,16 +661,17 @@ const CoursesPage = () => {
                     description={course.description}
                     isAdmin={isAdmin}
                     ownerId={course.addedBy}
+                    isOwner={course.isOwner}
                     visibility={course.visibility}
                     isSaved={course.isSaved}
                     onUnsave={() => handleUnsaveCourse(course._id)}
-                    onEdit={() => {
+                    onEdit={course.isOwner ? () => {
                       setEditCourse(course);
                       setShowForm(true);
-                    }}
-                    onDelete={() => handleDeleteCourse(course._id)}
+                    } : undefined}
+                    onDelete={course.isOwner ? () => handleDeleteCourse(course._id) : undefined}
                     onClick={() => navigate(`/courses/${course._id}`)}
-                    onRequestPublish={async () => {
+                    onRequestPublish={course.isOwner ? async () => {
                       const result = await dispatch(requestPublish({ contentType: 'course', contentId: course._id }));
                       if (result.meta.requestStatus === 'fulfilled') {
                         toast.success('Publish request sent!');
@@ -671,9 +679,9 @@ const CoursesPage = () => {
                       } else {
                         toast.error(result.payload || 'Failed to request publish');
                       }
-                    }}
+                    } : undefined}
                     onToggleVisibility={
-                      isAdmin
+                      course.isOwner && isAdmin
                         ? async () => {
                             const newVis = course.visibility === 'public' ? 'private' : 'public';
                             const result = await dispatch(
@@ -690,7 +698,7 @@ const CoursesPage = () => {
                           }
                         : undefined
                     }
-                    onMakePrivate={async () => {
+                    onMakePrivate={course.isOwner ? async () => {
                       try {
                         await api.put('/content/toggle-visibility', {
                           contentType: 'course',
@@ -702,7 +710,7 @@ const CoursesPage = () => {
                       } catch (err) {
                         toast.error(err.response?.data?.message || 'Failed to update');
                       }
-                    }}
+                    } : undefined}
                   >
                     <div className="flex items-center gap-1.5 mt-3 text-xs text-accent font-semibold">
                       <IoOpenOutline size={13} />

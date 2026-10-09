@@ -468,13 +468,13 @@ const SectionsPage = () => {
                             e.stopPropagation();
                             handleUnsaveSection(section._id);
                           }}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-400 bg-surface/90 hover:text-red-400 hover:bg-red-500/15 border border-emerald-500/30 hover:border-red-500/30 backdrop-blur-md shadow-md transition-all cursor-pointer group/unsave"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-400 bg-surface/90 hover:text-red-400 hover:bg-red-500/15 border border-emerald-500/30 hover:border-red-500/30 backdrop-blur-md shadow-md transition-all cursor-pointer group-unsave"
                           title="Click to unsave from your library"
                         >
-                          <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={13} />
-                          <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={14} />
-                          <span className="group-hover/unsave:hidden">Saved</span>
-                          <span className="hidden group-hover/unsave:inline">Unsave</span>
+                          <IoBookmark className="unsave-default-show text-emerald-400" size={13} />
+                          <IoCloseOutline className="unsave-hover-show text-red-400" size={14} />
+                          <span className="unsave-default-show">Saved</span>
+                          <span className="unsave-hover-show">Unsave</span>
                         </button>
                       )}
 

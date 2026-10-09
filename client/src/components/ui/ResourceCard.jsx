@@ -37,7 +37,11 @@ const ResourceCard = ({
           String(ownerId?._id ?? ownerId) === String(user._id))
       : !!isOwnerProp;
 
-  const canManage = isAdmin || isOwner;
+  const [isUnsaveHovered, setIsUnsaveHovered] = useState(false);
+
+  const hasMenuItems =
+    (isOwner && (!!onEdit || !!onDelete || (isAdmin && !!onToggleVisibility) || !!onRequestPublish || !!onMakePrivate)) ||
+    (!isOwner && isSaved && !!onUnsave);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -95,17 +99,30 @@ const ResourceCard = ({
               e.stopPropagation();
               onUnsave();
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-emerald-400 bg-surface/90 hover:text-red-400 hover:bg-red-500/15 border border-emerald-500/30 hover:border-red-500/30 backdrop-blur-md shadow-md transition-all cursor-pointer group/unsave"
+            onMouseEnter={() => setIsUnsaveHovered(true)}
+            onMouseLeave={() => setIsUnsaveHovered(false)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold backdrop-blur-md shadow-md transition-all cursor-pointer group-unsave ${
+              isUnsaveHovered
+                ? 'text-red-400 bg-red-500/15 border border-red-500/30'
+                : 'text-emerald-400 bg-surface/90 border border-emerald-500/30'
+            }`}
             title="Click to unsave from your library"
           >
-            <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={13} />
-            <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={14} />
-            <span className="group-hover/unsave:hidden">Saved</span>
-            <span className="hidden group-hover/unsave:inline">Unsave</span>
+            {isUnsaveHovered ? (
+              <>
+                <IoCloseOutline className="text-red-400" size={14} />
+                <span>Unsave</span>
+              </>
+            ) : (
+              <>
+                <IoBookmark className="text-emerald-400" size={13} />
+                <span>Saved</span>
+              </>
+            )}
           </button>
         )}
 
-        {canManage && (
+        {hasMenuItems && (
           <div ref={menuRef} className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
@@ -120,45 +137,62 @@ const ResourceCard = ({
                 initial={{ opacity: 0, scale: 0.9, y: -5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: -5 }}
-                className="absolute right-0 mt-1 w-44 bg-surface-raised border border-strong rounded-xl shadow-xl overflow-hidden z-20"
+                className="absolute right-0 mt-1 w-48 bg-surface-raised border border-strong rounded-xl shadow-xl overflow-hidden z-20"
               >
-                <button
-                  onClick={(e) => { e.stopPropagation(); onEdit?.(); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-all cursor-pointer"
-                >
-                  <HiPencil size={14} /> Edit
-                </button>
-                {isAdmin && onToggleVisibility && (
+                {/* Author actions */}
+                {isOwner && onEdit && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onToggleVisibility?.(); setMenuOpen(false); }}
+                    onClick={(e) => { e.stopPropagation(); onEdit(); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-all cursor-pointer"
+                  >
+                    <HiPencil size={14} /> Edit
+                  </button>
+                )}
+                {isOwner && isAdmin && onToggleVisibility && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggleVisibility(); setMenuOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-accent hover:text-accent-hover hover:bg-accent-subtle transition-all cursor-pointer"
                   >
                     {visibility === 'public' ? <IoEyeOffOutline size={14} /> : <IoEyeOutline size={14} />}
                     {visibility === 'public' ? 'Make Private' : 'Make Public'}
                   </button>
                 )}
-                {visibility === 'private' && isOwner && !isAdmin && onRequestPublish && (
+                {isOwner && !isAdmin && visibility === 'private' && onRequestPublish && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onRequestPublish?.(); setMenuOpen(false); }}
+                    onClick={(e) => { e.stopPropagation(); onRequestPublish(); setMenuOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-accent hover:text-accent-hover hover:bg-accent-subtle transition-all cursor-pointer"
                   >
                     <IoRocketOutline size={14} /> Request Publish
                   </button>
                 )}
-                {visibility === 'public' && isOwner && !isAdmin && onMakePrivate && (
+                {isOwner && !isAdmin && visibility === 'public' && onMakePrivate && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onMakePrivate?.(); setMenuOpen(false); }}
+                    onClick={(e) => { e.stopPropagation(); onMakePrivate(); setMenuOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all cursor-pointer"
                   >
                     <IoLockClosedOutline size={14} /> Make Private
                   </button>
                 )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDelete?.(); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
-                >
-                  <HiTrash size={14} /> Delete
-                </button>
+
+                {/* Non-owner saved resource: Allow unsaving / removing from library */}
+                {!isOwner && isSaved && onUnsave && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUnsave(); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all cursor-pointer"
+                  >
+                    <IoCloseOutline size={16} /> Remove from Library
+                  </button>
+                )}
+
+                {/* Permanent deletion: strictly allowed for resource owner only */}
+                {isOwner && onDelete && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                  >
+                    <HiTrash size={14} /> Delete
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

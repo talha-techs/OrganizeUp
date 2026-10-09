@@ -1012,13 +1012,13 @@ const BookDetailPage = () => {
               {isSavedInLibrary ? (
                 <button
                   onClick={handleToggleLibrary}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 bg-surface border border-emerald-500/30 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group/unsave shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 bg-surface border border-emerald-500/30 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all cursor-pointer group-unsave shadow-sm"
                   title="Click to unsave from your books"
                 >
-                  <IoBookmark className="group-hover/unsave:hidden text-emerald-400" size={14} />
-                  <IoCloseOutline className="hidden group-hover/unsave:inline text-red-400" size={15} />
-                  <span className="group-hover/unsave:hidden">Saved</span>
-                  <span className="hidden group-hover/unsave:inline">Unsave</span>
+                  <IoBookmark className="unsave-default-show text-emerald-400" size={14} />
+                  <IoCloseOutline className="unsave-hover-show text-red-400" size={15} />
+                  <span className="unsave-default-show">Saved</span>
+                  <span className="unsave-hover-show">Unsave</span>
                 </button>
               ) : (
                 <button

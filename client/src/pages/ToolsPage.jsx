@@ -40,6 +40,12 @@ const ToolsPage = () => {
 
   const confirmDeleteTool = async () => {
     if (!deleteToolId) return;
+    const targetTool = tools.find((t) => String(t._id) === String(deleteToolId));
+    if (targetTool && !targetTool.isOwner) {
+      toast.error('Only the author can delete this tool. To remove it from your space, unsave it.');
+      setDeleteToolId(null);
+      return;
+    }
     setIsDeleting(true);
     const result = await dispatch(deleteTool(deleteToolId));
     setIsDeleting(false);
@@ -111,13 +117,14 @@ const ToolsPage = () => {
                 description={tool.description}
                 isAdmin={isAdmin}
                 ownerId={tool.addedBy}
+                isOwner={tool.isOwner}
                 visibility={tool.visibility}
                 isSaved={tool.isSaved}
                 onUnsave={() => handleUnsaveTool(tool._id)}
-                onEdit={() => { setEditTool(tool); setShowForm(true); }}
-                onDelete={() => handleDelete(tool._id)}
+                onEdit={tool.isOwner ? () => { setEditTool(tool); setShowForm(true); } : undefined}
+                onDelete={tool.isOwner ? () => handleDelete(tool._id) : undefined}
                 onClick={() => navigate(`/tools/${tool._id}`)}
-                onRequestPublish={async () => {
+                onRequestPublish={tool.isOwner ? async () => {
                   const result = await dispatch(requestPublish({ contentType: 'tool', contentId: tool._id }));
                   if (result.meta.requestStatus === 'fulfilled') {
                     toast.success('Publish request sent!');
@@ -125,8 +132,8 @@ const ToolsPage = () => {
                   } else {
                     toast.error(result.payload || 'Failed to request publish');
                   }
-                }}
-                onToggleVisibility={isAdmin ? async () => {
+                } : undefined}
+                onToggleVisibility={tool.isOwner && isAdmin ? async () => {
                   const newVis = tool.visibility === 'public' ? 'private' : 'public';
                   const result = await dispatch(toggleVisibility({ contentType: 'tool', contentId: tool._id, visibility: newVis }));
                   if (result.meta.requestStatus === 'fulfilled') {
@@ -134,7 +141,7 @@ const ToolsPage = () => {
                     dispatch(fetchTools());
                   }
                 } : undefined}
-                onMakePrivate={async () => {
+                onMakePrivate={tool.isOwner ? async () => {
                   try {
                     await api.put('/content/toggle-visibility', { contentType: 'tool', contentId: tool._id, visibility: 'private' });
                     toast.success('Tool set to private');
@@ -142,7 +149,7 @@ const ToolsPage = () => {
                   } catch (err) {
                     toast.error(err.response?.data?.message || 'Failed to update');
                   }
-                }}
+                } : undefined}
               >
                 <div className="flex items-center gap-1.5 mt-3 text-xs text-emerald-400">
                   <IoOpenOutline size={12} />

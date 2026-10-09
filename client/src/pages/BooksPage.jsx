@@ -62,6 +62,12 @@ const BooksPage = () => {
 
   const confirmDeleteBook = async () => {
     if (!deleteBookId) return;
+    const targetBook = books.find((b) => String(b._id) === String(deleteBookId));
+    if (targetBook && !targetBook.isOwner) {
+      toast.error('Only the author can delete this book. To remove it from your space, unsave it.');
+      setDeleteBookId(null);
+      return;
+    }
     setIsDeleting(true);
     const result = await dispatch(deleteBook(deleteBookId));
     setIsDeleting(false);
@@ -223,13 +229,14 @@ const BooksPage = () => {
                 }
                 isAdmin={isAdmin}
                 ownerId={book.addedBy}
+                isOwner={book.isOwner}
                 visibility={book.visibility}
                 isSaved={book.isSaved}
                 onUnsave={() => handleUnsaveBook(book._id)}
-                onEdit={() => handleEdit(book)}
-                onDelete={() => handleDelete(book._id)}
+                onEdit={book.isOwner ? () => handleEdit(book) : undefined}
+                onDelete={book.isOwner ? () => handleDelete(book._id) : undefined}
                 onClick={() => navigate(`/books/${book._id}`)}
-                onRequestPublish={async () => {
+                onRequestPublish={book.isOwner ? async () => {
                   const result = await dispatch(requestPublish({ contentType: 'book', contentId: book._id }));
                   if (result.meta.requestStatus === 'fulfilled') {
                     toast.success('Publish request sent!');
@@ -237,8 +244,8 @@ const BooksPage = () => {
                   } else {
                     toast.error(result.payload || 'Failed to request publish');
                   }
-                }}
-                onToggleVisibility={isAdmin ? async () => {
+                } : undefined}
+                onToggleVisibility={book.isOwner && isAdmin ? async () => {
                   const newVis = book.visibility === 'public' ? 'private' : 'public';
                   const result = await dispatch(toggleVisibility({ contentType: 'book', contentId: book._id, visibility: newVis }));
                   if (result.meta.requestStatus === 'fulfilled') {
@@ -246,7 +253,7 @@ const BooksPage = () => {
                     dispatch(fetchBooks());
                   }
                 } : undefined}
-                onMakePrivate={async () => {
+                onMakePrivate={book.isOwner ? async () => {
                   try {
                     await api.put('/content/toggle-visibility', { contentType: 'book', contentId: book._id, visibility: 'private' });
                     toast.success('Book set to private');
@@ -254,7 +261,7 @@ const BooksPage = () => {
                   } catch (err) {
                     toast.error(err.response?.data?.message || 'Failed to update');
                   }
-                }}
+                } : undefined}
               />
             ))}
           </AnimatePresence>

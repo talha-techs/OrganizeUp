@@ -9,6 +9,7 @@ const PublishRequest = require("../models/PublishRequest");
 const CapturedResource = require("../models/CapturedResource");
 const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
+const UserLibrary = require("../models/UserLibrary");
 const { deleteFile, extractGridFsId } = require("../services/storageService");
 const { getTrafficMetrics } = require("../middleware/trafficTracker");
 
@@ -577,6 +578,12 @@ const adminDeleteContent = async (req, res) => {
       }
       await SubSection.deleteMany({ sectionId: doc._id });
     }
+
+    // Cascade-delete any user library saved records referencing this content
+    await UserLibrary.deleteMany({
+      contentType: type === "video" ? "playlist" : type,
+      contentId: doc._id,
+    }).catch(() => {});
 
     await doc.deleteOne();
     res.json({ message: "Content deleted", contentType: type, contentId: id });

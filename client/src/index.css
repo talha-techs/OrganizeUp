@@ -314,3 +314,14 @@
     color: transparent !important;
   }
 }
+
+/* Unsave toggle button hover states */
+.group-unsave .unsave-hover-show {
+  display: none !important;
+}
+.group-unsave:hover .unsave-default-show {
+  display: none !important;
+}
+.group-unsave:hover .unsave-hover-show {
+  display: inline-flex !important;
+}
