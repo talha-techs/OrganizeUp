@@ -9,6 +9,8 @@ const {
   streamFromR2,
   streamFromGridFS,
   streamAudioFromGridFS,
+  isR2Configured,
+  extractGridFsId,
 } = require("../services/storageService");
 
 // @desc    Get books (user sees own + saved from library; admin sees all)
@@ -609,15 +611,16 @@ const getBookProgress = async (req, res) => {
     const user = await User.findById(req.user._id);
     const bookId = req.params.id;
 
-    const videoProgress = user.videoProgress.filter(
-      (vp) => vp.bookId.toString() === bookId,
+    const videoProgress = (user?.videoProgress || []).filter(
+      (vp) => vp.bookId && vp.bookId.toString() === bookId,
     );
-    const readingProgress = user.readingProgress.find(
-      (rp) => rp.bookId.toString() === bookId,
+    const readingProgress = (user?.readingProgress || []).find(
+      (rp) => rp.bookId && rp.bookId.toString() === bookId,
     );
 
-    res.json({ videoProgress, readingProgress });
+    res.json({ videoProgress, readingProgress: readingProgress || null });
   } catch (error) {
+    console.error("Get book progress error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -652,22 +655,32 @@ const servePdf = async (req, res) => {
 
     const filename = `${encodeURIComponent((book.title || 'document').replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
 
-    // Dual-Read Resolution: If stored in R2, stream from R2 with Range/chunk support
-    if (book.pdfR2Key && (book.storageProvider === "r2" || !book.pdfFileId)) {
-      return await streamFromR2({
-        key: book.pdfR2Key,
-        res,
-        req,
-        contentType: "application/pdf",
-        filename,
-      });
+    // Dual-Read Resolution: If stored in R2 and R2 is configured, try R2 first
+    let streamed = false;
+    if (book.pdfR2Key && isR2Configured()) {
+      try {
+        await streamFromR2({
+          key: book.pdfR2Key,
+          res,
+          req,
+          contentType: "application/pdf",
+          filename,
+        });
+        streamed = true;
+      } catch (r2Err) {
+        console.warn(
+          `[servePdf] R2 stream failed for book ${book._id} (${r2Err.message}), falling back to GridFS`
+        );
+      }
     }
 
-    // GridFS fallback
-    if (book.pdfFileId) {
-      await streamFromGridFS(book.pdfFileId, res, "pdf", req);
-    } else {
-      res.status(404).json({ message: "PDF file unavailable" });
+    // GridFS fallback (runs if R2 is not configured, or R2 streaming threw an error, or book only in GridFS)
+    if (!streamed) {
+      if (book.pdfFileId) {
+        await streamFromGridFS(book.pdfFileId, res, "pdf", req);
+      } else {
+        res.status(404).json({ message: "PDF file unavailable" });
+      }
     }
   } catch (error) {
     console.error("Serve PDF error:", error);
@@ -743,23 +756,33 @@ const serveAudio = async (req, res) => {
 
     if (!track) return res.status(404).json({ message: "Audio track not found" });
 
-    // Dual-Read Resolution: If stored in R2, stream from R2 with Range/seek support
-    if (track.r2Key && (track.storageProvider === "r2" || !track.fileId)) {
-      const filename = `${encodeURIComponent((track.title || 'audio').replace(/[^a-zA-Z0-9-]/g, '-'))}.mp3`;
-      return await streamFromR2({
-        key: track.r2Key,
-        res,
-        req,
-        contentType: track.contentType || "audio/mpeg",
-        filename,
-      });
+    // Dual-Read Resolution: If stored in R2 and R2 is configured, try R2 first
+    let streamed = false;
+    if (track.r2Key && isR2Configured()) {
+      try {
+        const filename = `${encodeURIComponent((track.title || 'audio').replace(/[^a-zA-Z0-9-]/g, '-'))}.mp3`;
+        await streamFromR2({
+          key: track.r2Key,
+          res,
+          req,
+          contentType: track.contentType || "audio/mpeg",
+          filename,
+        });
+        streamed = true;
+      } catch (r2Err) {
+        console.warn(
+          `[serveAudio] R2 audio stream failed for track ${track._id} (${r2Err.message}), falling back to GridFS`
+        );
+      }
     }
 
     // GridFS fallback
-    if (track.fileId) {
-      await streamAudioFromGridFS(track.fileId, req, res, "audio");
-    } else {
-      res.status(404).json({ message: "Audio track unavailable" });
+    if (!streamed) {
+      if (track.fileId) {
+        await streamAudioFromGridFS(track.fileId, req, res, "audio");
+      } else {
+        res.status(404).json({ message: "Audio track unavailable" });
+      }
     }
   } catch (error) {
     console.error("Serve audio error:", error);
@@ -816,13 +839,20 @@ const serveImage = async (req, res) => {
 
     if (rawParam && mongoose.isValidObjectId(rawParam)) {
       await streamFromGridFS(rawParam, res, "image");
-    } else if (rawParam) {
-      // If it's an R2 key or public asset
+    } else if (rawParam && isR2Configured()) {
+      // If it's an R2 key or public asset and R2 is configured
       const signedUrl = await getPresignedDownloadUrl(rawParam, {
         expiresIn: 86400,
         isPublic: true,
       });
       res.redirect(302, signedUrl);
+    } else if (rawParam) {
+      const gridId = extractGridFsId(rawParam);
+      if (gridId && mongoose.isValidObjectId(gridId)) {
+        await streamFromGridFS(gridId, res, "image");
+      } else {
+        res.status(404).json({ message: "Image not found" });
+      }
     } else {
       res.status(404).json({ message: "Image not found" });
     }

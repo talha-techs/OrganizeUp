@@ -270,6 +270,7 @@ const streamFromR2 = async ({
 
 module.exports = {
   isR2Active,
+  isR2Configured,
   uploadFile,
   deleteFile,
   getPresignedDownloadUrl,
