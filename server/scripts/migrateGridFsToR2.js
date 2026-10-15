@@ -47,7 +47,7 @@ const stats = {
  * Helper to stream a GridFS file into a Buffer with timeout protection
  * In dry-run mode, skips network buffering and returns metadata length directly
  */
-const readGridFsFileBuffer = async (bucket, fileId, knownLength = 0, timeoutMs = 60000) => {
+const readGridFsFileBuffer = async (bucket, fileId, knownLength = 0, timeoutMs = 300000) => {
   if (isDryRun) {
     return { length: knownLength };
   }
@@ -575,7 +575,7 @@ async function migrateBooks(r2Client, pdfBucket, imageBucket, audioBucket) {
           book.pdfR2Key = key;
           book.storageProvider = "r2";
           const slug = encodeURIComponent((book.title || "document").replace(/[^a-zA-Z0-9-]/g, "-"));
-          book.embedLink = `/api/books/pdf/${encodeURIComponent(key)}/${slug}.pdf`;
+          book.embedLink = `/api/books/pdf/${book._id}/${slug}.pdf`;
           modified = true;
           console.log(`      ✅ PDF uploaded to R2: ${key}`);
         }
