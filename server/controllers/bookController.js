@@ -208,12 +208,14 @@ const createBook = async (req, res) => {
       });
     }
 
-    const targetPdfIdentifier = pdfFileId || (pdfR2Key ? encodeURIComponent(pdfR2Key) : null);
-    const generatedEmbedLink = targetPdfIdentifier
-      ? `/api/books/pdf/${targetPdfIdentifier}/${encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`
+    const newBookId = new mongoose.Types.ObjectId();
+    const slug = encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, '-'));
+    const generatedEmbedLink = (pdfFileId || pdfR2Key)
+      ? `/api/books/pdf/${newBookId}/${slug}.pdf`
       : embedLink || "";
 
     const book = await Book.create({
+      _id: newBookId,
       title,
       author,
       type,
@@ -293,8 +295,8 @@ const updateBook = async (req, res) => {
       book.pdfFileId = uploadedPdf.fileId;
       book.pdfR2Key = uploadedPdf.key;
       book.storageProvider = uploadedPdf.provider;
-      const targetPdfId = uploadedPdf.fileId || encodeURIComponent(uploadedPdf.key);
-      book.embedLink = `/api/books/pdf/${targetPdfId}/${encodeURIComponent((title || book.title).replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
+      const slug = encodeURIComponent((title || book.title).replace(/[^a-zA-Z0-9-]/g, '-'));
+      book.embedLink = `/api/books/pdf/${book._id}/${slug}.pdf`;
     }
 
     // Handle cover image upload
@@ -624,7 +626,65 @@ const getBookProgress = async (req, res) => {
   }
 };
 
-// @desc    Serve a PDF file from R2 or GridFS (with Range/chunk streaming support)
+// @desc    Get presigned R2 URL for book PDF (direct CDN Range streaming)
+// @route   GET /api/books/:id/pdf-url
+const getBookPdfUrl = async (req, res) => {
+  try {
+    const rawParam = decodeURIComponent(req.params.id);
+    const isValidId = mongoose.isValidObjectId(rawParam);
+
+    const queryConditions = [{ pdfR2Key: rawParam }];
+    if (isValidId) {
+      queryConditions.push({ _id: rawParam });
+      queryConditions.push({ pdfFileId: rawParam });
+    }
+
+    const book = await Book.findOne({ $or: queryConditions });
+    if (!book) return res.status(404).json({ message: "PDF not found" });
+
+    const ownerId = book.addedBy?._id || book.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin && book.visibility !== "public") {
+      return res.status(403).json({ message: "Not authorized to access this file" });
+    }
+
+    const slug = encodeURIComponent((book.title || "document").replace(/[^a-zA-Z0-9-]/g, "-"));
+
+    if (book.pdfR2Key && isR2Configured()) {
+      try {
+        const presignedUrl = await getPresignedDownloadUrl(book.pdfR2Key, {
+          expiresIn: 7200,
+          isPublic: false,
+        });
+        return res.json({
+          url: presignedUrl,
+          expiresAt: Date.now() + 7200 * 1000,
+          provider: "r2",
+          bookId: book._id,
+          title: book.title,
+        });
+      } catch (err) {
+        console.warn(`[getBookPdfUrl] Presigned URL failed for book ${book._id}: ${err.message}`);
+      }
+    }
+
+    // Fallback: Express proxy URL
+    const fallbackUrl = `/api/books/pdf/${book._id}/${slug}.pdf?proxy=true`;
+    return res.json({
+      url: fallbackUrl,
+      expiresAt: null,
+      provider: "gridfs",
+      bookId: book._id,
+      title: book.title,
+    });
+  } catch (error) {
+    console.error("getBookPdfUrl error:", error);
+    res.status(500).json({ message: "Error generating PDF URL" });
+  }
+};
+
+// @desc    Serve a PDF file from R2 or GridFS (redirects to direct presigned R2 URL, stream as fallback)
 // @route   GET /api/books/pdf/:fileId
 const servePdf = async (req, res) => {
   try {
@@ -654,7 +714,20 @@ const servePdf = async (req, res) => {
 
     const filename = `${encodeURIComponent((book.title || 'document').replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
 
-    // Dual-Read Resolution: If stored in R2 and R2 is configured, try R2 first
+    // Direct fetch via 302 redirect to presigned R2 URL (bypasses Render network)
+    if (book.pdfR2Key && isR2Configured() && req.query.proxy !== "true") {
+      try {
+        const presignedUrl = await getPresignedDownloadUrl(book.pdfR2Key, {
+          expiresIn: 7200,
+          isPublic: false,
+        });
+        return res.redirect(302, presignedUrl);
+      } catch (presignErr) {
+        console.warn(`[servePdf] Presigned redirect failed for book ${book._id}, falling back to proxy stream:`, presignErr.message);
+      }
+    }
+
+    // Fallback: proxy streaming via streamFromR2
     let streamed = false;
     if (book.pdfR2Key && isR2Configured()) {
       try {
@@ -673,7 +746,7 @@ const servePdf = async (req, res) => {
       }
     }
 
-    // GridFS fallback (runs if R2 is not configured, or R2 streaming threw an error, or book only in GridFS)
+    // GridFS fallback
     if (!streamed) {
       if (book.pdfFileId) {
         await streamFromGridFS(book.pdfFileId, res, "pdf", req);
@@ -721,7 +794,80 @@ const removeVideoFromBook = async (req, res) => {
   }
 };
 
-// @desc    Serve an audio file from R2 or GridFS (with Range/seek support)
+// @desc    Get presigned R2 URL for book audio track (direct streaming, bypasses Render bandwidth)
+// @route   GET /api/books/:id/audio-url/:trackId
+const getBookAudioUrl = async (req, res) => {
+  try {
+    const { id, trackId } = req.params;
+    const book = await Book.findById(id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+
+    const ownerId = book.addedBy?._id || book.addedBy;
+    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin && book.visibility !== "public") {
+      return res.status(403).json({ message: "Not authorized to access this file" });
+    }
+
+    const rawTrackParam = decodeURIComponent(trackId);
+    let track = book.audioFiles.find(
+      (a, idx) =>
+        a._id?.toString() === rawTrackParam ||
+        a.fileId?.toString() === rawTrackParam ||
+        a.r2Key === rawTrackParam ||
+        String(idx) === rawTrackParam
+    );
+
+    if (!track && book.audioFiles.length > 0) {
+      const parsedIdx = parseInt(rawTrackParam, 10);
+      if (!isNaN(parsedIdx) && parsedIdx >= 0 && parsedIdx < book.audioFiles.length) {
+        track = book.audioFiles[parsedIdx];
+      }
+    }
+
+    if (!track) return res.status(404).json({ message: "Audio track not found" });
+
+    if (track.audioUrl && track.audioUrl.startsWith("http")) {
+      return res.json({
+        url: track.audioUrl,
+        expiresAt: null,
+        provider: "external",
+        title: track.title,
+      });
+    }
+
+    if (track.r2Key && isR2Configured()) {
+      try {
+        const presignedUrl = await getPresignedDownloadUrl(track.r2Key, {
+          expiresIn: 7200,
+          isPublic: false,
+        });
+        return res.json({
+          url: presignedUrl,
+          expiresAt: Date.now() + 7200 * 1000,
+          provider: "r2",
+          title: track.title,
+        });
+      } catch (err) {
+        console.warn(`[getBookAudioUrl] Presigned URL failed for track ${track._id}: ${err.message}`);
+      }
+    }
+
+    // Fallback: Express proxy
+    const fallbackUrl = `/api/books/audio/${track.fileId || track._id}?proxy=true`;
+    return res.json({
+      url: fallbackUrl,
+      expiresAt: null,
+      provider: "gridfs",
+      title: track.title,
+    });
+  } catch (error) {
+    console.error("getBookAudioUrl error:", error);
+    res.status(500).json({ message: "Error generating audio URL" });
+  }
+};
+
+// @desc    Serve an audio file from R2 or GridFS (redirects to direct presigned R2 URL, stream as fallback)
 // @route   GET /api/books/audio/:fileId
 const serveAudio = async (req, res) => {
   try {
@@ -755,7 +901,20 @@ const serveAudio = async (req, res) => {
 
     if (!track) return res.status(404).json({ message: "Audio track not found" });
 
-    // Dual-Read Resolution: If stored in R2 and R2 is configured, try R2 first
+    // Direct fetch via 302 redirect to presigned R2 URL (bypasses Render network)
+    if (track.r2Key && isR2Configured() && req.query.proxy !== "true") {
+      try {
+        const presignedUrl = await getPresignedDownloadUrl(track.r2Key, {
+          expiresIn: 7200,
+          isPublic: false,
+        });
+        return res.redirect(302, presignedUrl);
+      } catch (presignErr) {
+        console.warn(`[serveAudio] Presigned redirect failed for track ${track._id}, falling back to proxy stream:`, presignErr.message);
+      }
+    }
+
+    // Fallback: proxy streaming via streamFromR2
     let streamed = false;
     if (track.r2Key && isR2Configured()) {
       try {
@@ -871,6 +1030,8 @@ module.exports = {
   removeAudioFromBook,
   servePdf,
   serveAudio,
+  getBookPdfUrl,
+  getBookAudioUrl,
   serveImage,
   updateVideoProgress,
   updateReadingProgress,

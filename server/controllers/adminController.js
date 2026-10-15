@@ -363,8 +363,108 @@ const deleteUser = async (req, res) => {
     // Cascade delete user library records
     await UserLibrary.deleteMany({ user: user._id }).catch(() => {});
 
+    // Cascade delete authored books & storage files
+    const userBooks = await Book.find({ addedBy: user._id });
+    for (const b of userBooks) {
+      if (b.pdfR2Key || b.pdfFileId) {
+        await deleteFile({ provider: b.storageProvider, key: b.pdfR2Key, fileId: b.pdfFileId, isPublic: false, bucketType: "pdf" }).catch(() => {});
+      }
+      if (b.coverR2Key || b.coverImageId) {
+        await deleteFile({ provider: b.storageProvider, key: b.coverR2Key, fileId: b.coverImageId, isPublic: true, bucketType: "image" }).catch(() => {});
+      }
+      for (const af of b.audioFiles || []) {
+        if (af.r2Key || af.fileId) {
+          await deleteFile({ provider: af.storageProvider, key: af.r2Key, fileId: af.fileId, isPublic: false, bucketType: "audio" }).catch(() => {});
+        }
+      }
+      await UserLibrary.deleteMany({ contentType: "book", contentId: b._id }).catch(() => {});
+    }
+    await Book.deleteMany({ addedBy: user._id });
+
+    // Cascade delete authored courses & tools
+    const userCourses = await Course.find({ addedBy: user._id });
+    for (const c of userCourses) {
+      if (c.bannerR2Key || c.bannerImageId) {
+        await deleteFile({ provider: c.storageProvider, key: c.bannerR2Key, fileId: c.bannerImageId, isPublic: true, bucketType: "image" }).catch(() => {});
+      }
+      await UserLibrary.deleteMany({ contentType: "course", contentId: c._id }).catch(() => {});
+    }
+    await Course.deleteMany({ addedBy: user._id });
+
+    const userTools = await Tool.find({ addedBy: user._id });
+    for (const t of userTools) {
+      if (t.bannerR2Key || t.bannerImageId) {
+        await deleteFile({ provider: t.storageProvider, key: t.bannerR2Key, fileId: t.bannerImageId, isPublic: true, bucketType: "image" }).catch(() => {});
+      }
+      await UserLibrary.deleteMany({ contentType: "tool", contentId: t._id }).catch(() => {});
+    }
+    await Tool.deleteMany({ addedBy: user._id });
+
+    // Cascade delete captured resources
+    const userCaptures = await CapturedResource.find({ user: user._id });
+    for (const cap of userCaptures) {
+      if (cap.mediaR2Key || cap.mediaGridFsId) {
+        await deleteFile({ provider: cap.storageProvider, key: cap.mediaR2Key, fileId: cap.mediaGridFsId, isPublic: false, bucketType: "image" }).catch(() => {});
+      }
+    }
+    await CapturedResource.deleteMany({ user: user._id });
+
+    // Shared workspaces policy:
+    // 1. Workspaces owned by user:
+    //    - If other collaborators exist, transfer ownership to the oldest collaborator so shared work is preserved.
+    //    - If no other collaborators exist, delete the workspace, its blocks, and its binaries.
+    const userSections = await CustomSection.find({ addedBy: user._id });
+    for (const s of userSections) {
+      const activeCollaborators = (s.collaborators || []).filter(
+        (c) => c.user && c.user.toString() !== user._id.toString()
+      );
+      if (activeCollaborators.length > 0) {
+        // Transfer ownership to first active collaborator
+        s.addedBy = activeCollaborators[0].user;
+        s.collaborators = activeCollaborators;
+        await s.save();
+      } else {
+        // Exclusively personal workspace: cleanup binaries and delete
+        if (s.bannerR2Key || s.bannerImage) {
+          const otherBannerRefs = await CustomSection.countDocuments({
+            _id: { $ne: s._id },
+            $or: [
+              ...(s.bannerR2Key ? [{ bannerR2Key: s.bannerR2Key }] : []),
+              ...(s.bannerImage ? [{ bannerImage: s.bannerImage }] : []),
+            ],
+          });
+          if (otherBannerRefs === 0) {
+            await deleteFile({ provider: s.storageProvider, key: s.bannerR2Key, fileId: extractGridFsId(s.bannerImage), isPublic: true, bucketType: "image" }).catch(() => {});
+          }
+        }
+        const imageSubSections = await SubSection.find({ sectionId: s._id, type: "image" });
+        for (const sub of imageSubSections) {
+          if (sub.imageR2Key || sub.imageUrl) {
+            const otherBlockRefs = await SubSection.countDocuments({
+              sectionId: { $ne: s._id },
+              $or: [
+                ...(sub.imageR2Key ? [{ imageR2Key: sub.imageR2Key }] : []),
+                ...(sub.imageUrl ? [{ imageUrl: sub.imageUrl }] : []),
+              ],
+            });
+            if (otherBlockRefs === 0) {
+              await deleteFile({ provider: sub.storageProvider, key: sub.imageR2Key, fileId: extractGridFsId(sub.imageUrl), isPublic: true, bucketType: "image" }).catch(() => {});
+            }
+          }
+        }
+        await SubSection.deleteMany({ sectionId: s._id });
+        await s.deleteOne();
+      }
+    }
+
+    // 2. Remove user from collaborator list in any other workspaces
+    await CustomSection.updateMany(
+      {},
+      { $pull: { collaborators: { user: user._id } } }
+    ).catch(() => {});
+
     await user.deleteOne();
-    res.json({ message: "User deleted successfully" });
+    res.json({ message: "User and associated personal resources deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -572,26 +672,46 @@ const adminDeleteContent = async (req, res) => {
       }
     } else if (type === "section") {
       if (doc.bannerR2Key || doc.bannerImage) {
-        await deleteFile({
-          provider: doc.storageProvider,
-          key: doc.bannerR2Key,
-          fileId: extractGridFsId(doc.bannerImage),
-          isPublic: true,
-          bucketType: "image",
-        }).catch(() => {});
+        const otherBannerRefs = await CustomSection.countDocuments({
+          _id: { $ne: doc._id },
+          $or: [
+            ...(doc.bannerR2Key ? [{ bannerR2Key: doc.bannerR2Key }] : []),
+            ...(doc.bannerImage ? [{ bannerImage: doc.bannerImage }] : []),
+          ],
+        });
+        if (otherBannerRefs === 0) {
+          await deleteFile({
+            provider: doc.storageProvider,
+            key: doc.bannerR2Key,
+            fileId: extractGridFsId(doc.bannerImage),
+            isPublic: true,
+            bucketType: "image",
+          }).catch(() => {});
+        }
       }
       const imageSubSections = await SubSection.find({
         sectionId: doc._id,
         type: "image",
       }).select("imageUrl imageR2Key storageProvider");
       for (const sub of imageSubSections) {
-        await deleteFile({
-          provider: sub.storageProvider,
-          key: sub.imageR2Key,
-          fileId: extractGridFsId(sub.imageUrl),
-          isPublic: true,
-          bucketType: "image",
-        }).catch(() => {});
+        if (sub.imageR2Key || sub.imageUrl) {
+          const otherBlockRefs = await SubSection.countDocuments({
+            sectionId: { $ne: doc._id },
+            $or: [
+              ...(sub.imageR2Key ? [{ imageR2Key: sub.imageR2Key }] : []),
+              ...(sub.imageUrl ? [{ imageUrl: sub.imageUrl }] : []),
+            ],
+          });
+          if (otherBlockRefs === 0) {
+            await deleteFile({
+              provider: sub.storageProvider,
+              key: sub.imageR2Key,
+              fileId: extractGridFsId(sub.imageUrl),
+              isPublic: true,
+              bucketType: "image",
+            }).catch(() => {});
+          }
+        }
       }
       await SubSection.deleteMany({ sectionId: doc._id });
     }

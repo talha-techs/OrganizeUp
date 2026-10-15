@@ -200,18 +200,68 @@ const BookDetailPage = () => {
     };
   }, [currentBook, currentTrackIdx]);
 
-  // Load new track when index changes
+  // Load new track when index changes (direct presigned R2 streaming with fallback)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentBook?.audioFiles?.length) return;
     const track = currentBook.audioFiles[currentTrackIdx];
-    if (!track?.fileId && !track?.audioUrl) return;
+    if (!track?.fileId && !track?.audioUrl && !track?.r2Key) return;
     const wasPlaying = isPlaying;
-    audio.src = track.audioUrl || `/api/books/audio/${track.fileId}`;
-    audio.load();
-    setCurrentTime(0);
-    setAudioDuration(0);
-    if (wasPlaying) audio.play().catch(() => setIsPlaying(false));
+
+    let isMounted = true;
+    const loadTrackAudio = async (isRetry = false) => {
+      // 1. External URL (e.g. Librivox)
+      if (track.audioUrl && track.audioUrl.startsWith('http')) {
+        audio.src = track.audioUrl;
+        audio.load();
+        setCurrentTime(0);
+        setAudioDuration(0);
+        if (wasPlaying) audio.play().catch(() => setIsPlaying(false));
+        return;
+      }
+
+      // 2. Fetch direct presigned R2 URL from backend (bypasses Render network)
+      try {
+        const trackIdentifier = track._id || track.fileId || currentTrackIdx;
+        const res = await api.get(`/books/${currentBook._id}/audio-url/${trackIdentifier}`);
+        if (!isMounted) return;
+        if (res.data?.url) {
+          audio.src = res.data.url;
+          audio.load();
+          setCurrentTime(0);
+          setAudioDuration(0);
+          if (wasPlaying) audio.play().catch(() => setIsPlaying(false));
+          return;
+        }
+      } catch (err) {
+        console.warn('[AudioPlayer] Direct presigned URL failed, using proxy fallback:', err.message);
+      }
+
+      // 3. Fallback to Express proxy streaming
+      if (!isMounted) return;
+      audio.src = `/api/books/audio/${track.fileId || track.r2Key || track._id}`;
+      audio.load();
+      setCurrentTime(0);
+      setAudioDuration(0);
+      if (wasPlaying) audio.play().catch(() => setIsPlaying(false));
+    };
+
+    // Error handler for expired presigned URL / 403
+    const handleAudioError = () => {
+      console.warn('[AudioPlayer] Audio playback error / expired URL. Refreshing presigned URL...');
+      const savedTime = audio.currentTime;
+      loadTrackAudio(true).then(() => {
+        if (savedTime > 0) audio.currentTime = savedTime;
+      });
+    };
+
+    audio.addEventListener('error', handleAudioError);
+    loadTrackAudio();
+
+    return () => {
+      isMounted = false;
+      audio.removeEventListener('error', handleAudioError);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackIdx, currentBook]);
 
@@ -1785,6 +1835,7 @@ const BookDetailPage = () => {
                 } ${textBookMobileTab === 'notes' ? 'hidden lg:block' : 'block'}`}
               >
                 <PdfReader
+                  bookId={currentBook._id}
                   pdfUrl={currentBook.embedLink}
                   title={currentBook.title}
                   initialPage={currentPage}

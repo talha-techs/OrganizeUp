@@ -10,6 +10,8 @@ const {
   removeAudioFromBook,
   servePdf,
   serveAudio,
+  getBookPdfUrl,
+  getBookAudioUrl,
   serveImage,
   updateVideoProgress,
   updateReadingProgress,
@@ -27,11 +29,15 @@ const { bookUpload } = require("../middleware/upload");
 // Public routes (still need auth)
 router.get("/", protect, getBooks);
 
-// PDF serve route (must be BEFORE /:id to avoid conflict)
+// Direct presigned URL endpoints (returns { url, expiresAt, provider })
+router.get("/:id/pdf-url", protect, getBookPdfUrl);
+router.get("/:id/audio-url/:trackId", protect, getBookAudioUrl);
+
+// PDF serve route (redirects to presigned R2 URL, stream as fallback)
 router.get("/pdf/:fileId", protect, servePdf);
 router.get("/pdf/:fileId/:filename", protect, servePdf);
 
-// Audio serve route (must be BEFORE /:id)
+// Audio serve route (redirects to presigned R2 URL, stream as fallback)
 router.get("/audio/:fileId", protect, serveAudio);
 
 router.get("/:id", protect, getBook);

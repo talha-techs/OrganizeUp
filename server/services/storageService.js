@@ -61,6 +61,7 @@ const uploadFile = async ({
   folder = "uploads",
   isPublic = false,
   bucketType = "image",
+  useRandomUuid = false,
 }) => {
   if (!buffer) {
     throw new Error("storageService.uploadFile requires a file buffer");
@@ -71,9 +72,15 @@ const uploadFile = async ({
     const client = getR2Client();
     if (client) {
       const ext = path.extname(originalname) || "";
-      const base = sanitizeKeyPart(path.basename(originalname, ext));
-      const hash = crypto.randomBytes(6).toString("hex");
-      const key = `${folder}/${Date.now()}-${hash}-${base}${ext}`;
+      let key;
+      if (folder.startsWith("sections/") || folder.startsWith("workspaces/") || useRandomUuid) {
+        // Cryptographically secure random UUID key prevents enumeration of private workspace images
+        key = `${folder}/${crypto.randomUUID()}${ext}`;
+      } else {
+        const base = sanitizeKeyPart(path.basename(originalname, ext));
+        const hash = crypto.randomBytes(6).toString("hex");
+        key = `${folder}/${Date.now()}-${hash}-${base}${ext}`;
+      }
       const bucket = isPublic ? R2_CONFIG.publicBucket : R2_CONFIG.privateBucket;
 
       await client.send(
@@ -170,13 +177,13 @@ const deleteFile = async ({
  *
  * @param {string} key - R2 object key
  * @param {Object} options
- * @param {number} [options.expiresIn=3600] - Expiry in seconds (default 1 hour)
+ * @param {number} [options.expiresIn=7200] - Expiry in seconds (default 2 hours)
  * @param {boolean} [options.isPublic=false] - Bucket selector
  * @returns {Promise<string>}
  */
 const getPresignedDownloadUrl = async (
   key,
-  { expiresIn = 3600, isPublic = false } = {}
+  { expiresIn = 7200, isPublic = false } = {}
 ) => {
   const client = getR2Client();
   if (!client) {

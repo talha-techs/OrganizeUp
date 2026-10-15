@@ -248,15 +248,24 @@ const deleteSubSection = async (req, res) => {
     });
 
     if (deleted && deleted.type === "image" && (deleted.imageR2Key || deleted.imageUrl)) {
-      await deleteFile({
-        provider: deleted.storageProvider,
-        key: deleted.imageR2Key,
-        fileId: extractGridFsId(deleted.imageUrl),
-        isPublic: true,
-        bucketType: "image",
-      }).catch((err) =>
-        console.warn("SubSection image cleanup warning:", err.message)
-      );
+      const otherSubRefs = await SubSection.countDocuments({
+        _id: { $ne: deleted._id },
+        $or: [
+          ...(deleted.imageR2Key ? [{ imageR2Key: deleted.imageR2Key }] : []),
+          ...(deleted.imageUrl ? [{ imageUrl: deleted.imageUrl }] : []),
+        ],
+      });
+      if (otherSubRefs === 0) {
+        await deleteFile({
+          provider: deleted.storageProvider,
+          key: deleted.imageR2Key,
+          fileId: extractGridFsId(deleted.imageUrl),
+          isPublic: true,
+          bucketType: "image",
+        }).catch((err) =>
+          console.warn("SubSection image cleanup warning:", err.message)
+        );
+      }
     }
     const senderSocketId = getSocketId(req);
     broadcastToSection(req.params.id, "subsection_deleted", { subId: req.params.subId }, senderSocketId);

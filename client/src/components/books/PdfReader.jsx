@@ -37,6 +37,7 @@ if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
  */
 export default function PdfReader({
   pdfUrl,
+  bookId = null,
   title = 'Book',
   initialPage = 1,
   onPageChange,
@@ -79,7 +80,7 @@ export default function PdfReader({
     }
   }, [initialPage]);
 
-  // Load PDF Document with progressive chunk streaming
+  // Load PDF Document with direct presigned R2 streaming (bypasses Render egress bandwidth)
   useEffect(() => {
     if (!pdfUrl) {
       setIsLoading(false);
@@ -92,12 +93,73 @@ export default function PdfReader({
     setLoadProgress(0);
     setLoadError(null);
 
-    const loadPdfData = async () => {
+    const loadPdfData = async (retryPresigned = true) => {
       try {
         let loadingTask;
-
-        // Normalize URL: if given full URL pointing to our origin or /api/, convert to clean path
         const token = localStorage.getItem('token');
+
+        // Extract bookId from prop or URL path
+        const resolvedBookId = bookId || pdfUrl.match(/\/books\/pdf\/([a-f0-9]{24})/i)?.[1];
+
+        // 1. Attempt to fetch direct presigned Cloudflare R2 URL
+        let presignedData = null;
+        if (resolvedBookId) {
+          try {
+            const urlRes = await api.get(`/books/${resolvedBookId}/pdf-url`);
+            if (urlRes.data?.url) {
+              presignedData = urlRes.data;
+            }
+          } catch (urlErr) {
+            console.warn('[PdfReader] Failed to get direct presigned URL, falling back to proxy stream:', urlErr.message);
+          }
+        }
+
+        // If direct R2 presigned URL was obtained, load directly from R2
+        if (presignedData?.url && presignedData.url.startsWith('http') && !presignedData.url.includes('/api/books/pdf/')) {
+          setExternalDirectUrl(presignedData.url);
+          try {
+            loadingTask = pdfjsLib.getDocument({
+              url: presignedData.url,
+              withCredentials: false,
+              rangeChunkSize: 65536,
+              disableAutoFetch: false,
+              disableStream: false,
+              cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+              cMapPacked: true,
+              standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+            });
+
+            loadingTask.onProgress = ({ loaded, total }) => {
+              if (total > 0 && isMounted) {
+                setLoadProgress(Math.round((loaded / total) * 100));
+              }
+            };
+
+            const doc = await loadingTask.promise;
+            if (!isMounted) return;
+
+            setPdfDoc(doc);
+            setTotalPages(doc.numPages);
+            if (onTotalPages) onTotalPages(doc.numPages);
+
+            const safeInitialPage = Math.min(
+              Math.max(1, parseInt(initialPage) || 1),
+              doc.numPages,
+            );
+            setCurrentPage(safeInitialPage);
+            setIsLoading(false);
+            return;
+          } catch (r2LoadErr) {
+            console.warn('[PdfReader] Direct R2 load error (may be 403 or expired):', r2LoadErr.message);
+            // If expired/403, retry once with a fresh presigned URL
+            if (retryPresigned) {
+              console.log('[PdfReader] Refreshing presigned R2 URL and retrying...');
+              return loadPdfData(false);
+            }
+          }
+        }
+
+        // 2. Fallback to Express proxy streaming
         let normalizedPath = pdfUrl;
         if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
           try {
@@ -126,7 +188,6 @@ export default function PdfReader({
             pathWithApi = `/${pathWithApi}`;
           }
 
-          // Endpoint relative to axios baseURL (which already contains /api)
           const endpoint = pathWithApi.startsWith('/api') ? pathWithApi.slice(4) : pathWithApi;
 
           const queryToken = token
@@ -136,7 +197,6 @@ export default function PdfReader({
           setExternalDirectUrl(fullUrl);
 
           try {
-            // High-speed progressive range streaming directly from Express proxy
             loadingTask = pdfjsLib.getDocument({
               url: fullUrl,
               withCredentials: true,
@@ -171,7 +231,6 @@ export default function PdfReader({
             return;
           } catch (streamErr) {
             console.warn('Progressive streaming failed, falling back to arraybuffer fetch:', streamErr);
-            // Fallback to arraybuffer fetch if range streaming is unavailable
             const response = await api.get(endpoint, {
               responseType: 'arraybuffer',
             });
@@ -184,7 +243,6 @@ export default function PdfReader({
             });
           }
         } else {
-          // Direct external URL
           setExternalDirectUrl(pdfUrl);
           loadingTask = pdfjsLib.getDocument({
             url: pdfUrl,

@@ -306,34 +306,54 @@ const deleteSection = async (req, res) => {
         .json({ message: "Not authorized to delete this section" });
     }
 
-    // Clean up images: section banner (R2 and GridFS)
+    // Clean up images: section banner (R2 and GridFS) - verify not referenced by cloned/other sections
     if (section.bannerR2Key || section.bannerImage) {
-      await deleteFile({
-        provider: section.storageProvider,
-        key: section.bannerR2Key,
-        fileId: extractGridFsId(section.bannerImage),
-        isPublic: true,
-        bucketType: "image",
-      }).catch((err) =>
-        console.warn("Section banner cleanup warning:", err.message)
-      );
+      const otherBannerRefs = await CustomSection.countDocuments({
+        _id: { $ne: section._id },
+        $or: [
+          ...(section.bannerR2Key ? [{ bannerR2Key: section.bannerR2Key }] : []),
+          ...(section.bannerImage ? [{ bannerImage: section.bannerImage }] : []),
+        ],
+      });
+      if (otherBannerRefs === 0) {
+        await deleteFile({
+          provider: section.storageProvider,
+          key: section.bannerR2Key,
+          fileId: extractGridFsId(section.bannerImage),
+          isPublic: true,
+          bucketType: "image",
+        }).catch((err) =>
+          console.warn("Section banner cleanup warning:", err.message)
+        );
+      }
     }
 
-    // Clean up images: all subsection image blocks (R2 and GridFS)
+    // Clean up images: all subsection image blocks (R2 and GridFS) - verify not referenced by cloned blocks
     const imageSubSections = await SubSection.find({
       sectionId: section._id,
       type: "image",
     }).select("imageUrl imageR2Key storageProvider");
     for (const sub of imageSubSections) {
-      await deleteFile({
-        provider: sub.storageProvider,
-        key: sub.imageR2Key,
-        fileId: extractGridFsId(sub.imageUrl),
-        isPublic: true,
-        bucketType: "image",
-      }).catch((err) =>
-        console.warn("Subsection image cleanup warning:", err.message)
-      );
+      if (sub.imageR2Key || sub.imageUrl) {
+        const otherBlockRefs = await SubSection.countDocuments({
+          sectionId: { $ne: section._id },
+          $or: [
+            ...(sub.imageR2Key ? [{ imageR2Key: sub.imageR2Key }] : []),
+            ...(sub.imageUrl ? [{ imageUrl: sub.imageUrl }] : []),
+          ],
+        });
+        if (otherBlockRefs === 0) {
+          await deleteFile({
+            provider: sub.storageProvider,
+            key: sub.imageR2Key,
+            fileId: extractGridFsId(sub.imageUrl),
+            isPublic: true,
+            bucketType: "image",
+          }).catch((err) =>
+            console.warn("Subsection image cleanup warning:", err.message)
+          );
+        }
+      }
     }
 
     await SubSection.deleteMany({ sectionId: section._id });
@@ -495,10 +515,11 @@ const uploadSectionImage = async (req, res) => {
 
     const uploaded = await uploadFile({
       buffer: req.file.buffer,
-      originalname: req.file.originalname || `section_img_${Date.now()}.png`,
+      originalname: req.file.originalname || `section_block_${Date.now()}.png`,
       mimetype: req.file.mimetype || "image/png",
       folder: "sections/blocks",
       isPublic: true,
+      useRandomUuid: true,
       bucketType: "image",
     });
 
@@ -529,20 +550,29 @@ const updateSectionBanner = async (req, res) => {
 
     const { bannerImage, query, autoFetch } = req.body || {};
 
-    // Delete old banner (R2 or GridFS) if replacing with a new upload, Pexels, or URL
+    // Delete old banner (R2 or GridFS) only if no other cloned section references it
     const hasOldImage = section.bannerR2Key || section.bannerImage;
 
     if (req.file) {
       if (hasOldImage) {
-        await deleteFile({
-          provider: section.storageProvider,
-          key: section.bannerR2Key,
-          fileId: extractGridFsId(section.bannerImage),
-          isPublic: true,
-          bucketType: "image",
-        }).catch((err) =>
-          console.warn("Section banner cleanup warning:", err.message)
-        );
+        const otherBannerRefs = await CustomSection.countDocuments({
+          _id: { $ne: section._id },
+          $or: [
+            ...(section.bannerR2Key ? [{ bannerR2Key: section.bannerR2Key }] : []),
+            ...(section.bannerImage ? [{ bannerImage: section.bannerImage }] : []),
+          ],
+        });
+        if (otherBannerRefs === 0) {
+          await deleteFile({
+            provider: section.storageProvider,
+            key: section.bannerR2Key,
+            fileId: extractGridFsId(section.bannerImage),
+            isPublic: true,
+            bucketType: "image",
+          }).catch((err) =>
+            console.warn("Section banner cleanup warning:", err.message)
+          );
+        }
       }
       const uploaded = await uploadFile({
         buffer: req.file.buffer,
@@ -550,6 +580,7 @@ const updateSectionBanner = async (req, res) => {
         mimetype: req.file.mimetype,
         folder: "sections/banners",
         isPublic: true,
+        useRandomUuid: true,
         bucketType: "image",
       });
       section.bannerImage = uploaded.url;

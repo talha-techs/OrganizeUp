@@ -63,6 +63,13 @@ const DiscordLibrary = () => {
   const [deleteMsgItem, setDeleteMsgItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const getMediaUrl = (mediaFile) => {
+    if (!mediaFile) return '';
+    const id = mediaFile.r2Key ? encodeURIComponent(mediaFile.r2Key) : (mediaFile.gridFsId || mediaFile._id);
+    const token = localStorage.getItem('token');
+    return `/api/discord/media/${id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  };
+
   useEffect(() => {
     const code = searchParams.get('code');
     if (code) {
