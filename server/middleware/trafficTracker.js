@@ -12,10 +12,10 @@ const trafficStore = {
   cacheHits: 0,
   cacheMisses: 0,
   statusCodes: {
-    '2xx': 0,
-    '3xx': 0,
-    '4xx': 0,
-    '5xx': 0,
+    "2xx": 0,
+    "3xx": 0,
+    "4xx": 0,
+    "5xx": 0,
   },
   latency: {
     totalMs: 0,
@@ -25,6 +25,8 @@ const trafficStore = {
   },
   // Keyed by normalized route prefix (e.g. /api/captures)
   endpoints: {},
+  // Keyed by HTTP method and Express route pattern
+  routeBytes: {},
   // Keyed by ISO Country code (e.g. US, PK, GB)
   countries: {},
   // Devices
@@ -52,38 +54,40 @@ const trafficStore = {
 };
 
 // Simple User-Agent Parser
-function parseUserAgent(ua = '') {
+function parseUserAgent(ua = "") {
   const uaLower = ua.toLowerCase();
-  let device = 'Desktop';
+  let device = "Desktop";
   if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(uaLower)) {
-    device = 'Tablet';
-  } else if (/mobile|iphone|ipod|blackberry|opera mini|iemobile|wpdesktop/i.test(uaLower)) {
-    device = 'Mobile';
+    device = "Tablet";
+  } else if (
+    /mobile|iphone|ipod|blackberry|opera mini|iemobile|wpdesktop/i.test(uaLower)
+  ) {
+    device = "Mobile";
   }
 
-  let browser = 'Other';
+  let browser = "Other";
   if (/edg/i.test(uaLower)) {
-    browser = 'Edge';
+    browser = "Edge";
   } else if (/chrome|crios/i.test(uaLower)) {
-    browser = 'Chrome';
+    browser = "Chrome";
   } else if (/safari/i.test(uaLower) && !/chrome/i.test(uaLower)) {
-    browser = 'Safari';
+    browser = "Safari";
   } else if (/firefox|fxios/i.test(uaLower)) {
-    browser = 'Firefox';
+    browser = "Firefox";
   }
 
   return { device, browser };
 }
 
 // Normalize request path for endpoint categorization
-function normalizePath(path = '') {
-  const parts = path.split('?')[0].split('/').filter(Boolean);
-  if (parts.length === 0) return '/';
-  if (parts[0] === 'api') {
+function normalizePath(path = "") {
+  const parts = path.split("?")[0].split("/").filter(Boolean);
+  if (parts.length === 0) return "/";
+  if (parts[0] === "api") {
     if (parts[1]) {
       return `/api/${parts[1]}`;
     }
-    return '/api';
+    return "/api";
   }
   return `/${parts[0]}`;
 }
@@ -96,11 +100,14 @@ function initBaseMetrics() {
   trafficStore.hourlyBuckets = [];
   for (let i = 23; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 3600000);
-    const hourLabel = `${String(d.getHours()).padStart(2, '0')}:00`;
+    const hourLabel = `${String(d.getHours()).padStart(2, "0")}:00`;
     // Diurnal traffic curve simulation: higher during afternoon/evening (12-22)
     const h = d.getHours();
     const curveFactor = Math.sin(((h - 5) / 24) * Math.PI * 2) * 0.4 + 0.6;
-    const baseReqs = Math.max(12, Math.round((45 + Math.random() * 35) * curveFactor));
+    const baseReqs = Math.max(
+      12,
+      Math.round((45 + Math.random() * 35) * curveFactor),
+    );
     const errors = Math.random() > 0.7 ? Math.floor(Math.random() * 2) : 0;
     const avgLatency = Math.round(28 + Math.random() * 24);
 
@@ -116,11 +123,11 @@ function initBaseMetrics() {
 
   // Seed 7 Daily Buckets
   trafficStore.dailyBuckets = [];
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 86400000);
     const dayName = daysOfWeek[d.getDay()];
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = d.toISOString().split("T")[0];
     const baseReqs = Math.round(980 + Math.random() * 450);
     const errors = Math.round(baseReqs * (0.003 + Math.random() * 0.005));
     const avgLatency = Math.round(32 + Math.random() * 12);
@@ -146,7 +153,7 @@ function initBaseMetrics() {
 
     trafficStore.monthlyBuckets.push({
       date: dateStr,
-      fullDate: d.toISOString().split('T')[0],
+      fullDate: d.toISOString().split("T")[0],
       requests: baseReqs,
       errors,
       latency: avgLatency,
@@ -154,17 +161,29 @@ function initBaseMetrics() {
   }
 
   // Initial Base Totals
-  const sum24h = trafficStore.hourlyBuckets.reduce((sum, b) => sum + b.requests, 0);
+  const sum24h = trafficStore.hourlyBuckets.reduce(
+    (sum, b) => sum + b.requests,
+    0,
+  );
   trafficStore.totalRequests = 14820 + sum24h;
   trafficStore.totalBytes = Math.round(trafficStore.totalRequests * 145000); // ~2.1 GB
   trafficStore.cacheHits = Math.round(trafficStore.totalRequests * 0.824); // 82.4% cache ratio
-  trafficStore.cacheMisses = trafficStore.totalRequests - trafficStore.cacheHits;
+  trafficStore.cacheMisses =
+    trafficStore.totalRequests - trafficStore.cacheHits;
 
   // Status Codes
-  trafficStore.statusCodes['2xx'] = Math.round(trafficStore.totalRequests * 0.982);
-  trafficStore.statusCodes['3xx'] = Math.round(trafficStore.totalRequests * 0.012);
-  trafficStore.statusCodes['4xx'] = Math.round(trafficStore.totalRequests * 0.005);
-  trafficStore.statusCodes['5xx'] = Math.round(trafficStore.totalRequests * 0.001);
+  trafficStore.statusCodes["2xx"] = Math.round(
+    trafficStore.totalRequests * 0.982,
+  );
+  trafficStore.statusCodes["3xx"] = Math.round(
+    trafficStore.totalRequests * 0.012,
+  );
+  trafficStore.statusCodes["4xx"] = Math.round(
+    trafficStore.totalRequests * 0.005,
+  );
+  trafficStore.statusCodes["5xx"] = Math.round(
+    trafficStore.totalRequests * 0.001,
+  );
 
   // Latencies
   trafficStore.latency.totalMs = trafficStore.totalRequests * 36;
@@ -174,25 +193,60 @@ function initBaseMetrics() {
 
   // Endpoints hit distribution
   trafficStore.endpoints = {
-    '/api/captures': Math.round(trafficStore.totalRequests * 0.26),
-    '/api/books': Math.round(trafficStore.totalRequests * 0.22),
-    '/api/auth': Math.round(trafficStore.totalRequests * 0.18),
-    '/api/courses': Math.round(trafficStore.totalRequests * 0.14),
-    '/api/sections': Math.round(trafficStore.totalRequests * 0.08),
-    '/api/audiobooks': Math.round(trafficStore.totalRequests * 0.06),
-    '/api/explore': Math.round(trafficStore.totalRequests * 0.04),
-    '/api/drive': Math.round(trafficStore.totalRequests * 0.02),
+    "/api/captures": Math.round(trafficStore.totalRequests * 0.26),
+    "/api/books": Math.round(trafficStore.totalRequests * 0.22),
+    "/api/auth": Math.round(trafficStore.totalRequests * 0.18),
+    "/api/courses": Math.round(trafficStore.totalRequests * 0.14),
+    "/api/sections": Math.round(trafficStore.totalRequests * 0.08),
+    "/api/audiobooks": Math.round(trafficStore.totalRequests * 0.06),
+    "/api/explore": Math.round(trafficStore.totalRequests * 0.04),
+    "/api/drive": Math.round(trafficStore.totalRequests * 0.02),
   };
 
   // Geographic distribution
   trafficStore.countries = {
-    US: { name: 'United States', code: 'US', flag: '🇺🇸', count: Math.round(trafficStore.totalRequests * 0.38) },
-    PK: { name: 'Pakistan', code: 'PK', flag: '🇵🇰', count: Math.round(trafficStore.totalRequests * 0.24) },
-    GB: { name: 'United Kingdom', code: 'GB', flag: '🇬🇧', count: Math.round(trafficStore.totalRequests * 0.12) },
-    DE: { name: 'Germany', code: 'DE', flag: '🇩🇪', count: Math.round(trafficStore.totalRequests * 0.09) },
-    CA: { name: 'Canada', code: 'CA', flag: '🇨🇦', count: Math.round(trafficStore.totalRequests * 0.07) },
-    IN: { name: 'India', code: 'IN', flag: '🇮🇳', count: Math.round(trafficStore.totalRequests * 0.05) },
-    OTHER: { name: 'Other Regions', code: 'XX', flag: '🌐', count: Math.round(trafficStore.totalRequests * 0.05) },
+    US: {
+      name: "United States",
+      code: "US",
+      flag: "🇺🇸",
+      count: Math.round(trafficStore.totalRequests * 0.38),
+    },
+    PK: {
+      name: "Pakistan",
+      code: "PK",
+      flag: "🇵🇰",
+      count: Math.round(trafficStore.totalRequests * 0.24),
+    },
+    GB: {
+      name: "United Kingdom",
+      code: "GB",
+      flag: "🇬🇧",
+      count: Math.round(trafficStore.totalRequests * 0.12),
+    },
+    DE: {
+      name: "Germany",
+      code: "DE",
+      flag: "🇩🇪",
+      count: Math.round(trafficStore.totalRequests * 0.09),
+    },
+    CA: {
+      name: "Canada",
+      code: "CA",
+      flag: "🇨🇦",
+      count: Math.round(trafficStore.totalRequests * 0.07),
+    },
+    IN: {
+      name: "India",
+      code: "IN",
+      flag: "🇮🇳",
+      count: Math.round(trafficStore.totalRequests * 0.05),
+    },
+    OTHER: {
+      name: "Other Regions",
+      code: "XX",
+      flag: "🌐",
+      count: Math.round(trafficStore.totalRequests * 0.05),
+    },
   };
 
   // Devices & Browsers
@@ -205,21 +259,26 @@ function initBaseMetrics() {
   trafficStore.browsers = {
     Chrome: Math.round(trafficStore.totalRequests * 0.59),
     Safari: Math.round(trafficStore.totalRequests * 0.23),
-    Edge: Math.round(trafficStore.totalRequests * 0.10),
+    Edge: Math.round(trafficStore.totalRequests * 0.1),
     Firefox: Math.round(trafficStore.totalRequests * 0.06),
     Other: Math.round(trafficStore.totalRequests * 0.02),
   };
 
   // Pre-seed some recent requests
   const samplePaths = [
-    { method: 'GET', path: '/api/auth/me', status: 200, ms: 24 },
-    { method: 'GET', path: '/api/captures', status: 200, ms: 42 },
-    { method: 'GET', path: '/api/auth/dashboard', status: 200, ms: 38 },
-    { method: 'GET', path: '/api/books', status: 200, ms: 56 },
-    { method: 'POST', path: '/api/captures', status: 201, ms: 88 },
-    { method: 'GET', path: '/api/audiobooks/search?genre=Fiction', status: 200, ms: 34 },
-    { method: 'GET', path: '/api/courses', status: 200, ms: 45 },
-    { method: 'GET', path: '/api/sections', status: 200, ms: 30 },
+    { method: "GET", path: "/api/auth/me", status: 200, ms: 24 },
+    { method: "GET", path: "/api/captures", status: 200, ms: 42 },
+    { method: "GET", path: "/api/auth/dashboard", status: 200, ms: 38 },
+    { method: "GET", path: "/api/books", status: 200, ms: 56 },
+    { method: "POST", path: "/api/captures", status: 201, ms: 88 },
+    {
+      method: "GET",
+      path: "/api/audiobooks/search?genre=Fiction",
+      status: 200,
+      ms: 34,
+    },
+    { method: "GET", path: "/api/courses", status: 200, ms: 45 },
+    { method: "GET", path: "/api/sections", status: 200, ms: 30 },
   ];
 
   samplePaths.forEach((s, idx) => {
@@ -229,10 +288,14 @@ function initBaseMetrics() {
       path: s.path,
       status: s.status,
       duration: s.ms,
-      ip: '127.0.0.1',
-      country: 'US',
-      countryFlag: '🇺🇸',
-      time: new Date(Date.now() - (idx + 1) * 35000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      ip: "127.0.0.1",
+      country: "US",
+      countryFlag: "🇺🇸",
+      time: new Date(Date.now() - (idx + 1) * 35000).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
       timestamp: new Date(Date.now() - (idx + 1) * 35000).toISOString(),
     });
   });
@@ -246,50 +309,81 @@ initBaseMetrics();
  */
 const trafficTracker = (req, res, next) => {
   // Ignore static assets or health checks if needed
-  if (req.path.startsWith('/favicon') || req.path.startsWith('/assets/')) {
+  if (req.path.startsWith("/favicon") || req.path.startsWith("/assets/")) {
     return next();
   }
 
   const startHr = process.hrtime();
-  const startTime = Date.now();
+  let responseBytes = 0;
+  const originalWrite = res.write;
+  const originalEnd = res.end;
+  const getChunkBytes = (chunk) => {
+    if (!chunk) return 0;
+    if (Buffer.isBuffer(chunk)) return chunk.length;
+    if (typeof chunk === "string") return Buffer.byteLength(chunk);
+    return chunk.byteLength || 0;
+  };
+
+  res.write = function trackedWrite(chunk, ...args) {
+    responseBytes += getChunkBytes(chunk);
+    return originalWrite.call(this, chunk, ...args);
+  };
+  res.end = function trackedEnd(chunk, ...args) {
+    responseBytes += getChunkBytes(chunk);
+    return originalEnd.call(this, chunk, ...args);
+  };
 
   // Intercept the response finish event to record true duration and status code
-  res.on('finish', () => {
+  res.on("finish", () => {
+    if (req.path === "/api/admin/analytics") return;
+
     const diff = process.hrtime(startHr);
     const durationMs = Math.round((diff[0] * 1e9 + diff[1]) / 1e6) || 1;
     const statusCode = res.statusCode || 200;
 
     // 1. Accumulate overall counts
     trafficStore.totalRequests++;
-    const contentLength = parseInt(res.getHeader('content-length') || 0, 10);
-    const approxBytes = contentLength > 0 ? contentLength : 1200;
-    trafficStore.totalBytes += approxBytes;
+    const contentLength = parseInt(res.getHeader("content-length") || 0, 10);
+    const bytes = contentLength > 0 ? contentLength : responseBytes;
+    trafficStore.totalBytes += bytes;
 
     // 2. Status code bucketing
     if (statusCode >= 200 && statusCode < 300) {
-      trafficStore.statusCodes['2xx']++;
+      trafficStore.statusCodes["2xx"]++;
     } else if (statusCode >= 300 && statusCode < 400) {
-      trafficStore.statusCodes['3xx']++;
+      trafficStore.statusCodes["3xx"]++;
     } else if (statusCode >= 400 && statusCode < 500) {
-      trafficStore.statusCodes['4xx']++;
+      trafficStore.statusCodes["4xx"]++;
     } else if (statusCode >= 500) {
-      trafficStore.statusCodes['5xx']++;
+      trafficStore.statusCodes["5xx"]++;
     }
 
     // 3. Latency
     trafficStore.latency.totalMs += durationMs;
     trafficStore.latency.count++;
-    if (durationMs < trafficStore.latency.min) trafficStore.latency.min = durationMs;
-    if (durationMs > trafficStore.latency.max) trafficStore.latency.max = durationMs;
+    if (durationMs < trafficStore.latency.min)
+      trafficStore.latency.min = durationMs;
+    if (durationMs > trafficStore.latency.max)
+      trafficStore.latency.max = durationMs;
 
     // 4. Endpoint ranking
     const normalized = normalizePath(req.path);
-    trafficStore.endpoints[normalized] = (trafficStore.endpoints[normalized] || 0) + 1;
+    trafficStore.endpoints[normalized] =
+      (trafficStore.endpoints[normalized] || 0) + 1;
+    const routePath = req.route
+      ? `${req.baseUrl || ""}${req.route.path}`
+      : normalized;
+    const routeKey = `${req.method} ${Array.isArray(routePath) ? routePath.join("|") : routePath}`;
+    if (!trafficStore.routeBytes[routeKey]) {
+      trafficStore.routeBytes[routeKey] = { bytes: 0, requests: 0 };
+    }
+    trafficStore.routeBytes[routeKey].bytes += bytes;
+    trafficStore.routeBytes[routeKey].requests++;
 
     // 5. Cloudflare / Edge Headers
-    const cfCountry = req.headers['cf-ipcountry'] || 'US';
-    const cfCache = req.headers['cf-cache-status'];
-    if (cfCache === 'HIT') {
+    const cfCountry = req.headers["cf-ipcountry"] || "US";
+    const cfCache = req.headers["cf-cache-status"];
+    if (cfCache === "HIT") {
       trafficStore.cacheHits++;
     } else {
       trafficStore.cacheMisses++;
@@ -302,24 +396,29 @@ const trafficTracker = (req, res, next) => {
       trafficStore.countries[cfCountry] = {
         name: cfCountry,
         code: cfCountry,
-        flag: '🌐',
+        flag: "🌐",
         count: 1,
       };
     }
 
     // 6. User-Agent parsing
-    const ua = req.headers['user-agent'] || '';
+    const ua = req.headers["user-agent"] || "";
     const { device, browser } = parseUserAgent(ua);
-    if (trafficStore.devices[device] !== undefined) trafficStore.devices[device]++;
-    if (trafficStore.browsers[browser] !== undefined) trafficStore.browsers[browser]++;
+    if (trafficStore.devices[device] !== undefined)
+      trafficStore.devices[device]++;
+    if (trafficStore.browsers[browser] !== undefined)
+      trafficStore.browsers[browser]++;
 
     // 7. Update current hourly bucket
-    const currentHourStr = `${String(new Date().getHours()).padStart(2, '0')}:00`;
-    let currentBucket = trafficStore.hourlyBuckets[trafficStore.hourlyBuckets.length - 1];
+    const currentHourStr = `${String(new Date().getHours()).padStart(2, "0")}:00`;
+    let currentBucket =
+      trafficStore.hourlyBuckets[trafficStore.hourlyBuckets.length - 1];
     if (currentBucket && currentBucket.time === currentHourStr) {
       currentBucket.requests++;
       if (statusCode >= 400) currentBucket.errors++;
-      currentBucket.latency = Math.round((currentBucket.latency + durationMs) / 2);
+      currentBucket.latency = Math.round(
+        (currentBucket.latency + durationMs) / 2,
+      );
     } else {
       // New hour started
       trafficStore.hourlyBuckets.push({
@@ -337,10 +436,10 @@ const trafficTracker = (req, res, next) => {
 
     // 8. Add to rolling recent requests (keep max 30)
     const clientIp =
-      req.headers['cf-connecting-ip'] ||
-      req.headers['x-forwarded-for']?.split(',')[0].trim() ||
+      req.headers["cf-connecting-ip"] ||
+      req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
       req.ip ||
-      '127.0.0.1';
+      "127.0.0.1";
 
     trafficStore.recentRequests.unshift({
       id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -350,8 +449,12 @@ const trafficTracker = (req, res, next) => {
       duration: durationMs,
       ip: clientIp,
       country: cfCountry,
-      countryFlag: trafficStore.countries[cfCountry]?.flag || '🌐',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      countryFlag: trafficStore.countries[cfCountry]?.flag || "🌐",
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
       timestamp: new Date().toISOString(),
     });
 
@@ -366,24 +469,30 @@ const trafficTracker = (req, res, next) => {
 /**
  * Getter for formatted analytics based on timeRange ('24h' | '7d' | '30d')
  */
-const getTrafficMetrics = (timeRange = '24h') => {
-  const avgLatency = trafficStore.latency.count > 0
-    ? Math.round(trafficStore.latency.totalMs / trafficStore.latency.count)
-    : 34;
+const getTrafficMetrics = (timeRange = "24h") => {
+  const avgLatency =
+    trafficStore.latency.count > 0
+      ? Math.round(trafficStore.latency.totalMs / trafficStore.latency.count)
+      : 34;
 
   const totalReq = trafficStore.totalRequests || 1;
-  const success2xx = trafficStore.statusCodes['2xx'] || 0;
+  const success2xx = trafficStore.statusCodes["2xx"] || 0;
   const successRate = +((success2xx / totalReq) * 100).toFixed(1);
 
-  const totalCacheReqs = (trafficStore.cacheHits + trafficStore.cacheMisses) || 1;
-  const cacheHitRatio = +((trafficStore.cacheHits / totalCacheReqs) * 100).toFixed(1);
+  const totalCacheReqs = trafficStore.cacheHits + trafficStore.cacheMisses || 1;
+  const cacheHitRatio = +(
+    (trafficStore.cacheHits / totalCacheReqs) *
+    100
+  ).toFixed(1);
 
   // Bandwidth in GB
-  const bandwidthGB = +(trafficStore.totalBytes / (1024 * 1024 * 1024)).toFixed(2);
+  const bandwidthGB = +(trafficStore.totalBytes / (1024 * 1024 * 1024)).toFixed(
+    2,
+  );
 
   // Pick timeline series based on timeRange
   let timeline = [];
-  if (timeRange === '7d') {
+  if (timeRange === "7d") {
     timeline = trafficStore.dailyBuckets.map((b) => ({
       label: b.day,
       date: b.date,
@@ -391,7 +500,7 @@ const getTrafficMetrics = (timeRange = '24h') => {
       errors: b.errors,
       latency: b.latency,
     }));
-  } else if (timeRange === '30d') {
+  } else if (timeRange === "30d") {
     timeline = trafficStore.monthlyBuckets.map((b) => ({
       label: b.date,
       date: b.fullDate,
@@ -420,6 +529,11 @@ const getTrafficMetrics = (timeRange = '24h') => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 7);
 
+  const topBandwidthRoutes = Object.entries(trafficStore.routeBytes)
+    .map(([route, data]) => ({ route, ...data }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 10);
+
   // Top Countries
   const topCountries = Object.values(trafficStore.countries)
     .map((c) => ({
@@ -433,17 +547,19 @@ const getTrafficMetrics = (timeRange = '24h') => {
     overview: {
       totalRequests: trafficStore.totalRequests,
       avgLatency,
-      minLatency: trafficStore.latency.min === 9999 ? 4 : trafficStore.latency.min,
+      minLatency:
+        trafficStore.latency.min === 9999 ? 4 : trafficStore.latency.min,
       maxLatency: trafficStore.latency.max || 180,
       successRate: Math.min(100, Math.max(90, successRate)),
       cacheHitRatio: Math.min(100, Math.max(70, cacheHitRatio)),
       bandwidthGB: Math.max(1.8, bandwidthGB),
-      sslStatus: 'TLS 1.3 Active',
-      uptime: '99.98%',
+      sslStatus: "TLS 1.3 Active",
+      uptime: "99.98%",
     },
     statusCodes: trafficStore.statusCodes,
     timeline,
     topEndpoints,
+    topBandwidthRoutes,
     topCountries,
     devices: trafficStore.devices,
     browsers: trafficStore.browsers,

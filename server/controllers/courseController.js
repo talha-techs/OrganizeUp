@@ -5,6 +5,18 @@ const UserLibrary = require("../models/UserLibrary");
 const { uploadFile, deleteFile } = require("../services/storageService");
 const { fetchPexelsBanner } = require("../services/pexelsService");
 
+const COURSE_LIST_SELECT =
+  "title description driveLink bannerImage visibility addedBy category";
+
+const getOptionalPagination = (query) => {
+  const hasPagination = query.page !== undefined || query.limit !== undefined;
+  if (!hasPagination) return null;
+
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 100);
+  return { page, limit, skip: (page - 1) * limit };
+};
+
 // Escape special regex chars to prevent ReDoS / injection
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -33,21 +45,25 @@ const getCourses = async (req, res) => {
       // Explicit administrative overview parameter only
     } else {
       // Personal library for all users (including admins): authored courses + saved courses
-      filter.$or = [
-        { addedBy: req.user._id },
-        { _id: { $in: savedIds } },
-      ];
+      filter.$or = [{ addedBy: req.user._id }, { _id: { $in: savedIds } }];
     }
 
-    const courses = await Course.find(filter)
+    let coursesQuery = Course.find(filter)
+      .select(COURSE_LIST_SELECT)
       .populate("category", "name")
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
+    const pagination = getOptionalPagination(req.query);
+    if (pagination)
+      coursesQuery = coursesQuery.skip(pagination.skip).limit(pagination.limit);
+    const courses = await coursesQuery.lean();
 
     const coursesWithSaved = courses.map((c) => {
-      const obj = c.toObject();
+      const obj = { ...c };
       const cIdStr = c._id.toString();
-      const isOwner = c.addedBy && String(c.addedBy._id || c.addedBy) === String(req.user._id);
+      const isOwner =
+        c.addedBy &&
+        String(c.addedBy._id || c.addedBy) === String(req.user._id);
       if (savedCourseIdMap.has(cIdStr)) {
         obj.isSaved = true;
         obj.libraryEntryId = savedCourseIdMap.get(cIdStr);
@@ -77,7 +93,9 @@ const getCourse = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    const isOwner = course.addedBy && String(course.addedBy._id || course.addedBy) === String(req.user._id);
+    const isOwner =
+      course.addedBy &&
+      String(course.addedBy._id || course.addedBy) === String(req.user._id);
     const savedEntry = await UserLibrary.findOne({
       user: req.user._id,
       contentType: "course",
@@ -138,7 +156,8 @@ const createCourse = async (req, res) => {
       // 3. If still not found, create a new category (global if admin, personal if user)
       if (!existingCategory) {
         let pexelsQuery = trimmedName;
-        if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+        if (pexelsQuery.toLowerCase() === "ai")
+          pexelsQuery = "Artificial Intelligence";
         const pexelsUrl = await fetchPexelsBanner(pexelsQuery);
         existingCategory = await Category.create({
           name: trimmedName,
@@ -255,7 +274,8 @@ const updateCourse = async (req, res) => {
       // 3. If still not found, create a new category (global if admin, personal if user)
       if (!existingCategory) {
         let pexelsQuery = trimmedName;
-        if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+        if (pexelsQuery.toLowerCase() === "ai")
+          pexelsQuery = "Artificial Intelligence";
         const pexelsUrl = await fetchPexelsBanner(pexelsQuery);
         existingCategory = await Category.create({
           name: trimmedName,
@@ -336,8 +356,7 @@ const deleteCourse = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
     const isOwner =
-      course.addedBy &&
-      course.addedBy.toString() === req.user._id.toString();
+      course.addedBy && course.addedBy.toString() === req.user._id.toString();
     if (!isOwner) {
       return res.status(403).json({
         message:
@@ -464,10 +483,7 @@ const getCategories = async (req, res) => {
       } else {
         // Regular users only see global categories and their own personal categories
         filter = {
-          $or: [
-            { isGlobal: true },
-            { createdBy: req.user._id },
-          ],
+          $or: [{ isGlobal: true }, { createdBy: req.user._id }],
         };
       }
     } else {
@@ -482,7 +498,8 @@ const getCategories = async (req, res) => {
     categories.forEach((cat) => {
       if (!cat.image && !cat.bannerImage) {
         let pexelsQuery = cat.name;
-        if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+        if (pexelsQuery.toLowerCase() === "ai")
+          pexelsQuery = "Artificial Intelligence";
         fetchPexelsBanner(pexelsQuery)
           .then(async (url) => {
             if (url) {
@@ -532,7 +549,8 @@ const createCategory = async (req, res) => {
     }
 
     let pexelsQuery = trimmedName;
-    if (pexelsQuery.toLowerCase() === "ai") pexelsQuery = "Artificial Intelligence";
+    if (pexelsQuery.toLowerCase() === "ai")
+      pexelsQuery = "Artificial Intelligence";
     let finalImage = image || bannerImage || "";
     if (!finalImage) {
       finalImage = (await fetchPexelsBanner(pexelsQuery)) || "";
@@ -549,7 +567,9 @@ const createCategory = async (req, res) => {
     });
 
     res.status(201).json({
-      message: isGlobal ? "Global category created" : "Personal category created",
+      message: isGlobal
+        ? "Global category created"
+        : "Personal category created",
       category,
     });
   } catch (error) {
@@ -681,8 +701,12 @@ const updateCourseProgress = async (req, res) => {
     }
 
     const totalFiles = countCourseFiles(course);
-    cProg.progress = totalFiles > 0 ? Math.round((cProg.completedFiles.length / totalFiles) * 100) : 0;
-    cProg.completed = totalFiles > 0 && cProg.completedFiles.length >= totalFiles;
+    cProg.progress =
+      totalFiles > 0
+        ? Math.round((cProg.completedFiles.length / totalFiles) * 100)
+        : 0;
+    cProg.completed =
+      totalFiles > 0 && cProg.completedFiles.length >= totalFiles;
     cProg.lastAccessed = new Date();
 
     // If it's a video file, also sync with universal videoProgress

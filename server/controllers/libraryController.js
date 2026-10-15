@@ -15,47 +15,92 @@ const models = {
   video: YoutubePlaylist,
 };
 
+const CONTENT_LIST_SELECT = {
+  book: "title name type author coverImage videos.thumbnail addedBy",
+  course: "title name description bannerImage category addedBy",
+  tool: "title name description bannerImage addedBy",
+  section: "title name description bannerImage addedBy",
+  playlist:
+    "title name type thumbnail thumbnailUrl videoCount videos.thumbnail addedBy",
+};
+
+const getOptionalPagination = (query) => {
+  const hasPagination = query.page !== undefined || query.limit !== undefined;
+  if (!hasPagination) return null;
+
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 100);
+  return { skip: (page - 1) * limit, limit };
+};
+
+const applyPagination = (query, pagination) =>
+  pagination ? query.skip(pagination.skip).limit(pagination.limit) : query;
+
 // @desc    Get user's library (saved public items + own private items)
 // @route   GET /api/library?type=all|books|courses|tools
 const getLibrary = async (req, res) => {
   try {
     const userId = req.user._id;
     const { type = "all" } = req.query;
+    const pagination = getOptionalPagination(req.query);
 
     const result = { books: [], courses: [], tools: [], saved: [] };
 
     // 1. Get user's own content (private + pending)
     if (type === "all" || type === "books") {
-      result.books = await Book.find({ addedBy: userId })
+      result.books = await applyPagination(
+        Book.find({ addedBy: userId }).select(
+          "title author type description coverImage driveLink totalPages addedBy visibility videos audioFiles._id audioFiles.title audioFiles.originalName audioFiles.size",
+        ),
+        pagination,
+      )
         .populate("addedBy", "name avatar")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
     }
     if (type === "all" || type === "courses") {
-      result.courses = await Course.find({ addedBy: userId })
+      result.courses = await applyPagination(
+        Course.find({ addedBy: userId }).select(
+          "title description driveLink bannerImage visibility addedBy category",
+        ),
+        pagination,
+      )
         .populate("addedBy", "name avatar")
         .populate("category", "name")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
     }
     if (type === "all" || type === "tools") {
-      result.tools = await Tool.find({ addedBy: userId })
+      result.tools = await applyPagination(
+        Tool.find({ addedBy: userId }).select(CONTENT_LIST_SELECT.tool),
+        pagination,
+      )
         .populate("addedBy", "name avatar")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
     }
 
     // 2. Get saved public items from library
-    const savedItems = await UserLibrary.find({ user: userId }).sort({
-      createdAt: -1,
-    });
+    const savedItems = await applyPagination(
+      UserLibrary.find({ user: userId }).sort({ createdAt: -1 }),
+      pagination,
+    ).lean();
 
     // Populate each saved item
     const populated = await Promise.all(
       savedItems.map(async (item) => {
         const Model = models[item.contentType];
         if (!Model) return null;
-        const content = await Model.findById(item.contentId).populate(
-          "addedBy",
-          "name avatar",
-        );
+        let contentQuery = Model.findById(item.contentId)
+          .select(
+            CONTENT_LIST_SELECT[item.contentType] ||
+              "title name description addedBy",
+          )
+          .populate("addedBy", "name avatar");
+        if (item.contentType === "course") {
+          contentQuery = contentQuery.populate("category", "name");
+        }
+        const content = await contentQuery.lean();
         if (!content) return null;
         return {
           _id: item._id,
@@ -63,7 +108,7 @@ const getLibrary = async (req, res) => {
           contentId: item.contentId,
           personalNotes: item.personalNotes,
           savedAt: item.createdAt,
-          content: content.toObject(),
+          content,
         };
       }),
     );
@@ -133,14 +178,15 @@ const addToLibrary = async (req, res) => {
 
       if (!existingClone) {
         await YoutubePlaylist.create({
-          type: content.type || (contentType === "video" ? "video" : "playlist"),
+          type:
+            content.type || (contentType === "video" ? "video" : "playlist"),
           title: content.title,
           description: content.description || "",
           playlistId: content.playlistId || "",
           videoId: content.videoId || "",
           url: content.url || content.playlistUrl || "",
           playlistUrl: content.playlistUrl || "",
-          thumbnail: content.thumbnail || (content.videos?.[0]?.thumbnail || ""),
+          thumbnail: content.thumbnail || content.videos?.[0]?.thumbnail || "",
           channelTitle: content.channelTitle || "",
           videoCount:
             content.videoCount || (content.videos ? content.videos.length : 0),

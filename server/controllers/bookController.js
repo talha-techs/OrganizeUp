@@ -13,6 +13,20 @@ const {
   extractGridFsId,
 } = require("../services/storageService");
 
+const BOOK_LIST_SELECT = [
+  "title author type description source coverImage driveLink totalPages",
+  "addedBy visibility videos audioFiles._id audioFiles.title audioFiles.originalName audioFiles.size",
+].join(" ");
+
+const getOptionalPagination = (query) => {
+  const hasPagination = query.page !== undefined || query.limit !== undefined;
+  if (!hasPagination) return null;
+
+  const page = Math.max(parseInt(query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 100);
+  return { page, limit, skip: (page - 1) * limit };
+};
+
 // @desc    Get books (user sees own + saved from library; admin sees all)
 // @route   GET /api/books?type=video|text|audio&mine=true
 const getBooks = async (req, res) => {
@@ -38,20 +52,24 @@ const getBooks = async (req, res) => {
       // Explicit administrative overview parameter only
     } else {
       // Personal library for all users (including admins): authored books + saved books
-      filter.$or = [
-        { addedBy: req.user._id },
-        { _id: { $in: savedIds } },
-      ];
+      filter.$or = [{ addedBy: req.user._id }, { _id: { $in: savedIds } }];
     }
 
-    const books = await Book.find(filter)
+    let booksQuery = Book.find(filter)
+      .select(BOOK_LIST_SELECT)
       .populate("addedBy", "name avatar")
       .sort({ createdAt: -1 });
+    const pagination = getOptionalPagination(req.query);
+    if (pagination)
+      booksQuery = booksQuery.skip(pagination.skip).limit(pagination.limit);
+    const books = await booksQuery.lean();
 
     const booksWithSaved = books.map((b) => {
-      const obj = b.toObject();
+      const obj = { ...b };
       const bIdStr = b._id.toString();
-      const isOwner = b.addedBy && String(b.addedBy._id || b.addedBy) === String(req.user._id);
+      const isOwner =
+        b.addedBy &&
+        String(b.addedBy._id || b.addedBy) === String(req.user._id);
       if (savedBookIdMap.has(bIdStr)) {
         obj.isSaved = true;
         obj.libraryEntryId = savedBookIdMap.get(bIdStr);
@@ -63,7 +81,9 @@ const getBooks = async (req, res) => {
       if (
         obj.source === "youtube" ||
         obj.description === "Modern Audiobook & Summary" ||
-        obj.videos?.some((v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId))
+        obj.videos?.some(
+          (v) => v.driveFileId && /^[a-zA-Z0-9_-]{11}$/.test(v.driveFileId),
+        )
       ) {
         obj.type = "youtube";
       }
@@ -89,7 +109,9 @@ const getBook = async (req, res) => {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    const isOwner = book.addedBy && String(book.addedBy._id || book.addedBy) === String(req.user._id);
+    const isOwner =
+      book.addedBy &&
+      String(book.addedBy._id || book.addedBy) === String(req.user._id);
     const savedEntry = await UserLibrary.findOne({
       user: req.user._id,
       contentType: "book",
@@ -209,10 +231,11 @@ const createBook = async (req, res) => {
     }
 
     const newBookId = new mongoose.Types.ObjectId();
-    const slug = encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, '-'));
-    const generatedEmbedLink = (pdfFileId || pdfR2Key)
-      ? `/api/books/pdf/${newBookId}/${slug}.pdf`
-      : embedLink || "";
+    const slug = encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, "-"));
+    const generatedEmbedLink =
+      pdfFileId || pdfR2Key
+        ? `/api/books/pdf/${newBookId}/${slug}.pdf`
+        : embedLink || "";
 
     const book = await Book.create({
       _id: newBookId,
@@ -295,7 +318,9 @@ const updateBook = async (req, res) => {
       book.pdfFileId = uploadedPdf.fileId;
       book.pdfR2Key = uploadedPdf.key;
       book.storageProvider = uploadedPdf.provider;
-      const slug = encodeURIComponent((title || book.title).replace(/[^a-zA-Z0-9-]/g, '-'));
+      const slug = encodeURIComponent(
+        (title || book.title).replace(/[^a-zA-Z0-9-]/g, "-"),
+      );
       book.embedLink = `/api/books/pdf/${book._id}/${slug}.pdf`;
     }
 
@@ -393,8 +418,7 @@ const deleteBook = async (req, res) => {
       return res.status(404).json({ message: "Book not found" });
     }
     const isOwner =
-      book.addedBy &&
-      book.addedBy.toString() === req.user._id.toString();
+      book.addedBy && book.addedBy.toString() === req.user._id.toString();
     if (!isOwner) {
       return res.status(403).json({
         message:
@@ -457,7 +481,10 @@ const updateVideoProgress = async (req, res) => {
     const bookId = req.params.id;
 
     const existingProgress = user.videoProgress.find(
-      (vp) => vp.bookId && vp.bookId.toString() === bookId && vp.videoIndex === videoIndex,
+      (vp) =>
+        vp.bookId &&
+        vp.bookId.toString() === bookId &&
+        vp.videoIndex === videoIndex,
     );
 
     const isCompleted =
@@ -481,7 +508,7 @@ const updateVideoProgress = async (req, res) => {
         contentType: "book",
         videoIndex,
         title: title || "",
-        progress: isCompleted ? 100 : (progress || 0),
+        progress: isCompleted ? 100 : progress || 0,
         completed: isCompleted,
         note: note !== undefined ? note : "",
         lastWatched: new Date(),
@@ -514,10 +541,12 @@ const getCombinedBookNotes = async (req, res) => {
     // If text book, return reading progress note
     if (book.type === "text") {
       const rp = (user?.readingProgress || []).find(
-        (p) => p.bookId && p.bookId.toString() === bookIdStr
+        (p) => p.bookId && p.bookId.toString() === bookIdStr,
       );
       const noteText = rp?.note?.trim() || "";
-      const combinedNotes = noteText ? `# ${book.title} — Study Notes\n\n${noteText}` : "";
+      const combinedNotes = noteText
+        ? `# ${book.title} — Study Notes\n\n${noteText}`
+        : "";
       return res.json({
         combinedNotes,
         bookTitle: book.title,
@@ -643,13 +672,19 @@ const getBookPdfUrl = async (req, res) => {
     if (!book) return res.status(404).json({ message: "PDF not found" });
 
     const ownerId = book.addedBy?._id || book.addedBy;
-    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    const isOwner = Boolean(
+      ownerId && String(ownerId) === String(req.user._id),
+    );
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
-      return res.status(403).json({ message: "Not authorized to access this file" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to access this file" });
     }
 
-    const slug = encodeURIComponent((book.title || "document").replace(/[^a-zA-Z0-9-]/g, "-"));
+    const slug = encodeURIComponent(
+      (book.title || "document").replace(/[^a-zA-Z0-9-]/g, "-"),
+    );
 
     if (book.pdfR2Key && isR2Configured()) {
       try {
@@ -665,7 +700,9 @@ const getBookPdfUrl = async (req, res) => {
           title: book.title,
         });
       } catch (err) {
-        console.warn(`[getBookPdfUrl] Presigned URL failed for book ${book._id}: ${err.message}`);
+        console.warn(
+          `[getBookPdfUrl] Presigned URL failed for book ${book._id}: ${err.message}`,
+        );
       }
     }
 
@@ -701,7 +738,9 @@ const servePdf = async (req, res) => {
     if (!book) return res.status(404).json({ message: "PDF not found" });
 
     const ownerId = book.addedBy?._id || book.addedBy;
-    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    const isOwner = Boolean(
+      ownerId && String(ownerId) === String(req.user._id),
+    );
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
       return res
@@ -712,7 +751,7 @@ const servePdf = async (req, res) => {
     // Only allow same-origin framing for owned/public PDFs
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
 
-    const filename = `${encodeURIComponent((book.title || 'document').replace(/[^a-zA-Z0-9-]/g, '-'))}.pdf`;
+    const filename = `${encodeURIComponent((book.title || "document").replace(/[^a-zA-Z0-9-]/g, "-"))}.pdf`;
 
     // Direct fetch via 302 redirect to presigned R2 URL (bypasses Render network)
     if (book.pdfR2Key && isR2Configured() && req.query.proxy !== "true") {
@@ -723,7 +762,10 @@ const servePdf = async (req, res) => {
         });
         return res.redirect(302, presignedUrl);
       } catch (presignErr) {
-        console.warn(`[servePdf] Presigned redirect failed for book ${book._id}, falling back to proxy stream:`, presignErr.message);
+        console.warn(
+          `[servePdf] Presigned redirect failed for book ${book._id}, falling back to proxy stream:`,
+          presignErr.message,
+        );
       }
     }
 
@@ -741,7 +783,7 @@ const servePdf = async (req, res) => {
         streamed = true;
       } catch (r2Err) {
         console.warn(
-          `[servePdf] R2 stream failed for book ${book._id} (${r2Err.message}), falling back to GridFS`
+          `[servePdf] R2 stream failed for book ${book._id} (${r2Err.message}), falling back to GridFS`,
         );
       }
     }
@@ -803,10 +845,14 @@ const getBookAudioUrl = async (req, res) => {
     if (!book) return res.status(404).json({ message: "Book not found" });
 
     const ownerId = book.addedBy?._id || book.addedBy;
-    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    const isOwner = Boolean(
+      ownerId && String(ownerId) === String(req.user._id),
+    );
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
-      return res.status(403).json({ message: "Not authorized to access this file" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to access this file" });
     }
 
     const rawTrackParam = decodeURIComponent(trackId);
@@ -815,17 +861,22 @@ const getBookAudioUrl = async (req, res) => {
         a._id?.toString() === rawTrackParam ||
         a.fileId?.toString() === rawTrackParam ||
         a.r2Key === rawTrackParam ||
-        String(idx) === rawTrackParam
+        String(idx) === rawTrackParam,
     );
 
     if (!track && book.audioFiles.length > 0) {
       const parsedIdx = parseInt(rawTrackParam, 10);
-      if (!isNaN(parsedIdx) && parsedIdx >= 0 && parsedIdx < book.audioFiles.length) {
+      if (
+        !isNaN(parsedIdx) &&
+        parsedIdx >= 0 &&
+        parsedIdx < book.audioFiles.length
+      ) {
         track = book.audioFiles[parsedIdx];
       }
     }
 
-    if (!track) return res.status(404).json({ message: "Audio track not found" });
+    if (!track)
+      return res.status(404).json({ message: "Audio track not found" });
 
     if (track.audioUrl && track.audioUrl.startsWith("http")) {
       return res.json({
@@ -849,7 +900,9 @@ const getBookAudioUrl = async (req, res) => {
           title: track.title,
         });
       } catch (err) {
-        console.warn(`[getBookAudioUrl] Presigned URL failed for track ${track._id}: ${err.message}`);
+        console.warn(
+          `[getBookAudioUrl] Presigned URL failed for track ${track._id}: ${err.message}`,
+        );
       }
     }
 
@@ -884,7 +937,9 @@ const serveAudio = async (req, res) => {
     if (!book) return res.status(404).json({ message: "Audio not found" });
 
     const ownerId = book.addedBy?._id || book.addedBy;
-    const isOwner = Boolean(ownerId && String(ownerId) === String(req.user._id));
+    const isOwner = Boolean(
+      ownerId && String(ownerId) === String(req.user._id),
+    );
     const isAdmin = req.user.role === "admin";
     if (!isOwner && !isAdmin && book.visibility !== "public") {
       return res
@@ -896,10 +951,11 @@ const serveAudio = async (req, res) => {
       (a) =>
         (a.fileId && a.fileId.toString() === rawParam) ||
         a.r2Key === rawParam ||
-        a._id.toString() === rawParam
+        a._id.toString() === rawParam,
     );
 
-    if (!track) return res.status(404).json({ message: "Audio track not found" });
+    if (!track)
+      return res.status(404).json({ message: "Audio track not found" });
 
     // Direct fetch via 302 redirect to presigned R2 URL (bypasses Render network)
     if (track.r2Key && isR2Configured() && req.query.proxy !== "true") {
@@ -910,7 +966,10 @@ const serveAudio = async (req, res) => {
         });
         return res.redirect(302, presignedUrl);
       } catch (presignErr) {
-        console.warn(`[serveAudio] Presigned redirect failed for track ${track._id}, falling back to proxy stream:`, presignErr.message);
+        console.warn(
+          `[serveAudio] Presigned redirect failed for track ${track._id}, falling back to proxy stream:`,
+          presignErr.message,
+        );
       }
     }
 
@@ -918,7 +977,7 @@ const serveAudio = async (req, res) => {
     let streamed = false;
     if (track.r2Key && isR2Configured()) {
       try {
-        const filename = `${encodeURIComponent((track.title || 'audio').replace(/[^a-zA-Z0-9-]/g, '-'))}.mp3`;
+        const filename = `${encodeURIComponent((track.title || "audio").replace(/[^a-zA-Z0-9-]/g, "-"))}.mp3`;
         await streamFromR2({
           key: track.r2Key,
           res,
@@ -929,7 +988,7 @@ const serveAudio = async (req, res) => {
         streamed = true;
       } catch (r2Err) {
         console.warn(
-          `[serveAudio] R2 audio stream failed for track ${track._id} (${r2Err.message}), falling back to GridFS`
+          `[serveAudio] R2 audio stream failed for track ${track._id} (${r2Err.message}), falling back to GridFS`,
         );
       }
     }

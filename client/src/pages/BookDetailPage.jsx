@@ -894,6 +894,28 @@ const BookDetailPage = () => {
     );
   };
 
+  const videoProgressHandlerRef = useRef(handleVideoProgress);
+  videoProgressHandlerRef.current = handleVideoProgress;
+  const videoProgressGetterRef = useRef(getVideoProgress);
+  videoProgressGetterRef.current = getVideoProgress;
+
+  useEffect(() => {
+    const activeVideo = currentBook?.videos?.[selectedVideo];
+    if (currentBook?.type !== 'video' || !activeVideo) return undefined;
+
+    const interval = setInterval(() => {
+      const progress = videoProgressGetterRef.current(selectedVideo);
+      if (!progress?.completed) {
+        videoProgressHandlerRef.current(
+          selectedVideo,
+          Math.min((progress?.progress || 0) + 5, 95),
+        );
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [currentBook?._id, currentBook?.type, selectedVideo]);
+
   if (isLoading || !currentBook) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -1237,18 +1259,6 @@ const BookDetailPage = () => {
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                           className="w-full h-full border-0"
-                          onLoad={() => {
-                            const interval = setInterval(() => {
-                              const progress = getVideoProgress(selectedVideo);
-                              if (!progress?.completed) {
-                                handleVideoProgress(
-                                  selectedVideo,
-                                  Math.min((progress?.progress || 0) + 5, 95),
-                                );
-                              }
-                            }, 30000);
-                            return () => clearInterval(interval);
-                          }}
                         />
                       );
                     })()

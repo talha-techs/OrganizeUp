@@ -6,6 +6,15 @@ const YoutubePlaylist = require("../models/YoutubePlaylist");
 const Vote = require("../models/Vote");
 const Comment = require("../models/Comment");
 
+const EXPLORE_LIST_SELECT = {
+  book: "title author type description coverImage videos.thumbnail addedBy",
+  course: "title description bannerImage addedBy",
+  tool: "title description bannerImage addedBy",
+  section: "title name description bannerImage addedBy",
+  playlist:
+    "title type channelTitle thumbnail videoCount videos.thumbnail addedBy",
+};
+
 // Escape special regex chars to prevent ReDoS / injection
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -74,6 +83,80 @@ const attachSocialCounts = async (items, contentType, userId = null) => {
   });
 };
 
+const fetchPopularItems = async ({
+  Model,
+  filter,
+  contentType,
+  select,
+  populate,
+  skip,
+  limit,
+  userId,
+}) => {
+  const projection = Object.fromEntries(
+    select.split(/\s+/).map((field) => [field, 1]),
+  );
+  projection._id = 1;
+
+  let items = await Model.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: Vote.collection.name,
+        let: { contentId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$contentType", contentType] },
+                  { $eq: ["$contentId", "$$contentId"] },
+                ],
+              },
+            },
+          },
+          { $project: { value: 1, _id: 0 } },
+        ],
+        as: "votesForScore",
+      },
+    },
+    {
+      $addFields: {
+        _sortScore: {
+          $subtract: [
+            {
+              $size: {
+                $filter: {
+                  input: "$votesForScore",
+                  as: "vote",
+                  cond: { $eq: ["$$vote.value", 1] },
+                },
+              },
+            },
+            {
+              $size: {
+                $filter: {
+                  input: "$votesForScore",
+                  as: "vote",
+                  cond: { $eq: ["$$vote.value", -1] },
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+    { $sort: { _sortScore: -1, createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+    { $project: { ...projection, _sortScore: 1, votesForScore: 1 } },
+    { $unset: ["_sortScore", "votesForScore"] },
+  ]);
+
+  items = await Model.populate(items, populate);
+  return attachSocialCounts(items, contentType, userId);
+};
+
 // @desc    Get all public content (explore feed)
 // @route   GET /api/explore?type=all|books|courses|tools|sections|playlists&sort=latest|popular&search=...
 const getExploreContent = async (req, res) => {
@@ -87,7 +170,8 @@ const getExploreContent = async (req, res) => {
     } = req.query;
 
     let normalizedType = (type || "all").toLowerCase().trim();
-    if (normalizedType === "tricks" || normalizedType === "trick") normalizedType = "tools";
+    if (normalizedType === "tricks" || normalizedType === "trick")
+      normalizedType = "tools";
     if (normalizedType === "playlist") normalizedType = "playlists";
     if (normalizedType === "book") normalizedType = "books";
     if (normalizedType === "course") normalizedType = "courses";
@@ -168,100 +252,156 @@ const getExploreContent = async (req, res) => {
       // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
       const dbSkip = isPopular ? 0 : normalizedType === "books" ? skip : 0;
       let bookQuery = Book.find(bookFilter)
+        .select(EXPLORE_LIST_SELECT.book)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
         .lean();
       if (!isPopular) bookQuery = bookQuery.skip(dbSkip).limit(perType);
 
-      const books = await bookQuery;
-      let scored = await attachSocialCounts(books, "book", req.user?._id);
       if (isPopular) {
-        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        results.books = scored.slice(0, perType);
+        results.books = await fetchPopularItems({
+          Model: Book,
+          filter: bookFilter,
+          contentType: "book",
+          select: EXPLORE_LIST_SELECT.book,
+          populate: { path: "addedBy", select: "name avatar" },
+          skip,
+          limit: perType,
+          userId: req.user?._id,
+        });
       } else {
-        results.books = scored;
+        const books = await bookQuery.lean();
+        results.books = await attachSocialCounts(books, "book", req.user?._id);
       }
     }
 
     if (normalizedType === "all" || normalizedType === "courses") {
       const dbSkip = isPopular ? 0 : normalizedType === "courses" ? skip : 0;
       let courseQuery = Course.find(filter)
+        .select(EXPLORE_LIST_SELECT.course)
         .populate("addedBy", "name avatar")
         .populate("category", "name")
         .sort({ createdAt: -1 })
         .lean();
       if (!isPopular) courseQuery = courseQuery.skip(dbSkip).limit(perType);
 
-      const courses = await courseQuery;
-      let scored = await attachSocialCounts(courses, "course", req.user?._id);
       if (isPopular) {
-        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        results.courses = scored.slice(0, perType);
+        results.courses = await fetchPopularItems({
+          Model: Course,
+          filter,
+          contentType: "course",
+          select: EXPLORE_LIST_SELECT.course,
+          populate: { path: "addedBy", select: "name avatar" },
+          skip,
+          limit: perType,
+          userId: req.user?._id,
+        });
       } else {
-        results.courses = scored;
+        const courses = await courseQuery.lean();
+        results.courses = await attachSocialCounts(
+          courses,
+          "course",
+          req.user?._id,
+        );
       }
     }
 
     if (normalizedType === "all" || normalizedType === "tools") {
       const dbSkip = isPopular ? 0 : normalizedType === "tools" ? skip : 0;
       let toolQuery = Tool.find(filter)
+        .select(EXPLORE_LIST_SELECT.tool)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
         .lean();
       if (!isPopular) toolQuery = toolQuery.skip(dbSkip).limit(perType);
 
-      const tools = await toolQuery;
-      let scored = await attachSocialCounts(tools, "tool", req.user?._id);
       if (isPopular) {
-        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        results.tools = scored.slice(0, perType);
+        results.tools = await fetchPopularItems({
+          Model: Tool,
+          filter,
+          contentType: "tool",
+          select: EXPLORE_LIST_SELECT.tool,
+          populate: { path: "addedBy", select: "name avatar" },
+          skip,
+          limit: perType,
+          userId: req.user?._id,
+        });
       } else {
-        results.tools = scored;
+        const tools = await toolQuery.lean();
+        results.tools = await attachSocialCounts(tools, "tool", req.user?._id);
       }
     }
 
     if (normalizedType === "all" || normalizedType === "sections") {
       const dbSkip = isPopular ? 0 : normalizedType === "sections" ? skip : 0;
       let sectionQuery = CustomSection.find(sectionFilter)
+        .select(EXPLORE_LIST_SELECT.section)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
         .lean();
       if (!isPopular) sectionQuery = sectionQuery.skip(dbSkip).limit(perType);
 
-      const sections = await sectionQuery;
-      let scored = await attachSocialCounts(sections, "section", req.user?._id);
-      // Normalize 'name' → 'title' for consistent card rendering
-      scored = scored.map((s) => ({ ...s, title: s.name }));
       if (isPopular) {
-        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        results.sections = scored.slice(0, perType);
+        const popularSections = await fetchPopularItems({
+          Model: CustomSection,
+          filter: sectionFilter,
+          contentType: "section",
+          select: EXPLORE_LIST_SELECT.section,
+          populate: { path: "addedBy", select: "name avatar" },
+          skip,
+          limit: perType,
+          userId: req.user?._id,
+        });
+        results.sections = popularSections.map((s) => ({
+          ...s,
+          title: s.name,
+        }));
       } else {
-        results.sections = scored;
+        const sections = await sectionQuery.lean();
+        let scored = await attachSocialCounts(
+          sections,
+          "section",
+          req.user?._id,
+        );
+        // Normalize 'name' → 'title' for consistent card rendering
+        results.sections = scored.map((s) => ({ ...s, title: s.name }));
       }
     }
 
     if (normalizedType === "all" || normalizedType === "playlists") {
       const dbSkip = isPopular ? 0 : normalizedType === "playlists" ? skip : 0;
       let playlistQuery = YoutubePlaylist.find(playlistFilter)
+        .select(EXPLORE_LIST_SELECT.playlist)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
         .lean();
       if (!isPopular) playlistQuery = playlistQuery.skip(dbSkip).limit(perType);
 
-      const rawPlaylists = await playlistQuery;
-      // CRITICAL PRIVACY FIX:
-      // Guarantee that all notes are wiped out in public Explore feeds!
-      const sanitizedPlaylists = rawPlaylists.map((pl) => ({
-        ...pl,
-        videos: (pl.videos || []).map((v) => ({ ...v, notes: "" })),
-      }));
-
-      let scored = await attachSocialCounts(sanitizedPlaylists, "playlist", req.user?._id);
       if (isPopular) {
-        scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-        results.playlists = scored.slice(0, perType);
+        results.playlists = await fetchPopularItems({
+          Model: YoutubePlaylist,
+          filter: playlistFilter,
+          contentType: "playlist",
+          select: EXPLORE_LIST_SELECT.playlist,
+          populate: { path: "addedBy", select: "name avatar" },
+          skip,
+          limit: perType,
+          userId: req.user?._id,
+        });
       } else {
-        results.playlists = scored;
+        const rawPlaylists = await playlistQuery.lean();
+        // CRITICAL PRIVACY FIX:
+        // Guarantee that all notes are wiped out in public Explore feeds!
+        const sanitizedPlaylists = rawPlaylists.map((pl) => ({
+          ...pl,
+          videos: (pl.videos || []).map((v) => ({ ...v, notes: "" })),
+        }));
+
+        results.playlists = await attachSocialCounts(
+          sanitizedPlaylists,
+          "playlist",
+          req.user?._id,
+        );
       }
     }
 

@@ -183,10 +183,20 @@ const AdminPage = () => {
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const interval = setInterval(() => {
-      dispatch(fetchAnalytics(timeRange));
-    }, 15000);
-    return () => clearInterval(interval);
+
+    const refreshIfVisible = () => {
+      if (!document.hidden) dispatch(fetchAnalytics(timeRange));
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) refreshIfVisible();
+    };
+
+    const interval = setInterval(refreshIfVisible, 60000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [dispatch, autoRefresh, timeRange]);
 
   const handleManualRefresh = async () => {
