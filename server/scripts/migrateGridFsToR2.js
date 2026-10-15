@@ -574,6 +574,8 @@ async function migrateBooks(r2Client, pdfBucket, imageBucket, audioBucket) {
           stats.totalUploaded++;
           book.pdfR2Key = key;
           book.storageProvider = "r2";
+          const slug = encodeURIComponent((book.title || "document").replace(/[^a-zA-Z0-9-]/g, "-"));
+          book.embedLink = `/api/books/pdf/${encodeURIComponent(key)}/${slug}.pdf`;
           modified = true;
           console.log(`      ✅ PDF uploaded to R2: ${key}`);
         }

@@ -346,6 +346,23 @@ const deleteUser = async (req, res) => {
     if (user.role === "admin") {
       return res.status(400).json({ message: "Cannot delete admin user" });
     }
+
+    // Cascade delete user avatar from R2 / GridFS
+    if (user.avatarR2Key || user.avatarImageId) {
+      await deleteFile({
+        provider: user.avatarStorageProvider,
+        key: user.avatarR2Key,
+        fileId: user.avatarImageId,
+        isPublic: true,
+        bucketType: "image",
+      }).catch((err) =>
+        console.warn("User avatar cleanup warning:", err.message)
+      );
+    }
+
+    // Cascade delete user library records
+    await UserLibrary.deleteMany({ user: user._id }).catch(() => {});
+
     await user.deleteOne();
     res.json({ message: "User deleted successfully" });
   } catch (error) {
