@@ -305,9 +305,6 @@
   .textLayer {
     opacity: 1 !important;
   }
-  .textLayer span {
-    color: var(--text-primary) !important;
-  }
   .textLayer ::selection {
     background: rgba(255, 87, 34, 0.35) !important;
     color: transparent !important;

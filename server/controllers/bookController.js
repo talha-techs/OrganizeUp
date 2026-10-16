@@ -10,6 +10,7 @@ const {
   streamFromGridFS,
   streamAudioFromGridFS,
   isR2Configured,
+  isR2Active,
   extractGridFsId,
 } = require("../services/storageService");
 
@@ -282,6 +283,11 @@ const createBookFromPdfUrl = async (req, res) => {
         .status(400)
         .json({ message: "Only HTTP(S) PDF URLs are supported" });
     }
+    if (!isR2Active()) {
+      return res.status(503).json({
+        message: "R2 storage is not active; PDF cannot be imported",
+      });
+    }
 
     const response = await fetch(parsedUrl, {
       redirect: "follow",
@@ -329,6 +335,16 @@ const createBookFromPdfUrl = async (req, res) => {
       isPublic: false,
       bucketType: "pdf",
     });
+    if (uploadedPdf.provider !== "r2" || !uploadedPdf.key) {
+      return res.status(503).json({
+        message: "R2 storage is not active; PDF was not saved to Book Library",
+      });
+    }
+    if (uploadedPdf.size !== buffer.length) {
+      return res.status(502).json({
+        message: "R2 PDF upload verification failed",
+      });
+    }
 
     const bookId = new mongoose.Types.ObjectId();
     const slug = encodeURIComponent(cleanTitle.replace(/[^a-zA-Z0-9-]/g, "-"));
