@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Book = require("../models/Book");
 const User = require("../models/User");
 const UserLibrary = require("../models/UserLibrary");
+const { fetchBookCover } = require("../services/bookCoverService");
 const {
   uploadFile,
   deleteFile,
@@ -154,6 +155,7 @@ const createBook = async (req, res) => {
       driveLink,
       totalPages,
       videos,
+      autoCover,
     } = req.body;
 
     // Handle PDF file upload
@@ -197,6 +199,27 @@ const createBook = async (req, res) => {
       coverImageId = uploadedCover.fileId;
       coverR2Key = uploadedCover.key;
       coverImageUrl = uploadedCover.url;
+    }
+
+    if (!coverFile && !coverImageUrl && autoCover === "true") {
+      try {
+        const fetchedCover = await fetchBookCover(title, author);
+        if (fetchedCover) {
+          const uploadedCover = await uploadFile({
+            buffer: fetchedCover.buffer,
+            originalname: fetchedCover.originalname,
+            mimetype: fetchedCover.mimetype,
+            folder: "books/covers",
+            isPublic: true,
+            bucketType: "image",
+          });
+          coverImageId = uploadedCover.fileId;
+          coverR2Key = uploadedCover.key;
+          coverImageUrl = uploadedCover.url;
+        }
+      } catch (coverError) {
+        console.warn("Automatic book cover lookup failed:", coverError.message);
+      }
     }
 
     // All uploaded content is private by default, unless explicitly passed in the request

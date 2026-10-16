@@ -12,7 +12,6 @@ const BookForm = ({ book, onClose }) => {
     description: book?.description || '',
     embedLink: book?.embedLink || '',
     driveLink: book?.driveLink || '',
-    totalPages: book?.totalPages || 0,
     coverImage: book?.coverImage || '',
   });
   const [videos, setVideos] = useState(
@@ -24,6 +23,7 @@ const BookForm = ({ book, onClose }) => {
   const [pendingAudio, setPendingAudio] = useState([]);
   const [pdfFile, setPdfFile] = useState(null);
   const [coverImageFile, setCoverImageFile] = useState(null);
+  const [autoCover, setAutoCover] = useState(!book);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const audioInputRef = useRef(null);
   const dispatch = useDispatch();
@@ -77,7 +77,7 @@ const BookForm = ({ book, onClose }) => {
       fd.append('type', formData.type);
       fd.append('description', formData.description);
       fd.append('driveLink', formData.driveLink);
-      fd.append('totalPages', formData.totalPages);
+      fd.append('autoCover', String(autoCover));
 
       if (formData.type === 'video') {
         fd.append('videos', JSON.stringify(videos.map((v, i) => ({ ...v, order: i }))));
@@ -196,16 +196,6 @@ const BookForm = ({ book, onClose }) => {
                 Current PDF already uploaded. Upload a new file to replace it.
               </p>
             )}
-          </div>
-          <div>
-            <label className="block text-sm text-secondary mb-1.5">Total Pages</label>
-            <input
-              type="number"
-              value={formData.totalPages}
-              onChange={(e) => setFormData({ ...formData, totalPages: parseInt(e.target.value) || 0 })}
-              className="input-dark w-32"
-              min={0}
-            />
           </div>
         </div>
       )}
@@ -344,7 +334,20 @@ const BookForm = ({ book, onClose }) => {
 
       {/* Cover Image */}
       <div>
-        <label className="block text-sm font-medium text-secondary mb-1.5">Cover Image (optional)</label>
+        <div className="flex items-center justify-between gap-3 mb-1.5">
+          <label className="block text-sm font-medium text-secondary">Cover Image (optional)</label>
+          {!book && (
+            <label className="inline-flex items-center gap-2 text-xs text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCover}
+                onChange={(e) => setAutoCover(e.target.checked)}
+                className="accent-orange-500"
+              />
+              Auto-find book cover
+            </label>
+          )}
+        </div>
         <div className="space-y-3">
           <input
             type="file"

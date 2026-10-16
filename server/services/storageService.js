@@ -18,8 +18,11 @@ const {
  * Determine if R2 should be used for new writes
  */
 const isR2Active = () => {
-  const driver = (process.env.STORAGE_DRIVER || "gridfs").toLowerCase();
-  return driver === "r2" && isR2Configured();
+  const configured = isR2Configured();
+  const driver = (
+    process.env.STORAGE_DRIVER || (configured ? "r2" : "gridfs")
+  ).toLowerCase();
+  return driver === "r2" && configured;
 };
 
 /**
@@ -73,7 +76,11 @@ const uploadFile = async ({
     if (client) {
       const ext = path.extname(originalname) || "";
       let key;
-      if (folder.startsWith("sections/") || folder.startsWith("workspaces/") || useRandomUuid) {
+      if (
+        folder.startsWith("sections/") ||
+        folder.startsWith("workspaces/") ||
+        useRandomUuid
+      ) {
         // Cryptographically secure random UUID key prevents enumeration of private workspace images
         key = `${folder}/${crypto.randomUUID()}${ext}`;
       } else {
@@ -81,7 +88,9 @@ const uploadFile = async ({
         const hash = crypto.randomBytes(6).toString("hex");
         key = `${folder}/${Date.now()}-${hash}-${base}${ext}`;
       }
-      const bucket = isPublic ? R2_CONFIG.publicBucket : R2_CONFIG.privateBucket;
+      const bucket = isPublic
+        ? R2_CONFIG.publicBucket
+        : R2_CONFIG.privateBucket;
 
       await client.send(
         new PutObjectCommand({
@@ -89,7 +98,7 @@ const uploadFile = async ({
           Key: key,
           Body: buffer,
           ContentType: mimetype,
-        })
+        }),
       );
 
       // Construct public URL if in public bucket and domain is configured
@@ -117,8 +126,14 @@ const uploadFile = async ({
   }
 
   // 2. Fallback to GridFS
-  const fileId = await uploadToGridFS(buffer, originalname, mimetype, bucketType);
-  const url = bucketType === "pdf" ? `/api/books/pdf/${fileId}` : `/api/images/${fileId}`;
+  const fileId = await uploadToGridFS(
+    buffer,
+    originalname,
+    mimetype,
+    bucketType,
+  );
+  const url =
+    bucketType === "pdf" ? `/api/books/pdf/${fileId}` : `/api/images/${fileId}`;
 
   return {
     provider: "gridfs",
@@ -151,12 +166,14 @@ const deleteFile = async ({
     if ((provider === "r2" || key) && isR2Configured()) {
       const client = getR2Client();
       if (client && key) {
-        const bucket = isPublic ? R2_CONFIG.publicBucket : R2_CONFIG.privateBucket;
+        const bucket = isPublic
+          ? R2_CONFIG.publicBucket
+          : R2_CONFIG.privateBucket;
         await client.send(
           new DeleteObjectCommand({
             Bucket: bucket,
             Key: key,
-          })
+          }),
         );
         return;
       }
@@ -168,7 +185,10 @@ const deleteFile = async ({
       await deleteFromGridFS(idToDelete, bucketType);
     }
   } catch (error) {
-    console.warn(`[storageService] deleteFile warning (${provider}):`, error.message);
+    console.warn(
+      `[storageService] deleteFile warning (${provider}):`,
+      error.message,
+    );
   }
 };
 
@@ -183,11 +203,13 @@ const deleteFile = async ({
  */
 const getPresignedDownloadUrl = async (
   key,
-  { expiresIn = 7200, isPublic = false } = {}
+  { expiresIn = 7200, isPublic = false } = {},
 ) => {
   const client = getR2Client();
   if (!client) {
-    throw new Error("R2 Client is not configured. Cannot generate presigned URL.");
+    throw new Error(
+      "R2 Client is not configured. Cannot generate presigned URL.",
+    );
   }
 
   const bucket = isPublic ? R2_CONFIG.publicBucket : R2_CONFIG.privateBucket;
@@ -237,7 +259,9 @@ const streamFromR2 = async ({
   const s3Response = await client.send(new GetObjectCommand(commandInput));
 
   const resolvedContentType = s3Response.ContentType || contentType;
-  const isPartial = s3Response.$metadata.httpStatusCode === 206 || Boolean(s3Response.ContentRange);
+  const isPartial =
+    s3Response.$metadata.httpStatusCode === 206 ||
+    Boolean(s3Response.ContentRange);
 
   res.status(isPartial ? 206 : 200);
 
@@ -247,7 +271,8 @@ const streamFromR2 = async ({
     "Accept-Ranges": "bytes",
     "Cache-Control": "public, max-age=86400",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length",
+    "Access-Control-Expose-Headers":
+      "Content-Range, Accept-Ranges, Content-Length",
   };
 
   if (s3Response.ContentLength !== undefined) {
