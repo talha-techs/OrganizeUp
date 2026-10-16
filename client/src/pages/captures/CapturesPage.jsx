@@ -236,6 +236,8 @@ const CapturesPage = () => {
     };
     if (activeTab === 'reminders') {
       params.remindersOnly = 'true';
+    } else if (activeTab === 'pdf') {
+      params.mediaType = 'pdf';
     } else if (activeTab !== 'all') {
       params.platform = activeTab;
     }
@@ -324,7 +326,14 @@ const CapturesPage = () => {
   };
 
   // Helper for platform badge
-  const getPlatformMeta = (plat) => {
+  const getPlatformMeta = (plat, mediaType = '') => {
+    if (mediaType === 'pdf') {
+      return {
+        label: 'PDF Documents',
+        icon: <IoDocumentTextOutline size={15} className="text-red-400" />,
+        bg: 'bg-red-500/10 text-red-400 border-red-500/20',
+      };
+    }
     switch (plat) {
       case 'whatsapp':
         return {
@@ -383,6 +392,7 @@ const CapturesPage = () => {
     if (!stats || !stats.platforms) return 0;
     if (tabId === 'all') return stats.total || 0;
     if (tabId === 'reminders') return stats.activeReminders || 0;
+    if (tabId === 'pdf') return stats.platforms.pdf || 0;
     return stats.platforms[tabId] || 0;
   };
 
@@ -395,6 +405,7 @@ const CapturesPage = () => {
     { id: 'linkedin', label: 'LinkedIn', icon: FaLinkedin },
     { id: 'twitter', label: 'X (Twitter)', icon: FaXTwitter },
     { id: 'web_image', label: 'Web & Images', icon: IoImageOutline },
+    { id: 'pdf', label: 'PDF Documents', icon: IoDocumentTextOutline },
     { id: 'reminders', label: '⏰ Reminders', icon: IoTimeOutline },
   ];
 
@@ -570,7 +581,7 @@ const CapturesPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {captures.map((capture) => {
-            const meta = getPlatformMeta(capture.platform);
+            const meta = getPlatformMeta(capture.platform, capture.mediaType);
             const isCompleted = capture.status === 'completed';
             const hasReminder = Boolean(capture.remindAt);
             const isReminderDue =
@@ -1321,7 +1332,7 @@ const CapturesPage = () => {
       <AnimatePresence>
         {maximizedCapture && (() => {
           const cap = maximizedCapture;
-          const meta = getPlatformMeta(cap.platform);
+          const meta = getPlatformMeta(cap.platform, cap.mediaType);
           const isCompleted = cap.status === 'completed';
           const isDoc = Boolean(cap.documentInfo) || cap.mediaType === 'document' || cap.mediaType === 'pdf';
           const coverPages = cap.documentInfo?.coverPages || [];
@@ -1447,6 +1458,14 @@ const CapturesPage = () => {
                             <p>Post on X</p>
                           </div>
                         )}
+                      </div>
+                    ) : cap.mediaType === 'pdf' && (cap.mediaUrl || cap.documentInfo?.fileUrl) ? (
+                      <div className="w-full h-full min-h-[520px] bg-neutral-950 rounded-2xl overflow-hidden shadow-2xl">
+                        <iframe
+                          src={cap.mediaUrl || cap.documentInfo.fileUrl}
+                          title={cap.title || 'PDF Document'}
+                          className="w-full h-full min-h-[520px] border-0"
+                        />
                       </div>
                     ) : cap.platform === 'linkedin' ? (
                       /* 3. LinkedIn Document Carousel or Embed */

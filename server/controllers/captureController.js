@@ -997,7 +997,8 @@ const scrapeMetadata = async (req, res) => {
 // @route   GET /api/captures
 const getCaptures = async (req, res) => {
   try {
-    const { platform, status, remindersOnly, search, sortBy } = req.query;
+    const { platform, mediaType, status, remindersOnly, search, sortBy } =
+      req.query;
 
     const query = { user: req.user._id };
 
@@ -1009,6 +1010,9 @@ const getCaptures = async (req, res) => {
       } else {
         query.platform = platform;
       }
+    }
+    if (mediaType && mediaType !== "all") {
+      query.mediaType = mediaType;
     }
 
     // Status filtering (default excludes archived unless explicitly requested)
@@ -1057,7 +1061,7 @@ const getCaptures = async (req, res) => {
       user: req.user._id,
       status: { $ne: "archived" },
     })
-      .select("platform status remindAt reminderFired")
+      .select("platform mediaType status remindAt reminderFired")
       .lean();
 
     const now = new Date();
@@ -1091,6 +1095,7 @@ const getCaptures = async (req, res) => {
         web_image: allUserCaptures.filter((c) =>
           ["web_image", "web"].includes(c.platform),
         ).length,
+        pdf: allUserCaptures.filter((c) => c.mediaType === "pdf").length,
       },
     };
 
