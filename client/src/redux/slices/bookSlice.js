@@ -36,6 +36,20 @@ export const fetchBook = createAsyncThunk(
   },
 );
 
+export const createBookFromPdfUrl = createAsyncThunk(
+  "books/createBookFromPdfUrl",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/books/from-pdf-url", payload);
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to import PDF",
+      );
+    }
+  },
+);
+
 export const createBook = createAsyncThunk(
   "books/createBook",
   async (formData, { rejectWithValue }) => {
@@ -329,10 +343,16 @@ const bookSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(removeFromLibrary.fulfilled, (state, action) => {
-        const id = action.payload?.contentId || action.payload?.id || action.payload;
+        const id =
+          action.payload?.contentId || action.payload?.id || action.payload;
         if (id) {
           state.books = state.books.filter(
-            (b) => !(b.isSaved && (String(b._id) === String(id) || String(b.libraryEntryId) === String(id)))
+            (b) =>
+              !(
+                b.isSaved &&
+                (String(b._id) === String(id) ||
+                  String(b.libraryEntryId) === String(id))
+              ),
           );
         }
       });

@@ -28,6 +28,7 @@ import {
   scrapeMetadata,
   clearScrapedData,
 } from '../../redux/slices/captureSlice';
+import { createBookFromPdfUrl } from '../../redux/slices/bookSlice';
 import { addPlaylist } from '../../redux/slices/youtubePlaylistSlice';
 import {
   isNotificationSupported,
@@ -131,6 +132,7 @@ const QuickCaptureModal = () => {
 
   // YouTube single video destination choice: 'vault' | 'youtube_page' | null
   const [singleVideoChoice, setSingleVideoChoice] = useState(null);
+  const [pdfChoice, setPdfChoice] = useState(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   // Image specific
@@ -148,6 +150,11 @@ const QuickCaptureModal = () => {
 
   // Computed YouTube inspection
   const ytInfo = activeTab === 'link' ? inspectYouTubeUrl(url) : null;
+  const isPdfLink = activeTab === 'link' && (
+    /\.pdf(?:[?#].*)?$/i.test(url.trim()) ||
+    scrapedData?.mediaType === 'pdf' ||
+    (scrapedData?.documentInfo?.type === 'pdf' && scrapedData?.documentInfo?.fileUrl)
+  );
 
   // Reset form when modal opens or closes
   useEffect(() => {
@@ -170,6 +177,7 @@ const QuickCaptureModal = () => {
       setTags('');
       setPriority('medium');
       setSingleVideoChoice(null);
+      setPdfChoice(null);
       setHasAttemptedSubmit(false);
       setImageFile(null);
       setImagePreview('');
@@ -591,6 +599,54 @@ const QuickCaptureModal = () => {
         // ─────────────────────────────────────────────────────────────
         // OTHER SOCIAL / WEB LINKS (Instagram, LinkedIn, Facebook, etc.)
         // ─────────────────────────────────────────────────────────────
+        if (isPdfLink) {
+          if (!pdfChoice) {
+            setHasAttemptedSubmit(true);
+            toast('Choose whether to save this PDF in Vault or Book Library', { icon: '📄' });
+            setSaving(false);
+            return;
+          }
+
+          const pdfUrl = scrapedData?.mediaUrl || scrapedData?.documentInfo?.fileUrl || url.trim();
+          const pdfTitle = title || scrapedData?.title || 'Imported PDF';
+
+          if (pdfChoice === 'book') {
+            await dispatch(
+              createBookFromPdfUrl({
+                url: pdfUrl,
+                title: pdfTitle,
+                description: notes,
+              }),
+            ).unwrap();
+            toast.success('PDF downloaded to your Book Library as a Text Book', { icon: '📚' });
+          } else {
+            const saved = await dispatch(
+              createCapture({
+                sourceUrl: url.trim(),
+                platform: 'web',
+                mediaType: 'pdf',
+                title: pdfTitle,
+                notes,
+                tags,
+                priority,
+                remindAt,
+                rawContent: scrapedData?.description || notes,
+                mediaUrl: pdfUrl,
+                documentInfo: {
+                  ...(scrapedData?.documentInfo || {}),
+                  type: 'pdf',
+                  fileUrl: pdfUrl,
+                },
+              }),
+            ).unwrap();
+            await handleReminderScheduled(saved, remindAt);
+            toast.success('PDF saved to your Vault', { icon: '📄' });
+          }
+
+          dispatch(closeQuickCapture());
+          return;
+        }
+
         const isLinkedIn = /(?:linkedin\.com|lnkd\.in)/i.test(url);
         const isTwitter = /(?:twitter\.com|x\.com)/i.test(url);
         const isFacebook = /(?:facebook\.com|fb\.watch|fb\.me)/i.test(url);
@@ -764,6 +820,7 @@ const QuickCaptureModal = () => {
                         const val = e.target.value;
                         setUrl(val);
                         setSingleVideoChoice(null);
+                        setPdfChoice(null);
                         setHasAttemptedSubmit(false);
                         const trimmed = val.trim();
                         if (trimmed && /(?:youtube\.com|youtu\.be)/i.test(trimmed)) {
@@ -790,6 +847,55 @@ const QuickCaptureModal = () => {
                     )}
                   </div>
                 </div>
+
+                {isPdfLink && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-4 rounded-2xl bg-red-500/10 border space-y-3 ${
+                      hasAttemptedSubmit && !pdfChoice
+                        ? 'border-amber-500/60 ring-2 ring-amber-500/20'
+                        : 'border-red-500/25'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IoDocumentTextOutline size={18} className="text-red-400" />
+                      <span className="text-xs font-bold text-primary">PDF Detected — Choose Save Location</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPdfChoice('vault');
+                          setHasAttemptedSubmit(false);
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          pdfChoice === 'vault'
+                            ? 'bg-accent/10 border-accent ring-1 ring-accent'
+                            : 'bg-surface-raised/70 border-subtle hover:border-accent/40'
+                        }`}
+                      >
+                        <span className="text-xs font-bold text-primary">Save in Vault</span>
+                        <p className="text-[11px] leading-relaxed text-secondary mt-1">Keep the link in Vault and read it with the browser PDF viewer.</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPdfChoice('book');
+                          setHasAttemptedSubmit(false);
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          pdfChoice === 'book'
+                            ? 'bg-red-500/10 border-red-500 ring-1 ring-red-500'
+                            : 'bg-surface-raised/70 border-subtle hover:border-red-500/40'
+                        }`}
+                      >
+                        <span className="text-xs font-bold text-primary">Book Library</span>
+                        <p className="text-[11px] leading-relaxed text-secondary mt-1">Download a private Text Book copy into your R2-backed library.</p>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* ─────────────────────────────────────────────────────────────
                     YOUTUBE INSPECTION BANNERS & CHOICE PROMPT

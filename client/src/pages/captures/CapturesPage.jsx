@@ -808,6 +808,17 @@ const CapturesPage = () => {
                   </div>
                 )}
 
+                {/* Direct PDF captures use the browser's native PDF viewer inside the Vault. */}
+                {capture.mediaType === 'pdf' && (capture.mediaUrl || capture.documentInfo?.fileUrl) && (
+                  <div className="w-full bg-neutral-950 relative h-[520px] overflow-hidden border-b border-subtle">
+                    <iframe
+                      src={capture.mediaUrl || capture.documentInfo.fileUrl}
+                      title={capture.title || 'PDF Document'}
+                      className="w-full h-full border-0"
+                    />
+                  </div>
+                )}
+
                 {/* 6. LinkedIn Interactive Embed, Document / PDF Viewer, or Image Card */}
                 {capture.platform === 'linkedin' && (
                   (() => {

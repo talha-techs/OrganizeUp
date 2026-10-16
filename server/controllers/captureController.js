@@ -28,7 +28,8 @@ const decodeHtmlEntities = (str) => {
 const extractJsonLdVideo = (html) => {
   if (!html || typeof html !== "string") return null;
 
-  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const jsonLdRegex =
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let match;
 
   const findVideoObject = (node) => {
@@ -123,8 +124,8 @@ const detectPlatformAndEmbed = (url = "") => {
       const type = trimmed.includes("ugcPost")
         ? "ugcPost"
         : trimmed.includes("share")
-        ? "share"
-        : "activity";
+          ? "share"
+          : "activity";
       embedUrl = `https://www.linkedin.com/embed/feed/update/urn:li:${type}:${embedId}`;
     }
     return {
@@ -158,8 +159,24 @@ const detectPlatformAndEmbed = (url = "") => {
     };
   }
 
+  // Direct PDF URLs are handled as documents and remain externally readable in the Vault.
+  if (/\.pdf(\?.*)?$/i.test(trimmed)) {
+    return {
+      platform: "web",
+      mediaType: "pdf",
+      mediaUrl: trimmed,
+      isDocument: true,
+      documentInfo: {
+        type: "pdf",
+        fileUrl: trimmed,
+      },
+    };
+  }
+
   // Vimeo Video
-  const vimeoMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/i);
+  const vimeoMatch = trimmed.match(
+    /(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/i,
+  );
   if (vimeoMatch) {
     const videoId = vimeoMatch[1];
     return {
@@ -171,7 +188,9 @@ const detectPlatformAndEmbed = (url = "") => {
   }
 
   // Loom Video
-  const loomMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?loom\.com\/share\/([a-zA-Z0-9]+)/i);
+  const loomMatch = trimmed.match(
+    /(?:https?:\/\/)?(?:www\.)?loom\.com\/share\/([a-zA-Z0-9]+)/i,
+  );
   if (loomMatch) {
     const videoId = loomMatch[1];
     return {
@@ -183,7 +202,9 @@ const detectPlatformAndEmbed = (url = "") => {
   }
 
   // TikTok Video
-  const tiktokMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^/]+\/video\/(\d+)/i);
+  const tiktokMatch = trimmed.match(
+    /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^/]+\/video\/(\d+)/i,
+  );
   if (tiktokMatch) {
     const videoId = tiktokMatch[1];
     return {
@@ -241,6 +262,35 @@ const fetchUrlMetadata = async (url) => {
   try {
     let detected = detectPlatformAndEmbed(url);
 
+    if (detected.mediaType === "pdf") {
+      let pdfTitle = "Imported PDF";
+      try {
+        const parsedUrl = new URL(url);
+        const filename = decodeURIComponent(
+          parsedUrl.pathname.split("/").pop() || "",
+        );
+        if (filename)
+          pdfTitle =
+            filename
+              .replace(/\.pdf$/i, "")
+              .replace(/[-_]+/g, " ")
+              .trim() || pdfTitle;
+      } catch {}
+      return {
+        url,
+        resolvedUrl: url,
+        title: pdfTitle,
+        description: "",
+        rawContent: "",
+        thumbnailUrl: "",
+        mediaUrl: url,
+        siteName: "PDF",
+        authorName: "",
+        ...detected,
+        mediaType: "pdf",
+      };
+    }
+
     let html = "";
     let finalTitle = "";
     let finalDescription = "";
@@ -293,7 +343,10 @@ const fetchUrlMetadata = async (url) => {
           }
         }
       } catch (ytErr) {
-        console.warn("YouTube scraper error, falling back to oEmbed:", ytErr.message);
+        console.warn(
+          "YouTube scraper error, falling back to oEmbed:",
+          ytErr.message,
+        );
         // Fallback directly to YouTube oEmbed
         try {
           const oembedRes = await fetch(
@@ -356,7 +409,9 @@ const fetchUrlMetadata = async (url) => {
                   vxData.media_extended[0].url;
               }
             } else if (vxData.mediaURLs && vxData.mediaURLs.length > 0) {
-              const mp4Url = vxData.mediaURLs.find((u) => /\.(mp4|webm|m4v)/i.test(u));
+              const mp4Url = vxData.mediaURLs.find((u) =>
+                /\.(mp4|webm|m4v)/i.test(u),
+              );
               if (mp4Url) {
                 detected.mediaType = "video";
                 directVideoUrl = mp4Url;
@@ -368,7 +423,10 @@ const fetchUrlMetadata = async (url) => {
           }
         }
       } catch (twErr) {
-        console.warn("vxtwitter fetch error, falling back to oEmbed:", twErr.message);
+        console.warn(
+          "vxtwitter fetch error, falling back to oEmbed:",
+          twErr.message,
+        );
       }
 
       // Fallback to publish.twitter.com/oembed if description is still empty
@@ -384,13 +442,20 @@ const fetchUrlMetadata = async (url) => {
           if (oembedRes.ok) {
             const oembedData = await oembedRes.json();
             if (oembedData) {
-              if (oembedData.author_name && !author) author = oembedData.author_name;
-              if (oembedData.author_name && !finalTitle) finalTitle = `${oembedData.author_name} on X`;
+              if (oembedData.author_name && !author)
+                author = oembedData.author_name;
+              if (oembedData.author_name && !finalTitle)
+                finalTitle = `${oembedData.author_name} on X`;
               siteName = "X (Twitter)";
               if (oembedData.html) {
-                const textMatch = oembedData.html.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+                const textMatch = oembedData.html.match(
+                  /<p[^>]*>([\s\S]*?)<\/p>/i,
+                );
                 if (textMatch) {
-                  finalDescription = textMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+                  finalDescription = textMatch[1]
+                    .replace(/<[^>]+>/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
                 }
               }
             }
@@ -402,7 +467,10 @@ const fetchUrlMetadata = async (url) => {
     }
 
     // Use facebookexternalhit or linkedin-friendly UA to prevent authwalls on social links
-    const isSocialLink = /(?:linkedin\.com|lnkd\.in|facebook\.com|fb\.watch|fb\.me|instagram\.com)/i.test(url);
+    const isSocialLink =
+      /(?:linkedin\.com|lnkd\.in|facebook\.com|fb\.watch|fb\.me|instagram\.com)/i.test(
+        url,
+      );
     const userAgent = isSocialLink
       ? "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
@@ -431,36 +499,52 @@ const fetchUrlMetadata = async (url) => {
 
         // Extract og:title
         const ogTitleMatch =
-          html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+          html.match(
+            /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
+          );
         if (ogTitleMatch) finalTitle = ogTitleMatch[1].trim();
 
         // Extract og:description / meta description
         const ogDescMatch =
-          html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i) ||
-          html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+          html.match(
+            /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i,
+          );
         if (ogDescMatch) finalDescription = ogDescMatch[1].trim();
 
         // Extract og:image
         const ogImgMatch =
-          html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+          html.match(
+            /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+          );
         if (ogImgMatch) finalImage = ogImgMatch[1].trim();
 
         // 1. Extract schema.org VideoObject from JSON-LD
         const videoObj = extractJsonLdVideo(html);
         if (videoObj) {
           detected.mediaType = "video";
-          if (videoObj.name && !finalTitle) finalTitle = String(videoObj.name).trim();
-          if (videoObj.description && !finalDescription) finalDescription = String(videoObj.description).trim();
+          if (videoObj.name && !finalTitle)
+            finalTitle = String(videoObj.name).trim();
+          if (videoObj.description && !finalDescription)
+            finalDescription = String(videoObj.description).trim();
 
           const thumb =
             typeof videoObj.thumbnailUrl === "string"
               ? videoObj.thumbnailUrl
               : Array.isArray(videoObj.thumbnailUrl)
-              ? videoObj.thumbnailUrl[0]
-              : videoObj.thumbnailUrl?.url || videoObj.thumbnail?.url || "";
+                ? videoObj.thumbnailUrl[0]
+                : videoObj.thumbnailUrl?.url || videoObj.thumbnail?.url || "";
           if (thumb) {
             directPosterUrl = thumb.trim().replace(/&amp;/g, "&");
             if (!finalImage) finalImage = directPosterUrl;
@@ -488,20 +572,37 @@ const fetchUrlMetadata = async (url) => {
 
         // 2. Extract og:type
         const ogTypeMatch =
-          html.match(/<meta[^>]+property=["']og:type["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:type["']/i);
-        if (ogTypeMatch && ogTypeMatch[1].trim().toLowerCase().startsWith("video")) {
+          html.match(
+            /<meta[^>]+property=["']og:type["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:type["']/i,
+          );
+        if (
+          ogTypeMatch &&
+          ogTypeMatch[1].trim().toLowerCase().startsWith("video")
+        ) {
           detected.mediaType = "video";
         }
 
         // 3. Extract og:video / og:video:url / og:video:secure_url / twitter:player:stream
         const ogVideoMatch =
-          html.match(/<meta[^>]+property=["']og:video(?:(?::secure)?_url)?["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?:(?::secure)?_url)?["']/i) ||
-          html.match(/<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/i);
+          html.match(
+            /<meta[^>]+property=["']og:video(?:(?::secure)?_url)?["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:video(?:(?::secure)?_url)?["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+name=["']twitter:player:stream["'][^>]+content=["']([^"']+)["']/i,
+          );
         if (ogVideoMatch && !directVideoUrl) {
           const ogVid = ogVideoMatch[1].trim().replace(/&amp;/g, "&");
-          if (/\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(ogVid) || ogVid.includes("video") || ogVid.includes(".m3u8")) {
+          if (
+            /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(ogVid) ||
+            ogVid.includes("video") ||
+            ogVid.includes(".m3u8")
+          ) {
             directVideoUrl = ogVid;
             detected.mediaType = "video";
             if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
@@ -510,13 +611,13 @@ const fetchUrlMetadata = async (url) => {
 
         // 4. Extract twitter:player or og:video embed iframe
         const ogPlayerMatch =
-          html.match(/<meta[^>]+name=["']twitter:player["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+property=["']twitter:player["'][^>]+content=["']([^"']+)["']/i);
-        if (
-          ogPlayerMatch &&
-          !detected.embedUrl &&
-          !directVideoUrl
-        ) {
+          html.match(
+            /<meta[^>]+name=["']twitter:player["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+property=["']twitter:player["'][^>]+content=["']([^"']+)["']/i,
+          );
+        if (ogPlayerMatch && !detected.embedUrl && !directVideoUrl) {
           const playerUrl = ogPlayerMatch[1].trim().replace(/&amp;/g, "&");
           if (/^https?:\/\//i.test(playerUrl)) {
             detected.embedUrl = playerUrl;
@@ -527,8 +628,12 @@ const fetchUrlMetadata = async (url) => {
         // 5. Extract HTML5 <video><source src="..."> if available
         if (!directVideoUrl) {
           const videoTagMatch =
-            html.match(/<source[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v|m3u8|mpd)[^"']*)["']/i) ||
-            html.match(/<video[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v|m3u8|mpd)[^"']*)["']/i);
+            html.match(
+              /<source[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v|m3u8|mpd)[^"']*)["']/i,
+            ) ||
+            html.match(
+              /<video[^>]+src=["']([^"']+\.(?:mp4|webm|ogg|mov|m4v|m3u8|mpd)[^"']*)["']/i,
+            );
           if (videoTagMatch) {
             directVideoUrl = videoTagMatch[1].trim().replace(/&amp;/g, "&");
             detected.mediaType = "video";
@@ -538,16 +643,31 @@ const fetchUrlMetadata = async (url) => {
 
         // 6. Fallback regex search for HLS or MP4 stream if mediaType is video but no direct stream URL was captured
         if (!directVideoUrl) {
-          const cleanHtml = html.replace(/\\u002f/gi, "/").replace(/\\\//g, "/");
-          const allM3u8 = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.m3u8[^\s"'`<>\\]*/gi);
+          const cleanHtml = html
+            .replace(/\\u002f/gi, "/")
+            .replace(/\\\//g, "/");
+          const allM3u8 = cleanHtml.match(
+            /https?:\/\/[^\s"'`<>\\]+\.m3u8[^\s"'`<>\\]*/gi,
+          );
           if (allM3u8 && allM3u8.length > 0) {
-            directVideoUrl = (allM3u8.find((u) => u.includes("master.m3u8")) || allM3u8[0]).trim().replace(/&amp;/g, "&");
+            directVideoUrl = (
+              allM3u8.find((u) => u.includes("master.m3u8")) || allM3u8[0]
+            )
+              .trim()
+              .replace(/&amp;/g, "&");
             detected.mediaType = "video";
             if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
-          } else if (detected.mediaType === "video" || /(?:video|player|watch|reel|stream)/i.test(url)) {
-            const streamRegexMatch = cleanHtml.match(/https?:\/\/[^\s"'`<>\\]+\.(?:mp4|webm)(?:\?[^\s"'`<>\\]*)?/i);
+          } else if (
+            detected.mediaType === "video" ||
+            /(?:video|player|watch|reel|stream)/i.test(url)
+          ) {
+            const streamRegexMatch = cleanHtml.match(
+              /https?:\/\/[^\s"'`<>\\]+\.(?:mp4|webm)(?:\?[^\s"'`<>\\]*)?/i,
+            );
             if (streamRegexMatch) {
-              directVideoUrl = streamRegexMatch[0].trim().replace(/&amp;/g, "&");
+              directVideoUrl = streamRegexMatch[0]
+                .trim()
+                .replace(/&amp;/g, "&");
               detected.mediaType = "video";
               if (!directPosterUrl && finalImage) directPosterUrl = finalImage;
             }
@@ -556,20 +676,30 @@ const fetchUrlMetadata = async (url) => {
 
         // Extract og:url if present
         const ogUrlMatch =
-          html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:url["']/i);
+          html.match(
+            /<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i,
+          ) ||
+          html.match(
+            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:url["']/i,
+          );
         const ogUrl = ogUrlMatch ? ogUrlMatch[1].trim() : "";
 
         // Re-detect on redirected or og:url for shortlinks (like lnkd.in)
         if (ogUrl && ogUrl !== url) {
           const reDetected = detectPlatformAndEmbed(ogUrl);
-          if (reDetected.platform !== "other" && reDetected.platform !== "web") {
+          if (
+            reDetected.platform !== "other" &&
+            reDetected.platform !== "web"
+          ) {
             detected = { ...detected, ...reDetected };
           }
         }
         if (finalUrl !== url) {
           const reDetected = detectPlatformAndEmbed(finalUrl);
-          if (reDetected.platform !== "other" && reDetected.platform !== "web") {
+          if (
+            reDetected.platform !== "other" &&
+            reDetected.platform !== "web"
+          ) {
             detected = { ...detected, ...reDetected };
           }
         }
@@ -601,7 +731,9 @@ const fetchUrlMetadata = async (url) => {
           let documentInfo = null;
 
           // 1. Check data-native-document-config attribute
-          const docConfigMatch = html.match(/data-native-document-config="([^"]+)"/i);
+          const docConfigMatch = html.match(
+            /data-native-document-config="([^"]+)"/i,
+          );
           if (docConfigMatch) {
             try {
               const decoded = docConfigMatch[1]
@@ -616,28 +748,36 @@ const fetchUrlMetadata = async (url) => {
                 documentInfo = {
                   title: parsed.doc.title || "",
                   subtitle: parsed.doc.subtitle || "",
-                  totalPages: parsed.doc.totalPageCount || coverPages.length || 0,
+                  totalPages:
+                    parsed.doc.totalPageCount || coverPages.length || 0,
                   coverPages,
                   manifestUrl: parsed.doc.manifestUrl || "",
                   type: parsed.doc.type || "pdf",
                 };
               }
             } catch (docErr) {
-              console.warn("LinkedIn document config parse error:", docErr.message);
+              console.warn(
+                "LinkedIn document config parse error:",
+                docErr.message,
+              );
             }
           }
 
           // 2. Check for PDF / Drive links in HTML or description
           const linkMatches = html.match(/https?:\/\/[^\s"'<>]+/gi) || [];
           const driveLinks = linkMatches.filter(
-            (l) => l.includes("drive.google.com") || l.toLowerCase().endsWith(".pdf"),
+            (l) =>
+              l.includes("drive.google.com") ||
+              l.toLowerCase().endsWith(".pdf"),
           );
 
           if (driveLinks.length > 0) {
             if (!documentInfo) {
               documentInfo = {
                 title: finalTitle || "Attached Document",
-                subtitle: driveLinks[0].includes("drive.google.com") ? "Google Drive Document" : "PDF File",
+                subtitle: driveLinks[0].includes("drive.google.com")
+                  ? "Google Drive Document"
+                  : "PDF File",
                 totalPages: 1,
                 coverPages: [],
                 fileUrl: driveLinks[0],
@@ -650,20 +790,28 @@ const fetchUrlMetadata = async (url) => {
 
           // 3. Check for lnkd.in shortlink that redirects to external drive/pdf
           if (finalDescription) {
-            const shortLinks = finalDescription.match(/https?:\/\/lnkd\.in\/[a-zA-Z0-9_-]+/gi) || [];
+            const shortLinks =
+              finalDescription.match(/https?:\/\/lnkd\.in\/[a-zA-Z0-9_-]+/gi) ||
+              [];
             for (const sl of shortLinks) {
               try {
-                const slRes = await fetch(sl, { signal: AbortSignal.timeout(3000) });
+                const slRes = await fetch(sl, {
+                  signal: AbortSignal.timeout(3000),
+                });
                 const slHtml = await slRes.text();
                 const extLinks = slHtml.match(/https?:\/\/[^\s"'<>]+/gi) || [];
                 const extTarget = extLinks.find(
-                  (l) => l.includes("drive.google.com") || l.toLowerCase().endsWith(".pdf"),
+                  (l) =>
+                    l.includes("drive.google.com") ||
+                    l.toLowerCase().endsWith(".pdf"),
                 );
                 if (extTarget) {
                   if (!documentInfo) {
                     documentInfo = {
                       title: finalTitle || "Attached Document",
-                      subtitle: extTarget.includes("drive.google.com") ? "Google Drive Document" : "PDF File",
+                      subtitle: extTarget.includes("drive.google.com")
+                        ? "Google Drive Document"
+                        : "PDF File",
                       totalPages: 1,
                       coverPages: [],
                       fileUrl: extTarget,
@@ -698,14 +846,20 @@ const fetchUrlMetadata = async (url) => {
         }
 
         // Facebook specific author, title and canonical embed handling
-        if (detected.platform === "facebook" || /(?:facebook\.com|fb\.watch|fb\.me)/i.test(url)) {
+        if (
+          detected.platform === "facebook" ||
+          /(?:facebook\.com|fb\.watch|fb\.me)/i.test(url)
+        ) {
           const canonicalFb = ogUrl || finalUrl || url;
           let cleanFbUrl = canonicalFb;
           try {
             const u = new URL(canonicalFb);
             if (u.pathname.includes("/reel/")) {
               cleanFbUrl = `${u.origin}${u.pathname}`;
-            } else if (u.pathname.includes("/watch") && u.searchParams.has("v")) {
+            } else if (
+              u.pathname.includes("/watch") &&
+              u.searchParams.has("v")
+            ) {
               cleanFbUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get("v")}`;
             }
           } catch {}
@@ -718,7 +872,10 @@ const fetchUrlMetadata = async (url) => {
           finalDescription = decodeHtmlEntities(finalDescription);
 
           if (finalTitle.includes(" | ")) {
-            const parts = finalTitle.split(" | ").map((p) => p.trim()).filter(Boolean);
+            const parts = finalTitle
+              .split(" | ")
+              .map((p) => p.trim())
+              .filter(Boolean);
             if (parts.length > 1) {
               if (!author) author = parts[parts.length - 1];
               const nonStatsPart =
@@ -773,19 +930,28 @@ const fetchUrlMetadata = async (url) => {
     const resolvedMediaType = isRestrictedDomain
       ? "article"
       : detected.isDocument
-      ? "document"
-      : directVideoUrl ||
-        (detected.mediaType === "video" && !["linkedin", "twitter"].includes(detected.platform)) ||
-        (detected.embedUrl && !["linkedin", "twitter", "article"].includes(detected.platform))
-      ? "video"
-      : detected.mediaType || "article";
+        ? "document"
+        : directVideoUrl ||
+            (detected.mediaType === "video" &&
+              !["linkedin", "twitter"].includes(detected.platform)) ||
+            (detected.embedUrl &&
+              !["linkedin", "twitter", "article"].includes(detected.platform))
+          ? "video"
+          : detected.mediaType || "article";
 
-    const isMeta = detected.platform === "instagram" || detected.platform === "facebook";
+    const isMeta =
+      detected.platform === "instagram" || detected.platform === "facebook";
     const resolvedMediaUrl = isRestrictedDomain
       ? ""
       : isMeta
-      ? (detected.embedUrl || "")
-      : (directVideoUrl || detected.mediaUrl || (resolvedMediaType === "video" ? (detected.embedUrl || "") : finalImage));
+        ? detected.embedUrl || ""
+        : resolvedMediaType === "document"
+          ? detected.mediaUrl || detected.documentInfo?.fileUrl || ""
+          : directVideoUrl ||
+            detected.mediaUrl ||
+            (resolvedMediaType === "video"
+              ? detected.embedUrl || ""
+              : finalImage);
 
     return {
       url,
@@ -900,21 +1066,27 @@ const getCaptures = async (req, res) => {
       inbox: allUserCaptures.filter((c) => c.status === "inbox").length,
       completed: allUserCaptures.filter((c) => c.status === "completed").length,
       remindersDue: allUserCaptures.filter(
-        (c) => c.remindAt && new Date(c.remindAt) <= now && c.status !== "completed",
+        (c) =>
+          c.remindAt && new Date(c.remindAt) <= now && c.status !== "completed",
       ).length,
       activeReminders: allUserCaptures.filter(
         (c) => c.remindAt && c.status !== "completed",
       ).length,
       upcomingReminders: allUserCaptures.filter(
-        (c) => c.remindAt && new Date(c.remindAt) > now && c.status !== "completed",
+        (c) =>
+          c.remindAt && new Date(c.remindAt) > now && c.status !== "completed",
       ).length,
       platforms: {
         all: allUserCaptures.length,
         youtube: allUserCaptures.filter((c) => c.platform === "youtube").length,
-        whatsapp: allUserCaptures.filter((c) => c.platform === "whatsapp").length,
-        instagram: allUserCaptures.filter((c) => c.platform === "instagram").length,
-        facebook: allUserCaptures.filter((c) => c.platform === "facebook").length,
-        linkedin: allUserCaptures.filter((c) => c.platform === "linkedin").length,
+        whatsapp: allUserCaptures.filter((c) => c.platform === "whatsapp")
+          .length,
+        instagram: allUserCaptures.filter((c) => c.platform === "instagram")
+          .length,
+        facebook: allUserCaptures.filter((c) => c.platform === "facebook")
+          .length,
+        linkedin: allUserCaptures.filter((c) => c.platform === "linkedin")
+          .length,
         twitter: allUserCaptures.filter((c) => c.platform === "twitter").length,
         web_image: allUserCaptures.filter((c) =>
           ["web_image", "web"].includes(c.platform),
@@ -1074,19 +1246,29 @@ const createCapture = async (req, res) => {
       try {
         const meta = await fetchUrlMetadata(sourceUrl);
         if (meta) {
-          if (!thumbnailUrl && meta.thumbnailUrl) thumbnailUrl = meta.thumbnailUrl;
+          if (!thumbnailUrl && meta.thumbnailUrl)
+            thumbnailUrl = meta.thumbnailUrl;
           if (!mediaUrl && meta.mediaUrl) mediaUrl = meta.mediaUrl;
           if (!authorName && meta.authorName) authorName = meta.authorName;
-          if (!rawContent && (meta.rawContent || meta.description)) rawContent = meta.rawContent || meta.description;
-          if (isGenericTitle && meta.title && !meta.title.toLowerCase().includes("resource")) {
+          if (!rawContent && (meta.rawContent || meta.description))
+            rawContent = meta.rawContent || meta.description;
+          if (
+            isGenericTitle &&
+            meta.title &&
+            !meta.title.toLowerCase().includes("resource")
+          ) {
             title = meta.title;
           }
           if (platform === "facebook" && meta.embedUrl) {
             embedUrl = meta.embedUrl;
           }
           if (!embedId && meta.embedId) embedId = meta.embedId;
-          if (!documentInfo && meta.documentInfo) documentInfo = meta.documentInfo;
-          if (meta.documentInfo && (!mediaType || mediaType === "video" || mediaType === "post")) {
+          if (!documentInfo && meta.documentInfo)
+            documentInfo = meta.documentInfo;
+          if (
+            meta.documentInfo &&
+            (!mediaType || mediaType === "video" || mediaType === "post")
+          ) {
             mediaType = "document";
           }
         }
@@ -1099,11 +1281,18 @@ const createCapture = async (req, res) => {
     const isVideoFile =
       /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(mediaUrl) ||
       /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(sourceUrl) ||
-      (typeof mediaUrl === "string" && (mediaUrl.includes("video.twimg.com") || mediaUrl.includes(".m3u8") || mediaUrl.includes("/api/captures/stream")));
+      (typeof mediaUrl === "string" &&
+        (mediaUrl.includes("video.twimg.com") ||
+          mediaUrl.includes(".m3u8") ||
+          mediaUrl.includes("/api/captures/stream")));
 
     if (documentInfo || mediaType === "document" || mediaType === "pdf") {
-      mediaType = "document";
-    } else if (isVideoFile || ["youtube"].includes(platform) || (rawMediaType === "video" && !["linkedin", "twitter"].includes(platform))) {
+      mediaType = rawMediaType === "pdf" ? "pdf" : "document";
+    } else if (
+      isVideoFile ||
+      ["youtube"].includes(platform) ||
+      (rawMediaType === "video" && !["linkedin", "twitter"].includes(platform))
+    ) {
       mediaType = "video";
       if (platform === "web_image") {
         platform = "web";
@@ -1111,11 +1300,16 @@ const createCapture = async (req, res) => {
     }
 
     // Ensure mediaUrl and thumbnailUrl are synced and unescaped
-    if (typeof mediaUrl === "string") mediaUrl = mediaUrl.replace(/&amp;/g, "&");
-    if (typeof thumbnailUrl === "string") thumbnailUrl = thumbnailUrl.replace(/&amp;/g, "&");
+    if (typeof mediaUrl === "string")
+      mediaUrl = mediaUrl.replace(/&amp;/g, "&");
+    if (typeof thumbnailUrl === "string")
+      thumbnailUrl = thumbnailUrl.replace(/&amp;/g, "&");
 
     // Clean up if a video file was passed as thumbnailUrl
-    if (thumbnailUrl && /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(thumbnailUrl)) {
+    if (
+      thumbnailUrl &&
+      /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(thumbnailUrl)
+    ) {
       if (!mediaUrl) mediaUrl = thumbnailUrl;
       thumbnailUrl = "";
     }
@@ -1385,7 +1579,10 @@ const streamVideo = async (req, res) => {
     }
 
     if (/(?:pmvhaven\.com)/i.test(url)) {
-      return res.status(403).set(corsHeaders).send("Streaming from this domain is restricted");
+      return res
+        .status(403)
+        .set(corsHeaders)
+        .send("Streaming from this domain is restricted");
     }
 
     // Derive Referer and Origin from the target URL to satisfy CDN hotlink checks
@@ -1433,7 +1630,10 @@ const streamVideo = async (req, res) => {
     } catch (fetchErr) {
       clearTimeout(connectionTimeout);
       if (fetchErr.name === "AbortError") {
-        return res.status(504).set(corsHeaders).send("Connection to video source timed out");
+        return res
+          .status(504)
+          .set(corsHeaders)
+          .send("Connection to video source timed out");
       }
       throw fetchErr;
     }
@@ -1449,7 +1649,10 @@ const streamVideo = async (req, res) => {
     }
 
     const contentType = response.headers.get("content-type") || "";
-    let isM3u8 = url.includes(".m3u8") || contentType.includes("mpegurl") || contentType.includes("x-mpegurl");
+    let isM3u8 =
+      url.includes(".m3u8") ||
+      contentType.includes("mpegurl") ||
+      contentType.includes("x-mpegurl");
 
     let responseToStream = response;
     let urlToRewrite = url;
@@ -1463,7 +1666,10 @@ const streamVideo = async (req, res) => {
         const trimmedLine = line.trim();
         if (!trimmedLine || trimmedLine.startsWith("#")) {
           // Check for URI inside #EXT-X-KEY or #EXT-X-MAP
-          if (trimmedLine.startsWith("#EXT-X-KEY:") || trimmedLine.startsWith("#EXT-X-MAP:")) {
+          if (
+            trimmedLine.startsWith("#EXT-X-KEY:") ||
+            trimmedLine.startsWith("#EXT-X-MAP:")
+          ) {
             return line.replace(/URI=["']([^"']+)["']/g, (full, uri) => {
               try {
                 const resolved = new URL(uri, originUrl).href;
@@ -1496,16 +1702,19 @@ const streamVideo = async (req, res) => {
 
     // Binary video chunk (.ts, .m4s) or standard MP4/WebM stream
     const resHeaders = {
-      "Content-Type": contentType || (url.includes(".ts") ? "video/mp2t" : "video/mp4"),
+      "Content-Type":
+        contentType || (url.includes(".ts") ? "video/mp2t" : "video/mp4"),
       "Accept-Ranges": "bytes",
       ...corsHeaders,
     };
 
     if (responseToStream.headers.get("content-length")) {
-      resHeaders["Content-Length"] = responseToStream.headers.get("content-length");
+      resHeaders["Content-Length"] =
+        responseToStream.headers.get("content-length");
     }
     if (responseToStream.headers.get("content-range")) {
-      resHeaders["Content-Range"] = responseToStream.headers.get("content-range");
+      resHeaders["Content-Range"] =
+        responseToStream.headers.get("content-range");
     }
 
     res.writeHead(responseToStream.status, resHeaders);
@@ -1522,7 +1731,10 @@ const streamVideo = async (req, res) => {
     // Without this, a timeout/abort/disconnect emits an unhandled 'error' event
     // on the Readable, which takes down the entire Node.js process.
     nodeStream.on("error", (streamErr) => {
-      console.warn("Stream pipe error (handled gracefully):", streamErr.message);
+      console.warn(
+        "Stream pipe error (handled gracefully):",
+        streamErr.message,
+      );
       if (!res.writableEnded) {
         res.end();
       }
@@ -1557,4 +1769,3 @@ module.exports = {
   streamVideo,
   fetchUrlMetadata,
 };
-

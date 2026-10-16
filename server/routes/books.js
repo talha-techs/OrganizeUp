@@ -4,6 +4,7 @@ const {
   getBooks,
   getBook,
   createBook,
+  createBookFromPdfUrl,
   updateBook,
   deleteBook,
   removeVideoFromBook,
@@ -28,6 +29,8 @@ const { bookUpload } = require("../middleware/upload");
 
 // Public routes (still need auth)
 router.get("/", protect, getBooks);
+
+router.post("/from-pdf-url", protect, createBookFromPdfUrl);
 
 // Direct presigned URL endpoints (returns { url, expiresAt, provider })
 router.get("/:id/pdf-url", protect, getBookPdfUrl);

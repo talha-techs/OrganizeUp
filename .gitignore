@@ -5,3 +5,4 @@ node_modules/
 dist/
 build/
 OrganizeUp-Refactor-Agent-Guide.md
+server/scripts/reconcileR2.js

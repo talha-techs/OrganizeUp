@@ -265,6 +265,95 @@ const createBook = async (req, res) => {
   }
 };
 
+// @desc    Download an external PDF and create a private text book
+// @route   POST /api/books/from-pdf-url
+const createBookFromPdfUrl = async (req, res) => {
+  try {
+    const { url, title, description = "" } = req.body;
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      return res.status(400).json({ message: "A valid PDF URL is required" });
+    }
+
+    if (!/^https?:$/.test(parsedUrl.protocol)) {
+      return res
+        .status(400)
+        .json({ message: "Only HTTP(S) PDF URLs are supported" });
+    }
+
+    const response = await fetch(parsedUrl, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(60000),
+      headers: { Accept: "application/pdf,application/octet-stream;q=0.9" },
+    });
+    if (!response.ok) {
+      return res
+        .status(400)
+        .json({ message: "The PDF could not be downloaded" });
+    }
+
+    const declaredLength = Number(response.headers.get("content-length") || 0);
+    if (declaredLength > 50 * 1024 * 1024) {
+      return res.status(413).json({ message: "PDF must be 50 MB or smaller" });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > 50 * 1024 * 1024) {
+      return res.status(413).json({ message: "PDF must be 50 MB or smaller" });
+    }
+    const contentType = response.headers.get("content-type") || "";
+    if (
+      !contentType.toLowerCase().includes("application/pdf") &&
+      buffer.subarray(0, 5).toString() !== "%PDF-"
+    ) {
+      return res
+        .status(400)
+        .json({ message: "The URL did not return a PDF file" });
+    }
+
+    const filename = decodeURIComponent(
+      parsedUrl.pathname.split("/").pop() || "document.pdf",
+    ).replace(/[^a-zA-Z0-9._-]/g, "-");
+    const cleanTitle = String(
+      title || filename.replace(/\.pdf$/i, "") || "Imported PDF",
+    ).trim();
+    const uploadedPdf = await uploadFile({
+      buffer,
+      originalname: filename.toLowerCase().endsWith(".pdf")
+        ? filename
+        : `${filename}.pdf`,
+      mimetype: "application/pdf",
+      folder: "books/pdfs",
+      isPublic: false,
+      bucketType: "pdf",
+    });
+
+    const bookId = new mongoose.Types.ObjectId();
+    const slug = encodeURIComponent(cleanTitle.replace(/[^a-zA-Z0-9-]/g, "-"));
+    const book = await Book.create({
+      _id: bookId,
+      title: cleanTitle,
+      author: req.user.name || req.user.email || "My Library",
+      type: "text",
+      description: String(description || "").trim(),
+      driveLink: parsedUrl.toString(),
+      embedLink: `/api/books/pdf/${bookId}/${slug}.pdf`,
+      pdfFileId: uploadedPdf.fileId || null,
+      pdfR2Key: uploadedPdf.key || null,
+      storageProvider: uploadedPdf.provider,
+      addedBy: req.user._id,
+      visibility: "private",
+    });
+
+    return res.status(201).json({ message: "PDF saved to Book Library", book });
+  } catch (error) {
+    console.error("Create book from PDF URL error:", error.message);
+    return res.status(500).json({ message: "Server error importing PDF" });
+  }
+};
+
 // @desc    Update a book (owner or admin)
 // @route   PUT /api/books/:id
 const updateBook = async (req, res) => {
@@ -1083,6 +1172,7 @@ module.exports = {
   getBooks,
   getBook,
   createBook,
+  createBookFromPdfUrl,
   updateBook,
   deleteBook,
   removeVideoFromBook,
