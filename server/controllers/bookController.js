@@ -1,8 +1,10 @@
+const path = require("path");
 const mongoose = require("mongoose");
 const Book = require("../models/Book");
 const User = require("../models/User");
 const UserLibrary = require("../models/UserLibrary");
 const { fetchBookCover } = require("../services/bookCoverService");
+const { R2_CONFIG } = require("../config/r2");
 const {
   uploadFile,
   deleteFile,
@@ -1175,22 +1177,90 @@ const removeAudioFromBook = async (req, res) => {
   }
 };
 
-// @desc    Serve an image from GridFS or redirect to R2
-// @route   GET /api/images/:fileId and GET /api/images/r2/*
+// @desc    Serve an image from GridFS or redirect to R2 (supports both public & private buckets)
+// @route   GET /api/images/:fileId, GET /api/images/r2/*, and GET /api/files/r2/*
 const serveImage = async (req, res) => {
   try {
     let rawParam = req.params.key || req.params[0] || req.params.fileId;
-    if (rawParam) rawParam = decodeURIComponent(rawParam);
+    if (Array.isArray(rawParam)) {
+      rawParam = rawParam.join("/");
+    }
+    if (rawParam) {
+      rawParam = decodeURIComponent(rawParam);
+      // Remove any leading slash
+      rawParam = rawParam.replace(/^\/+/, "");
+    }
 
     if (rawParam && mongoose.isValidObjectId(rawParam)) {
       await streamFromGridFS(rawParam, res, "image");
     } else if (rawParam && isR2Configured()) {
-      // If it's an R2 key or public asset and R2 is configured
-      const signedUrl = await getPresignedDownloadUrl(rawParam, {
-        expiresIn: 86400,
-        isPublic: true,
-      });
-      res.redirect(302, signedUrl);
+      // Keys in captures/, telegram/, discord/, books/pdfs/, books/audio/ reside in the private bucket
+      const isPrivate =
+        rawParam.startsWith("captures/") ||
+        rawParam.startsWith("telegram/") ||
+        rawParam.startsWith("discord/") ||
+        rawParam.startsWith("books/pdfs/") ||
+        rawParam.startsWith("books/audio/");
+
+      const targetBucket = isPrivate
+        ? R2_CONFIG.privateBucket
+        : R2_CONFIG.publicBucket;
+
+      // Stream directly if explicitly requested via query parameter
+      if (req.query.proxy === "true") {
+        const ext = path.extname(rawParam).toLowerCase();
+        const contentType =
+          ext === ".png"
+            ? "image/png"
+            : ext === ".webp"
+            ? "image/webp"
+            : ext === ".gif"
+            ? "image/gif"
+            : ext === ".svg"
+            ? "image/svg+xml"
+            : "image/jpeg";
+
+        return await streamFromR2({
+          key: rawParam,
+          res,
+          req,
+          bucket: targetBucket,
+          contentType,
+          filename: rawParam.split("/").pop() || "image.jpg",
+        });
+      }
+
+      try {
+        const signedUrl = await getPresignedDownloadUrl(rawParam, {
+          expiresIn: 86400,
+          isPublic: !isPrivate,
+        });
+        return res.redirect(302, signedUrl);
+      } catch (presignErr) {
+        console.warn(
+          `[serveImage] Presigned URL failed for ${rawParam} (${presignErr.message}), falling back to direct stream`,
+        );
+        const ext = path.extname(rawParam).toLowerCase();
+        const contentType =
+          ext === ".png"
+            ? "image/png"
+            : ext === ".webp"
+            ? "image/webp"
+            : ext === ".gif"
+            ? "image/gif"
+            : ext === ".svg"
+            ? "image/svg+xml"
+            : "image/jpeg";
+
+        return await streamFromR2({
+          key: rawParam,
+          res,
+          req,
+          bucket: targetBucket,
+          contentType,
+          filename: rawParam.split("/").pop() || "image.jpg",
+        });
+      }
     } else if (rawParam) {
       const gridId = extractGridFsId(rawParam);
       if (gridId && mongoose.isValidObjectId(gridId)) {

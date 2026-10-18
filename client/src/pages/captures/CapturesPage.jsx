@@ -103,6 +103,16 @@ const getVideoSrc = (url) => {
   return url;
 };
 
+// Resolves relative API media URLs to full URL with VITE_API_URL when configured
+const resolveMediaUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('/api/')) {
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    return `${apiBase}${url}`;
+  }
+  return url;
+};
+
 // Robust helper to extract/build a playable YouTube iframe embed URL (ONLY genuine YouTube links)
 const getYouTubeEmbedUrl = (capture) => {
   if (!capture) return null;
@@ -674,13 +684,13 @@ const CapturesPage = () => {
                           if (capture.embedUrl) {
                             toggleEmbed(capture._id);
                           } else {
-                            setLightboxImage(capture.mediaUrl || capture.thumbnailUrl);
+                            setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl));
                           }
                         }}
                         className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-pointer group/img flex items-center justify-center border-b border-subtle"
                       >
                         <img
-                          src={capture.mediaUrl || capture.thumbnailUrl}
+                          src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
                           alt={capture.title || 'Facebook Video'}
                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                           onError={(e) => {
@@ -777,14 +787,29 @@ const CapturesPage = () => {
                     />
                   ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
                     <div
-                      onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
-                      className="w-full bg-surface-raised relative max-h-64 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                      onClick={() => setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl))}
+                      className="w-full bg-surface-raised relative min-h-[160px] max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                     >
                       <img
-                        src={capture.mediaUrl || capture.thumbnailUrl}
+                        src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
                         alt={capture.title}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          const fallback = resolveMediaUrl(capture.thumbnailUrl);
+                          if (fallback && e.currentTarget.src !== fallback) {
+                            e.currentTarget.src = fallback;
+                          } else {
+                            e.currentTarget.style.display = 'none';
+                            const placeholder = e.currentTarget.nextElementSibling;
+                            if (placeholder) placeholder.classList.remove('hidden');
+                          }
+                        }}
                       />
+                      <div className="hidden absolute inset-0 flex flex-col items-center justify-center bg-surface-raised text-secondary p-4 text-center">
+                        <IoImageOutline size={36} className="text-secondary/60 mb-2" />
+                        <span className="text-xs font-medium text-secondary">Image preview unavailable</span>
+                      </div>
                       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
                         Click to Enlarge Image
                       </div>
@@ -977,11 +1002,11 @@ const CapturesPage = () => {
                           </div>
                         ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
                           <div
-                            onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                            onClick={() => setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl))}
                             className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                           >
                             <img
-                              src={capture.mediaUrl || capture.thumbnailUrl}
+                              src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
                               alt={capture.title || 'LinkedIn Post'}
                               className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                               onError={(e) => {
@@ -1066,11 +1091,11 @@ const CapturesPage = () => {
                       </div>
                     ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
                       <div
-                        onClick={() => setLightboxImage(capture.mediaUrl || capture.thumbnailUrl)}
+                        onClick={() => setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl))}
                         className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                       >
                         <img
-                          src={capture.mediaUrl || capture.thumbnailUrl}
+                          src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
                           alt={capture.title || 'X Post'}
                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                           onError={(e) => {
@@ -1449,7 +1474,7 @@ const CapturesPage = () => {
                           />
                         ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
                           <img
-                            src={cap.mediaUrl || cap.thumbnailUrl}
+                            src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
                             alt={cap.title || 'X Post'}
                             className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                           />
@@ -1540,7 +1565,7 @@ const CapturesPage = () => {
                         </div>
                       ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
                         <img
-                          src={cap.mediaUrl || cap.thumbnailUrl}
+                          src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
                           alt={cap.title || 'LinkedIn Post'}
                           className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                         />
@@ -1593,7 +1618,7 @@ const CapturesPage = () => {
                           />
                         ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
                           <img
-                            src={cap.mediaUrl || cap.thumbnailUrl}
+                            src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
                             alt={cap.title}
                             className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                           />
@@ -1611,7 +1636,7 @@ const CapturesPage = () => {
                         />
                       ) : (
                         <img
-                          src={cap.mediaUrl || cap.thumbnailUrl}
+                          src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
                           alt={cap.title}
                           className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                         />
@@ -1736,7 +1761,7 @@ const CapturesPage = () => {
               className="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl"
             >
               <img
-                src={lightboxImage}
+                src={resolveMediaUrl(lightboxImage)}
                 alt="Full preview"
                 className="max-h-[85vh] w-auto object-contain rounded-2xl shadow-2xl"
               />
@@ -1779,9 +1804,9 @@ const CapturesPage = () => {
               </div>
 
               <div className="p-2.5 rounded-xl bg-surface border border-subtle flex items-center gap-2.5">
-                {reminderModalItem.thumbnailUrl && (
+                {(reminderModalItem.thumbnailUrl || reminderModalItem.mediaUrl) && (
                   <img
-                    src={reminderModalItem.thumbnailUrl}
+                    src={resolveMediaUrl(reminderModalItem.thumbnailUrl || reminderModalItem.mediaUrl)}
                     alt=""
                     className="w-9 h-9 object-cover rounded-lg border border-subtle flex-shrink-0"
                   />
@@ -1919,9 +1944,9 @@ const CapturesPage = () => {
                 Are you sure you want to remove this item from your Vault? This action cannot be undone.
               </p>
               <div className="p-3 rounded-xl bg-surface border border-subtle flex items-center gap-3">
-                {deleteCaptureItem.thumbnailUrl && (
+                {(deleteCaptureItem.thumbnailUrl || deleteCaptureItem.mediaUrl) && (
                   <img
-                    src={deleteCaptureItem.thumbnailUrl}
+                    src={resolveMediaUrl(deleteCaptureItem.thumbnailUrl || deleteCaptureItem.mediaUrl)}
                     alt=""
                     className="w-12 h-12 object-cover rounded-lg flex-shrink-0 border border-subtle"
                   />

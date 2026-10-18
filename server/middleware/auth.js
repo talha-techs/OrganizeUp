@@ -42,6 +42,38 @@ const protect = async (req, res, next) => {
   }
 };
 
+// Optional protect - verifies JWT if provided, but does not block unauthenticated requests
+const optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+
+    // Check Authorization header
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+    // Check cookies
+    else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+    // Check query param (allows streaming media & PDF range requests)
+    else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select("-password");
+    }
+    next();
+  } catch (error) {
+    // For optional routes, proceed unauthenticated rather than blocking
+    next();
+  }
+};
+
 // Admin-only middleware
 const adminOnly = (req, res, next) => {
   if (req.user && req.user.role === "admin") {
@@ -58,4 +90,5 @@ const generateToken = (id) => {
   });
 };
 
-module.exports = { protect, adminOnly, generateToken };
+module.exports = { protect, optionalProtect, adminOnly, generateToken };
+

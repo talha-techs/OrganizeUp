@@ -22,7 +22,10 @@ let usersStorageCache = {
 // Calculate per-user storage footprint with caching (takes < 25ms, cached for 3 mins)
 const calculateUsersStorage = async () => {
   const now = Date.now();
-  if (now - usersStorageCache.timestamp < 180000 && Object.keys(usersStorageCache.data).length > 0) {
+  if (
+    now - usersStorageCache.timestamp < 180000 &&
+    Object.keys(usersStorageCache.data).length > 0
+  ) {
     return usersStorageCache.data;
   }
 
@@ -34,9 +37,24 @@ const calculateUsersStorage = async () => {
     const fileSizeMap = new Map();
     if (db) {
       const [imgFiles, pdfFiles, audioFiles] = await Promise.all([
-        db.collection("images.files").find({}).project({ _id: 1, length: 1 }).toArray().catch(() => []),
-        db.collection("pdfs.files").find({}).project({ _id: 1, length: 1 }).toArray().catch(() => []),
-        db.collection("audios.files").find({}).project({ _id: 1, length: 1 }).toArray().catch(() => []),
+        db
+          .collection("images.files")
+          .find({})
+          .project({ _id: 1, length: 1 })
+          .toArray()
+          .catch(() => []),
+        db
+          .collection("pdfs.files")
+          .find({})
+          .project({ _id: 1, length: 1 })
+          .toArray()
+          .catch(() => []),
+        db
+          .collection("audios.files")
+          .find({})
+          .project({ _id: 1, length: 1 })
+          .toArray()
+          .catch(() => []),
       ]);
 
       [...imgFiles, ...pdfFiles, ...audioFiles].forEach((f) => {
@@ -61,7 +79,9 @@ const calculateUsersStorage = async () => {
     });
 
     // 1. Vault Captures
-    const captures = await CapturedResource.find({ status: { $ne: "archived" } })
+    const captures = await CapturedResource.find({
+      status: { $ne: "archived" },
+    })
       .select("user mediaGridFsId notes rawContent")
       .lean();
 
@@ -80,7 +100,9 @@ const calculateUsersStorage = async () => {
     });
 
     // 2. Books
-    const books = await Book.find({}).select("addedBy coverImageId pdfFileId").lean();
+    const books = await Book.find({})
+      .select("addedBy coverImageId pdfFileId")
+      .lean();
     books.forEach((b) => {
       const uid = b.addedBy ? b.addedBy.toString() : null;
       if (uid && storageMap[uid]) {
@@ -112,7 +134,8 @@ const calculateUsersStorage = async () => {
     const finalData = {};
     Object.keys(storageMap).forEach((uid) => {
       const u = storageMap[uid];
-      const totalBytes = u.vaultBytes + u.booksBytes + u.notesBytes + u.baseDocBytes;
+      const totalBytes =
+        u.vaultBytes + u.booksBytes + u.notesBytes + u.baseDocBytes;
       const totalKB = +(totalBytes / 1024).toFixed(1);
       const totalMB = +(totalBytes / (1024 * 1024)).toFixed(2);
       const formatted = totalMB >= 1 ? `${totalMB} MB` : `${totalKB} KB`;
@@ -125,17 +148,26 @@ const calculateUsersStorage = async () => {
         breakdown: {
           vault: {
             bytes: u.vaultBytes,
-            formatted: u.vaultBytes >= 1048576 ? `${(u.vaultBytes / 1048576).toFixed(2)} MB` : `${Math.round(u.vaultBytes / 1024)} KB`,
+            formatted:
+              u.vaultBytes >= 1048576
+                ? `${(u.vaultBytes / 1048576).toFixed(2)} MB`
+                : `${Math.round(u.vaultBytes / 1024)} KB`,
             count: u.vaultItems,
           },
           books: {
             bytes: u.booksBytes,
-            formatted: u.booksBytes >= 1048576 ? `${(u.booksBytes / 1048576).toFixed(2)} MB` : `${Math.round(u.booksBytes / 1024)} KB`,
+            formatted:
+              u.booksBytes >= 1048576
+                ? `${(u.booksBytes / 1048576).toFixed(2)} MB`
+                : `${Math.round(u.booksBytes / 1024)} KB`,
             count: u.booksCount,
           },
           notes: {
             bytes: u.notesBytes,
-            formatted: u.notesBytes >= 1048576 ? `${(u.notesBytes / 1048576).toFixed(2)} MB` : `${Math.round(u.notesBytes / 1024)} KB`,
+            formatted:
+              u.notesBytes >= 1048576
+                ? `${(u.notesBytes / 1048576).toFixed(2)} MB`
+                : `${Math.round(u.notesBytes / 1024)} KB`,
             count: u.notesCount,
           },
           base: {
@@ -180,7 +212,10 @@ const getAtlasQuotaStats = async () => {
 
     const limitBytes = 512 * 1024 * 1024;
     const usedMB = +(totalUsedBytes / (1024 * 1024)).toFixed(2);
-    const freeMB = +(Math.max(0, limitBytes - totalUsedBytes) / (1024 * 1024)).toFixed(2);
+    const freeMB = +(
+      Math.max(0, limitBytes - totalUsedBytes) /
+      (1024 * 1024)
+    ).toFixed(2);
     const percentage = +((totalUsedBytes / limitBytes) * 100).toFixed(1);
 
     const dataSizeMB = +(stats.dataSize / (1024 * 1024)).toFixed(2);
@@ -198,7 +233,8 @@ const getAtlasQuotaStats = async () => {
       collections: stats.collections || 0,
       objects: stats.objects || 0,
       tier: "MongoDB Atlas M0 Free Cluster (512 MB)",
-      status: percentage > 85 ? "warning" : percentage > 60 ? "moderate" : "healthy",
+      status:
+        percentage > 85 ? "warning" : percentage > 60 ? "moderate" : "healthy",
     };
   } catch (err) {
     console.error("getAtlasQuotaStats error:", err.message);
@@ -314,7 +350,9 @@ const getUserDetail = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const uObj = populatedUser.toObject ? populatedUser.toObject() : populatedUser;
+    const uObj = populatedUser.toObject
+      ? populatedUser.toObject()
+      : populatedUser;
     const s = storageMap[populatedUser._id.toString()] || {
       totalBytes: 2048,
       totalKB: 2.0,
@@ -356,7 +394,7 @@ const deleteUser = async (req, res) => {
         isPublic: true,
         bucketType: "image",
       }).catch((err) =>
-        console.warn("User avatar cleanup warning:", err.message)
+        console.warn("User avatar cleanup warning:", err.message),
       );
     }
 
@@ -367,17 +405,38 @@ const deleteUser = async (req, res) => {
     const userBooks = await Book.find({ addedBy: user._id });
     for (const b of userBooks) {
       if (b.pdfR2Key || b.pdfFileId) {
-        await deleteFile({ provider: b.storageProvider, key: b.pdfR2Key, fileId: b.pdfFileId, isPublic: false, bucketType: "pdf" }).catch(() => {});
+        await deleteFile({
+          provider: b.storageProvider,
+          key: b.pdfR2Key,
+          fileId: b.pdfFileId,
+          isPublic: false,
+          bucketType: "pdf",
+        }).catch(() => {});
       }
       if (b.coverR2Key || b.coverImageId) {
-        await deleteFile({ provider: b.storageProvider, key: b.coverR2Key, fileId: b.coverImageId, isPublic: true, bucketType: "image" }).catch(() => {});
+        await deleteFile({
+          provider: b.storageProvider,
+          key: b.coverR2Key,
+          fileId: b.coverImageId,
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
       }
       for (const af of b.audioFiles || []) {
         if (af.r2Key || af.fileId) {
-          await deleteFile({ provider: af.storageProvider, key: af.r2Key, fileId: af.fileId, isPublic: false, bucketType: "audio" }).catch(() => {});
+          await deleteFile({
+            provider: af.storageProvider,
+            key: af.r2Key,
+            fileId: af.fileId,
+            isPublic: false,
+            bucketType: "audio",
+          }).catch(() => {});
         }
       }
-      await UserLibrary.deleteMany({ contentType: "book", contentId: b._id }).catch(() => {});
+      await UserLibrary.deleteMany({
+        contentType: "book",
+        contentId: b._id,
+      }).catch(() => {});
     }
     await Book.deleteMany({ addedBy: user._id });
 
@@ -385,18 +444,36 @@ const deleteUser = async (req, res) => {
     const userCourses = await Course.find({ addedBy: user._id });
     for (const c of userCourses) {
       if (c.bannerR2Key || c.bannerImageId) {
-        await deleteFile({ provider: c.storageProvider, key: c.bannerR2Key, fileId: c.bannerImageId, isPublic: true, bucketType: "image" }).catch(() => {});
+        await deleteFile({
+          provider: c.storageProvider,
+          key: c.bannerR2Key,
+          fileId: c.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
       }
-      await UserLibrary.deleteMany({ contentType: "course", contentId: c._id }).catch(() => {});
+      await UserLibrary.deleteMany({
+        contentType: "course",
+        contentId: c._id,
+      }).catch(() => {});
     }
     await Course.deleteMany({ addedBy: user._id });
 
     const userTools = await Tool.find({ addedBy: user._id });
     for (const t of userTools) {
       if (t.bannerR2Key || t.bannerImageId) {
-        await deleteFile({ provider: t.storageProvider, key: t.bannerR2Key, fileId: t.bannerImageId, isPublic: true, bucketType: "image" }).catch(() => {});
+        await deleteFile({
+          provider: t.storageProvider,
+          key: t.bannerR2Key,
+          fileId: t.bannerImageId,
+          isPublic: true,
+          bucketType: "image",
+        }).catch(() => {});
       }
-      await UserLibrary.deleteMany({ contentType: "tool", contentId: t._id }).catch(() => {});
+      await UserLibrary.deleteMany({
+        contentType: "tool",
+        contentId: t._id,
+      }).catch(() => {});
     }
     await Tool.deleteMany({ addedBy: user._id });
 
@@ -404,7 +481,13 @@ const deleteUser = async (req, res) => {
     const userCaptures = await CapturedResource.find({ user: user._id });
     for (const cap of userCaptures) {
       if (cap.mediaR2Key || cap.mediaGridFsId) {
-        await deleteFile({ provider: cap.storageProvider, key: cap.mediaR2Key, fileId: cap.mediaGridFsId, isPublic: false, bucketType: "image" }).catch(() => {});
+        await deleteFile({
+          provider: cap.storageProvider,
+          key: cap.mediaR2Key,
+          fileId: cap.mediaGridFsId,
+          isPublic: false,
+          bucketType: "image",
+        }).catch(() => {});
       }
     }
     await CapturedResource.deleteMany({ user: user._id });
@@ -416,7 +499,7 @@ const deleteUser = async (req, res) => {
     const userSections = await CustomSection.find({ addedBy: user._id });
     for (const s of userSections) {
       const activeCollaborators = (s.collaborators || []).filter(
-        (c) => c.user && c.user.toString() !== user._id.toString()
+        (c) => c.user && c.user.toString() !== user._id.toString(),
       );
       if (activeCollaborators.length > 0) {
         // Transfer ownership to first active collaborator
@@ -434,10 +517,19 @@ const deleteUser = async (req, res) => {
             ],
           });
           if (otherBannerRefs === 0) {
-            await deleteFile({ provider: s.storageProvider, key: s.bannerR2Key, fileId: extractGridFsId(s.bannerImage), isPublic: true, bucketType: "image" }).catch(() => {});
+            await deleteFile({
+              provider: s.storageProvider,
+              key: s.bannerR2Key,
+              fileId: extractGridFsId(s.bannerImage),
+              isPublic: true,
+              bucketType: "image",
+            }).catch(() => {});
           }
         }
-        const imageSubSections = await SubSection.find({ sectionId: s._id, type: "image" });
+        const imageSubSections = await SubSection.find({
+          sectionId: s._id,
+          type: "image",
+        });
         for (const sub of imageSubSections) {
           if (sub.imageR2Key || sub.imageUrl) {
             const otherBlockRefs = await SubSection.countDocuments({
@@ -448,7 +540,13 @@ const deleteUser = async (req, res) => {
               ],
             });
             if (otherBlockRefs === 0) {
-              await deleteFile({ provider: sub.storageProvider, key: sub.imageR2Key, fileId: extractGridFsId(sub.imageUrl), isPublic: true, bucketType: "image" }).catch(() => {});
+              await deleteFile({
+                provider: sub.storageProvider,
+                key: sub.imageR2Key,
+                fileId: extractGridFsId(sub.imageUrl),
+                isPublic: true,
+                bucketType: "image",
+              }).catch(() => {});
             }
           }
         }
@@ -460,11 +558,13 @@ const deleteUser = async (req, res) => {
     // 2. Remove user from collaborator list in any other workspaces
     await CustomSection.updateMany(
       {},
-      { $pull: { collaborators: { user: user._id } } }
+      { $pull: { collaborators: { user: user._id } } },
     ).catch(() => {});
 
     await user.deleteOne();
-    res.json({ message: "User and associated personal resources deleted successfully" });
+    res.json({
+      message: "User and associated personal resources deleted successfully",
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -799,13 +899,24 @@ const getAnalytics = async (req, res) => {
 
     // Total documents count across main collections
     const totalDocs =
-      userCount + bookCount + courseCount + captureCount + sectionCount + toolCount;
+      userCount +
+      bookCount +
+      courseCount +
+      captureCount +
+      sectionCount +
+      toolCount;
 
     // Estimate storage & MongoDB Atlas M0 quota
     const atlasQuota = await getAtlasQuotaStats();
-    const estimatedDocStorageMB = +((totalDocs * 0.004) + 14).toFixed(1);
-    const estimatedGridFSMB = +((bookCount * 1.5) + (captureCount * 0.8) + 48).toFixed(1);
-    const totalEstimatedStorageMB = +(estimatedDocStorageMB + estimatedGridFSMB).toFixed(1);
+    const estimatedDocStorageMB = +(totalDocs * 0.004 + 14).toFixed(1);
+    const estimatedGridFSMB = +(
+      bookCount * 1.5 +
+      captureCount * 0.8 +
+      48
+    ).toFixed(1);
+    const totalEstimatedStorageMB = +(
+      estimatedDocStorageMB + estimatedGridFSMB
+    ).toFixed(1);
 
     res.json({
       timeRange,

@@ -37,7 +37,7 @@ const YoutubePlaylist = require("./models/YoutubePlaylist");
 const User = require("./models/User");
 const { initTelegramBot } = require("./bot/telegramBot");
 const { initDiscordBot } = require("./bot/discordBot");
-const { protect } = require("./middleware/auth");
+const { protect, optionalProtect } = require("./middleware/auth");
 const { serveImage } = require("./controllers/bookController");
 const { trafficTracker } = require("./middleware/trafficTracker");
 
@@ -198,9 +198,10 @@ app.use("/api/captures", apiLimiter, captureRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/suggestions", apiLimiter, suggestionRoutes);
 
-// Image serving from GridFS or R2 (authenticated)
-app.get("/api/images/r2/*key", protect, serveImage);
-app.get("/api/images/:fileId", protect, serveImage);
+// Image & file serving from GridFS or R2
+app.get("/api/images/r2/*key", optionalProtect, serveImage);
+app.get("/api/files/r2/*key", optionalProtect, serveImage);
+app.get("/api/images/:fileId", optionalProtect, serveImage);
 
 // Health check
 app.get("/api/health", (req, res) => {

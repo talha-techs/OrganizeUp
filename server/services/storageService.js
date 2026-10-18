@@ -110,8 +110,17 @@ const uploadFile = async ({
           url = `/api/images/r2/${encodeURIComponent(key)}`;
         }
       } else {
-        // For private assets, default to gateway URL that verifies auth
-        url = `/api/files/r2/${encodeURIComponent(key)}`;
+        // For private assets, route via image endpoint if image, else files gateway
+        const isImage =
+          bucketType === "image" ||
+          (mimetype && mimetype.startsWith("image/")) ||
+          key.startsWith("captures/") ||
+          key.startsWith("telegram/") ||
+          key.startsWith("discord/");
+
+        url = isImage
+          ? `/api/images/r2/${encodeURIComponent(key)}`
+          : `/api/files/r2/${encodeURIComponent(key)}`;
       }
 
       return {
