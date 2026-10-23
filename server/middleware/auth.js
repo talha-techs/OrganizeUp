@@ -74,12 +74,40 @@ const optionalProtect = async (req, res, next) => {
   }
 };
 
-// Admin-only middleware
-const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
+// Strict Admin Middleware
+// 1. Reloads user fresh from DB on every request (never trusting client claim or stale JWT payload)
+// 2. Requires role === 'admin' AND email === ADMIN_EMAIL (case-insensitive)
+// 3. Returns 404 to non-admins so the route existence is completely concealed
+const requireAdmin = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Not authorized, no token provided" });
+    }
+
+    // Always fetch fresh user state from the database
+    const freshUser = await User.findById(req.user._id).select("role email");
+    if (!freshUser) {
+      return res.status(404).json({ message: "Route not found" });
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : null;
+    const userEmail = freshUser.email ? freshUser.email.trim().toLowerCase() : "";
+
+    const isRoleAdmin = freshUser.role === "admin";
+    const isEmailAdmin = Boolean(adminEmail && userEmail === adminEmail);
+
+    if (!isRoleAdmin || !isEmailAdmin) {
+      // Non-admins get 404 to avoid leaking existence of admin endpoints
+      return res.status(404).json({ message: "Route not found" });
+    }
+
+    // Attach verified user info
+    req.user.role = freshUser.role;
+    req.user.email = freshUser.email;
     next();
-  } else {
-    return res.status(403).json({ message: "Access denied. Admin only." });
+  } catch (error) {
+    console.error("requireAdmin error:", error.message);
+    return res.status(404).json({ message: "Route not found" });
   }
 };
 
@@ -90,5 +118,11 @@ const generateToken = (id) => {
   });
 };
 
-module.exports = { protect, optionalProtect, adminOnly, generateToken };
+module.exports = {
+  protect,
+  optionalProtect,
+  requireAdmin,
+  adminOnly: requireAdmin,
+  generateToken,
+};
 

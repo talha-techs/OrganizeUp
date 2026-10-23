@@ -104,23 +104,43 @@ const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    if (!email || typeof email !== "string" || !password || !name) {
+      return res.status(400).json({ message: "Please provide name, email, and password" });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if user already exists (case-insensitive)
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res
         .status(400)
         .json({ message: "User already exists with this email" });
     }
 
-    // Check if this email should be admin
-    const isAdmin =
-      process.env.ADMIN_EMAIL &&
-      email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
+    // Check if this email matches configured ADMIN_EMAIL
+    const adminEmail = process.env.ADMIN_EMAIL
+      ? process.env.ADMIN_EMAIL.trim().toLowerCase()
+      : null;
+    const isTargetingAdmin = Boolean(adminEmail && cleanEmail === adminEmail);
+
+    if (isTargetingAdmin) {
+      // Ensure no second account can register with ADMIN_EMAIL
+      const existingAdmin = await User.findOne({
+        $or: [{ role: "admin" }, { email: cleanEmail }],
+      });
+      if (existingAdmin) {
+        return res.status(400).json({
+          message: "Administrator account already exists. Please sign in instead.",
+        });
+      }
+    }
 
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: cleanEmail,
       password,
-      role: isAdmin ? "admin" : "user",
+      role: isTargetingAdmin ? "admin" : "user",
       isVerified: true,
     });
 

@@ -5,8 +5,8 @@ const Book = require("../models/Book");
 const Course = require("../models/Course");
 const Tool = require("../models/Tool");
 const User = require("../models/User");
-
 const CustomSection = require("../models/CustomSection");
+const { logAdminAction } = require("../services/auditLogger");
 
 // ───── Helper to get the model by content type ─────
 const getModel = (contentType) => {
@@ -87,7 +87,23 @@ const deleteComment = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    const isAdminAction = req.user.role === "admin" && comment.user.toString() !== req.user._id.toString();
     await comment.deleteOne();
+
+    if (isAdminAction) {
+      await logAdminAction({
+        adminId: req.user._id,
+        adminEmail: req.user.email,
+        action: "delete_content",
+        targetType: "comment",
+        targetId: req.params.commentId,
+        owner: comment.user,
+        reason: "Admin comment moderation",
+        metadata: { contentType: comment.contentType, contentId: comment.contentId },
+        req,
+      });
+    }
+
     res.json({ message: "Comment deleted" });
   } catch (error) {
     console.error("Delete comment error:", error);
@@ -350,6 +366,22 @@ const reviewPublishRequest = async (req, res) => {
         }
       }
     }
+
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: "review_publish_request",
+      targetType: "publish_request",
+      targetId: request._id,
+      owner: request.requestedBy,
+      reason: adminNote || `Publish request marked as ${status}`,
+      metadata: {
+        status,
+        contentType: request.contentType,
+        contentId: request.contentId,
+      },
+      req,
+    });
 
     res.json({ message: `Request ${status}`, request });
   } catch (error) {

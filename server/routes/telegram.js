@@ -85,7 +85,13 @@ router.get("/image/:fileId", protect, async (req, res) => {
         ...(mongoose.isValidObjectId(rawParam) ? [{ bannerImageId: rawParam }] : []),
       ],
     };
-    if (req.user.role !== "admin") {
+    const isSoleAdmin = Boolean(
+      req.user.role === "admin" &&
+      process.env.ADMIN_EMAIL &&
+      req.user.email &&
+      req.user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase()
+    );
+    if (!isSoleAdmin) {
       query.user = req.user._id;
     }
 

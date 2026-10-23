@@ -33,12 +33,13 @@ passport.use(
         }
 
         // Extract email safely
-        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
-        if (!email) {
+        const rawEmail = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+        if (!rawEmail) {
           return done(new Error("No email associated with this Google account"), null);
         }
+        const email = rawEmail.trim().toLowerCase();
 
-        // Check if user exists with same email
+        // Check if user exists with same email (case-insensitive)
         user = await User.findOne({ email });
 
         if (user) {
@@ -57,9 +58,17 @@ passport.use(
           email.split("@")[0] ||
           "User";
 
-        const isAdmin =
-          process.env.ADMIN_EMAIL &&
-          email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
+        const adminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : null;
+        const isAdmin = Boolean(adminEmail && email === adminEmail);
+
+        if (isAdmin) {
+          const existingAdmin = await User.findOne({
+            $or: [{ role: "admin" }, { email }],
+          });
+          if (existingAdmin) {
+            return done(new Error("An administrator account already exists."), null);
+          }
+        }
 
         // Create new user
         user = await User.create({

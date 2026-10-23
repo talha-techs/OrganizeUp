@@ -1,4 +1,5 @@
 const FeatureSuggestion = require("../models/FeatureSuggestion");
+const { logAdminAction } = require("../services/auditLogger");
 
 // @desc    Submit a new feature suggestion
 // @route   POST /api/suggestions
@@ -167,6 +168,18 @@ const updateSuggestionStatus = async (req, res) => {
       .populate("user", "name email avatar role createdAt")
       .populate("reviewedBy", "name email");
 
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: "update_suggestion",
+      targetType: "suggestion",
+      targetId: suggestion._id,
+      owner: suggestion.user,
+      reason: adminNotes || `Status updated to ${status}`,
+      metadata: { status },
+      req,
+    });
+
     res.json({
       message: "Suggestion updated successfully",
       suggestion: populated,
@@ -239,7 +252,21 @@ const deleteSuggestion = async (req, res) => {
         .json({ message: "Not authorized to delete this suggestion" });
     }
 
+    const isAdminAction = isAdmin && !isOwner;
     await FeatureSuggestion.findByIdAndDelete(req.params.id);
+
+    if (isAdminAction) {
+      await logAdminAction({
+        adminId: req.user._id,
+        adminEmail: req.user.email,
+        action: "delete_content",
+        targetType: "suggestion",
+        targetId: req.params.id,
+        owner: suggestion.user,
+        reason: "Admin suggestion deletion",
+        req,
+      });
+    }
 
     res.json({ message: "Suggestion deleted successfully" });
   } catch (error) {

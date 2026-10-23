@@ -145,14 +145,45 @@ export const toggleVisibility = createAsyncThunk(
   },
 );
 
+export const fetchContentCounts = createAsyncThunk(
+  "admin/fetchContentCounts",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/admin/counts");
+      return data.counts;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch content counts",
+      );
+    }
+  },
+);
+
 export const fetchAllContent = createAsyncThunk(
   "admin/fetchAllContent",
-  async ({ type, search = "", page = 1 }, { rejectWithValue }) => {
+  async (
+    {
+      type,
+      search = "",
+      visibility = "public",
+      owner = "",
+      sort = "newest",
+      page = 1,
+      limit = 20,
+    },
+    { rejectWithValue },
+  ) => {
     try {
-      const params = new URLSearchParams({ page, limit: 30 });
+      const params = new URLSearchParams({
+        page,
+        limit,
+        visibility,
+        sort,
+      });
       if (search) params.set("search", search);
-      const { data } = await api.get(`/admin/content/${type}?${params}`);
-      return { ...data, contentType: type };
+      if (owner) params.set("owner", owner);
+      const { data } = await api.get(`/admin/content/${type}?${params.toString()}`);
+      return { ...data, contentType: type, visibility };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch content",
@@ -161,15 +192,67 @@ export const fetchAllContent = createAsyncThunk(
   },
 );
 
+export const fetchContentPreview = createAsyncThunk(
+  "admin/fetchContentPreview",
+  async ({ type, id, reason = "" }, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams();
+      if (reason) params.set("reason", reason);
+      const queryStr = params.toString() ? `?${params.toString()}` : "";
+      const { data } = await api.get(`/admin/content/${type}/${id}/preview${queryStr}`);
+      return { type, item: data.item };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch preview",
+      );
+    }
+  },
+);
+
+export const unpublishContent = createAsyncThunk(
+  "admin/unpublishContent",
+  async ({ type, id, reason = "" }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/admin/content/${type}/${id}/unpublish`, {
+        reason,
+      });
+      return { type, id, data };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to unpublish content",
+      );
+    }
+  },
+);
+
 export const adminDeleteContent = createAsyncThunk(
   "admin/deleteContent",
-  async ({ type, id }, { rejectWithValue }) => {
+  async ({ type, id, reason = "" }, { rejectWithValue }) => {
     try {
-      await api.delete(`/admin/content/${type}/${id}`);
+      await api.delete(`/admin/content/${type}/${id}`, {
+        data: { reason },
+      });
       return { contentType: type, contentId: id };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to delete content",
+      );
+    }
+  },
+);
+
+export const fetchAuditLogs = createAsyncThunk(
+  "admin/fetchAuditLogs",
+  async ({ page = 1, limit = 25, action = "", targetType = "" } = {}, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams({ page, limit });
+      if (action) params.set("action", action);
+      if (targetType) params.set("targetType", targetType);
+      const { data } = await api.get(`/admin/audit-logs?${params.toString()}`);
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch audit logs",
       );
     }
   },
@@ -186,17 +269,30 @@ const adminSlice = createSlice({
     selectedUser: null,
     publishRequests: [],
     reviewResource: null,
+    contentCounts: null,
     contentItems: [],
     contentTotal: 0,
     contentType: null,
+    contentVisibility: "public",
     contentLoading: false,
     contentError: null,
+    contentPreview: null,
+    previewLoading: false,
+    previewError: null,
+    auditLogs: [],
+    auditLogsTotal: 0,
+    auditLogsLoading: false,
+    auditLogsError: null,
     isLoading: false,
     error: null,
   },
   reducers: {
     clearAdminError: (state) => {
       state.error = null;
+    },
+    clearContentPreview: (state) => {
+      state.contentPreview = null;
+      state.previewError = null;
     },
   },
   extraReducers: (builder) => {
@@ -272,29 +368,70 @@ const adminSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      .addCase(fetchContentCounts.fulfilled, (state, action) => {
+        state.contentCounts = action.payload;
+      })
       .addCase(fetchAllContent.pending, (state) => {
         state.contentLoading = true;
         state.contentError = null;
-        state.contentItems = []; // clear stale items while loading
+        state.contentItems = [];
       })
       .addCase(fetchAllContent.fulfilled, (state, action) => {
         state.contentLoading = false;
         state.contentItems = action.payload.items;
         state.contentTotal = action.payload.total;
         state.contentType = action.payload.contentType;
+        state.contentVisibility = action.payload.visibility || "public";
       })
       .addCase(fetchAllContent.rejected, (state, action) => {
         state.contentLoading = false;
         state.contentError = action.payload;
+      })
+      .addCase(fetchContentPreview.pending, (state) => {
+        state.previewLoading = true;
+        state.previewError = null;
+        state.contentPreview = null;
+      })
+      .addCase(fetchContentPreview.fulfilled, (state, action) => {
+        state.previewLoading = false;
+        state.contentPreview = action.payload;
+      })
+      .addCase(fetchContentPreview.rejected, (state, action) => {
+        state.previewLoading = false;
+        state.previewError = action.payload;
+      })
+      .addCase(unpublishContent.fulfilled, (state, action) => {
+        state.contentItems = state.contentItems.map((item) =>
+          item._id === action.payload.id ? { ...item, visibility: "private" } : item,
+        );
+        if (state.contentPreview?.item?._id === action.payload.id) {
+          state.contentPreview.item.visibility = "private";
+        }
       })
       .addCase(adminDeleteContent.fulfilled, (state, action) => {
         state.contentItems = state.contentItems.filter(
           (item) => item._id !== action.payload.contentId,
         );
         state.contentTotal = Math.max(0, state.contentTotal - 1);
+        if (state.contentPreview?.item?._id === action.payload.contentId) {
+          state.contentPreview = null;
+        }
+      })
+      .addCase(fetchAuditLogs.pending, (state) => {
+        state.auditLogsLoading = true;
+        state.auditLogsError = null;
+      })
+      .addCase(fetchAuditLogs.fulfilled, (state, action) => {
+        state.auditLogsLoading = false;
+        state.auditLogs = action.payload.logs;
+        state.auditLogsTotal = action.payload.total;
+      })
+      .addCase(fetchAuditLogs.rejected, (state, action) => {
+        state.auditLogsLoading = false;
+        state.auditLogsError = action.payload;
       });
   },
 });
 
-export const { clearAdminError } = adminSlice.actions;
+export const { clearAdminError, clearContentPreview } = adminSlice.actions;
 export default adminSlice.reducer;

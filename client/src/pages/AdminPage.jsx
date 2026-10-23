@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import {
   IoPersonOutline,
   IoBookOutline,
@@ -45,6 +45,11 @@ import {
   IoMailOutline,
   IoPaperPlaneOutline,
   IoChatbubbleEllipsesOutline,
+  IoLockClosed,
+  IoLockOpenOutline,
+  IoWarningOutline,
+  IoChevronBack,
+  IoFilterOutline,
 } from 'react-icons/io5';
 import {
   fetchStats,
@@ -57,7 +62,11 @@ import {
   fetchResourceForReview,
   fetchAllContent,
   adminDeleteContent,
-  toggleVisibility,
+  fetchContentCounts,
+  fetchContentPreview,
+  unpublishContent,
+  fetchAuditLogs,
+  clearContentPreview,
 } from '../redux/slices/adminSlice';
 import {
   fetchAllSuggestions,
@@ -93,10 +102,17 @@ const AdminPage = () => {
     selectedUser,
     publishRequests,
     reviewResource,
+    contentCounts,
     contentItems,
     contentTotal,
     contentLoading,
     contentError,
+    contentPreview,
+    previewLoading,
+    previewError,
+    auditLogs,
+    auditLogsTotal,
+    auditLogsLoading,
     isLoading,
   } = useSelector((state) => state.admin);
 
@@ -120,10 +136,20 @@ const AdminPage = () => {
   const [isReviewing, setIsReviewing] = useState(false);
   const [deleteModal, setDeleteModal] = useState(null);
   const [deleteContentModal, setDeleteContentModal] = useState(null); // { type, id, title }
+  const [deleteContentReason, setDeleteContentReason] = useState('');
+  const [unpublishModal, setUnpublishModal] = useState(null); // { type, id, title }
+  const [unpublishReason, setUnpublishReason] = useState('');
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [search, setSearch] = useState('');
   const [requestFilter, setRequestFilter] = useState('pending');
-  const [contentMgmtType, setContentMgmtType] = useState('course');
+  const [contentMgmtType, setContentMgmtType] = useState('book');
+  const [contentFilterVisibility, setContentFilterVisibility] = useState('public'); // 'public' | 'private' | 'all'
   const [contentSearch, setContentSearch] = useState('');
+  const [contentOwnerFilter, setContentOwnerFilter] = useState('');
+  const [contentSort, setContentSort] = useState('newest'); // 'newest' | 'oldest' | 'title'
+  const [contentPage, setContentPage] = useState(1);
+  const [auditLogPage, setAuditLogPage] = useState(1);
+  const [auditLogActionFilter, setAuditLogActionFilter] = useState('');
 
   // Feature Suggestions Admin State
   const [suggestionFilter, setSuggestionFilter] = useState('all'); // all | pending | under_review | planned | completed | dismissed
@@ -216,46 +242,187 @@ const AdminPage = () => {
     setView('publishRequests');
   };
 
-  const handleViewContentManagement = (type = 'course') => {
+  const handleViewContentManagement = (type = 'book') => {
     setContentMgmtType(type);
     setContentSearch('');
-    dispatch(fetchAllContent({ type }));
+    setContentOwnerFilter('');
+    setContentFilterVisibility('public');
+    setContentPage(1);
+    dispatch(fetchContentCounts());
+    dispatch(fetchAuditLogs({ page: 1, limit: 15 }));
+    dispatch(
+      fetchAllContent({
+        type,
+        visibility: 'public',
+        search: '',
+        owner: '',
+        sort: contentSort,
+        page: 1,
+        limit: 20,
+      }),
+    );
     setView('contentManagement');
   };
 
   const handleContentTypeChange = (type) => {
+    if (type === 'publish_request') {
+      handleViewPublishRequests();
+      return;
+    }
     setContentMgmtType(type);
     setContentSearch('');
-    dispatch(fetchAllContent({ type }));
+    setContentOwnerFilter('');
+    setContentPage(1);
+    dispatch(
+      fetchAllContent({
+        type,
+        visibility: contentFilterVisibility,
+        search: '',
+        owner: '',
+        sort: contentSort,
+        page: 1,
+        limit: 20,
+      }),
+    );
+  };
+
+  const handleContentVisibilityFilterChange = (vis) => {
+    setContentFilterVisibility(vis);
+    setContentPage(1);
+    dispatch(
+      fetchAllContent({
+        type: contentMgmtType,
+        visibility: vis,
+        search: contentSearch,
+        owner: contentOwnerFilter,
+        sort: contentSort,
+        page: 1,
+        limit: 20,
+      }),
+    );
   };
 
   const handleContentSearch = (e) => {
     const q = e.target.value;
     setContentSearch(q);
-    dispatch(fetchAllContent({ type: contentMgmtType, search: q }));
+    setContentPage(1);
+    dispatch(
+      fetchAllContent({
+        type: contentMgmtType,
+        visibility: contentFilterVisibility,
+        search: q,
+        owner: contentOwnerFilter,
+        sort: contentSort,
+        page: 1,
+        limit: 20,
+      }),
+    );
   };
 
-  const handleToggleVisibility = async (item) => {
-    const newVis = item.visibility === 'public' ? 'private' : 'public';
-    const result = await dispatch(toggleVisibility({ contentType: contentMgmtType, contentId: item._id, visibility: newVis }));
+  const handleContentOwnerFilter = (e) => {
+    const o = e.target.value;
+    setContentOwnerFilter(o);
+    setContentPage(1);
+    dispatch(
+      fetchAllContent({
+        type: contentMgmtType,
+        visibility: contentFilterVisibility,
+        search: contentSearch,
+        owner: o,
+        sort: contentSort,
+        page: 1,
+        limit: 20,
+      }),
+    );
+  };
+
+  const handleContentSortChange = (e) => {
+    const s = e.target.value;
+    setContentSort(s);
+    setContentPage(1);
+    dispatch(
+      fetchAllContent({
+        type: contentMgmtType,
+        visibility: contentFilterVisibility,
+        search: contentSearch,
+        owner: contentOwnerFilter,
+        sort: s,
+        page: 1,
+        limit: 20,
+      }),
+    );
+  };
+
+  const handleContentPageChange = (newPage) => {
+    setContentPage(newPage);
+    dispatch(
+      fetchAllContent({
+        type: contentMgmtType,
+        visibility: contentFilterVisibility,
+        search: contentSearch,
+        owner: contentOwnerFilter,
+        sort: contentSort,
+        page: newPage,
+        limit: 20,
+      }),
+    );
+  };
+
+  const handleOpenPreview = async (item) => {
+    setShowPreviewModal(true);
+    await dispatch(
+      fetchContentPreview({
+        type: contentMgmtType,
+        id: item._id,
+        reason: `Regulatory moderation review of ${item.visibility || 'content'} ${contentMgmtType}`,
+      }),
+    );
+  };
+
+  const handleConfirmUnpublish = async () => {
+    if (!unpublishModal) return;
+    const result = await dispatch(
+      unpublishContent({
+        type: unpublishModal.type,
+        id: unpublishModal.id,
+        reason: unpublishReason || 'Unpublished by administrator for regulatory compliance',
+      }),
+    );
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success(`Set to ${newVis}`);
-      dispatch(fetchAllContent({ type: contentMgmtType, search: contentSearch }));
+      toast.success('Content unpublished and set to private');
+      setUnpublishModal(null);
+      setUnpublishReason('');
+      dispatch(fetchContentCounts());
+      dispatch(fetchAuditLogs({ page: auditLogPage, limit: 15 }));
     } else {
-      toast.error(result.payload || 'Failed');
+      toast.error(result.payload || 'Failed to unpublish');
     }
   };
 
-  const handleAdminDeleteContent = async () => {
+  const handleConfirmAdminDelete = async () => {
     if (!deleteContentModal) return;
-    const result = await dispatch(adminDeleteContent({ type: deleteContentModal.type, id: deleteContentModal.id }));
+    const result = await dispatch(
+      adminDeleteContent({
+        type: deleteContentModal.type,
+        id: deleteContentModal.id,
+        reason: deleteContentReason || 'Deleted by administrator for moderation compliance',
+      }),
+    );
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Content deleted');
+      toast.success('Content permanently deleted');
       setDeleteContentModal(null);
+      setDeleteContentReason('');
+      if (showPreviewModal) setShowPreviewModal(false);
       dispatch(fetchStats());
+      dispatch(fetchContentCounts());
+      dispatch(fetchAuditLogs({ page: auditLogPage, limit: 15 }));
     } else {
       toast.error(result.payload || 'Failed to delete');
     }
+  };
+
+  const handleRefreshAuditLogs = (page = auditLogPage, action = auditLogActionFilter) => {
+    dispatch(fetchAuditLogs({ page, limit: 15, action }));
   };
 
   const handleOpenRequest = async (req) => {
@@ -325,14 +492,6 @@ const AdminPage = () => {
     totalUserStorageBytes >= 1048576
       ? `${(totalUserStorageBytes / 1048576).toFixed(2)} MB`
       : `${Math.round(totalUserStorageBytes / 1024)} KB`;
-
-  const statCards = [
-    { label: 'Users', value: stats?.users || 0, icon: IoPersonOutline, color: 'from-[#ff5722] to-[#f4511e]' },
-    { label: 'Books', value: stats?.books || 0, icon: IoBookOutline, color: 'from-amber-500 to-orange-600' },
-    { label: 'Courses', value: stats?.courses || 0, icon: IoSchoolOutline, color: 'from-purple-500 to-pink-600' },
-    { label: 'Tools', value: stats?.tools || 0, icon: IoBulbOutline, color: 'from-emerald-500 to-teal-600' },
-    { label: 'Pending Requests', value: stats?.pendingRequests || 0, icon: IoTimeOutline, color: 'from-rose-500 to-red-600' },
-  ];
 
   const handleBackFromDetail = () => {
     setView('publishRequests');
@@ -916,7 +1075,7 @@ const AdminPage = () => {
                   </div>
 
                   <div className="space-y-3">
-                    {(analytics?.traffic?.topEndpoints || []).map((ep, i) => (
+                    {(analytics?.traffic?.topEndpoints || []).map((ep) => (
                       <div key={ep.path} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-mono font-medium text-primary">
@@ -1759,41 +1918,185 @@ const AdminPage = () => {
           {/* Content Management View */}
           {view === 'contentManagement' && (
             <motion.div key="contentManagement" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              {/* Type tabs */}
+              {/* Type tabs with counts */}
               <div className="flex items-center gap-2 mb-5 flex-wrap">
                 {[
-                  { type: 'book',     label: 'Books',     icon: IoBookOutline,    activeClass: 'bg-accent-subtle text-accent border-accent/30' },
-                  { type: 'course',   label: 'Courses',   icon: IoSchoolOutline,  activeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
-                  { type: 'tool',     label: 'Tricks',    icon: IoBulbOutline,    activeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-                  { type: 'section',  label: 'Workspaces',icon: IoFolderOutline,  activeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-                  { type: 'playlist', label: 'Playlists', icon: IoLogoYoutube,    activeClass: 'bg-red-500/15 text-red-400 border-red-500/30' },
-                ].map(({ type, label, icon: Icon, activeClass }) => (
+                  {
+                    type: 'book',
+                    label: 'Books',
+                    icon: IoBookOutline,
+                    count: contentCounts?.book?.total ?? stats?.books ?? 0,
+                    activeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                  },
+                  {
+                    type: 'course',
+                    label: 'Courses',
+                    icon: IoSchoolOutline,
+                    count: contentCounts?.course?.total ?? stats?.courses ?? 0,
+                    activeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+                  },
+                  {
+                    type: 'tool',
+                    label: 'Tools',
+                    icon: IoBulbOutline,
+                    count: contentCounts?.tool?.total ?? stats?.tools ?? 0,
+                    activeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+                  },
+                  {
+                    type: 'section',
+                    label: 'Workspaces',
+                    icon: IoFolderOutline,
+                    count: contentCounts?.section?.total ?? 0,
+                    activeClass: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+                  },
+                  {
+                    type: 'playlist',
+                    label: 'Playlists',
+                    icon: IoLogoYoutube,
+                    count: contentCounts?.playlist?.total ?? 0,
+                    activeClass: 'bg-red-500/15 text-red-400 border-red-500/30',
+                  },
+                  {
+                    type: 'publish_request',
+                    label: 'Publish Requests',
+                    icon: IoTimeOutline,
+                    count: contentCounts?.publish_request?.pending ?? stats?.pendingRequests ?? 0,
+                    activeClass: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+                  },
+                  {
+                    type: 'comment',
+                    label: 'Comments',
+                    icon: IoChatbubbleEllipsesOutline,
+                    count: contentCounts?.comment?.total ?? 0,
+                    activeClass: 'bg-pink-500/15 text-pink-400 border-pink-500/30',
+                  },
+                ].map((tab) => (
                   <button
-                    key={type}
-                    onClick={() => handleContentTypeChange(type)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer ${
-                      contentMgmtType === type
-                        ? activeClass
+                    key={tab.type}
+                    onClick={() => handleContentTypeChange(tab.type)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer ${
+                      contentMgmtType === tab.type
+                        ? tab.activeClass
                         : 'bg-surface text-secondary border-subtle hover:bg-surface-raised'
                     }`}
                   >
-                    <Icon size={15} />{label}
+                    <tab.icon size={16} />
+                    <span>{tab.label}</span>
+                    <span
+                      className={`text-[11px] px-2 py-0.5 rounded-full font-mono ${
+                        contentMgmtType === tab.type
+                          ? 'bg-black/25 text-primary font-bold'
+                          : 'bg-surface-raised text-muted'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
                   </button>
                 ))}
               </div>
 
-              {/* Search */}
-              <div className="relative mb-5">
-                <IoSearchOutline size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-                <input
-                  type="text"
-                  placeholder={`Search ${contentMgmtType}s…`}
-                  value={contentSearch}
-                  onChange={handleContentSearch}
-                  className="input-dark w-full pl-11 text-sm"
-                />
+              {/* Filters & Control Bar */}
+              <div className="glass-card p-4 rounded-2xl border border-subtle mb-6 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  {/* Visibility Mode Selector */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface border border-subtle shrink-0">
+                    <button
+                      onClick={() => handleContentVisibilityFilterChange('public')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        contentFilterVisibility === 'public'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
+                          : 'text-secondary hover:text-primary'
+                      }`}
+                    >
+                      <IoGlobeOutline size={14} />
+                      <span>Public</span>
+                      {contentCounts?.[contentMgmtType]?.public !== undefined && (
+                        <span className="text-[10px] opacity-75">
+                          ({contentCounts[contentMgmtType].public})
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleContentVisibilityFilterChange('private')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        contentFilterVisibility === 'private'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                          : 'text-secondary hover:text-primary'
+                      }`}
+                      title="Authorized regulatory moderation view of private items"
+                    >
+                      <IoLockClosed size={13} />
+                      <span>Private</span>
+                      {contentCounts?.[contentMgmtType]?.private !== undefined && (
+                        <span className="text-[10px] opacity-75">
+                          ({contentCounts[contentMgmtType].private})
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleContentVisibilityFilterChange('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        contentFilterVisibility === 'all'
+                          ? 'bg-surface-raised text-primary border border-subtle shadow-sm'
+                          : 'text-secondary hover:text-primary'
+                      }`}
+                    >
+                      <span>All</span>
+                    </button>
+                  </div>
+
+                  {/* Regulatory Moderation Mode Notice */}
+                  {contentFilterVisibility === 'private' && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs">
+                      <IoShieldCheckmarkOutline size={15} />
+                      <span className="font-medium">
+                        Regulatory Moderation: Reading private user content is strictly audited.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search, Owner Filter, and Sorting */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-5 relative">
+                    <IoSearchOutline size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                    <input
+                      type="text"
+                      placeholder={`Search ${contentMgmtType}s by title, author, text…`}
+                      value={contentSearch}
+                      onChange={handleContentSearch}
+                      className="input-dark w-full pl-10 text-xs py-2"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-4 relative">
+                    <IoPersonOutline size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                    <input
+                      type="text"
+                      placeholder="Filter by owner name / email…"
+                      value={contentOwnerFilter}
+                      onChange={handleContentOwnerFilter}
+                      className="input-dark w-full pl-10 text-xs py-2"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <select
+                      value={contentSort}
+                      onChange={handleContentSortChange}
+                      className="input-dark w-full text-xs py-2 bg-surface cursor-pointer"
+                    >
+                      <option value="newest">Sort: Newest First</option>
+                      <option value="oldest">Sort: Oldest First</option>
+                      <option value="title">Sort: Title / Name (A–Z)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
+              {/* Items List */}
               {contentLoading ? (
                 <LoadingSpinner text="Loading content…" />
               ) : contentError ? (
@@ -1802,82 +2105,347 @@ const AdminPage = () => {
                   <p className="text-red-400 font-medium">Failed to load content</p>
                   <p className="text-muted text-sm mt-1">{contentError}</p>
                   <button
-                    onClick={() => dispatch(fetchAllContent({ type: contentMgmtType }))}
+                    onClick={() =>
+                      dispatch(
+                        fetchAllContent({
+                          type: contentMgmtType,
+                          visibility: contentFilterVisibility,
+                          search: contentSearch,
+                          owner: contentOwnerFilter,
+                          sort: contentSort,
+                          page: contentPage,
+                          limit: 20,
+                        }),
+                      )
+                    }
                     className="mt-4 px-4 py-2 rounded-xl bg-surface hover:bg-surface-raised text-primary text-sm transition-colors border border-subtle cursor-pointer"
                   >
                     Retry
                   </button>
                 </div>
               ) : contentItems.length === 0 ? (
-                <div className="text-center py-20 glass-card border border-subtle">
+                <div className="text-center py-20 glass-card border border-subtle rounded-2xl">
                   <IoLayersOutline className="mx-auto text-muted mb-3" size={44} />
-                  <p className="text-secondary">No content found{contentSearch ? ` for “${contentSearch}”` : ''}</p>
+                  <p className="text-secondary font-medium">
+                    No {contentFilterVisibility !== 'all' ? contentFilterVisibility : ''} {contentMgmtType} items found
+                    {contentSearch ? ` matching “${contentSearch}”` : ''}
+                    {contentOwnerFilter ? ` by “${contentOwnerFilter}”` : ''}
+                  </p>
+                  <p className="text-xs text-muted mt-1">Try broadening your search or switching visibility filters.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted mb-3">{contentTotal} item{contentTotal !== 1 ? 's' : ''} total</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-muted mb-2 px-1">
+                    <span>
+                      Showing {contentItems.length} of {contentTotal} total {contentMgmtType} items ({contentFilterVisibility})
+                    </span>
+                    <span>Page {contentPage} of {Math.max(1, Math.ceil(contentTotal / 20))}</span>
+                  </div>
+
                   {contentItems.map((item) => {
-                    const thumb = item.bannerImage || item.coverImage || item.thumbnailUrl || item.thumbnail;
+                    const thumb =
+                      item.thumbnailUrl || item.bannerImage || item.coverImage || item.thumbnail || item.icon;
                     const isPublic = item.visibility === 'public';
+                    const ownerName = item.addedBy?.name || item.user?.name || item.requestedBy?.name || 'Unknown';
+                    const ownerEmail = item.addedBy?.email || item.user?.email || item.requestedBy?.email;
+
                     return (
                       <div
                         key={item._id}
-                        className="glass-card p-4 flex items-center gap-4 group border border-subtle"
+                        className="glass-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group border border-subtle hover:border-strong transition-all rounded-2xl"
                       >
-                        {/* Thumbnail */}
-                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface flex-shrink-0 flex items-center justify-center border border-subtle">
-                          {thumb ? (
-                            <img src={thumb} alt={item.title || item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <IoLayersOutline size={18} className="text-muted" />
-                          )}
-                        </div>
+                        {/* Thumbnail & Basic Info */}
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-surface flex-shrink-0 flex items-center justify-center border border-subtle">
+                            {thumb && typeof thumb === 'string' && thumb.startsWith('http') ? (
+                              <img
+                                src={thumb}
+                                alt={item.title || item.name || 'Thumbnail'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.parentElement.innerHTML =
+                                    '<span class="text-muted text-xs font-mono">N/A</span>';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-surface-raised text-muted">
+                                {contentMgmtType === 'book' ? (
+                                  <IoBookOutline size={20} />
+                                ) : contentMgmtType === 'course' ? (
+                                  <IoSchoolOutline size={20} />
+                                ) : contentMgmtType === 'tool' ? (
+                                  <IoBulbOutline size={20} />
+                                ) : contentMgmtType === 'section' ? (
+                                  <IoFolderOutline size={20} />
+                                ) : contentMgmtType === 'playlist' ? (
+                                  <IoLogoYoutube size={20} />
+                                ) : (
+                                  <IoChatbubbleEllipsesOutline size={20} />
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-primary font-medium truncate">{item.title || item.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5 text-xs text-muted flex-wrap">
-                            {item.addedBy?.name && <span>by {item.addedBy.name}</span>}
-                            {item.category?.name && <span>· {item.category.name}</span>}
-                            <span>· {new Date(item.createdAt).toLocaleDateString()}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-primary font-semibold text-base truncate">
+                                {item.title || item.name || (item.text ? item.text.slice(0, 50) + '…' : 'Untitled')}
+                              </p>
+                              {item.author && (
+                                <span className="text-xs text-secondary font-medium">by {item.author}</span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted flex-wrap">
+                              <span className="flex items-center gap-1 text-secondary">
+                                <IoPersonOutline size={12} />
+                                {ownerName} {ownerEmail ? `(${ownerEmail})` : ''}
+                              </span>
+                              {item.category?.name && (
+                                <span>• Category: <strong className="text-secondary">{item.category.name}</strong></span>
+                              )}
+                              <span>• {new Date(item.createdAt).toLocaleDateString()}</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Visibility badge */}
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          isPublic
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-surface text-muted'
-                        }`}>
-                          {isPublic ? 'Public' : 'Private'}
-                        </span>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => handleToggleVisibility(item)}
-                            title={isPublic ? 'Make private' : 'Make public'}
-                            className={`p-2 rounded-lg text-sm transition-colors cursor-pointer ${
+                        {/* Badges & Actions */}
+                        <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                          {/* Visibility badge */}
+                          <span
+                            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${
                               isPublic
-                                ? 'text-emerald-400 hover:bg-emerald-500/10'
-                                : 'text-muted hover:text-primary hover:bg-surface-raised'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                                : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
                             }`}
                           >
-                            {isPublic ? <IoGlobeOutline size={16} /> : <IoLockClosedOutline size={16} />}
-                          </button>
-                          <button
-                            onClick={() => setDeleteContentModal({ type: contentMgmtType, id: item._id, title: item.title || item.name })}
-                            className="p-2 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                            title="Delete permanently"
-                          >
-                            <IoTrashOutline size={16} />
-                          </button>
+                            {isPublic ? <IoGlobeOutline size={13} /> : <IoLockClosed size={12} />}
+                            <span>{isPublic ? 'Public' : 'Private'}</span>
+                          </span>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-1.5">
+                            {/* Preview Button (Full regulatory read) */}
+                            <button
+                              onClick={() => handleOpenPreview(item)}
+                              title="Open complete regulatory content preview"
+                              className="p-2 rounded-xl text-secondary hover:text-accent hover:bg-accent-subtle border border-subtle transition-all cursor-pointer"
+                            >
+                              <IoEyeOutline size={16} />
+                            </button>
+
+                            {/* Unpublish Button (Only on Public items) */}
+                            {isPublic && (
+                              <button
+                                onClick={() => {
+                                  setUnpublishModal({
+                                    type: contentMgmtType,
+                                    id: item._id,
+                                    title: item.title || item.name || 'Content',
+                                  });
+                                  setUnpublishReason('');
+                                }}
+                                title="Unpublish (revert to private with recorded reason)"
+                                className="p-2 rounded-xl text-amber-400 hover:bg-amber-500/15 border border-amber-500/30 transition-all cursor-pointer"
+                              >
+                                <IoLockOpenOutline size={16} />
+                              </button>
+                            )}
+
+                            {/* Delete Button (Requires Reason & Cascades cleanup) */}
+                            <button
+                              onClick={() => {
+                                setDeleteContentModal({
+                                  type: contentMgmtType,
+                                  id: item._id,
+                                  title: item.title || item.name || 'Content',
+                                });
+                                setDeleteContentReason('');
+                              }}
+                              className="p-2 rounded-xl text-muted hover:text-red-400 hover:bg-red-500/15 border border-subtle hover:border-red-500/30 transition-all cursor-pointer"
+                              title="Permanently delete with cascade file cleanup"
+                            >
+                              <IoTrashOutline size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
+
+                  {/* Pagination Bar */}
+                  {contentTotal > 20 && (
+                    <div className="flex items-center justify-between pt-4 pb-2 px-1 text-sm text-secondary">
+                      <button
+                        disabled={contentPage <= 1}
+                        onClick={() => handleContentPageChange(contentPage - 1)}
+                        className="px-4 py-2 rounded-xl bg-surface border border-subtle hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      >
+                        Previous Page
+                      </button>
+
+                      <span className="text-xs text-muted">
+                        Page {contentPage} of {Math.ceil(contentTotal / 20)}
+                      </span>
+
+                      <button
+                        disabled={contentPage * 20 >= contentTotal}
+                        onClick={() => handleContentPageChange(contentPage + 1)}
+                        className="px-4 py-2 rounded-xl bg-surface border border-subtle hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      >
+                        Next Page
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Recent Admin Actions / Audit Trail Section */}
+              <div className="mt-12 pt-8 border-t border-subtle">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-accent-subtle text-accent flex items-center justify-center">
+                      <IoShieldCheckmarkOutline size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-primary">Recent Regulatory & Administrative Audit Trail</h3>
+                      <p className="text-xs text-muted">Immutable log of all private content reads, previews, unpublishes, and moderation decisions</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                    <select
+                      value={auditLogActionFilter}
+                      onChange={(e) => {
+                        const act = e.target.value;
+                        setAuditLogActionFilter(act);
+                        setAuditLogPage(1);
+                        handleRefreshAuditLogs(1, act);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-surface border border-subtle text-xs text-secondary focus:border-accent outline-none cursor-pointer"
+                    >
+                      <option value="">All Actions</option>
+                      <option value="view_private_content">View Private Content</option>
+                      <option value="preview_content">Preview Content</option>
+                      <option value="unpublish_content">Unpublish</option>
+                      <option value="delete_content">Delete Content</option>
+                      <option value="review_publish_request">Publish Review</option>
+                      <option value="delete_user">Delete User</option>
+                    </select>
+
+                    <button
+                      onClick={() => handleRefreshAuditLogs()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-all cursor-pointer"
+                    >
+                      <IoRefreshOutline size={14} className={auditLogsLoading ? 'animate-spin' : ''} />
+                      <span>Refresh Logs</span>
+                    </button>
+                  </div>
+                </div>
+
+                {auditLogsLoading && !auditLogs?.length ? (
+                  <LoadingSpinner text="Loading audit records…" />
+                ) : !auditLogs?.length ? (
+                  <div className="glass-card p-8 text-center border border-subtle rounded-2xl">
+                    <IoShieldCheckmarkOutline className="mx-auto text-muted mb-2" size={32} />
+                    <p className="text-secondary text-sm">No administrative audit records logged yet.</p>
+                  </div>
+                ) : (
+                  <div className="glass-card rounded-2xl border border-subtle overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-surface/80 border-b border-subtle text-muted uppercase text-[10px] tracking-wider font-semibold">
+                          <tr>
+                            <th className="py-3 px-4">Timestamp</th>
+                            <th className="py-3 px-4">Action</th>
+                            <th className="py-3 px-4">Target Type</th>
+                            <th className="py-3 px-4">Target ID / Owner</th>
+                            <th className="py-3 px-4">Reason / Details</th>
+                            <th className="py-3 px-4">IP Address</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-subtle">
+                          {auditLogs.map((log) => {
+                            const actionCls = {
+                              view_private_content: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                              preview_content: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+                              unpublish_content: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+                              delete_content: 'bg-red-500/15 text-red-400 border-red-500/30',
+                              delete_user: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+                              review_publish_request: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+                              update_suggestion: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+                            }[log.action] || 'bg-surface text-secondary border-subtle';
+
+                            return (
+                              <tr key={log._id} className="hover:bg-surface/50 transition-colors">
+                                <td className="py-3 px-4 whitespace-nowrap text-muted font-mono text-[11px]">
+                                  {new Date(log.createdAt).toLocaleString()}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${actionCls}`}>
+                                    {log.action}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 font-medium text-primary uppercase text-[10px]">
+                                  {log.targetType}
+                                </td>
+                                <td className="py-3 px-4 text-secondary">
+                                  <div className="font-mono text-[11px] text-muted">{log.targetId || 'N/A'}</div>
+                                  {log.owner && (
+                                    <div className="text-[10px] text-secondary">
+                                      Owner: {log.owner?.name || log.owner?.email || log.owner}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-secondary max-w-xs truncate" title={log.reason}>
+                                  {log.reason || '—'}
+                                </td>
+                                <td className="py-3 px-4 text-muted font-mono text-[11px] whitespace-nowrap">
+                                  {log.ipAddress || '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Audit Logs Pagination */}
+                    {auditLogsTotal > 15 && (
+                      <div className="flex items-center justify-between p-3 border-t border-subtle bg-surface/30 text-xs text-secondary">
+                        <button
+                          disabled={auditLogPage <= 1}
+                          onClick={() => {
+                            const newPage = auditLogPage - 1;
+                            setAuditLogPage(newPage);
+                            handleRefreshAuditLogs(newPage);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-surface border border-subtle hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          Previous
+                        </button>
+
+                        <span className="text-[11px] text-muted">
+                          Showing page {auditLogPage} of {Math.ceil(auditLogsTotal / 15)} ({auditLogsTotal} audit events)
+                        </span>
+
+                        <button
+                          disabled={auditLogPage * 15 >= auditLogsTotal}
+                          onClick={() => {
+                            const newPage = auditLogPage + 1;
+                            setAuditLogPage(newPage);
+                            handleRefreshAuditLogs(newPage);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-surface border border-subtle hover:bg-surface-raised disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -2689,27 +3257,289 @@ const AdminPage = () => {
         </div>
       </Modal>
 
+      {/* Unpublish Content Modal */}
+      <Modal
+        isOpen={!!unpublishModal}
+        onClose={() => setUnpublishModal(null)}
+        title="Unpublish Content (Regulatory Moderation)"
+      >
+        <p className="text-secondary mb-2 text-sm">
+          You are unpublishing this item and reverting its visibility to private:
+        </p>
+        <p className="text-primary font-semibold mb-4 px-3 py-2 bg-surface rounded-xl border border-subtle text-sm">
+          {unpublishModal?.title}
+        </p>
+        <div className="mb-5 space-y-1.5">
+          <label className="text-xs font-medium text-secondary">
+            Reason for Unpublishing (mandatory for audit trail):
+          </label>
+          <textarea
+            rows={3}
+            value={unpublishReason}
+            onChange={(e) => setUnpublishReason(e.target.value)}
+            placeholder="e.g., Regulatory non-compliance, copyright dispute, inappropriate material..."
+            className="input-dark w-full text-xs"
+          />
+        </div>
+        <div className="flex justify-end gap-3">
+          <button onClick={() => setUnpublishModal(null)} className="btn-secondary text-xs cursor-pointer">
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirmUnpublish}
+            className="btn-primary bg-amber-500 hover:bg-amber-600 text-xs font-semibold cursor-pointer"
+          >
+            Confirm Unpublish
+          </button>
+        </div>
+      </Modal>
+
       {/* Delete Content Confirmation Modal */}
       <Modal
         isOpen={!!deleteContentModal}
         onClose={() => setDeleteContentModal(null)}
         title="Delete Content Permanently"
       >
-        <p className="text-secondary mb-2">
+        <p className="text-secondary mb-2 text-sm">
           Are you sure you want to permanently delete:
         </p>
-        <p className="text-primary font-semibold mb-6 px-3 py-2 bg-surface rounded-xl border border-subtle">
+        <p className="text-primary font-semibold mb-3 px-3 py-2 bg-surface rounded-xl border border-subtle text-sm">
           {deleteContentModal?.title}
         </p>
-        <p className="text-xs text-red-400/80 mb-6">
-          This removes the content for ALL users who have it saved. This cannot be undone.
-        </p>
+        <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs flex items-start gap-2">
+          <IoWarningOutline size={18} className="shrink-0 mt-0.5" />
+          <span>
+            This triggers cascade cleanup: all associated R2/GridFS files, subsections/blocks, and user library references will be deleted. This cannot be undone.
+          </span>
+        </div>
+        <div className="mb-5 space-y-1.5">
+          <label className="text-xs font-medium text-secondary">
+            Reason for Deletion (recorded in audit log):
+          </label>
+          <textarea
+            rows={2}
+            value={deleteContentReason}
+            onChange={(e) => setDeleteContentReason(e.target.value)}
+            placeholder="e.g., DMCA takedown, terms of service violation, malicious upload..."
+            className="input-dark w-full text-xs"
+          />
+        </div>
         <div className="flex justify-end gap-3">
-          <button onClick={() => setDeleteContentModal(null)} className="btn-secondary cursor-pointer">Cancel</button>
-          <button onClick={handleAdminDeleteContent} className="btn-primary bg-red-500 hover:bg-red-600 cursor-pointer">
+          <button onClick={() => setDeleteContentModal(null)} className="btn-secondary text-xs cursor-pointer">
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirmAdminDelete}
+            className="btn-primary bg-red-500 hover:bg-red-600 text-xs font-semibold cursor-pointer"
+          >
             Delete Permanently
           </button>
         </div>
+      </Modal>
+
+      {/* Full Content Preview Drawer / Modal */}
+      <Modal
+        isOpen={showPreviewModal}
+        onClose={() => {
+          setShowPreviewModal(false);
+          dispatch(clearContentPreview());
+        }}
+        title={`Regulatory Moderation Preview — ${contentMgmtType.toUpperCase()}`}
+        maxWidth="max-w-3xl"
+      >
+        {previewLoading ? (
+          <LoadingSpinner text="Generating authenticated preview & signed URLs…" />
+        ) : previewError ? (
+          <div className="text-center py-8">
+            <IoWarningOutline className="mx-auto text-red-500 mb-2" size={36} />
+            <p className="text-red-400 font-medium text-sm">Failed to load preview</p>
+            <p className="text-xs text-muted mt-1">{previewError}</p>
+          </div>
+        ) : contentPreview?.item ? (
+          (() => {
+            const item = contentPreview.item;
+            const isPublic = item.visibility === 'public';
+            const ownerName = item.addedBy?.name || item.user?.name || item.requestedBy?.name || 'Unknown';
+            const ownerEmail = item.addedBy?.email || item.user?.email || item.requestedBy?.email || 'N/A';
+            const thumb = item.thumbnailUrl || item.bannerImage || item.coverImage || item.thumbnail;
+
+            return (
+              <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+                {/* Header Information */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-4 rounded-2xl bg-surface border border-subtle">
+                  <div className="flex items-start gap-4 flex-1">
+                    {thumb && (
+                      <img
+                        src={thumb}
+                        alt="Preview"
+                        className="w-20 h-20 rounded-xl object-cover border border-subtle shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                    <div>
+                      <h3 className="text-lg font-bold text-primary">
+                        {item.title || item.name || 'Untitled Resource'}
+                      </h3>
+                      {item.author && <p className="text-xs text-secondary mt-0.5">Author: {item.author}</p>}
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted flex-wrap">
+                        <span className="text-secondary font-medium">
+                          Owner: {ownerName} ({ownerEmail})
+                        </span>
+                        <span>•</span>
+                        <span>Created: {new Date(item.createdAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border shrink-0 ${
+                      isPublic
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
+                    }`}
+                  >
+                    {isPublic ? <IoGlobeOutline size={14} /> : <IoLockClosed size={13} />}
+                    <span>{isPublic ? 'Public Content' : 'Private User Content'}</span>
+                  </span>
+                </div>
+
+                {/* Description or Text */}
+                {(item.description || item.text) && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase font-semibold text-muted tracking-wider">
+                      {item.text ? 'Comment / Body Text' : 'Description'}
+                    </label>
+                    <div className="p-3.5 rounded-xl bg-surface border border-subtle text-secondary text-sm leading-relaxed whitespace-pre-wrap">
+                      {item.description || item.text}
+                    </div>
+                  </div>
+                )}
+
+                {/* Book Media: Signed PDF & Audio files */}
+                {contentMgmtType === 'book' && (
+                  <div className="space-y-4">
+                    {item.signedPdfUrl && (
+                      <div className="p-4 rounded-xl bg-surface border border-subtle flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <IoDocumentTextOutline size={24} className="text-accent shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-primary">Full PDF Document</p>
+                            <p className="text-xs text-muted">Authorized short-lived signed access</p>
+                          </div>
+                        </div>
+                        <a
+                          href={item.signedPdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-primary text-xs px-3.5 py-1.5 cursor-pointer"
+                        >
+                          Open PDF Reader
+                        </a>
+                      </div>
+                    )}
+
+                    {item.audioFiles?.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-xs uppercase font-semibold text-muted tracking-wider">
+                          Audio Tracks ({item.audioFiles.length})
+                        </label>
+                        <div className="space-y-2">
+                          {item.audioFiles.map((af, idx) => (
+                            <div key={idx} className="p-3 rounded-xl bg-surface border border-subtle flex flex-col gap-2">
+                              <span className="text-xs font-semibold text-primary">{af.title || `Track ${idx + 1}`}</span>
+                              {af.signedAudioUrl ? (
+                                <audio controls className="w-full h-8" src={af.signedAudioUrl} />
+                              ) : (
+                                <span className="text-[11px] text-muted italic">Storage key: {af.r2Key || af.fileId}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Workspace Blocks */}
+                {contentMgmtType === 'section' && item.blocks?.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase font-semibold text-muted tracking-wider">
+                      Workspace Blocks ({item.blocks.length})
+                    </label>
+                    <div className="space-y-3">
+                      {item.blocks.map((block) => (
+                        <div key={block._id} className="p-3.5 rounded-xl bg-surface border border-subtle text-xs space-y-2">
+                          <div className="flex items-center justify-between text-muted">
+                            <span className="font-semibold text-primary uppercase text-[10px] tracking-wide">
+                              Block Type: {block.type}
+                            </span>
+                            {block.title && <span className="font-medium text-secondary">{block.title}</span>}
+                          </div>
+                          {block.content && (
+                            <p className="text-secondary whitespace-pre-wrap">{block.content}</p>
+                          )}
+                          {block.signedImageUrl && (
+                            <img
+                              src={block.signedImageUrl}
+                              alt="Block Attachment"
+                              className="rounded-lg max-h-48 object-cover border border-subtle mt-2"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Moderation Actions Inside Drawer */}
+                <div className="flex items-center justify-between pt-4 border-t border-subtle">
+                  <div className="flex items-center gap-2">
+                    {isPublic && (
+                      <button
+                        onClick={() => {
+                          setUnpublishModal({
+                            type: contentMgmtType,
+                            id: item._id,
+                            title: item.title || item.name || 'Content',
+                          });
+                          setUnpublishReason('');
+                        }}
+                        className="btn-secondary text-xs text-amber-400 hover:bg-amber-500/10 border-amber-500/30 cursor-pointer"
+                      >
+                        Unpublish Content
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setDeleteContentModal({
+                          type: contentMgmtType,
+                          id: item._id,
+                          title: item.title || item.name || 'Content',
+                        });
+                        setDeleteContentReason('');
+                      }}
+                      className="btn-secondary text-xs text-red-400 hover:bg-red-500/10 border-red-500/30 cursor-pointer"
+                    >
+                      Delete Content
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowPreviewModal(false);
+                      dispatch(clearContentPreview());
+                    }}
+                    className="btn-secondary text-xs cursor-pointer"
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              </div>
+            );
+          })()
+        ) : null}
       </Modal>
 
       {/* Delete Suggestion Confirmation Modal */}

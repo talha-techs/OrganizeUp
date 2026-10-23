@@ -177,6 +177,13 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300,
+  message: { message: "Too many admin requests, please slow down" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Routes
 app.use("/api/auth", authLimiter, authRoutes);
@@ -184,7 +191,7 @@ app.use("/api/books", apiLimiter, bookRoutes);
 app.use("/api/audiobooks", apiLimiter, audiobookRoutes);
 app.use("/api/courses", apiLimiter, courseRoutes);
 app.use("/api/tools", apiLimiter, toolRoutes);
-app.use("/api/admin", adminRoutes);
+app.use("/api/admin", adminLimiter, adminRoutes);
 app.use("/api/social", apiLimiter, socialRoutes);
 app.use("/api/explore", apiLimiter, exploreRoutes);
 app.use("/api/library", apiLimiter, libraryRoutes);

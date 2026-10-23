@@ -67,7 +67,13 @@ router.get('/media/:id', protect, async (req, res) => {
           : []),
       ],
     };
-    if (req.user.role !== "admin") {
+    const isSoleAdmin = Boolean(
+      req.user.role === "admin" &&
+      process.env.ADMIN_EMAIL &&
+      req.user.email &&
+      req.user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase()
+    );
+    if (!isSoleAdmin) {
       query.user = req.user._id;
     }
 

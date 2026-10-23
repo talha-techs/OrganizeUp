@@ -1257,8 +1257,14 @@ const serveImage = async (req, res) => {
         if (!req.user) {
           return res.status(401).json({ message: "Not authorized, token required" });
         }
+        const isSoleAdmin = Boolean(
+          req.user.role === "admin" &&
+          process.env.ADMIN_EMAIL &&
+          req.user.email &&
+          req.user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase()
+        );
         const isOwner =
-          String(privateDoc.user) === String(req.user._id) || req.user.role === "admin";
+          String(privateDoc.user) === String(req.user._id) || isSoleAdmin;
         if (!isOwner) {
           return res.status(403).json({ message: "Not authorized to access this resource" });
         }
@@ -1320,6 +1326,13 @@ const serveImage = async (req, res) => {
     let isOwner = false;
     let foundDoc = null;
 
+    const isSoleAdmin = Boolean(
+      req.user.role === "admin" &&
+      process.env.ADMIN_EMAIL &&
+      req.user.email &&
+      req.user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase()
+    );
+
     if (rawParam.startsWith("captures/")) {
       foundDoc = await CapturedResource.findOne({
         $or: [
@@ -1331,8 +1344,7 @@ const serveImage = async (req, res) => {
         .lean();
 
       if (foundDoc) {
-        isOwner =
-          String(foundDoc.user) === String(req.user._id) || req.user.role === "admin";
+        isOwner = String(foundDoc.user) === String(req.user._id) || isSoleAdmin;
       }
     } else if (rawParam.startsWith("telegram/")) {
       foundDoc = await TelegramMessage.findOne({
@@ -1345,8 +1357,7 @@ const serveImage = async (req, res) => {
         .lean();
 
       if (foundDoc) {
-        isOwner =
-          String(foundDoc.user) === String(req.user._id) || req.user.role === "admin";
+        isOwner = String(foundDoc.user) === String(req.user._id) || isSoleAdmin;
       }
     } else if (rawParam.startsWith("discord/")) {
       foundDoc = await DiscordMessage.findOne({
@@ -1356,8 +1367,7 @@ const serveImage = async (req, res) => {
         .lean();
 
       if (foundDoc) {
-        isOwner =
-          String(foundDoc.user) === String(req.user._id) || req.user.role === "admin";
+        isOwner = String(foundDoc.user) === String(req.user._id) || isSoleAdmin;
       }
     }
 

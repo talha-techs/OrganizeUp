@@ -10,7 +10,16 @@ const CapturedResource = require("../models/CapturedResource");
 const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
 const UserLibrary = require("../models/UserLibrary");
-const { deleteFile, extractGridFsId } = require("../services/storageService");
+const YoutubePlaylist = require("../models/YoutubePlaylist");
+const AdminAuditLog = require("../models/AdminAuditLog");
+const { logAdminAction } = require("../services/auditLogger");
+const {
+  deleteFile,
+  extractGridFsId,
+  getPresignedDownloadUrl,
+  isR2Configured,
+  R2_CONFIG,
+} = require("../services/storageService");
 const { getTrafficMetrics } = require("../middleware/trafficTracker");
 
 // In-memory cache for user storage metrics (TTL: 3 minutes)
@@ -562,6 +571,19 @@ const deleteUser = async (req, res) => {
     ).catch(() => {});
 
     await user.deleteOne();
+
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: "delete_user",
+      targetType: "user",
+      targetId: user._id,
+      owner: user._id,
+      reason: req.body?.reason || req.query?.reason || "User account deleted by administrator",
+      metadata: { deletedUserName: user.name, deletedUserEmail: user.email },
+      req,
+    });
+
     res.json({
       message: "User and associated personal resources deleted successfully",
     });
@@ -570,11 +592,103 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Toggle visibility of any content (Admin)
+const getModelForType = (type) => {
+  switch (type) {
+    case "book":
+      return Book;
+    case "course":
+      return Course;
+    case "tool":
+      return Tool;
+    case "section":
+      return CustomSection;
+    case "playlist":
+    case "video":
+      return YoutubePlaylist;
+    case "comment":
+      return Comment;
+    case "publish_request":
+      return PublishRequest;
+    default:
+      return null;
+  }
+};
+
+// @desc    Get aggregate content counts per tab (public, private, total)
+// @route   GET /api/admin/counts
+const getContentCounts = async (req, res) => {
+  try {
+    const [
+      bookTotal,
+      bookPublic,
+      bookPrivate,
+      courseTotal,
+      coursePublic,
+      coursePrivate,
+      toolTotal,
+      toolPublic,
+      toolPrivate,
+      sectionTotal,
+      sectionPublic,
+      sectionPrivate,
+      playlistTotal,
+      playlistPublic,
+      playlistPrivate,
+      pubReqPending,
+      pubReqApproved,
+      pubReqRejected,
+      pubReqTotal,
+      commentTotal,
+    ] = await Promise.all([
+      Book.countDocuments(),
+      Book.countDocuments({ visibility: "public" }),
+      Book.countDocuments({ visibility: "private" }),
+      Course.countDocuments(),
+      Course.countDocuments({ visibility: "public" }),
+      Course.countDocuments({ visibility: "private" }),
+      Tool.countDocuments(),
+      Tool.countDocuments({ visibility: "public" }),
+      Tool.countDocuments({ visibility: "private" }),
+      CustomSection.countDocuments(),
+      CustomSection.countDocuments({ visibility: "public" }),
+      CustomSection.countDocuments({ visibility: "private" }),
+      YoutubePlaylist.countDocuments(),
+      YoutubePlaylist.countDocuments({ visibility: "public" }),
+      YoutubePlaylist.countDocuments({ visibility: "private" }),
+      PublishRequest.countDocuments({ status: "pending" }),
+      PublishRequest.countDocuments({ status: "approved" }),
+      PublishRequest.countDocuments({ status: "rejected" }),
+      PublishRequest.countDocuments(),
+      Comment.countDocuments(),
+    ]);
+
+    res.json({
+      counts: {
+        book: { total: bookTotal, public: bookPublic, private: bookPrivate },
+        course: { total: courseTotal, public: coursePublic, private: coursePrivate },
+        tool: { total: toolTotal, public: toolPublic, private: toolPrivate },
+        section: { total: sectionTotal, public: sectionPublic, private: sectionPrivate },
+        playlist: { total: playlistTotal, public: playlistPublic, private: playlistPrivate },
+        publish_request: {
+          total: pubReqTotal,
+          pending: pubReqPending,
+          approved: pubReqApproved,
+          rejected: pubReqRejected,
+        },
+        comment: { total: commentTotal },
+      },
+    });
+  } catch (error) {
+    console.error("getContentCounts error:", error);
+    res.status(500).json({ message: "Failed to fetch content counts" });
+  }
+};
+
+// @desc    Toggle visibility of content (Admin fallback / backward compatibility)
 // @route   PUT /api/admin/toggle-visibility
 const toggleVisibility = async (req, res) => {
   try {
-    const { contentType, contentId, visibility } = req.body;
+    const { contentType, contentId, visibility, reason = "" } = req.body;
 
     if (!["public", "private"].includes(visibility)) {
       return res
@@ -582,30 +696,9 @@ const toggleVisibility = async (req, res) => {
         .json({ message: "Visibility must be 'public' or 'private'" });
     }
 
-    let Model;
-    switch (contentType) {
-      case "book":
-        Model = Book;
-        break;
-      case "course":
-        Model = Course;
-        break;
-      case "tool":
-        Model = Tool;
-        break;
-      case "section": {
-        const CustomSection = require("../models/CustomSection");
-        Model = CustomSection;
-        break;
-      }
-      case "playlist":
-      case "video": {
-        const YoutubePlaylist = require("../models/YoutubePlaylist");
-        Model = YoutubePlaylist;
-        break;
-      }
-      default:
-        return res.status(400).json({ message: "Invalid content type" });
+    const Model = getModelForType(contentType);
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid content type" });
     }
 
     const doc = await Model.findById(contentId);
@@ -613,8 +706,21 @@ const toggleVisibility = async (req, res) => {
       return res.status(404).json({ message: "Content not found" });
     }
 
+    const prevVisibility = doc.visibility;
     doc.visibility = visibility;
     await doc.save();
+
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: visibility === "private" ? "unpublish_content" : "review_publish_request",
+      targetType: contentType,
+      targetId: doc._id,
+      owner: doc.addedBy || doc.user,
+      reason: reason || `Visibility manually changed from ${prevVisibility} to ${visibility}`,
+      metadata: { previousVisibility: prevVisibility, newVisibility: visibility },
+      req,
+    });
 
     res.json({
       message: `Content set to ${visibility}`,
@@ -628,102 +734,301 @@ const toggleVisibility = async (req, res) => {
   }
 };
 
-// @desc    Get all content of a type (Admin)
+// @desc    Explicitly Unpublish public content (Moderation Action)
+// @route   PUT /api/admin/content/:type/:id/unpublish
+const unpublishContent = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const { reason = "" } = req.body;
+
+    const Model = getModelForType(type);
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid content type" });
+    }
+
+    const doc = await Model.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: "Content not found" });
+    }
+
+    if (doc.visibility === "private") {
+      return res.status(400).json({ message: "Item is already private" });
+    }
+
+    doc.visibility = "private";
+    await doc.save();
+
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: "unpublish_content",
+      targetType: type,
+      targetId: doc._id,
+      owner: doc.addedBy || doc.user,
+      reason: reason || "Unpublished by administrator for regulatory compliance",
+      metadata: { previousVisibility: "public", newVisibility: "private" },
+      req,
+    });
+
+    res.json({
+      message: "Content successfully unpublished and set to private",
+      contentType: type,
+      contentId: id,
+      visibility: "private",
+    });
+  } catch (error) {
+    console.error("unpublishContent error:", error);
+    res.status(500).json({ message: "Failed to unpublish content" });
+  }
+};
+
+// @desc    Get all content of a type with filtering, pagination, and thumbnail normalization
 // @route   GET /api/admin/content/:type
 const getAllContent = async (req, res) => {
   try {
     const { type } = req.params;
-    const { search = "", page = 1, limit = 30 } = req.query;
+    const {
+      search = "",
+      visibility = "public", // Defaults to 'public'
+      owner = "",
+      sort = "newest",
+      page = 1,
+      limit = 20,
+    } = req.query;
 
-    let Model;
-    switch (type) {
-      case "book":
-        Model = Book;
-        break;
-      case "course":
-        Model = Course;
-        break;
-      case "tool":
-        Model = Tool;
-        break;
-      case "section": {
-        const CustomSection = require("../models/CustomSection");
-        Model = CustomSection;
-        break;
-      }
-      case "playlist":
-      case "video": {
-        const YoutubePlaylist = require("../models/YoutubePlaylist");
-        Model = YoutubePlaylist;
-        break;
-      }
-      default:
-        return res.status(400).json({ message: "Invalid content type" });
+    const Model = getModelForType(type);
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid content type" });
     }
 
     const filter = {};
-    if (search) {
-      const safe = escapeRegex(search);
-      // Sections use 'name' instead of 'title'
-      const schemaPaths = Object.keys(Model.schema.paths);
-      if (schemaPaths.includes("title")) {
-        filter.title = { $regex: safe, $options: "i" };
-      } else if (schemaPaths.includes("name")) {
-        filter.name = { $regex: safe, $options: "i" };
+    const schemaPaths = Object.keys(Model.schema.paths);
+
+    // Apply visibility filter
+    if (schemaPaths.includes("visibility")) {
+      if (visibility === "public" || visibility === "private") {
+        filter.visibility = visibility;
       }
     }
 
-    // Only populate fields that actually exist on this model's schema
-    const schemaFields = Object.keys(Model.schema.paths);
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    // Apply text search
+    if (search) {
+      const safe = escapeRegex(search.trim());
+      const orClauses = [];
+      if (schemaPaths.includes("title")) orClauses.push({ title: { $regex: safe, $options: "i" } });
+      if (schemaPaths.includes("name")) orClauses.push({ name: { $regex: safe, $options: "i" } });
+      if (schemaPaths.includes("author")) orClauses.push({ author: { $regex: safe, $options: "i" } });
+      if (schemaPaths.includes("description")) orClauses.push({ description: { $regex: safe, $options: "i" } });
+      if (schemaPaths.includes("text")) orClauses.push({ text: { $regex: safe, $options: "i" } });
+      if (orClauses.length > 0) filter.$or = orClauses;
+    }
+
+    // Apply owner filter (by email, name, or ObjectId)
+    if (owner) {
+      const safeOwner = escapeRegex(owner.trim());
+      const matchingUsers = await User.find({
+        $or: [
+          { name: { $regex: safeOwner, $options: "i" } },
+          { email: { $regex: safeOwner, $options: "i" } },
+        ],
+      }).select("_id");
+
+      const userIds = matchingUsers.map((u) => u._id);
+      if (mongoose.isValidObjectId(owner.trim())) {
+        userIds.push(new mongoose.Types.ObjectId(owner.trim()));
+      }
+
+      if (schemaPaths.includes("addedBy")) {
+        filter.addedBy = { $in: userIds };
+      } else if (schemaPaths.includes("user")) {
+        filter.user = { $in: userIds };
+      } else if (schemaPaths.includes("requestedBy")) {
+        filter.requestedBy = { $in: userIds };
+      }
+    }
+
+    // Sort options
+    let sortQuery = { createdAt: -1 };
+    if (sort === "oldest") sortQuery = { createdAt: 1 };
+    else if (sort === "title" && schemaPaths.includes("title")) sortQuery = { title: 1 };
+    else if (sort === "title" && schemaPaths.includes("name")) sortQuery = { name: 1 };
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
 
     let query = Model.find(filter);
-    if (schemaFields.includes("addedBy"))
-      query = query.populate("addedBy", "name email");
-    if (schemaFields.includes("category"))
-      query = query.populate("category", "name");
+    if (schemaPaths.includes("addedBy")) query = query.populate("addedBy", "name email avatar");
+    if (schemaPaths.includes("user")) query = query.populate("user", "name email avatar");
+    if (schemaPaths.includes("requestedBy")) query = query.populate("requestedBy", "name email");
+    if (schemaPaths.includes("category")) query = query.populate("category", "name");
+    if (type === "comment" && schemaPaths.includes("contentId")) {
+      query = query.populate({ path: "contentId", select: "title name" });
+    }
 
-    const [items, total] = await Promise.all([
-      query.sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+    const [rawItems, total] = await Promise.all([
+      query.sort(sortQuery).skip(skip).limit(limitNum).lean(),
       Model.countDocuments(filter),
     ]);
 
-    res.json({ items, total, page: parseInt(page), limit: parseInt(limit) });
+    // Normalize and enrich thumbnails so placeholders are resolved
+    const items = rawItems.map((item) => {
+      let thumb = item.thumbnailUrl || item.bannerImage || item.coverImage || item.thumbnail || null;
+      if (!thumb) {
+        if (item.coverR2Key) {
+          thumb = R2_CONFIG.publicDomain
+            ? `${R2_CONFIG.publicDomain}/${item.coverR2Key}`
+            : `/api/images/r2/${encodeURIComponent(item.coverR2Key)}`;
+        } else if (item.bannerR2Key) {
+          thumb = R2_CONFIG.publicDomain
+            ? `${R2_CONFIG.publicDomain}/${item.bannerR2Key}`
+            : `/api/images/r2/${encodeURIComponent(item.bannerR2Key)}`;
+        } else if (item.coverImageId) {
+          thumb = `/api/images/${item.coverImageId}`;
+        } else if (item.icon && (item.icon.startsWith("http") || item.icon.startsWith("/api"))) {
+          thumb = item.icon;
+        }
+      }
+      return {
+        ...item,
+        thumbnailUrl: thumb,
+      };
+    });
+
+    // If private items are accessed or filtered, record an audit entry
+    if (visibility === "private" || (visibility === "all" && items.some((i) => i.visibility === "private"))) {
+      await logAdminAction({
+        adminId: req.user._id,
+        adminEmail: req.user.email,
+        action: "view_private_content",
+        targetType: type,
+        reason: `Filtered private ${type} items in admin cockpit`,
+        metadata: { visibility, count: items.length, page: pageNum },
+        req,
+      });
+    }
+
+    res.json({
+      items,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    });
   } catch (error) {
     console.error("getAllContent error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// @desc    Delete any content (Admin)
+// @desc    Full content preview with signed media URLs for regulatory moderation
+// @route   GET /api/admin/content/:type/:id/preview
+const getContentPreview = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const Model = getModelForType(type);
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid content type" });
+    }
+
+    const schemaPaths = Object.keys(Model.schema.paths);
+    let query = Model.findById(id);
+    if (schemaPaths.includes("addedBy")) query = query.populate("addedBy", "name email avatar");
+    if (schemaPaths.includes("user")) query = query.populate("user", "name email avatar");
+    if (schemaPaths.includes("requestedBy")) query = query.populate("requestedBy", "name email");
+    if (schemaPaths.includes("category")) query = query.populate("category", "name");
+    if (schemaPaths.includes("collaborators.user")) query = query.populate("collaborators.user", "name email avatar");
+
+    const doc = await query.lean();
+    if (!doc) {
+      return res.status(404).json({ message: "Content not found" });
+    }
+
+    // Attach child blocks if workspace section
+    if (type === "section") {
+      const blocks = await SubSection.find({ sectionId: doc._id }).sort({ order: 1 }).lean();
+      if (isR2Configured()) {
+        for (const block of blocks) {
+          if (block.imageR2Key) {
+            block.signedImageUrl = await getPresignedDownloadUrl(block.imageR2Key, {
+              expiresIn: 1800,
+              isPublic: false,
+            }).catch(() => null);
+          }
+        }
+      }
+      doc.blocks = blocks;
+    }
+
+    // Attach signed URLs for private book assets
+    if (type === "book" && isR2Configured()) {
+      if (doc.pdfR2Key) {
+        doc.signedPdfUrl = await getPresignedDownloadUrl(doc.pdfR2Key, {
+          expiresIn: 1800,
+          isPublic: false,
+        }).catch(() => null);
+      }
+      if (Array.isArray(doc.audioFiles)) {
+        for (const af of doc.audioFiles) {
+          if (af.r2Key) {
+            af.signedAudioUrl = await getPresignedDownloadUrl(af.r2Key, {
+              expiresIn: 1800,
+              isPublic: false,
+            }).catch(() => null);
+          }
+        }
+      }
+    }
+
+    // Normalize top-level thumbnail
+    if (!doc.thumbnailUrl) {
+      if (doc.coverImage) doc.thumbnailUrl = doc.coverImage;
+      else if (doc.bannerImage) doc.thumbnailUrl = doc.bannerImage;
+      else if (doc.thumbnail) doc.thumbnailUrl = doc.thumbnail;
+      else if (doc.coverR2Key) {
+        doc.thumbnailUrl = R2_CONFIG.publicDomain
+          ? `${R2_CONFIG.publicDomain}/${doc.coverR2Key}`
+          : `/api/images/r2/${encodeURIComponent(doc.coverR2Key)}`;
+      } else if (doc.bannerR2Key) {
+        doc.thumbnailUrl = R2_CONFIG.publicDomain
+          ? `${R2_CONFIG.publicDomain}/${doc.bannerR2Key}`
+          : `/api/images/r2/${encodeURIComponent(doc.bannerR2Key)}`;
+      } else if (doc.icon && (doc.icon.startsWith("http") || doc.icon.startsWith("/api"))) {
+        doc.thumbnailUrl = doc.icon;
+      }
+    }
+
+    // Audit log the preview action
+    const isPrivate = doc.visibility === "private";
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: isPrivate ? "view_private_content" : "preview_content",
+      targetType: type,
+      targetId: doc._id,
+      owner: doc.addedBy?._id || doc.addedBy || doc.user?._id || doc.user || doc.requestedBy?._id,
+      reason: req.query.reason || "Regulatory moderation full-content preview",
+      metadata: { visibility: doc.visibility || "unknown" },
+      req,
+    });
+
+    res.json({ item: doc });
+  } catch (error) {
+    console.error("getContentPreview error:", error);
+    res.status(500).json({ message: "Failed to generate content preview" });
+  }
+};
+
+// @desc    Delete any content with cascade cleanup and mandatory audit logging (Admin)
 // @route   DELETE /api/admin/content/:type/:id
 const adminDeleteContent = async (req, res) => {
   try {
     const { type, id } = req.params;
+    const reason = req.body?.reason || req.query?.reason || "Deleted by administrator for moderation compliance";
 
-    let Model;
-    switch (type) {
-      case "book":
-        Model = Book;
-        break;
-      case "course":
-        Model = Course;
-        break;
-      case "tool":
-        Model = Tool;
-        break;
-      case "section": {
-        const CustomSection = require("../models/CustomSection");
-        Model = CustomSection;
-        break;
-      }
-      case "playlist": {
-        const YoutubePlaylist = require("../models/YoutubePlaylist");
-        Model = YoutubePlaylist;
-        break;
-      }
-      default:
-        return res.status(400).json({ message: "Invalid content type" });
+    const Model = getModelForType(type);
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid content type" });
     }
 
     const doc = await Model.findById(id);
@@ -823,10 +1128,60 @@ const adminDeleteContent = async (req, res) => {
     }).catch(() => {});
 
     await doc.deleteOne();
+
+    await logAdminAction({
+      adminId: req.user._id,
+      adminEmail: req.user.email,
+      action: "delete_content",
+      targetType: type,
+      targetId: id,
+      owner: doc.addedBy || doc.user,
+      reason,
+      metadata: { deletedTitle: doc.title || doc.name },
+      req,
+    });
+
     res.json({ message: "Content deleted", contentType: type, contentId: id });
   } catch (error) {
     console.error("adminDeleteContent error:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Get administrative audit logs
+// @route   GET /api/admin/audit-logs
+const getAuditLogs = async (req, res) => {
+  try {
+    const { page = 1, limit = 25, action, targetType } = req.query;
+    const filter = {};
+    if (action) filter.action = action;
+    if (targetType) filter.targetType = targetType;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [logs, total] = await Promise.all([
+      AdminAuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .populate("adminId", "name email")
+        .populate("owner", "name email")
+        .lean(),
+      AdminAuditLog.countDocuments(filter),
+    ]);
+
+    res.json({
+      logs,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    });
+  } catch (error) {
+    console.error("getAuditLogs error:", error);
+    res.status(500).json({ message: "Failed to fetch audit logs" });
   }
 };
 
@@ -980,6 +1335,10 @@ module.exports = {
   getUserDetail,
   deleteUser,
   toggleVisibility,
+  unpublishContent,
   getAllContent,
+  getContentPreview,
   adminDeleteContent,
+  getContentCounts,
+  getAuditLogs,
 };

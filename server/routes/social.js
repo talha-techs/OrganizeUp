@@ -10,7 +10,7 @@ const {
   getPublishRequests,
   reviewPublishRequest,
 } = require("../controllers/socialController");
-const { protect, adminOnly } = require("../middleware/auth");
+const { protect, requireAdmin } = require("../middleware/auth");
 
 // Comments
 router.get("/comments/:contentType/:contentId", protect, getComments);
@@ -27,7 +27,7 @@ router.post(
   protect,
   createPublishRequest,
 );
-router.get("/publish-requests", protect, adminOnly, getPublishRequests);
-router.put("/publish-requests/:id", protect, adminOnly, reviewPublishRequest);
+router.get("/publish-requests", protect, requireAdmin, getPublishRequests);
+router.put("/publish-requests/:id", protect, requireAdmin, reviewPublishRequest);
 
 module.exports = router;
