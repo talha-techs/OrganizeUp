@@ -38,6 +38,14 @@ const formatDate = (dateStr) => {
   });
 };
 
+const getTelegramBannerUrl = (msg) => {
+  if (!msg) return null;
+  if (msg.bannerSignedUrl) return msg.bannerSignedUrl;
+  if (msg.bannerR2Key) return `/api/telegram/image/${encodeURIComponent(msg.bannerR2Key)}`;
+  if (msg.bannerImageId) return `/api/telegram/image/${msg.bannerImageId}`;
+  return null;
+};
+
 const TelegramLibrary = () => {
   const { user } = useSelector((state) => state.auth);
   const [isConnected, setIsConnected] = useState(false);
@@ -178,7 +186,7 @@ const TelegramLibrary = () => {
       .filter((msg) => {
         // Tab Filters
         if (activeFilter === 'media') {
-          if (!msg.bannerImageId) return false;
+          if (!getTelegramBannerUrl(msg)) return false;
         } else if (activeFilter === 'notes') {
           if (!msg.note || !msg.note.trim()) return false;
         } else if (activeFilter === 'links') {
@@ -208,7 +216,7 @@ const TelegramLibrary = () => {
   const counts = useMemo(() => {
     return {
       all: messages.length,
-      media: messages.filter((m) => Boolean(m.bannerImageId)).length,
+      media: messages.filter((m) => Boolean(getTelegramBannerUrl(m))).length,
       notes: messages.filter((m) => m.note && m.note.trim()).length,
       links: messages.filter((m) => Boolean(m.extractedUrl)).length,
     };
@@ -437,7 +445,8 @@ const TelegramLibrary = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence>
                 {filteredMessages.map((msg) => {
-                  const hasMedia = Boolean(msg.bannerImageId);
+                  const bannerUrl = getTelegramBannerUrl(msg);
+                  const hasMedia = Boolean(bannerUrl);
 
                   return (
                     <motion.div
@@ -451,13 +460,11 @@ const TelegramLibrary = () => {
                       {/* Top Media Cover (Vault Style) */}
                       {hasMedia && (
                         <div
-                          onClick={() =>
-                            setLightboxImage(`/api/telegram/image/${msg.bannerImageId}`)
-                          }
+                          onClick={() => setLightboxImage(bannerUrl)}
                           className="relative h-48 sm:h-52 overflow-hidden bg-black/40 border-b border-subtle cursor-zoom-in"
                         >
                           <img
-                            src={`/api/telegram/image/${msg.bannerImageId}`}
+                            src={bannerUrl}
                             alt="Telegram Attachment"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
                           />
@@ -677,15 +684,15 @@ const TelegramLibrary = () => {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
               {/* Media banner if available */}
-              {selectedMsg.bannerImageId && (
+              {getTelegramBannerUrl(selectedMsg) && (
                 <div
                   onClick={() =>
-                    setLightboxImage(`/api/telegram/image/${selectedMsg.bannerImageId}`)
+                    setLightboxImage(getTelegramBannerUrl(selectedMsg))
                   }
                   className="rounded-2xl overflow-hidden border border-subtle bg-black/40 max-h-80 flex justify-center cursor-zoom-in group/img"
                 >
                   <img
-                    src={`/api/telegram/image/${selectedMsg.bannerImageId}`}
+                    src={getTelegramBannerUrl(selectedMsg)}
                     alt="Telegram Attachment"
                     className="max-w-full h-full object-contain group-hover/img:scale-105 transition-transform"
                   />

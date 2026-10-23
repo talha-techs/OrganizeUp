@@ -3,6 +3,12 @@ const mongoose = require("mongoose");
 const Book = require("../models/Book");
 const User = require("../models/User");
 const UserLibrary = require("../models/UserLibrary");
+const CapturedResource = require("../models/CapturedResource");
+const TelegramMessage = require("../models/TelegramMessage");
+const DiscordMessage = require("../models/DiscordMessage");
+const Course = require("../models/Course");
+const Tool = require("../models/Tool");
+const CustomSection = require("../models/CustomSection");
 const { fetchBookCover } = require("../services/bookCoverService");
 const { R2_CONFIG } = require("../config/r2");
 const {
@@ -1177,7 +1183,28 @@ const removeAudioFromBook = async (req, res) => {
   }
 };
 
-// @desc    Serve an image from GridFS or redirect to R2 (supports both public & private buckets)
+// Allowed R2 image key prefixes
+const PUBLIC_IMAGE_PREFIXES = [
+  "users/",
+  "courses/",
+  "tools/",
+  "sections/",
+  "subsections/",
+  "books/covers/",
+];
+
+const PRIVATE_IMAGE_PREFIXES = [
+  "captures/",
+  "telegram/",
+  "discord/",
+];
+
+const escapeRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// @desc    Serve an image from GridFS or redirect to R2
+//          - Public keys (users, courses, tools, sections, subsections, books/covers): public redirect
+//          - Private keys (captures, telegram, discord): require auth + ownership verification
+//          - Path traversal ('..'), books/pdfs/, books/audio/, and unknown prefixes return 404
 // @route   GET /api/images/:fileId, GET /api/images/r2/*, and GET /api/files/r2/*
 const serveImage = async (req, res) => {
   try {
@@ -1185,92 +1212,193 @@ const serveImage = async (req, res) => {
     if (Array.isArray(rawParam)) {
       rawParam = rawParam.join("/");
     }
-    if (rawParam) {
-      rawParam = decodeURIComponent(rawParam);
-      // Remove any leading slash
-      rawParam = rawParam.replace(/^\/+/, "");
+    if (!rawParam || typeof rawParam !== "string") {
+      return res.status(404).json({ message: "Image not found" });
     }
 
-    if (rawParam && mongoose.isValidObjectId(rawParam)) {
-      await streamFromGridFS(rawParam, res, "image");
-    } else if (rawParam && isR2Configured()) {
-      // Keys in captures/, telegram/, discord/, books/pdfs/, books/audio/ reside in the private bucket
-      const isPrivate =
-        rawParam.startsWith("captures/") ||
-        rawParam.startsWith("telegram/") ||
-        rawParam.startsWith("discord/") ||
-        rawParam.startsWith("books/pdfs/") ||
-        rawParam.startsWith("books/audio/");
+    rawParam = decodeURIComponent(rawParam).trim().replace(/^\/+/, "");
 
-      const targetBucket = isPrivate
-        ? R2_CONFIG.privateBucket
-        : R2_CONFIG.publicBucket;
-
-      // Stream directly if explicitly requested via query parameter
-      if (req.query.proxy === "true") {
-        const ext = path.extname(rawParam).toLowerCase();
-        const contentType =
-          ext === ".png"
-            ? "image/png"
-            : ext === ".webp"
-            ? "image/webp"
-            : ext === ".gif"
-            ? "image/gif"
-            : ext === ".svg"
-            ? "image/svg+xml"
-            : "image/jpeg";
-
-        return await streamFromR2({
-          key: rawParam,
-          res,
-          req,
-          bucket: targetBucket,
-          contentType,
-          filename: rawParam.split("/").pop() || "image.jpg",
-        });
-      }
-
-      try {
-        const signedUrl = await getPresignedDownloadUrl(rawParam, {
-          expiresIn: 86400,
-          isPublic: !isPrivate,
-        });
-        return res.redirect(302, signedUrl);
-      } catch (presignErr) {
-        console.warn(
-          `[serveImage] Presigned URL failed for ${rawParam} (${presignErr.message}), falling back to direct stream`,
-        );
-        const ext = path.extname(rawParam).toLowerCase();
-        const contentType =
-          ext === ".png"
-            ? "image/png"
-            : ext === ".webp"
-            ? "image/webp"
-            : ext === ".gif"
-            ? "image/gif"
-            : ext === ".svg"
-            ? "image/svg+xml"
-            : "image/jpeg";
-
-        return await streamFromR2({
-          key: rawParam,
-          res,
-          req,
-          bucket: targetBucket,
-          contentType,
-          filename: rawParam.split("/").pop() || "image.jpg",
-        });
-      }
-    } else if (rawParam) {
-      const gridId = extractGridFsId(rawParam);
-      if (gridId && mongoose.isValidObjectId(gridId)) {
-        await streamFromGridFS(gridId, res, "image");
-      } else {
-        res.status(404).json({ message: "Image not found" });
-      }
-    } else {
-      res.status(404).json({ message: "Image not found" });
+    // 1. Path traversal check (Requirement 1)
+    if (rawParam.includes("..")) {
+      return res.status(404).json({ message: "Image not found" });
     }
+
+    // 2. Reject books/pdfs/ and books/audio/ (Requirement 1: only via servePdf/serveAudio)
+    if (
+      rawParam.startsWith("books/pdfs/") ||
+      rawParam.startsWith("books/audio/")
+    ) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    // 3. GridFS ObjectId check
+    if (mongoose.isValidObjectId(rawParam)) {
+      // Check if this GridFS ID belongs to any private models (captures, telegram, discord):
+      const [captureDoc, telegramDoc, discordDoc] = await Promise.all([
+        CapturedResource.findOne({
+          $or: [{ mediaGridFsId: rawParam }, { mediaUrl: { $regex: escapeRegex(rawParam) } }],
+        })
+          .select("user")
+          .lean(),
+        TelegramMessage.findOne({
+          $or: [{ bannerImageId: rawParam }, { bannerImage: { $regex: escapeRegex(rawParam) } }],
+        })
+          .select("user")
+          .lean(),
+        DiscordMessage.findOne({
+          $or: [{ "media.gridFsId": rawParam }, { "media.url": { $regex: escapeRegex(rawParam) } }],
+        })
+          .select("user")
+          .lean(),
+      ]);
+
+      const privateDoc = captureDoc || telegramDoc || discordDoc;
+      if (privateDoc) {
+        if (!req.user) {
+          return res.status(401).json({ message: "Not authorized, token required" });
+        }
+        const isOwner =
+          String(privateDoc.user) === String(req.user._id) || req.user.role === "admin";
+        if (!isOwner) {
+          return res.status(403).json({ message: "Not authorized to access this resource" });
+        }
+        return await streamFromGridFS(rawParam, res, "image");
+      }
+
+      // If not private, only serve if verified to belong to a public resource or user is authenticated
+      if (!req.user) {
+        const idRegex = new RegExp(escapeRegex(rawParam));
+        const [bookDoc, courseDoc, toolDoc, userDoc, sectionDoc] = await Promise.all([
+          Book.findOne({ coverImage: { $regex: idRegex } }).select("_id").lean(),
+          Course.findOne({
+            $or: [{ thumbnail: { $regex: idRegex } }, { coverImage: { $regex: idRegex } }],
+          }).select("_id").lean(),
+          Tool.findOne({ logo: { $regex: idRegex } }).select("_id").lean(),
+          User.findOne({
+            $or: [{ avatar: { $regex: idRegex } }, { profileImage: { $regex: idRegex } }],
+          }).select("_id").lean(),
+          CustomSection.findOne({
+            $or: [{ banner: { $regex: idRegex } }, { "blocks.image": { $regex: idRegex } }],
+          }).select("_id").lean(),
+        ]);
+
+        const isPublicResource = Boolean(bookDoc || courseDoc || toolDoc || userDoc || sectionDoc);
+        if (!isPublicResource) {
+          return res.status(404).json({ message: "Image not found" });
+        }
+      }
+
+      return await streamFromGridFS(rawParam, res, "image");
+    }
+
+    // 4. Prefix allowlist validation (Requirement 1: unknown prefixes return 404)
+    const isPublic = PUBLIC_IMAGE_PREFIXES.some((p) => rawParam.startsWith(p));
+    const isPrivate = PRIVATE_IMAGE_PREFIXES.some((p) => rawParam.startsWith(p));
+
+    if (!isPublic && !isPrivate) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    if (!isR2Configured()) {
+      return res.status(404).json({ message: "Image storage not configured" });
+    }
+
+    // 5. PUBLIC KEYS: served without requiring user ownership (Requirement 3)
+    if (isPublic) {
+      const signedUrl = await getPresignedDownloadUrl(rawParam, {
+        expiresIn: 86400,
+        isPublic: true,
+      });
+      return res.redirect(302, signedUrl);
+    }
+
+    // 6. PRIVATE KEYS: Require authentication + ownership lookup (Requirement 3 & 4)
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized, token required" });
+    }
+
+    let isOwner = false;
+    let foundDoc = null;
+
+    if (rawParam.startsWith("captures/")) {
+      foundDoc = await CapturedResource.findOne({
+        $or: [
+          { mediaR2Key: rawParam },
+          { mediaUrl: { $regex: escapeRegex(rawParam) } },
+        ],
+      })
+        .select("user")
+        .lean();
+
+      if (foundDoc) {
+        isOwner =
+          String(foundDoc.user) === String(req.user._id) || req.user.role === "admin";
+      }
+    } else if (rawParam.startsWith("telegram/")) {
+      foundDoc = await TelegramMessage.findOne({
+        $or: [
+          { bannerR2Key: rawParam },
+          { bannerImage: { $regex: escapeRegex(rawParam) } },
+        ],
+      })
+        .select("user")
+        .lean();
+
+      if (foundDoc) {
+        isOwner =
+          String(foundDoc.user) === String(req.user._id) || req.user.role === "admin";
+      }
+    } else if (rawParam.startsWith("discord/")) {
+      foundDoc = await DiscordMessage.findOne({
+        "media.r2Key": rawParam,
+      })
+        .select("user")
+        .lean();
+
+      if (foundDoc) {
+        isOwner =
+          String(foundDoc.user) === String(req.user._id) || req.user.role === "admin";
+      }
+    }
+
+    if (!foundDoc) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    if (!isOwner) {
+      return res.status(403).json({ message: "Not authorized to access this resource" });
+    }
+
+    // Authenticated owner confirmed: allow ?proxy=true (Requirement 4)
+    if (req.query.proxy === "true") {
+      const ext = path.extname(rawParam).toLowerCase();
+      const contentType =
+        ext === ".png"
+          ? "image/png"
+          : ext === ".webp"
+          ? "image/webp"
+          : ext === ".gif"
+          ? "image/gif"
+          : ext === ".svg"
+          ? "image/svg+xml"
+          : "image/jpeg";
+
+      return await streamFromR2({
+        key: rawParam,
+        res,
+        req,
+        bucket: R2_CONFIG.privateBucket,
+        contentType,
+        filename: rawParam.split("/").pop() || "image.jpg",
+      });
+    }
+
+    // Presign with 1-hour TTL from private bucket
+    const signedUrl = await getPresignedDownloadUrl(rawParam, {
+      expiresIn: 3600,
+      isPublic: false,
+    });
+    return res.redirect(302, signedUrl);
   } catch (error) {
     console.error("Serve image error:", error);
     res.status(500).json({ message: "Error serving image" });

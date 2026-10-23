@@ -1,6 +1,43 @@
 const CapturedResource = require("../models/CapturedResource");
-const { uploadFile, deleteFile } = require("../services/storageService");
+const {
+  uploadFile,
+  deleteFile,
+  getPresignedDownloadUrl,
+  isR2Configured,
+} = require("../services/storageService");
 const { fetchVideoDetails } = require("../services/youtubeService");
+
+// Helper to attach short-lived presigned R2 URLs (TTL 1h) for private media
+const enrichCaptureWithSignedUrls = async (c) => {
+  if (!c) return c;
+  const item = typeof c.toObject === "function" ? c.toObject() : { ...c };
+  let r2Key = item.mediaR2Key;
+  if (!r2Key && item.mediaUrl) {
+    const match = item.mediaUrl.match(/captures\/[^?#\s]+/);
+    if (match) {
+      r2Key = decodeURIComponent(match[0]);
+    }
+  }
+  if (!r2Key && item.thumbnailUrl) {
+    const match = item.thumbnailUrl.match(/captures\/[^?#\s]+/);
+    if (match) {
+      r2Key = decodeURIComponent(match[0]);
+    }
+  }
+  if (r2Key && isR2Configured()) {
+    try {
+      const signedUrl = await getPresignedDownloadUrl(r2Key, {
+        expiresIn: 3600,
+        isPublic: false,
+      });
+      item.mediaSignedUrl = signedUrl;
+      item.thumbnailSignedUrl = signedUrl;
+    } catch (err) {
+      console.warn(`[capture] Presigning failed for key ${r2Key}:`, err.message);
+    }
+  }
+  return item;
+};
 
 // Helper to decode HTML/XML entities and strip zero-width chars
 const decodeHtmlEntities = (str) => {
@@ -1099,10 +1136,14 @@ const getCaptures = async (req, res) => {
       },
     };
 
+    const enrichedCaptures = await Promise.all(
+      captures.map(enrichCaptureWithSignedUrls)
+    );
+
     res.json({
       success: true,
-      count: captures.length,
-      captures,
+      count: enrichedCaptures.length,
+      captures: enrichedCaptures,
       stats,
     });
   } catch (error) {
@@ -1124,7 +1165,8 @@ const getCaptureById = async (req, res) => {
       return res.status(404).json({ message: "Capture not found" });
     }
 
-    res.json({ success: true, capture });
+    const enriched = await enrichCaptureWithSignedUrls(capture);
+    res.json({ success: true, capture: enriched });
   } catch (error) {
     console.error("Get capture error:", error);
     res.status(500).json({ message: "Server error" });
@@ -1400,10 +1442,11 @@ const createCapture = async (req, res) => {
       status: "inbox",
     });
 
+    const enriched = await enrichCaptureWithSignedUrls(capture);
     res.status(201).json({
       success: true,
       message: "Resource saved to your Vault",
-      capture,
+      capture: enriched,
     });
   } catch (error) {
     console.error("Create capture error:", error);
@@ -1479,10 +1522,11 @@ const updateCapture = async (req, res) => {
 
     await capture.save();
 
+    const enriched = await enrichCaptureWithSignedUrls(capture);
     res.json({
       success: true,
       message: "Capture updated successfully",
-      capture,
+      capture: enriched,
     });
   } catch (error) {
     console.error("Update capture error:", error);
@@ -1510,10 +1554,11 @@ const toggleCaptureComplete = async (req, res) => {
 
     await capture.save();
 
+    const enriched = await enrichCaptureWithSignedUrls(capture);
     res.json({
       success: true,
       message: `Marked as ${capture.status}`,
-      capture,
+      capture: enriched,
     });
   } catch (error) {
     console.error("Toggle capture complete error:", error);

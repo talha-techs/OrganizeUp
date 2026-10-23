@@ -4,10 +4,12 @@ const router = express.Router();
 const User = require("../models/User");
 const TelegramMessage = require("../models/TelegramMessage");
 const { protect } = require("../middleware/auth");
+const mongoose = require("mongoose");
 const {
   streamFromGridFS,
   deleteFile,
   getPresignedDownloadUrl,
+  isR2Configured,
 } = require("../services/storageService");
 
 // @desc    Generate a link code for Telegram
@@ -76,9 +78,23 @@ router.get("/image/:fileId", protect, async (req, res) => {
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
     const rawParam = decodeURIComponent(req.params.fileId);
 
-    // Check if any TelegramMessage has this bannerR2Key
-    const msg = await TelegramMessage.findOne({ bannerR2Key: rawParam });
-    if (msg && msg.bannerR2Key) {
+    // Check if any TelegramMessage has this bannerR2Key or GridFS ID with ownership verification
+    const query = {
+      $or: [
+        { bannerR2Key: rawParam },
+        ...(mongoose.isValidObjectId(rawParam) ? [{ bannerImageId: rawParam }] : []),
+      ],
+    };
+    if (req.user.role !== "admin") {
+      query.user = req.user._id;
+    }
+
+    const msg = await TelegramMessage.findOne(query);
+    if (!msg) {
+      return res.status(404).json({ message: "Telegram image not found or unauthorized" });
+    }
+
+    if (msg.bannerR2Key && isR2Configured()) {
       const signedUrl = await getPresignedDownloadUrl(msg.bannerR2Key, {
         expiresIn: 3600,
         isPublic: false,
@@ -101,9 +117,27 @@ router.get("/messages", protect, async (req, res) => {
   try {
     const messages = await TelegramMessage.find({
       user: req.user._id,
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json(messages);
+    const enrichedMessages = await Promise.all(
+      messages.map(async (msg) => {
+        if (msg.bannerR2Key && isR2Configured()) {
+          try {
+            msg.bannerSignedUrl = await getPresignedDownloadUrl(msg.bannerR2Key, {
+              expiresIn: 3600,
+              isPublic: false,
+            });
+          } catch (err) {
+            console.warn(`[telegram] presign error:`, err.message);
+          }
+        }
+        return msg;
+      })
+    );
+
+    res.json(enrichedMessages);
   } catch (error) {
     console.error("Get telegram messages error:", error);
     res.status(500).json({ message: "Server error fetching messages" });

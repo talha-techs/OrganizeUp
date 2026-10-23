@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const DiscordMessage = require('../models/DiscordMessage');
 const { protect } = require('../middleware/auth');
-const { getPresignedDownloadUrl, deleteFile } = require('../services/storageService');
+const { getPresignedDownloadUrl, deleteFile, isR2Configured } = require('../services/storageService');
 const mongoose = require('mongoose');
 
 let gridfsBucket;
@@ -19,8 +19,32 @@ mongoose.connection.once('open', () => {
 router.get('/messages', protect, async (req, res) => {
   try {
     const messages = await DiscordMessage.find({ user: req.user._id })
-      .sort({ createdAt: -1 });
-    res.json(messages);
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const enrichedMessages = await Promise.all(
+      messages.map(async (msg) => {
+        if (Array.isArray(msg.media)) {
+          await Promise.all(
+            msg.media.map(async (m) => {
+              if (m.r2Key && isR2Configured()) {
+                try {
+                  m.signedUrl = await getPresignedDownloadUrl(m.r2Key, {
+                    expiresIn: 3600,
+                    isPublic: false,
+                  });
+                } catch (err) {
+                  console.warn(`[discord] presign error for key ${m.r2Key}:`, err.message);
+                }
+              }
+            })
+          );
+        }
+        return msg;
+      })
+    );
+
+    res.json(enrichedMessages);
   } catch (error) {
     console.error('Error fetching discord messages:', error);
     res.status(500).json({ message: 'Server error' });
@@ -34,25 +58,43 @@ router.get('/media/:id', protect, async (req, res) => {
   try {
     const rawParam = decodeURIComponent(req.params.id);
 
-    // Check if this matches an R2 key in any discord message
-    const msg = await DiscordMessage.findOne({
-      "media.r2Key": rawParam,
-    });
+    // Check if this matches a media item in user's discord messages with ownership verification
+    const query = {
+      $or: [
+        { "media.r2Key": rawParam },
+        ...(mongoose.isValidObjectId(rawParam)
+          ? [{ "media.gridFsId": rawParam }, { "media._id": rawParam }]
+          : []),
+      ],
+    };
+    if (req.user.role !== "admin") {
+      query.user = req.user._id;
+    }
 
-    if (msg) {
-      const item = msg.media.find((m) => m.r2Key === rawParam);
-      if (item && item.r2Key) {
-        const signedUrl = await getPresignedDownloadUrl(item.r2Key, {
-          expiresIn: 3600,
-          isPublic: false,
-        });
-        return res.redirect(302, signedUrl);
-      }
+    const msg = await DiscordMessage.findOne(query);
+    if (!msg) {
+      return res.status(404).json({ message: 'Media not found or unauthorized' });
+    }
+
+    const item = msg.media.find(
+      (m) =>
+        m.r2Key === rawParam ||
+        (m.gridFsId && m.gridFsId.toString() === rawParam) ||
+        (m._id && m._id.toString() === rawParam)
+    );
+
+    if (item && item.r2Key && isR2Configured()) {
+      const signedUrl = await getPresignedDownloadUrl(item.r2Key, {
+        expiresIn: 3600,
+        isPublic: false,
+      });
+      return res.redirect(302, signedUrl);
     }
 
     // GridFS fallback
-    if (mongoose.isValidObjectId(rawParam) && gridfsBucket) {
-      const fileId = new mongoose.Types.ObjectId(rawParam);
+    const targetFileId = (item && item.gridFsId) || rawParam;
+    if (mongoose.isValidObjectId(targetFileId) && gridfsBucket) {
+      const fileId = new mongoose.Types.ObjectId(targetFileId);
       const files = await gridfsBucket.find({ _id: fileId }).toArray();
       
       if (files && files.length > 0) {

@@ -65,6 +65,7 @@ const DiscordLibrary = () => {
 
   const getMediaUrl = (mediaFile) => {
     if (!mediaFile) return '';
+    if (mediaFile.signedUrl) return mediaFile.signedUrl;
     const id = mediaFile.r2Key ? encodeURIComponent(mediaFile.r2Key) : (mediaFile.gridFsId || mediaFile._id);
     const token = localStorage.getItem('token');
     return `/api/discord/media/${id}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
@@ -455,12 +456,12 @@ const DiscordLibrary = () => {
                       {hasMedia && (
                         <div
                           onClick={() =>
-                            setLightboxImage(`/api/discord/media/${firstMedia.gridFsId}`)
+                            setLightboxImage(getMediaUrl(firstMedia))
                           }
                           className="relative h-48 sm:h-52 overflow-hidden bg-black/40 border-b border-subtle cursor-zoom-in"
                         >
                           <img
-                            src={`/api/discord/media/${firstMedia.gridFsId}`}
+                            src={getMediaUrl(firstMedia)}
                             alt="Discord Attachment"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
                           />
@@ -785,14 +786,14 @@ const DiscordLibrary = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedMsg.media.map((mediaFile) => (
                       <div
-                        key={mediaFile.gridFsId}
+                        key={mediaFile._id || mediaFile.r2Key || mediaFile.gridFsId}
                         onClick={() =>
-                          setLightboxImage(`/api/discord/media/${mediaFile.gridFsId}`)
+                          setLightboxImage(getMediaUrl(mediaFile))
                         }
                         className="rounded-2xl overflow-hidden border border-subtle bg-black/40 aspect-video cursor-zoom-in group/img"
                       >
                         <img
-                          src={`/api/discord/media/${mediaFile.gridFsId}`}
+                          src={getMediaUrl(mediaFile)}
                           alt="Attachment"
                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform"
                         />

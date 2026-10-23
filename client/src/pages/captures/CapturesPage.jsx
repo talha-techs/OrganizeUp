@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -103,7 +103,6 @@ const getVideoSrc = (url) => {
   return url;
 };
 
-// Resolves relative API media URLs to full URL with VITE_API_URL when configured
 const resolveMediaUrl = (url) => {
   if (!url || typeof url !== 'string') return '';
   if (url.startsWith('/api/')) {
@@ -111,6 +110,19 @@ const resolveMediaUrl = (url) => {
     return `${apiBase}${url}`;
   }
   return url;
+};
+
+// Resolves the best working display URL for a capture's image
+// Prioritizes backend-generated presigned R2 URLs (mediaSignedUrl/thumbnailSignedUrl),
+// then falls back to resolving mediaUrl/thumbnailUrl.
+const getCaptureImageUrl = (capture) => {
+  if (!capture) return '';
+  return (
+    capture.mediaSignedUrl ||
+    capture.thumbnailSignedUrl ||
+    resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl) ||
+    ''
+  );
 };
 
 // Robust helper to extract/build a playable YouTube iframe embed URL (ONLY genuine YouTube links)
@@ -163,6 +175,7 @@ const CapturesPage = () => {
   const [maximizedNoteDraft, setMaximizedNoteDraft] = useState('');
   const [isSavingMaximizedNote, setIsSavingMaximizedNote] = useState(false);
   const [notificationPerm, setNotificationPerm] = useState(() => getNotificationPermission());
+  const retriedCapturesRef = useRef(new Map());
 
   const handleRequestOSPermission = async () => {
     const res = await requestNotificationPermission();
@@ -234,6 +247,37 @@ const CapturesPage = () => {
 
   const toggleEmbed = (id) => {
     setExpandedEmbeds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Image error handling with strict cap (at most 1 refetch per capture per minute)
+  const handleImageError = (e, capture) => {
+    // 1. Immediately break DOM error loops by clearing onerror
+    e.currentTarget.onerror = null;
+
+    const capId = capture?._id;
+    const now = Date.now();
+
+    // 2. Only trigger a refetch if this specific capture has not retried in the last 60s
+    if (capId) {
+      const lastRetry = retriedCapturesRef.current.get(capId) || 0;
+      if (now - lastRetry > 60000) {
+        retriedCapturesRef.current.set(capId, now);
+        if (!CapturesPage.lastRefetchTime || now - CapturesPage.lastRefetchTime > 30000) {
+          CapturesPage.lastRefetchTime = now;
+          dispatch(fetchCaptures());
+        }
+      }
+    }
+
+    // 3. Fallback placeholder logic
+    const fallback = capture?.thumbnailSignedUrl || resolveMediaUrl(capture?.thumbnailUrl);
+    if (fallback && e.currentTarget.src !== fallback) {
+      e.currentTarget.src = fallback;
+    } else {
+      e.currentTarget.style.display = 'none';
+      const placeholder = e.currentTarget.nextElementSibling;
+      if (placeholder) placeholder.classList.remove('hidden');
+    }
   };
 
   useEffect(() => {
@@ -678,19 +722,19 @@ const CapturesPage = () => {
                         platform="facebook"
                         className="border-b border-subtle"
                       />
-                    ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                    ) : getCaptureImageUrl(capture) ? (
                       <div
                         onClick={() => {
                           if (capture.embedUrl) {
                             toggleEmbed(capture._id);
                           } else {
-                            setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl));
+                            setLightboxImage(getCaptureImageUrl(capture));
                           }
                         }}
                         className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-pointer group/img flex items-center justify-center border-b border-subtle"
                       >
                         <img
-                          src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
+                          src={getCaptureImageUrl(capture)}
                           alt={capture.title || 'Facebook Video'}
                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                           onError={(e) => {
@@ -785,26 +829,17 @@ const CapturesPage = () => {
                       platform={capture.platform}
                       className="border-b border-subtle"
                     />
-                  ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                  ) : getCaptureImageUrl(capture) ? (
                     <div
-                      onClick={() => setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl))}
+                      onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
                       className="w-full bg-surface-raised relative min-h-[160px] max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                     >
                       <img
-                        src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
+                        src={getCaptureImageUrl(capture)}
                         alt={capture.title}
                         loading="lazy"
                         className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          const fallback = resolveMediaUrl(capture.thumbnailUrl);
-                          if (fallback && e.currentTarget.src !== fallback) {
-                            e.currentTarget.src = fallback;
-                          } else {
-                            e.currentTarget.style.display = 'none';
-                            const placeholder = e.currentTarget.nextElementSibling;
-                            if (placeholder) placeholder.classList.remove('hidden');
-                          }
-                        }}
+                        onError={(e) => handleImageError(e, capture)}
                       />
                       <div className="hidden absolute inset-0 flex flex-col items-center justify-center bg-surface-raised text-secondary p-4 text-center">
                         <IoImageOutline size={36} className="text-secondary/60 mb-2" />
@@ -864,7 +899,7 @@ const CapturesPage = () => {
                       capture.mediaType === 'pdf';
                     const coverPages = capture.documentInfo?.coverPages || [];
                     const currentPageIdx = docPageIndexes[capture._id] || 0;
-                    const activeCover = coverPages[currentPageIdx] || capture.thumbnailUrl || capture.mediaUrl;
+                    const activeCover = coverPages[currentPageIdx] || getCaptureImageUrl(capture);
 
                     return (
                       <>
@@ -1000,13 +1035,13 @@ const CapturesPage = () => {
                               loading="lazy"
                             />
                           </div>
-                        ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                        ) : getCaptureImageUrl(capture) ? (
                           <div
-                            onClick={() => setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl))}
+                            onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
                             className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                           >
                             <img
-                              src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
+                              src={getCaptureImageUrl(capture)}
                               alt={capture.title || 'LinkedIn Post'}
                               className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                               onError={(e) => {
@@ -1089,13 +1124,13 @@ const CapturesPage = () => {
                           loading="lazy"
                         />
                       </div>
-                    ) : (capture.mediaUrl || capture.thumbnailUrl) ? (
+                    ) : getCaptureImageUrl(capture) ? (
                       <div
-                        onClick={() => setLightboxImage(resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl))}
+                        onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
                         className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                       >
                         <img
-                          src={resolveMediaUrl(capture.mediaUrl || capture.thumbnailUrl)}
+                          src={getCaptureImageUrl(capture)}
                           alt={capture.title || 'X Post'}
                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
                           onError={(e) => {
@@ -1362,7 +1397,7 @@ const CapturesPage = () => {
           const isDoc = Boolean(cap.documentInfo) || cap.mediaType === 'document' || cap.mediaType === 'pdf';
           const coverPages = cap.documentInfo?.coverPages || [];
           const maxDocPageIdx = docPageIndexes[cap._id] || 0;
-          const activeCover = coverPages[maxDocPageIdx] || cap.thumbnailUrl || cap.mediaUrl;
+          const activeCover = coverPages[maxDocPageIdx] || getCaptureImageUrl(cap);
           const docFileUrl = cap.documentInfo?.fileUrl || (cap.sourceUrl && (cap.sourceUrl.includes('drive.google.com') || cap.sourceUrl.toLowerCase().endsWith('.pdf')) ? cap.sourceUrl : null);
 
           return (
@@ -1472,9 +1507,9 @@ const CapturesPage = () => {
                             allowFullScreen={true}
                             title={cap.title || 'X Post'}
                           />
-                        ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                        ) : getCaptureImageUrl(cap) ? (
                           <img
-                            src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
+                            src={getCaptureImageUrl(cap)}
                             alt={cap.title || 'X Post'}
                             className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                           />
@@ -1563,9 +1598,9 @@ const CapturesPage = () => {
                             loading="lazy"
                           />
                         </div>
-                      ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                      ) : getCaptureImageUrl(cap) ? (
                         <img
-                          src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
+                          src={getCaptureImageUrl(cap)}
                           alt={cap.title || 'LinkedIn Post'}
                           className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                         />
@@ -1616,27 +1651,27 @@ const CapturesPage = () => {
                             platform="facebook"
                             className="w-full h-full"
                           />
-                        ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                        ) : getCaptureImageUrl(cap) ? (
                           <img
-                            src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
+                            src={getCaptureImageUrl(cap)}
                             alt={cap.title}
                             className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                           />
                         ) : null}
                       </div>
-                    ) : (cap.mediaUrl || cap.thumbnailUrl) ? (
+                    ) : getCaptureImageUrl(cap) ? (
                       /* 6. Default Image or Video */
                       isDirectVideoFile(cap.mediaUrl) ? (
                         <video
                           src={getVideoSrc(cap.mediaUrl)}
-                          poster={cap.thumbnailUrl}
+                          poster={cap.thumbnailSignedUrl || cap.thumbnailUrl}
                           controls
                           playsInline
                           className="max-h-[80vh] max-w-full rounded-2xl shadow-2xl"
                         />
                       ) : (
                         <img
-                          src={resolveMediaUrl(cap.mediaUrl || cap.thumbnailUrl)}
+                          src={getCaptureImageUrl(cap)}
                           alt={cap.title}
                           className="max-h-[80vh] max-w-full object-contain rounded-2xl shadow-2xl"
                         />
@@ -1804,9 +1839,9 @@ const CapturesPage = () => {
               </div>
 
               <div className="p-2.5 rounded-xl bg-surface border border-subtle flex items-center gap-2.5">
-                {(reminderModalItem.thumbnailUrl || reminderModalItem.mediaUrl) && (
+                {getCaptureImageUrl(reminderModalItem) && (
                   <img
-                    src={resolveMediaUrl(reminderModalItem.thumbnailUrl || reminderModalItem.mediaUrl)}
+                    src={getCaptureImageUrl(reminderModalItem)}
                     alt=""
                     className="w-9 h-9 object-cover rounded-lg border border-subtle flex-shrink-0"
                   />
@@ -1944,9 +1979,9 @@ const CapturesPage = () => {
                 Are you sure you want to remove this item from your Vault? This action cannot be undone.
               </p>
               <div className="p-3 rounded-xl bg-surface border border-subtle flex items-center gap-3">
-                {(deleteCaptureItem.thumbnailUrl || deleteCaptureItem.mediaUrl) && (
+                {getCaptureImageUrl(deleteCaptureItem) && (
                   <img
-                    src={resolveMediaUrl(deleteCaptureItem.thumbnailUrl || deleteCaptureItem.mediaUrl)}
+                    src={getCaptureImageUrl(deleteCaptureItem)}
                     alt=""
                     className="w-12 h-12 object-cover rounded-lg flex-shrink-0 border border-subtle"
                   />
