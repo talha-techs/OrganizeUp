@@ -1,6 +1,12 @@
 import { useState, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { createBook, updateBook } from '../../redux/slices/bookSlice';
+import {
+  createBook,
+  updateBook,
+  addActiveUpload,
+  updateUploadProgress,
+  removeActiveUpload,
+} from '../../redux/slices/bookSlice';
 import toast from 'react-hot-toast';
 import { IoAdd, IoTrash, IoMusicalNote, IoCloudUploadOutline } from 'react-icons/io5';
 
@@ -24,7 +30,6 @@ const BookForm = ({ book, onClose }) => {
   const [pdfFile, setPdfFile] = useState(null);
   const [coverImageFile, setCoverImageFile] = useState(null);
   const [autoCover, setAutoCover] = useState(!book);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const audioInputRef = useRef(null);
   const dispatch = useDispatch();
 
@@ -66,54 +71,127 @@ const BookForm = ({ book, onClose }) => {
     setPendingAudio((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    try {
-      const fd = new FormData();
-      fd.append('title', formData.title);
-      fd.append('author', formData.author);
-      fd.append('type', formData.type);
-      fd.append('description', formData.description);
-      fd.append('driveLink', formData.driveLink);
-      fd.append('autoCover', String(autoCover));
-
-      if (formData.type === 'video') {
-        fd.append('videos', JSON.stringify(videos.map((v, i) => ({ ...v, order: i }))));
-      }
-
-      if (formData.type === 'audio' && pendingAudio.length > 0) {
-        const meta = pendingAudio.map((a) => ({ title: a.title }));
-        fd.append('audioFileMeta', JSON.stringify(meta));
-        pendingAudio.forEach((a) => fd.append('audioFiles', a.file));
-      }
-
-      if (pdfFile) fd.append('pdfFile', pdfFile);
-      if (coverImageFile) {
-        fd.append('coverImage', coverImageFile);
-      } else if (!coverImageFile) {
-        fd.append('coverImage', formData.coverImage);
-      }
-
-      let result;
-      if (book) {
-        result = await dispatch(updateBook({ id: book._id, formData: fd }));
-      } else {
-        result = await dispatch(createBook(fd));
-      }
-
-      if (result.meta.requestStatus === 'fulfilled') {
-        toast.success(book ? 'Book updated!' : 'Book created!');
-        onClose();
-      } else {
-        toast.error(result.payload || 'Something went wrong');
-      }
-    } catch (error) {
-      toast.error('Error saving book');
-    } finally {
-      setIsSubmitting(false);
+    if (!formData.title.trim()) {
+      toast.error('Title is required');
+      return;
     }
+    if (!formData.author.trim()) {
+      toast.error('Author is required');
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('title', formData.title.trim());
+    fd.append('author', formData.author.trim());
+    fd.append('type', formData.type);
+    fd.append('description', formData.description || '');
+    fd.append('driveLink', formData.driveLink || '');
+    fd.append('autoCover', String(autoCover));
+
+    if (formData.type === 'video') {
+      fd.append('videos', JSON.stringify(videos.map((v, i) => ({ ...v, order: i }))));
+    }
+
+    if (formData.type === 'audio' && pendingAudio.length > 0) {
+      const meta = pendingAudio.map((a) => ({ title: a.title }));
+      fd.append('audioFileMeta', JSON.stringify(meta));
+      pendingAudio.forEach((a) => fd.append('audioFiles', a.file));
+    }
+
+    if (pdfFile) fd.append('pdfFile', pdfFile);
+    if (coverImageFile) {
+      fd.append('coverImage', coverImageFile);
+    } else if (!coverImageFile && formData.coverImage) {
+      fd.append('coverImage', formData.coverImage);
+    }
+
+    const isEdit = Boolean(book);
+    const bookTitle = formData.title.trim();
+    const uploadId = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const toastId = `toast-${uploadId}`;
+
+    // 1. Immediately notify user and close the modal window
+    toast.loading(
+      isEdit ? `Updating "${bookTitle}" in background...` : `Uploading "${bookTitle}" in background...`,
+      { id: toastId }
+    );
+
+    dispatch(
+      addActiveUpload({
+        id: uploadId,
+        title: bookTitle,
+        type: formData.type,
+        progress: 0,
+        isEdit,
+      })
+    );
+
+    // Instantly close the window so the user is not waiting or blocked
+    onClose();
+
+    // 2. Perform background upload
+    const uploadPromise = isEdit
+      ? dispatch(
+          updateBook({
+            id: book._id,
+            formData: fd,
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                dispatch(updateUploadProgress({ id: uploadId, progress: percent }));
+                if (percent < 100) {
+                  toast.loading(`Updating "${bookTitle}" (${percent}%)...`, { id: toastId });
+                } else {
+                  toast.loading(`Processing and storing "${bookTitle}"...`, { id: toastId });
+                }
+              }
+            },
+          })
+        )
+      : dispatch(
+          createBook({
+            formData: fd,
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                dispatch(updateUploadProgress({ id: uploadId, progress: percent }));
+                if (percent < 100) {
+                  toast.loading(`Uploading "${bookTitle}" (${percent}%)...`, { id: toastId });
+                } else {
+                  toast.loading(`Processing and storing "${bookTitle}"...`, { id: toastId });
+                }
+              }
+            },
+          })
+        );
+
+    uploadPromise
+      .then((result) => {
+        dispatch(removeActiveUpload(uploadId));
+        if (result.meta?.requestStatus === 'fulfilled') {
+          toast.success(
+            isEdit
+              ? `Book "${bookTitle}" updated successfully!`
+              : `Book "${bookTitle}" uploaded and saved!`,
+            { id: toastId, duration: 4000 }
+          );
+        } else {
+          toast.error(
+            result.payload || `Failed to ${isEdit ? 'update' : 'create'} "${bookTitle}"`,
+            { id: toastId, duration: 6000 }
+          );
+        }
+      })
+      .catch((err) => {
+        dispatch(removeActiveUpload(uploadId));
+        toast.error(`Error saving "${bookTitle}": ${err?.message || 'Upload failed'}`, {
+          id: toastId,
+          duration: 6000,
+        });
+      });
   };
 
   const fmtSize = (bytes) => {
@@ -396,14 +474,8 @@ const BookForm = ({ book, onClose }) => {
         <button type="button" onClick={onClose} className="btn-secondary">
           Cancel
         </button>
-        <button type="submit" disabled={isSubmitting} className="btn-primary disabled:opacity-50">
-          {isSubmitting ? (
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : book ? (
-            'Update Book'
-          ) : (
-            'Create Book'
-          )}
+        <button type="submit" className="btn-primary cursor-pointer">
+          {book ? 'Update Book' : 'Create Book'}
         </button>
       </div>
     </form>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { IoBookOutline, IoVideocamOutline, IoDocumentTextOutline, IoMusicalNotesOutline, IoLogoYoutube, IoAdd, IoCloudDownloadOutline, IoGlobeOutline } from 'react-icons/io5';
 import { fetchBooks, deleteBook } from '../redux/slices/bookSlice';
 import { removeFromLibrary } from '../redux/slices/librarySlice';
@@ -27,7 +27,7 @@ const BooksPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { books, isLoading } = useSelector((state) => state.books);
+  const { books, isLoading, activeUploads } = useSelector((state) => state.books);
   const { user } = useSelector((state) => state.auth);
   const isAdmin = user?.role === 'admin';
 
@@ -144,6 +144,51 @@ const BooksPage = () => {
           </button>
         ))}
       </div>
+
+      {/* Active Background Uploads */}
+      {activeUploads?.length > 0 && (
+        <div className="space-y-3 mb-8">
+          {activeUploads.map((up) => (
+            <div
+              key={up.id}
+              className="p-4 rounded-2xl bg-surface border border-accent/30 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent-subtle text-accent flex items-center justify-center shrink-0">
+                  <IoCloudUploadOutline size={22} className="animate-bounce" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-primary">
+                      {up.isEdit ? 'Updating' : 'Uploading'} &ldquo;{up.title}&rdquo; in background
+                    </p>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-accent-subtle text-accent border border-accent/20">
+                      Processing
+                    </span>
+                  </div>
+                  <p className="text-xs text-secondary mt-0.5">
+                    {up.progress < 100
+                      ? `Uploading files to storage: ${up.progress}% complete`
+                      : 'Processing & saving book to library...'}
+                  </p>
+                </div>
+              </div>
+              <div className="w-full sm:w-48">
+                <div className="flex justify-between text-xs text-muted mb-1 font-mono">
+                  <span>{up.progress < 100 ? 'Uploading' : 'Finalizing'}</span>
+                  <span>{up.progress}%</span>
+                </div>
+                <div className="h-2 w-full bg-surface-raised rounded-full overflow-hidden border border-subtle">
+                  <div
+                    className="h-full bg-accent transition-all duration-300 rounded-full"
+                    style={{ width: `${Math.max(up.progress, 5)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <LoadingSpinner text="Loading books..." />

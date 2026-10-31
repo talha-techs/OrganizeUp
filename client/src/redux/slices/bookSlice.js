@@ -52,10 +52,13 @@ export const createBookFromPdfUrl = createAsyncThunk(
 
 export const createBook = createAsyncThunk(
   "books/createBook",
-  async (formData, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
+      const formData = arg instanceof FormData ? arg : arg.formData;
+      const onUploadProgress = arg?.onUploadProgress;
       const { data } = await api.post("/books", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress,
       });
       return data;
     } catch (error) {
@@ -68,10 +71,14 @@ export const createBook = createAsyncThunk(
 
 export const updateBook = createAsyncThunk(
   "books/updateBook",
-  async ({ id, formData }, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
+      const id = arg.id;
+      const formData = arg.formData || arg;
+      const onUploadProgress = arg?.onUploadProgress;
       const { data } = await api.put(`/books/${id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress,
       });
       return data;
     } catch (error) {
@@ -218,6 +225,7 @@ const bookSlice = createSlice({
   name: "books",
   initialState: {
     books: [],
+    activeUploads: [],
     currentBook: null,
     progress: {},
     combinedNotes: "",
@@ -241,6 +249,20 @@ const bookSlice = createSlice({
     },
     clearDriveScanned: (state) => {
       state.driveScanned = null;
+    },
+    addActiveUpload: (state, action) => {
+      state.activeUploads.push(action.payload);
+    },
+    updateUploadProgress: (state, action) => {
+      const upload = state.activeUploads.find((u) => u.id === action.payload.id);
+      if (upload) {
+        upload.progress = action.payload.progress;
+      }
+    },
+    removeActiveUpload: (state, action) => {
+      state.activeUploads = state.activeUploads.filter(
+        (u) => u.id !== action.payload,
+      );
     },
   },
   extraReducers: (builder) => {
@@ -269,6 +291,9 @@ const bookSlice = createSlice({
       })
       .addCase(createBook.fulfilled, (state, action) => {
         state.books.unshift(action.payload.book);
+      })
+      .addCase(createBook.rejected, (state, action) => {
+        state.error = action.payload;
       })
       .addCase(updateBook.fulfilled, (state, action) => {
         const index = state.books.findIndex(
@@ -312,7 +337,7 @@ const bookSlice = createSlice({
       .addCase(updateVideoProgress.rejected, (state) => {
         state.isSavingNotes = false;
       })
-      .addCase(updateReadingProgress.fulfilled, (state, action) => {
+      .addCase(updateReadingProgress.fulfilled, () => {
         // Progress is stored on user, will be refreshed via getMe
       })
       // Drive scan
@@ -364,5 +389,8 @@ export const {
   clearCurrentBook,
   clearCombinedBookNotes,
   clearDriveScanned,
+  addActiveUpload,
+  updateUploadProgress,
+  removeActiveUpload,
 } = bookSlice.actions;
 export default bookSlice.reducer;
