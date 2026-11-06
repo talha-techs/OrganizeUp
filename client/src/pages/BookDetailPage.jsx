@@ -33,6 +33,7 @@ import {
   IoContractOutline,
   IoExpandOutline,
   IoBulbOutline,
+  IoShareSocialOutline,
 } from 'react-icons/io5';
 import {
   fetchBook,
@@ -535,6 +536,36 @@ const BookDetailPage = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     toast.success('Notes exported as Markdown');
+  };
+
+  const handleShareResource = async () => {
+    const shareUrl = window.location.href;
+    const shareTitle = currentBook?.title ? `${currentBook.title} — OrganizeUp` : 'Book — OrganizeUp';
+    const shareText = `Check out "${currentBook?.title || 'this book'}" on OrganizeUp!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Web Share failed, fallback to copy:', err);
+        } else {
+          return;
+        }
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Book link copied to clipboard! Anyone opening it can view this book.', { icon: '🔗' });
+    } catch {
+      toast.error('Failed to copy link to clipboard');
+    }
   };
 
   // Ctrl+S / Cmd+S shortcut to save notes
@@ -1078,6 +1109,16 @@ const BookDetailPage = () => {
               <span>Reset Panes</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleShareResource}
+            className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer shadow-sm hover:border-accent/40"
+            title="Share this book link with friends or team members"
+          >
+            <IoShareSocialOutline size={15} />
+            <span>Share</span>
+          </button>
 
           {!isOwner && (
             <div>

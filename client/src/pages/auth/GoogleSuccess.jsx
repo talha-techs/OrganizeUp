@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { getMe } from '../../redux/slices/authSlice';
 import api from '../../utils/api';
+import { resolveAuthRedirect, clearAuthRedirect } from '../../utils/authRedirect';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 const GoogleSuccess = () => {
@@ -18,6 +19,9 @@ const GoogleSuccess = () => {
     const token = params.get('token');
 
     const authenticate = async () => {
+      // Resolve any pre-saved or passed redirect target
+      const redirectTarget = resolveAuthRedirect();
+
       try {
         if (token) {
           // Store token in localStorage immediately so request interceptor includes Bearer token
@@ -33,14 +37,17 @@ const GoogleSuccess = () => {
 
         const res = await dispatch(getMe());
         if (res.meta.requestStatus === 'fulfilled') {
-          // Direct navigation to dashboard without intermediate pages
-          navigate('/dashboard', { replace: true });
+          // Clean up stored redirect and navigate to original destination
+          clearAuthRedirect();
+          navigate(redirectTarget, { replace: true });
         } else {
-          navigate('/login?error=google_auth_failed', { replace: true });
+          const failQuery = redirectTarget !== '/dashboard' ? `&redirect=${encodeURIComponent(redirectTarget)}` : '';
+          navigate(`/login?error=google_auth_failed${failQuery}`, { replace: true });
         }
       } catch (error) {
         console.error('Google authentication error:', error);
-        navigate('/login?error=google_auth_failed', { replace: true });
+        const failQuery = redirectTarget !== '/dashboard' ? `&redirect=${encodeURIComponent(redirectTarget)}` : '';
+        navigate(`/login?error=google_auth_failed${failQuery}`, { replace: true });
       }
     };
 

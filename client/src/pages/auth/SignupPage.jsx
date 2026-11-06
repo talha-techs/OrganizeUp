@@ -1,16 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { IoMail, IoLockClosed, IoLogoGoogle, IoPerson, IoEye, IoEyeOff, IoArrowBack } from 'react-icons/io5';
+import {
+  IoMail,
+  IoLockClosed,
+  IoLogoGoogle,
+  IoPerson,
+  IoEye,
+  IoEyeOff,
+  IoArrowBack,
+  IoSparklesOutline,
+} from 'react-icons/io5';
 import { register, clearError } from '../../redux/slices/authSlice';
+import {
+  resolveAuthRedirect,
+  saveAuthRedirect,
+  clearAuthRedirect,
+  getResourceLabel,
+} from '../../utils/authRedirect';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const SignupPage = () => {
   useDocumentTitle('Sign Up');
   const [searchParams] = useSearchParams();
-  const redirectTarget = searchParams.get('redirect') || '/dashboard';
+  const location = useLocation();
+
+  const redirectTarget = resolveAuthRedirect({ location, searchParams });
   const emailParam = searchParams.get('email') || '';
 
   const [formData, setFormData] = useState({
@@ -31,7 +48,16 @@ const SignupPage = () => {
   }, [emailParam]);
 
   useEffect(() => {
-    if (user) navigate(redirectTarget);
+    if (redirectTarget !== '/dashboard') {
+      saveAuthRedirect(redirectTarget);
+    }
+  }, [redirectTarget]);
+
+  useEffect(() => {
+    if (user) {
+      clearAuthRedirect();
+      navigate(redirectTarget, { replace: true });
+    }
   }, [user, navigate, redirectTarget]);
 
   useEffect(() => {
@@ -77,9 +103,13 @@ const SignupPage = () => {
   };
 
   const handleGoogleLogin = () => {
+    saveAuthRedirect(redirectTarget);
     const apiUrl = import.meta.env.VITE_API_URL || '';
     window.location.href = `${apiUrl}/api/auth/google`;
   };
+
+  const isSharedResource = redirectTarget && redirectTarget !== '/dashboard';
+  const targetLabel = getResourceLabel(redirectTarget);
 
   return (
     <div className="min-h-screen bg-canvas text-primary flex items-center justify-center px-4 py-12 relative overflow-hidden">
@@ -113,6 +143,31 @@ const SignupPage = () => {
           </Link>
           <p className="text-secondary mt-3 text-sm">Create your account to get started</p>
         </div>
+
+        {/* Deferred Deep Link Banner */}
+        {isSharedResource && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 p-4 rounded-2xl bg-accent/10 border border-accent/25 text-center text-xs space-y-1.5 shadow-sm"
+          >
+            <div className="flex items-center justify-center gap-1.5 text-accent font-semibold text-xs">
+              <IoSparklesOutline size={15} />
+              <span>You've been shared a resource!</span>
+            </div>
+            <p className="text-secondary leading-relaxed">
+              Create your free account below to instantly open <strong className="text-primary font-medium">{targetLabel}</strong>.
+            </p>
+            <div className="pt-0.5">
+              <Link
+                to={`/login?redirect=${encodeURIComponent(redirectTarget)}${formData.email || emailParam ? `&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
+                className="inline-flex items-center gap-1 text-accent font-semibold hover:underline"
+              >
+                Already registered? Sign in &rarr;
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         <div className="glass-card p-8 border border-subtle">
           <button
@@ -168,7 +223,7 @@ const SignupPage = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Min 6 characters"
+                  placeholder="At least 6 characters"
                   className="input-dark pl-10 pr-10"
                   required
                   minLength={6}
@@ -216,7 +271,7 @@ const SignupPage = () => {
         <p className="text-center text-sm text-muted mt-6">
           Already have an account?{' '}
           <Link
-            to={`/login${redirectTarget !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTarget)}&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
+            to={`/login${isSharedResource ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}${formData.email || emailParam ? `&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
             className="text-accent hover:underline font-medium"
           >
             Login

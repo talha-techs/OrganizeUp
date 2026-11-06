@@ -23,6 +23,7 @@ import {
   IoAlarmOutline,
   IoClose,
   IoGlobeOutline,
+  IoShareSocialOutline,
 } from 'react-icons/io5';
 import {
   fetchPlaylist,
@@ -514,6 +515,37 @@ const YouTubePlaylistDetailPage = () => {
     toast.success('Downloaded notes as .md');
   };
 
+  const handleShareResource = async () => {
+    const shareUrl = window.location.href;
+    const itemTitle = isSingleVideo ? (activeVideo?.title || currentPlaylist?.title) : currentPlaylist?.title;
+    const shareTitle = itemTitle ? `${itemTitle} — OrganizeUp` : 'YouTube Content — OrganizeUp';
+    const shareText = `Check out "${itemTitle || 'this content'}" on OrganizeUp!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Web Share failed, fallback to copy:', err);
+        } else {
+          return;
+        }
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied to clipboard! Anyone opening it can view this video after a quick signup.', { icon: '🔗' });
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
   if (isLoading || !currentPlaylist) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -629,6 +661,15 @@ const YouTubePlaylistDetailPage = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleShareResource}
+              className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer hover:border-accent/40 shadow-sm"
+              title="Share this YouTube content"
+            >
+              <IoShareSocialOutline size={15} />
+              <span>Share</span>
+            </button>
             {!isSingleVideo && (
               <button
                 onClick={handleRefresh}

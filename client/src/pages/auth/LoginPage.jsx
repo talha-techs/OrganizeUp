@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { IoMail, IoLockClosed, IoLogoGoogle, IoEye, IoEyeOff, IoArrowBack } from 'react-icons/io5';
+import { IoMail, IoLockClosed, IoLogoGoogle, IoEye, IoEyeOff, IoArrowBack, IoSparklesOutline } from 'react-icons/io5';
 import { login, clearError } from '../../redux/slices/authSlice';
+import {
+  resolveAuthRedirect,
+  saveAuthRedirect,
+  clearAuthRedirect,
+  getResourceLabel,
+} from '../../utils/authRedirect';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const LoginPage = () => {
   useDocumentTitle('Login');
   const [searchParams] = useSearchParams();
-  const redirectTarget = searchParams.get('redirect') || '/dashboard';
+  const location = useLocation();
+
+  const redirectTarget = resolveAuthRedirect({ location, searchParams });
   const emailParam = searchParams.get('email') || '';
 
   const [formData, setFormData] = useState({ email: emailParam, password: '' });
@@ -26,7 +34,16 @@ const LoginPage = () => {
   }, [emailParam]);
 
   useEffect(() => {
-    if (user) navigate(redirectTarget);
+    if (redirectTarget !== '/dashboard') {
+      saveAuthRedirect(redirectTarget);
+    }
+  }, [redirectTarget]);
+
+  useEffect(() => {
+    if (user) {
+      clearAuthRedirect();
+      navigate(redirectTarget, { replace: true });
+    }
   }, [user, navigate, redirectTarget]);
 
   useEffect(() => {
@@ -42,9 +59,13 @@ const LoginPage = () => {
   };
 
   const handleGoogleLogin = () => {
+    saveAuthRedirect(redirectTarget);
     const apiUrl = import.meta.env.VITE_API_URL || '';
     window.location.href = `${apiUrl}/api/auth/google`;
   };
+
+  const isSharedResource = redirectTarget && redirectTarget !== '/dashboard';
+  const targetLabel = getResourceLabel(redirectTarget);
 
   return (
     <div className="min-h-screen bg-canvas text-primary flex items-center justify-center px-4 relative overflow-hidden">
@@ -79,6 +100,31 @@ const LoginPage = () => {
           </Link>
           <p className="text-secondary mt-3 text-sm">Welcome back! Login to your account</p>
         </div>
+
+        {/* Deferred Deep Link Banner */}
+        {isSharedResource && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 p-3.5 rounded-2xl bg-accent/10 border border-accent/25 text-center text-xs space-y-1.5 shadow-sm"
+          >
+            <div className="flex items-center justify-center gap-1.5 text-accent font-semibold text-xs">
+              <IoSparklesOutline size={15} />
+              <span>Shared Resource</span>
+            </div>
+            <p className="text-secondary">
+              Sign in to immediately access <strong className="text-primary font-medium">{targetLabel}</strong>.
+            </p>
+            <div className="pt-0.5">
+              <Link
+                to={`/signup?redirect=${encodeURIComponent(redirectTarget)}${formData.email || emailParam ? `&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
+                className="inline-flex items-center gap-1 text-accent font-semibold hover:underline"
+              >
+                Don't have an account yet? Sign up free &rarr;
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* Form */}
         <div className="glass-card p-8 border border-subtle">
@@ -152,7 +198,7 @@ const LoginPage = () => {
         <p className="text-center text-sm text-muted mt-6">
           Don't have an account?{' '}
           <Link
-            to={`/signup${redirectTarget !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTarget)}&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
+            to={`/signup${isSharedResource ? `?redirect=${encodeURIComponent(redirectTarget)}` : ''}${formData.email || emailParam ? `&email=${encodeURIComponent(formData.email || emailParam)}` : ''}`}
             className="text-accent hover:underline font-medium"
           >
             Sign Up

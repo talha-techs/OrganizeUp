@@ -19,6 +19,7 @@ import {
   IoBookmark,
   IoBookmarkOutline,
   IoCloseOutline,
+  IoShareSocialOutline,
 } from 'react-icons/io5';
 import {
   fetchCourse,
@@ -197,6 +198,36 @@ const CourseDetailPage = () => {
     }
   };
 
+  const handleShareResource = async () => {
+    const shareUrl = window.location.href;
+    const shareTitle = currentCourse?.title ? `${currentCourse.title} — OrganizeUp` : 'Course — OrganizeUp';
+    const shareText = `Check out "${currentCourse?.title || 'this course'}" on OrganizeUp!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Web Share failed, fallback to copy:', err);
+        } else {
+          return;
+        }
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Course link copied to clipboard! Anyone opening it can view this course.', { icon: '🔗' });
+    } catch {
+      toast.error('Failed to copy link to clipboard');
+    }
+  };
+
   if (isLoading) {
     return <LoadingSpinner text="Loading course..." />;
   }
@@ -299,6 +330,16 @@ const CourseDetailPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleShareResource}
+              className="btn-secondary flex items-center gap-1.5 text-xs py-2 px-3 shadow-sm cursor-pointer hover:border-accent/40"
+              title="Share this course link"
+            >
+              <IoShareSocialOutline size={15} />
+              <span>Share</span>
+            </button>
+
             {!isOwner && (
               isSavedInLibrary ? (
                 <button

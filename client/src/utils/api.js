@@ -52,7 +52,8 @@ api.interceptors.response.use(
 
       // Only redirect if the user is on a protected route that requires authentication
       if (!isPublicPath) {
-        window.location.href = "/login";
+        const returnPath = window.location.pathname + (window.location.search || '') + (window.location.hash || '');
+        window.location.href = `/login?redirect=${encodeURIComponent(returnPath)}`;
       }
     }
     return Promise.reject(error);
