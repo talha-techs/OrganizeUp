@@ -8,7 +8,15 @@ import {
   removeActiveUpload,
 } from '../../redux/slices/bookSlice';
 import toast from 'react-hot-toast';
-import { IoAdd, IoTrash, IoMusicalNote, IoCloudUploadOutline } from 'react-icons/io5';
+import {
+  IoAdd,
+  IoTrash,
+  IoMusicalNote,
+  IoCloudUploadOutline,
+  IoVideocamOutline,
+  IoDocumentTextOutline,
+} from 'react-icons/io5';
+import CustomSelect from '../ui/CustomSelect';
 
 const BookForm = ({ book, onClose }) => {
   const [formData, setFormData] = useState({
@@ -339,16 +347,17 @@ const BookForm = ({ book, onClose }) => {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-secondary mb-1.5">Type *</label>
-          <select
+          <CustomSelect
+            label="Type *"
             value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            className="input-dark"
-          >
-            <option value="video">Video Book</option>
-            <option value="text">Text Book (PDF)</option>
-            <option value="audio">Audio Book</option>
-          </select>
+            onChange={(val) => setFormData({ ...formData, type: val })}
+            options={[
+              { value: 'video', label: 'Video Book', icon: IoVideocamOutline },
+              { value: 'text', label: 'Text Book (PDF)', icon: IoDocumentTextOutline },
+              { value: 'audio', label: 'Audio Book', icon: IoMusicalNote },
+            ]}
+            className="w-full"
+          />
         </div>
       </div>
 

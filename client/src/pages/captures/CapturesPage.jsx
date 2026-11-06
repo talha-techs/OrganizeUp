@@ -45,6 +45,7 @@ import {
   openQuickCapture,
 } from '../../redux/slices/captureSlice';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import CustomSelect from '../../components/ui/CustomSelect';
 import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
 import { getInstagramEmbedUrl, getFacebookEmbedUrl } from '../../utils/linkMediaUtils';
 import {
@@ -577,27 +578,35 @@ const CapturesPage = () => {
           </form>
 
           {/* Filters and Sort */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <select
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+            <CustomSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-surface-raised border border-subtle text-xs font-semibold text-primary focus:outline-none focus:border-accent cursor-pointer"
-            >
-              <option value="all">Status: All</option>
-              <option value="inbox">Status: Inbox</option>
-              <option value="completed">Status: Completed</option>
-            </select>
+              onChange={setStatusFilter}
+              size="sm"
+              align="right"
+              className="flex-1 sm:flex-initial"
+              buttonClassName="py-1.5 px-3 min-w-[130px]"
+              options={[
+                { value: 'all', label: 'Status: All' },
+                { value: 'inbox', label: 'Status: Inbox' },
+                { value: 'completed', label: 'Status: Completed' },
+              ]}
+            />
 
-            <select
+            <CustomSelect
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-surface-raised border border-subtle text-xs font-semibold text-primary focus:outline-none focus:border-accent cursor-pointer"
-            >
-              <option value="newest">Sort: Newest First</option>
-              <option value="remindAt">Sort: Reminder Date</option>
-              <option value="priority">Sort: Priority</option>
-              <option value="oldest">Sort: Oldest First</option>
-            </select>
+              onChange={setSortBy}
+              size="sm"
+              align="right"
+              className="flex-1 sm:flex-initial"
+              buttonClassName="py-1.5 px-3 min-w-[155px]"
+              options={[
+                { value: 'newest', label: 'Sort: Newest First' },
+                { value: 'remindAt', label: 'Sort: Reminder Date' },
+                { value: 'priority', label: 'Sort: Priority' },
+                { value: 'oldest', label: 'Sort: Oldest First' },
+              ]}
+            />
           </div>
         </div>
       </div>

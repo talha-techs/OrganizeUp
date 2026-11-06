@@ -21,6 +21,7 @@ import {
   removeCollaborator,
 } from '../../redux/slices/sectionSlice';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/CustomSelect';
 
 const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canManage }) => {
   const dispatch = useDispatch();
@@ -204,14 +205,16 @@ const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canM
                     className="w-full bg-surface-raised border border-subtle rounded-xl px-3.5 py-2.5 text-sm text-primary placeholder-muted focus:outline-none focus:border-accent"
                   />
                 </div>
-                <select
+                <CustomSelect
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="bg-surface-raised border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent cursor-pointer"
-                >
-                  <option value="editor">Can edit</option>
-                  <option value="viewer">Can view</option>
-                </select>
+                  onChange={setInviteRole}
+                  options={[
+                    { value: 'editor', label: 'Can edit', icon: IoCreateOutline },
+                    { value: 'viewer', label: 'Can view', icon: IoEyeOutline },
+                  ]}
+                  size="md"
+                  className="sm:w-36"
+                />
                 <button
                   type="submit"
                   disabled={inviting || !inviteEmail.trim()}
@@ -319,14 +322,17 @@ const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canM
                     <div className="flex items-center gap-2">
                       {/* Role selector dropdown if owner */}
                       {canManage && !isMe ? (
-                        <select
+                        <CustomSelect
                           value={c.role}
-                          onChange={(e) => handleRoleChange(cUser?._id, e.target.value)}
-                          className="bg-surface-raised border border-subtle rounded-lg px-2.5 py-1 text-xs text-primary focus:outline-none focus:border-accent cursor-pointer"
-                        >
-                          <option value="editor">Can edit</option>
-                          <option value="viewer">Can view</option>
-                        </select>
+                          onChange={(val) => handleRoleChange(cUser?._id, val)}
+                          options={[
+                            { value: 'editor', label: 'Can edit', icon: IoCreateOutline },
+                            { value: 'viewer', label: 'Can view', icon: IoEyeOutline },
+                          ]}
+                          size="xs"
+                          align="right"
+                          className="w-28"
+                        />
                       ) : null}
 
                       {/* Remove / Leave button */}

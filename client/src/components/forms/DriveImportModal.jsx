@@ -27,6 +27,7 @@ import {
 } from 'react-icons/io5';
 import { scanDriveUniversal, clearDriveScan } from '../../redux/slices/sectionSlice';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/CustomSelect';
 
 const FILE_ICONS = {
   pdf: <IoDocumentOutline size={15} className="text-red-400" />,
@@ -755,18 +756,19 @@ const DriveImportModal = ({
                         />
                       ) : field.type === 'select' ? (
                         <div className="space-y-2">
-                          <select
+                          <CustomSelect
                             value={details[field.name] || ''}
-                            onChange={(e) => handleDetailChange(field.name, e.target.value)}
-                            className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
-                          >
-                            <option value="">{field.placeholder || `Select ${field.label.toLowerCase()}`}</option>
-                            {(field.options || []).map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => handleDetailChange(field.name, val)}
+                            placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`}
+                            options={[
+                              { value: '', label: field.placeholder || `Select ${field.label.toLowerCase()}` },
+                              ...(field.options || []).map((opt) => ({
+                                value: opt.value,
+                                label: opt.label,
+                              })),
+                            ]}
+                            className="w-full"
+                          />
 
                           {field.allowNew && (
                             <div className="space-y-1">

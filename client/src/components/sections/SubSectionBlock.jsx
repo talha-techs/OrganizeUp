@@ -22,6 +22,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import WorkspaceVideoCard from './WorkspaceVideoCard';
+import CustomSelect from '../ui/CustomSelect';
 import {
   isVideoLink,
   detectLinkMediaInfo,
@@ -1442,19 +1443,19 @@ const SnippetEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock, o
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <select
+        <CustomSelect
           value={localLang}
-          onChange={(e) => setLocalLang(e.target.value)}
-          onBlur={handleBlur}
+          onChange={(val) => {
+            setLocalLang(val);
+            if (val !== (codeData.language || 'javascript')) {
+              onUpdate({ ...codeData, language: val });
+            }
+          }}
           disabled={!canEdit}
-          className="text-xs bg-surface border border-subtle text-secondary rounded-lg px-2 py-1 focus:outline-none focus:border-accent"
-        >
-          {LANGUAGES.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
+          size="xs"
+          options={LANGUAGES.map((l) => ({ value: l, label: l }))}
+          className="w-28"
+        />
         <div className="flex items-center gap-2">
           {saving && <span className="text-xs text-accent animate-pulse">Saving…</span>}
           <button

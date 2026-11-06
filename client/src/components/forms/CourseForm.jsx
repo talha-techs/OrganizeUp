@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { createCourse, updateCourse, fetchCategories } from '../../redux/slices/courseSlice';
 import toast from 'react-hot-toast';
+import CustomSelect from '../ui/CustomSelect';
 
 const CourseForm = ({ course, onClose }) => {
   const [formData, setFormData] = useState({
@@ -144,19 +145,20 @@ const CourseForm = ({ course, onClose }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-secondary mb-1.5">Category *</label>
-        <select
+        <CustomSelect
+          label="Category *"
           value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value, newCategory: '' })}
-          className="input-dark"
-        >
-          <option value="">Select category or type new below</option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>
-              {cat.name} {!cat.isGlobal ? '(Personal)' : ''}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => setFormData({ ...formData, category: val, newCategory: '' })}
+          placeholder="Select category or type new below"
+          options={[
+            { value: '', label: 'Select category or type new below' },
+            ...categories.map((cat) => ({
+              value: cat._id,
+              label: `${cat.name}${!cat.isGlobal ? ' (Personal)' : ''}`,
+            })),
+          ]}
+          className="w-full"
+        />
         <input
           type="text"
           value={formData.newCategory}

@@ -29,6 +29,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import api from '../utils/api';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import CustomSelect from '../components/ui/CustomSelect';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import {
@@ -696,16 +697,20 @@ const YouTubePlaylistsPage = () => {
         {/* Right Toolbar: Sort & Search */}
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
           {/* Sort Dropdown */}
-          <select
+          <CustomSelect
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="input-dark py-1.5 px-3 text-xs sm:text-sm bg-surface-raised cursor-pointer rounded-xl border border-subtle"
-          >
-            <option value="newest">Sort: Newest</option>
-            <option value="remindAt">Sort: Reminders (Due Soonest)</option>
-            <option value="oldest">Sort: Oldest</option>
-            <option value="title">Sort: Title (A-Z)</option>
-          </select>
+            onChange={setSortBy}
+            size="sm"
+            align="right"
+            className="w-full sm:w-auto"
+            buttonClassName="py-1.5 px-3 min-w-[175px]"
+            options={[
+              { value: 'newest', label: 'Sort: Newest' },
+              { value: 'remindAt', label: 'Sort: Reminders (Due Soonest)' },
+              { value: 'oldest', label: 'Sort: Oldest' },
+              { value: 'title', label: 'Sort: Title (A-Z)' },
+            ]}
+          />
 
           {/* Search Bar */}
           <div className="relative flex-1 sm:w-64">

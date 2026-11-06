@@ -78,6 +78,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ProgressBar from '../components/ui/ProgressBar';
 import AnimatedCounter from '../components/ui/AnimatedCounter';
+import CustomSelect from '../components/ui/CustomSelect';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -2083,15 +2084,17 @@ const AdminPage = () => {
                   </div>
 
                   <div className="sm:col-span-3">
-                    <select
+                    <CustomSelect
                       value={contentSort}
-                      onChange={handleContentSortChange}
-                      className="input-dark w-full text-xs py-2 bg-surface cursor-pointer"
-                    >
-                      <option value="newest">Sort: Newest First</option>
-                      <option value="oldest">Sort: Oldest First</option>
-                      <option value="title">Sort: Title / Name (A–Z)</option>
-                    </select>
+                      onChange={(val) => handleContentSortChange({ target: { value: val } })}
+                      size="sm"
+                      className="w-full"
+                      options={[
+                        { value: 'newest', label: 'Sort: Newest First' },
+                        { value: 'oldest', label: 'Sort: Oldest First' },
+                        { value: 'title', label: 'Sort: Title / Name (A–Z)' },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -2315,24 +2318,26 @@ const AdminPage = () => {
                   </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                    <select
+                    <CustomSelect
                       value={auditLogActionFilter}
-                      onChange={(e) => {
-                        const act = e.target.value;
+                      onChange={(act) => {
                         setAuditLogActionFilter(act);
                         setAuditLogPage(1);
                         handleRefreshAuditLogs(1, act);
                       }}
-                      className="px-2.5 py-1.5 rounded-xl bg-surface border border-subtle text-xs text-secondary focus:border-accent outline-none cursor-pointer"
-                    >
-                      <option value="">All Actions</option>
-                      <option value="view_private_content">View Private Content</option>
-                      <option value="preview_content">Preview Content</option>
-                      <option value="unpublish_content">Unpublish</option>
-                      <option value="delete_content">Delete Content</option>
-                      <option value="review_publish_request">Publish Review</option>
-                      <option value="delete_user">Delete User</option>
-                    </select>
+                      size="sm"
+                      align="right"
+                      className="min-w-[150px]"
+                      options={[
+                        { value: '', label: 'All Actions' },
+                        { value: 'view_private_content', label: 'View Private Content' },
+                        { value: 'preview_content', label: 'Preview Content' },
+                        { value: 'unpublish_content', label: 'Unpublish' },
+                        { value: 'delete_content', label: 'Delete Content' },
+                        { value: 'review_publish_request', label: 'Publish Review' },
+                        { value: 'delete_user', label: 'Delete User' },
+                      ]}
+                    />
 
                     <button
                       onClick={() => handleRefreshAuditLogs()}
@@ -2975,22 +2980,24 @@ const AdminPage = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <select
+                  <CustomSelect
                     value={suggestionTargetArea}
-                    onChange={(e) => setSuggestionTargetArea(e.target.value)}
-                    className="bg-surface border border-subtle rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:border-accent cursor-pointer"
-                  >
-                    <option value="all">All Modules</option>
-                    <option value="workspaces">Workspaces & Blocks</option>
-                    <option value="books">Book Reader</option>
-                    <option value="courses">Courses & Drive</option>
-                    <option value="captures">Vault Captures</option>
-                    <option value="inboxes">Telegram / Discord</option>
-                    <option value="explore">Explore Hub</option>
-                    <option value="tools">Tools & Tricks</option>
-                    <option value="general">General UX / PWA</option>
-                    <option value="other">Other Ideas</option>
-                  </select>
+                    onChange={setSuggestionTargetArea}
+                    size="sm"
+                    className="min-w-[160px]"
+                    options={[
+                      { value: 'all', label: 'All Modules' },
+                      { value: 'workspaces', label: 'Workspaces & Blocks' },
+                      { value: 'books', label: 'Book Reader' },
+                      { value: 'courses', label: 'Courses & Drive' },
+                      { value: 'captures', label: 'Vault Captures' },
+                      { value: 'inboxes', label: 'Telegram / Discord' },
+                      { value: 'explore', label: 'Explore Hub' },
+                      { value: 'tools', label: 'Tools & Tricks' },
+                      { value: 'general', label: 'General UX / PWA' },
+                      { value: 'other', label: 'Other Ideas' },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -3163,17 +3170,19 @@ const AdminPage = () => {
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs font-semibold text-secondary">Update Status:</span>
-                                      <select
+                                      <CustomSelect
                                         value={editingStatus}
-                                        onChange={(e) => setEditingStatus(e.target.value)}
-                                        className="bg-surface border border-subtle rounded-lg px-2.5 py-1.5 text-xs text-primary font-semibold focus:outline-none focus:border-accent cursor-pointer"
-                                      >
-                                        <option value="pending">Pending Review</option>
-                                        <option value="under_review">Under Consideration</option>
-                                        <option value="planned">Planned for Roadmap</option>
-                                        <option value="completed">Shipped & Implemented</option>
-                                        <option value="dismissed">Declined</option>
-                                      </select>
+                                        onChange={setEditingStatus}
+                                        size="xs"
+                                        className="min-w-[170px]"
+                                        options={[
+                                          { value: 'pending', label: 'Pending Review' },
+                                          { value: 'under_review', label: 'Under Consideration' },
+                                          { value: 'planned', label: 'Planned for Roadmap' },
+                                          { value: 'completed', label: 'Shipped & Implemented' },
+                                          { value: 'dismissed', label: 'Declined' },
+                                        ]}
+                                      />
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <button

@@ -25,6 +25,7 @@ import api from '../../utils/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
@@ -414,14 +415,18 @@ const TelegramLibrary = () => {
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <select
+                <CustomSelect
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-surface-raised border border-subtle text-xs font-semibold text-primary focus:outline-none focus:border-accent cursor-pointer"
-                >
-                  <option value="newest">Sort: Newest First</option>
-                  <option value="oldest">Sort: Oldest First</option>
-                </select>
+                  onChange={setSortBy}
+                  size="sm"
+                  align="right"
+                  className="w-full sm:w-auto"
+                  buttonClassName="py-1.5 px-3 min-w-[155px]"
+                  options={[
+                    { value: 'newest', label: 'Sort: Newest First' },
+                    { value: 'oldest', label: 'Sort: Oldest First' },
+                  ]}
+                />
               </div>
             </div>
           </div>
