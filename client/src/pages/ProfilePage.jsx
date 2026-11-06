@@ -343,10 +343,20 @@ const ProfilePage = () => {
   };
 
   const handleSave = async () => {
+    const cleanName = name.trim();
+    if (!cleanName || cleanName.length < 2) {
+      toast.error('Name must be at least 2 characters');
+      return;
+    }
+    if (bio && bio.length > 300) {
+      toast.error('Bio cannot exceed 300 characters');
+      return;
+    }
+
     setSaving(true);
     const formData = new FormData();
-    formData.append('name', name);
-    formData.append('bio', bio);
+    formData.append('name', cleanName);
+    formData.append('bio', bio.trim());
     const result = await dispatch(updateProfile(formData));
     setSaving(false);
     if (result.meta.requestStatus === 'fulfilled') {

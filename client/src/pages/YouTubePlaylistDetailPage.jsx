@@ -135,6 +135,13 @@ const YouTubePlaylistDetailPage = () => {
 
   const handleSaveReminder = async () => {
     if (!currentPlaylist) return;
+    if (newRemindDate) {
+      const selected = new Date(newRemindDate);
+      if (selected <= new Date()) {
+        toast.error('Reminder date must be in the future');
+        return;
+      }
+    }
     try {
       const formattedDate = newRemindDate ? new Date(newRemindDate).toISOString() : null;
       const res = await dispatch(

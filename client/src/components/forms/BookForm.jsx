@@ -51,11 +51,37 @@ const BookForm = ({ book, onClose }) => {
 
   const handleAudioFilesSelected = (e) => {
     const files = Array.from(e.target.files);
-    const newEntries = files.map((f) => ({
-      file: f,
-      title: f.name.replace(/\.[^.]+$/, ''), // strip extension as default title
-    }));
-    setPendingAudio((prev) => [...prev, ...newEntries]);
+    const newEntries = [];
+    let duplicateCount = 0;
+    let oversizedCount = 0;
+
+    files.forEach((f) => {
+      if (f.size > 150 * 1024 * 1024) {
+        oversizedCount++;
+        return;
+      }
+      const isDuplicate = pendingAudio.some(
+        (existing) => existing.file.name === f.name && existing.file.size === f.size
+      );
+      if (isDuplicate) {
+        duplicateCount++;
+        return;
+      }
+      newEntries.push({
+        file: f,
+        title: f.name.replace(/\.[^.]+$/, ''), // strip extension as default title
+      });
+    });
+
+    if (oversizedCount > 0) {
+      toast.error(`${oversizedCount} audio file(s) exceeded the 150MB limit and were skipped`);
+    }
+    if (duplicateCount > 0) {
+      toast.error(`${duplicateCount} duplicate audio file(s) were skipped`);
+    }
+    if (newEntries.length > 0) {
+      setPendingAudio((prev) => [...prev, ...newEntries]);
+    }
     e.target.value = ''; // reset input so same file can be re-added
   };
 
@@ -83,6 +109,84 @@ const BookForm = ({ book, onClose }) => {
       return;
     }
 
+    if (formData.type === 'text') {
+      if (!book && !pdfFile) {
+        toast.error('Please select a PDF file for this text book');
+        return;
+      }
+      if (pdfFile && pdfFile.size > 100 * 1024 * 1024) {
+        toast.error('PDF file must be under 100MB');
+        return;
+      }
+    }
+
+    if (formData.type === 'audio') {
+      if (pendingAudio.length === 0 && (!book?.audioFiles || book.audioFiles.length === 0)) {
+        toast.error('Please add at least one audio track');
+        return;
+      }
+      const hasEmptyTitle = pendingAudio.some((a) => !a.title.trim());
+      if (hasEmptyTitle) {
+        toast.error('All audio tracks must have a title');
+        return;
+      }
+    }
+
+    if (formData.type === 'video') {
+      const validVideos = videos.filter((v) => v.title?.trim() || v.driveFileId?.trim());
+      if (validVideos.length === 0) {
+        toast.error('Please add at least one video episode with a title and Drive File ID');
+        return;
+      }
+      for (let i = 0; i < validVideos.length; i++) {
+        const v = validVideos[i];
+        if (!v.title?.trim()) {
+          toast.error(`Video episode #${i + 1} is missing a title`);
+          return;
+        }
+        if (!v.driveFileId?.trim()) {
+          toast.error(`Video episode "${v.title.trim()}" is missing a Drive File ID`);
+          return;
+        }
+      }
+      const driveIds = validVideos.map((v) => v.driveFileId.trim());
+      if (new Set(driveIds).size !== driveIds.length) {
+        toast.error('Duplicate Drive File IDs found across video episodes');
+        return;
+      }
+    }
+
+    if (coverImageFile) {
+      if (coverImageFile.size > 5 * 1024 * 1024) {
+        toast.error('Cover image must be under 5MB');
+        return;
+      }
+    } else if (formData.coverImage && !formData.coverImage.startsWith('/api/images')) {
+      try {
+        const parsed = new URL(formData.coverImage.trim());
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          toast.error('Cover image URL must start with http:// or https://');
+          return;
+        }
+      } catch {
+        toast.error('Please enter a valid cover image URL');
+        return;
+      }
+    }
+
+    if (formData.driveLink?.trim()) {
+      try {
+        const parsed = new URL(formData.driveLink.trim());
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          toast.error('Drive link must start with http:// or https://');
+          return;
+        }
+      } catch {
+        toast.error('Please enter a valid Drive URL');
+        return;
+      }
+    }
+
     const fd = new FormData();
     fd.append('title', formData.title.trim());
     fd.append('author', formData.author.trim());
@@ -92,11 +196,19 @@ const BookForm = ({ book, onClose }) => {
     fd.append('autoCover', String(autoCover));
 
     if (formData.type === 'video') {
-      fd.append('videos', JSON.stringify(videos.map((v, i) => ({ ...v, order: i }))));
+      const sanitizedVideos = videos
+        .filter((v) => v.title?.trim() && v.driveFileId?.trim())
+        .map((v, i) => ({
+          title: v.title.trim(),
+          driveFileId: v.driveFileId.trim(),
+          duration: v.duration?.trim() || '',
+          order: i,
+        }));
+      fd.append('videos', JSON.stringify(sanitizedVideos));
     }
 
     if (formData.type === 'audio' && pendingAudio.length > 0) {
-      const meta = pendingAudio.map((a) => ({ title: a.title }));
+      const meta = pendingAudio.map((a) => ({ title: a.title.trim() }));
       fd.append('audioFileMeta', JSON.stringify(meta));
       pendingAudio.forEach((a) => fd.append('audioFiles', a.file));
     }

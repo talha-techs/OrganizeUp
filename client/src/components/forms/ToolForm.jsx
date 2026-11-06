@@ -16,13 +16,37 @@ const ToolForm = ({ tool, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const trimmedTitle = formData.title.trim();
+    if (!trimmedTitle) {
+      toast.error('Title is required');
+      return;
+    }
+
+    let cleanLink = formData.link.trim();
+    if (cleanLink) {
+      if (!/^https?:\/\//i.test(cleanLink)) {
+        if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(cleanLink)) {
+          cleanLink = `https://${cleanLink}`;
+        } else {
+          toast.error('Please enter a valid link (e.g. https://example.com)');
+          return;
+        }
+      }
+    }
+
+    if (imageFile && imageFile.size > 5 * 1024 * 1024) {
+      toast.error('Banner image must be under 5MB');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const fd = new FormData();
-      fd.append('title', formData.title);
-      fd.append('description', formData.description);
-      fd.append('link', formData.link);
+      fd.append('title', trimmedTitle);
+      fd.append('description', formData.description.trim());
+      fd.append('link', cleanLink);
 
       if (imageFile) {
         fd.append('bannerImage', imageFile);

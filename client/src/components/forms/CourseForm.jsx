@@ -23,18 +23,63 @@ const CourseForm = ({ course, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const trimmedTitle = formData.title.trim();
+    if (!trimmedTitle) {
+      toast.error('Course name is required');
+      return;
+    }
+
+    const trimmedNewCat = formData.newCategory.trim();
+    let resolvedCategory = formData.category;
+    let resolvedNewCat = '';
+
+    if (trimmedNewCat) {
+      const existingMatch = categories.find(
+        (c) => c.name?.toLowerCase() === trimmedNewCat.toLowerCase()
+      );
+      if (existingMatch) {
+        resolvedCategory = existingMatch._id;
+      } else {
+        resolvedNewCat = trimmedNewCat;
+      }
+    }
+
+    if (!resolvedCategory && !resolvedNewCat) {
+      toast.error('Please select an existing category or enter a new one');
+      return;
+    }
+
+    if (imageFile && imageFile.size > 5 * 1024 * 1024) {
+      toast.error('Banner image must be under 5MB');
+      return;
+    }
+
+    if (formData.driveLink?.trim()) {
+      try {
+        const parsed = new URL(formData.driveLink.trim());
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          toast.error('Drive link must start with http:// or https://');
+          return;
+        }
+      } catch {
+        toast.error('Please enter a valid Drive URL');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
       const fd = new FormData();
-      fd.append('title', formData.title);
-      fd.append('description', formData.description);
-      fd.append('driveLink', formData.driveLink);
+      fd.append('title', trimmedTitle);
+      fd.append('description', formData.description.trim());
+      fd.append('driveLink', formData.driveLink.trim());
 
-      if (formData.newCategory.trim()) {
-        fd.append('newCategory', formData.newCategory.trim());
+      if (resolvedNewCat) {
+        fd.append('newCategory', resolvedNewCat);
       } else {
-        fd.append('category', formData.category);
+        fd.append('category', resolvedCategory);
       }
 
       if (imageFile) {

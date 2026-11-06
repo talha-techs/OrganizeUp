@@ -43,13 +43,50 @@ const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canM
 
   const handleSendInvite = async (e) => {
     e.preventDefault();
-    if (!inviteEmail.trim()) return;
+    const cleanEmail = inviteEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      toast.error('Please enter an email address');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    if (user?.email && cleanEmail === user.email.toLowerCase()) {
+      toast.error('You cannot invite yourself to your workspace');
+      return;
+    }
+
+    const owner = sectionMembers?.owner;
+    if (owner?.email && cleanEmail === owner.email.toLowerCase()) {
+      toast.error('This email belongs to the workspace owner');
+      return;
+    }
+
+    const isAlreadyMember = (sectionMembers?.collaborators || []).some(
+      (c) => c.user?.email?.toLowerCase() === cleanEmail || c.email?.toLowerCase() === cleanEmail
+    );
+    if (isAlreadyMember) {
+      toast.error('This user is already a collaborator on this workspace');
+      return;
+    }
+
+    const hasPendingInvite = (sectionMembers?.pendingInvites || []).some(
+      (inv) => inv.email?.toLowerCase() === cleanEmail
+    );
+    if (hasPendingInvite) {
+      toast.error('An active invitation is already pending for this email');
+      return;
+    }
 
     setInviting(true);
     const res = await dispatch(
       createInvite({
         sectionId,
-        email: inviteEmail.trim(),
+        email: cleanEmail,
         role: inviteRole,
       }),
     );

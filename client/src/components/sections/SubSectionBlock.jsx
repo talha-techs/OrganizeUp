@@ -205,12 +205,29 @@ const TodoEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =>
     );
 
   const handleAdd = async () => {
-    if (!newText.trim() || !canEdit) return;
+    const trimmed = newText.trim();
+    if (!trimmed || !canEdit) return;
+
+    if (todos.some((t) => t.text?.trim().toLowerCase() === trimmed.toLowerCase())) {
+      toast.error('This task already exists in this to-do list');
+      return;
+    }
+
+    if (newDue) {
+      const dueDate = new Date(newDue);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dueDate < today) {
+        toast.error('Due date cannot be in the past');
+        return;
+      }
+    }
+
     await dispatch(
       addTodoItem({
         sectionId,
         subId: block._id,
-        text: newText.trim(),
+        text: trimmed,
         priority: newPriority,
         dueDate: newDue || null,
       }),
@@ -436,6 +453,11 @@ const BoardEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
   const handleAddCard = async (colId) => {
     const trimmedTitle = newTitle.trim();
     if (!trimmedTitle || !canEdit || isAddingCard) return;
+
+    if (colItems(colId).some((i) => i.title?.trim().toLowerCase() === trimmedTitle.toLowerCase())) {
+      toast.error('A card with this title already exists in this column');
+      return;
+    }
 
     setIsAddingCard(true);
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -1024,8 +1046,22 @@ const LinksEditor = ({ block, sectionId, canEdit, onFocusBlock, onBlurBlock }) =
   };
 
   const handleAdd = async () => {
-    const trimmedUrl = newUrl.trim();
+    let trimmedUrl = newUrl.trim();
     if (!trimmedUrl || !canEdit) return;
+
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+      if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(trimmedUrl)) {
+        trimmedUrl = `https://${trimmedUrl}`;
+      } else {
+        toast.error('Please enter a valid web URL (e.g. https://example.com)');
+        return;
+      }
+    }
+
+    if (links.some((l) => l.url?.trim().toLowerCase() === trimmedUrl.toLowerCase())) {
+      toast.error('This link is already saved in this block');
+      return;
+    }
 
     // Resolve title fallback
     let resolvedTitle = newTitle.trim();

@@ -131,12 +131,21 @@ const CoursesPage = () => {
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
-    if (!newCategoryName.trim()) return;
+    const cleanName = newCategoryName.trim();
+    if (!cleanName) {
+      toast.error('Category name is required');
+      return;
+    }
+
+    if (categories.some((c) => c.name?.trim().toLowerCase() === cleanName.toLowerCase())) {
+      toast.error('A category with this name already exists');
+      return;
+    }
 
     setIsCreatingCategory(true);
     const result = await dispatch(
       createCategory({
-        name: newCategoryName.trim(),
+        name: cleanName,
         description: newCategoryQuery.trim() ? `Search: ${newCategoryQuery.trim()}` : '',
       })
     );

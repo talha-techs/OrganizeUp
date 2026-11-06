@@ -43,11 +43,37 @@ const SignupPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanName = formData.name.trim();
+    const cleanEmail = formData.email.trim().toLowerCase();
+
+    if (!cleanName || cleanName.length < 2) {
+      toast.error('Full name must be at least 2 characters');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-    dispatch(register(formData));
+
+    dispatch(
+      register({
+        ...formData,
+        name: cleanName,
+        email: cleanEmail,
+      }),
+    );
   };
 
   const handleGoogleLogin = () => {

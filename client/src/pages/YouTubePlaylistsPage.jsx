@@ -128,6 +128,13 @@ const YouTubePlaylistsPage = () => {
 
   const handleSaveReminder = async () => {
     if (!reminderModalItem) return;
+    if (newRemindDate) {
+      const selected = new Date(newRemindDate);
+      if (selected <= new Date()) {
+        toast.error('Reminder date must be in the future');
+        return;
+      }
+    }
     try {
       const formattedDate = newRemindDate ? new Date(newRemindDate).toISOString() : null;
       const res = await dispatch(
@@ -218,15 +225,48 @@ const YouTubePlaylistsPage = () => {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!inputUrl.trim()) {
+    const trimmed = inputUrl.trim();
+    if (!trimmed) {
       toast.error('YouTube URL is required');
       return;
     }
+
+    const hasPlaylistParam = /[?&]list=([a-zA-Z0-9_-]+)/.test(trimmed) || /^[A-Za-z]{2}[a-zA-Z0-9_-]+$/.test(trimmed);
+    const hasVideoParam =
+      /[?&]v=([a-zA-Z0-9_-]{11})/.test(trimmed) ||
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/.test(trimmed) ||
+      /\/shorts\/([a-zA-Z0-9_-]{11})/.test(trimmed) ||
+      /\/embed\/([a-zA-Z0-9_-]{11})/.test(trimmed);
+
+    if (!hasPlaylistParam && !hasVideoParam) {
+      toast.error('Please enter a valid YouTube video or playlist URL');
+      return;
+    }
+
+    // Duplicate check: extract videoId or playlistId and compare with existing playlists
+    const videoMatch = trimmed.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
+    const playlistMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    const targetId = playlistMatch ? playlistMatch[1] : (videoMatch ? videoMatch[1] : null);
+
+    if (targetId) {
+      const isDuplicate = playlists.some((p) => {
+        if (p.playlistId === targetId) return true;
+        if (p.url && p.url.includes(targetId)) return true;
+        if (p.videos && p.videos.some((v) => v.videoId === targetId)) return true;
+        return false;
+      });
+
+      if (isDuplicate) {
+        toast.error('This YouTube video or playlist is already in your library');
+        return;
+      }
+    }
+
     setIsAdding(true);
     const result = await dispatch(
       addPlaylist({
-        url: inputUrl.trim(),
-        playlistUrl: inputUrl.trim(),
+        url: trimmed,
+        playlistUrl: trimmed,
         type: addType,
         visibility: isAdmin ? addVisibility : 'private',
       }),

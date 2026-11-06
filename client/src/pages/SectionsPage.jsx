@@ -78,19 +78,46 @@ const SectionsPage = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      toast.error('Workspace name is required');
+      return;
+    }
+
+    if (sections.some((s) => s.name?.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      toast.error('A workspace with this name already exists');
+      return;
+    }
+
+    if (bannerFile) {
+      if (bannerFile.size > 5 * 1024 * 1024) {
+        toast.error('Banner image must be under 5MB');
+        return;
+      }
+    } else if (bannerUrl.trim()) {
+      try {
+        const parsed = new URL(bannerUrl.trim());
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          toast.error('Banner URL must start with http:// or https://');
+          return;
+        }
+      } catch {
+        toast.error('Please enter a valid banner image URL');
+        return;
+      }
+    }
 
     let createPayload;
     if (bannerFile) {
       const fd = new FormData();
-      fd.append('name', name.trim());
+      fd.append('name', trimmedName);
       fd.append('description', description.trim());
       fd.append('color', selectedColor);
       fd.append('image', bannerFile);
       createPayload = fd;
     } else {
       createPayload = {
-        name: name.trim(),
+        name: trimmedName,
         description: description.trim(),
         color: selectedColor,
         bannerImage: bannerUrl.trim(),

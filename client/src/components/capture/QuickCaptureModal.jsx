@@ -117,7 +117,7 @@ export const inspectYouTubeUrl = (inputUrl) => {
 
 const QuickCaptureModal = () => {
   const dispatch = useDispatch();
-  const { isQuickCaptureOpen, initialData, scrapeLoading, scrapedData } =
+  const { isQuickCaptureOpen, initialData, scrapeLoading, scrapedData, captures } =
     useSelector((state) => state.captures);
 
   // Tab mode: 'link' | 'image' (WhatsApp capture completely removed)
@@ -310,9 +310,23 @@ const QuickCaptureModal = () => {
       return d.toISOString();
     }
     if (reminderPreset === 'custom' && customRemindAt) {
-      return new Date(customRemindAt).toISOString();
+      const customDate = new Date(customRemindAt);
+      if (customDate <= new Date()) {
+        return 'INVALID_PAST_DATE';
+      }
+      return customDate.toISOString();
     }
     return null;
+  };
+
+  // Helper to deduplicate and sanitize comma-separated tags
+  const cleanTags = (tagStr) => {
+    if (!tagStr) return '';
+    const parts = tagStr
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    return Array.from(new Set(parts)).join(', ');
   };
 
   // Handle file drop
@@ -366,15 +380,28 @@ const QuickCaptureModal = () => {
     setSaving(true);
 
     try {
-      const remindAt = computeRemindAt();
+      const remindAtResult = computeRemindAt();
+      if (remindAtResult === 'INVALID_PAST_DATE') {
+        toast.error('Reminder date must be scheduled in the future');
+        setSaving(false);
+        return;
+      }
+      const remindAt = remindAtResult;
+      const sanitizedTags = cleanTags(tags);
 
       if (activeTab === 'image' && imageFile) {
+        if (imageFile.size > 15 * 1024 * 1024) {
+          toast.error('Image must be under 15MB');
+          setSaving(false);
+          return;
+        }
+
         // Multipart upload for direct image file
         const formData = new FormData();
         formData.append('image', imageFile);
         formData.append('title', title || imageFile.name || 'Uploaded Image');
         formData.append('notes', notes);
-        formData.append('tags', tags);
+        formData.append('tags', sanitizedTags);
         formData.append('priority', priority);
         if (remindAt) formData.append('remindAt', remindAt);
 
@@ -383,15 +410,29 @@ const QuickCaptureModal = () => {
         toast.success(remindAt ? 'Saved to Vault! OS reminder scheduled.' : 'Saved to your Vault!', { icon: '⚡' });
         dispatch(closeQuickCapture());
       } else if (activeTab === 'image' && webImageUrl) {
+        const trimmedWebUrl = webImageUrl.trim();
+        try {
+          const parsed = new URL(trimmedWebUrl);
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            toast.error('Web image URL must start with http:// or https://');
+            setSaving(false);
+            return;
+          }
+        } catch {
+          toast.error('Please enter a valid image URL');
+          setSaving(false);
+          return;
+        }
+
         // Web image URL
         const saved = await dispatch(
           createCapture({
             platform: 'web_image',
             mediaType: 'image',
-            mediaUrl: webImageUrl,
+            mediaUrl: trimmedWebUrl,
             title: title || 'Web Image',
             notes,
-            tags,
+            tags: sanitizedTags,
             priority,
             remindAt,
           }),
@@ -401,10 +442,32 @@ const QuickCaptureModal = () => {
         dispatch(closeQuickCapture());
       } else {
         // TAB: 'link'
-        if (!url.trim()) {
+        const trimmedUrl = url.trim();
+        if (!trimmedUrl) {
           toast.error('Please enter a URL or link to save');
           setSaving(false);
           return;
+        }
+
+        let cleanUrl = trimmedUrl;
+        if (!/^https?:\/\//i.test(cleanUrl)) {
+          if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(cleanUrl)) {
+            cleanUrl = `https://${cleanUrl}`;
+          } else {
+            toast.error('Please enter a valid web URL (e.g. https://example.com)');
+            setSaving(false);
+            return;
+          }
+        }
+
+        // Check if user has already captured this exact link in Vault
+        const isDuplicateCapture = (captures || []).some(
+          (c) =>
+            c.sourceUrl?.trim().toLowerCase() === cleanUrl.toLowerCase() ||
+            c.mediaUrl?.trim().toLowerCase() === cleanUrl.toLowerCase()
+        );
+        if (isDuplicateCapture) {
+          toast('Notice: This link is already in your Vault', { icon: 'ℹ️' });
         }
 
         // ─────────────────────────────────────────────────────────────

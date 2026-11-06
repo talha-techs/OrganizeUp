@@ -45,11 +45,18 @@ const ImportBookModal = ({ isOpen, onClose }) => {
 
   const handleScan = async (e) => {
     e.preventDefault();
-    if (!driveLink.trim()) {
+    const trimmed = driveLink.trim();
+    if (!trimmed) {
       toast.error('Please enter a Drive folder link');
       return;
     }
-    const result = await dispatch(scanDriveFolder(driveLink.trim()));
+    const isDriveUrl = /drive\.google\.com/i.test(trimmed);
+    const isFolderId = /^[a-zA-Z0-9_-]{20,}$/.test(trimmed);
+    if (!isDriveUrl && !isFolderId) {
+      toast.error('Please enter a valid Google Drive folder link or folder ID');
+      return;
+    }
+    const result = await dispatch(scanDriveFolder(trimmed));
     if (result.meta.requestStatus === 'rejected') {
       toast.error(result.payload || 'Failed to scan folder');
     }
@@ -62,6 +69,10 @@ const ImportBookModal = ({ isOpen, onClose }) => {
     }
     if (!author.trim()) {
       toast.error('Author is required');
+      return;
+    }
+    if (!driveScanned?.videos || driveScanned.videos.length === 0) {
+      toast.error('No video files were found in this scanned folder');
       return;
     }
 
