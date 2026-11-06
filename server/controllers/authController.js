@@ -307,6 +307,7 @@ const getMe = async (req, res) => {
         courseProgress: user.courseProgress || [],
         playlistProgress: user.playlistProgress || [],
         notifications: user.notifications || [],
+        workspacePreferences: user.workspacePreferences || { defaultBlocksExpanded: false },
         createdAt: user.createdAt,
       },
     });
@@ -364,6 +365,18 @@ const updateProfile = async (req, res) => {
     if (whatsappPhoneNumber !== undefined) {
       user.whatsappPhoneNumber = whatsappPhoneNumber.trim();
     }
+    if (req.body.defaultBlocksExpanded !== undefined) {
+      if (!user.workspacePreferences) user.workspacePreferences = {};
+      user.workspacePreferences.defaultBlocksExpanded =
+        req.body.defaultBlocksExpanded === true || req.body.defaultBlocksExpanded === "true";
+      user.markModified("workspacePreferences");
+    } else if (req.body.workspacePreferences?.defaultBlocksExpanded !== undefined) {
+      if (!user.workspacePreferences) user.workspacePreferences = {};
+      user.workspacePreferences.defaultBlocksExpanded =
+        req.body.workspacePreferences.defaultBlocksExpanded === true ||
+        req.body.workspacePreferences.defaultBlocksExpanded === "true";
+      user.markModified("workspacePreferences");
+    }
 
     // Handle avatar image upload
     if (req.file) {
@@ -418,6 +431,7 @@ const updateProfile = async (req, res) => {
         role: user.role,
         bio: user.bio || "",
         whatsappPhoneNumber: user.whatsappPhoneNumber || "",
+        workspacePreferences: user.workspacePreferences || { defaultBlocksExpanded: false },
       },
     });
   } catch (error) {

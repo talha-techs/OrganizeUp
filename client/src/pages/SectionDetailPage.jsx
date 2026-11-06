@@ -48,6 +48,7 @@ import TeamShareModal from '../components/sections/TeamShareModal';
 import ConflictResolutionModal from '../components/sections/ConflictResolutionModal';
 import ActivityFeedDrawer from '../components/sections/ActivityFeedDrawer';
 import useSectionRealtime from '../hooks/useSectionRealtime';
+import { updateProfile } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -437,6 +438,34 @@ const SectionDetailPage = () => {
   const [driveExpanded, setDriveExpanded] = useState(true);
   const [activeBlockId, setActiveBlockId] = useState(null);
   const [pasteNotice, setPasteNotice] = useState(null); // { message, lastBlockId }
+
+  // User preference: default expanded or collapsed blocks
+  const userDefaultExpanded = Boolean(
+    user?.workspacePreferences?.defaultBlocksExpanded ?? false,
+  );
+  const [isDefaultExpanded, setIsDefaultExpanded] = useState(userDefaultExpanded);
+
+  useEffect(() => {
+    if (user?.workspacePreferences?.defaultBlocksExpanded !== undefined) {
+      setIsDefaultExpanded(Boolean(user.workspacePreferences.defaultBlocksExpanded));
+    }
+  }, [user?.workspacePreferences?.defaultBlocksExpanded]);
+
+  const handleToggleDefaultExpanded = async () => {
+    const nextVal = !isDefaultExpanded;
+    setIsDefaultExpanded(nextVal);
+    try {
+      await dispatch(updateProfile({ defaultBlocksExpanded: nextVal })).unwrap();
+      toast.success(
+        nextVal
+          ? 'Blocks set to expanded by default'
+          : 'Blocks set to collapsed by default',
+        { icon: '⚙️' },
+      );
+    } catch {
+      toast.error('Failed to save default view preference');
+    }
+  };
 
   // ── Real-Time Synchronization & Presence ─────────────────────────────────
   const {
@@ -833,42 +862,42 @@ const SectionDetailPage = () => {
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-2xl overflow-hidden border border-subtle shadow-xl bg-surface"
+        className="relative rounded-2xl overflow-hidden border border-subtle shadow-xl bg-surface min-h-[260px] sm:min-h-[290px] flex flex-col justify-between"
       >
         {/* Banner Media Backdrop */}
         {currentSection.bannerImage ? (
-          <div className="h-70 sm:h-[300px] w-full relative overflow-hidden">
+          <div className="absolute inset-0 w-full h-full">
             <img
               src={currentSection.bannerImage}
               alt={currentSection.name}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 backdrop-blur-[0.5px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/35 backdrop-blur-[0.5px]" />
           </div>
         ) : (
           <div
-            className={`h-60 sm:h-78 w-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to} relative overflow-hidden`}
+            className={`absolute inset-0 w-full h-full bg-gradient-to-br ${colorClasses.from} ${colorClasses.to}`}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           </div>
         )}
 
         {/* Content Overlaid on Banner */}
-        <div className="absolute inset-0 p-5 sm:p-6 flex flex-col justify-between z-10">
+        <div className="relative z-10 p-4 sm:p-6 flex flex-col justify-between flex-1 gap-6">
           {/* Top Bar on Banner */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
             <button
               onClick={() => navigate('/workspaces')}
-              className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/70 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/15 transition-all cursor-pointer shadow-sm shrink-0"
             >
               <IoArrowBack size={13} /> All Workspaces
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Live Presence Pill */}
               {activeCollaborators.length > 0 && (
                 <div
-                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 bg-black/50 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-emerald-500/40 shadow-sm"
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-300 bg-black/60 px-2.5 py-1.5 rounded-xl backdrop-blur-md border border-emerald-500/40 shadow-sm shrink-0"
                   title={`${activeCollaborators.length} collaborator${activeCollaborators.length !== 1 ? 's' : ''} online right now`}
                 >
                   <span className="relative flex h-2 w-2">
@@ -902,7 +931,7 @@ const SectionDetailPage = () => {
               {/* Activity Drawer Toggle */}
               <button
                 onClick={() => setShowActivity(true)}
-                className="relative flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-amber-400/70 transition-colors cursor-pointer shadow-sm"
+                className="relative flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/70 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/15 hover:border-amber-400/70 transition-all cursor-pointer shadow-sm shrink-0"
                 title="View live activity feed"
               >
                 <IoPulseOutline size={15} className="text-amber-400" />
@@ -914,7 +943,7 @@ const SectionDetailPage = () => {
 
               <button
                 onClick={() => setShowTeamModal(true)}
-                className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-cyan-400 transition-colors cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/70 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/15 hover:border-cyan-400 transition-all cursor-pointer shadow-sm shrink-0"
                 title="Manage team collaborators & share access"
               >
                 <IoPeopleOutline size={15} className="text-cyan-400" />
@@ -926,7 +955,7 @@ const SectionDetailPage = () => {
               {canManage && (
                 <button
                   onClick={() => setShowBannerModal(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/40 hover:bg-black/60 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/10 hover:border-accent transition-colors cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/70 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/15 hover:border-accent transition-all cursor-pointer shadow-sm shrink-0"
                   title="Change banner via Web URL, custom file, or Pexels"
                 >
                   <IoImageOutline size={14} />
@@ -937,8 +966,8 @@ const SectionDetailPage = () => {
           </div>
 
           {/* Bottom Title & Actions on Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div className="min-w-0">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-bold text-white font-display truncate drop-shadow-md">
                   {currentSection.name}
@@ -1021,11 +1050,11 @@ const SectionDetailPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
               {canManage && (
                 <button
                   onClick={() => setShowImport(true)}
-                  className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm px-3 py-2 bg-black/50 text-white hover:bg-black/70 border-white/15 backdrop-blur-md cursor-pointer"
+                  className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm px-3.5 py-2 bg-black/60 text-white hover:bg-black/80 border-white/20 backdrop-blur-md cursor-pointer transition-all shadow-sm"
                 >
                   <IoCloudDownloadOutline size={16} /> Drive Import
                 </button>
@@ -1033,7 +1062,7 @@ const SectionDetailPage = () => {
               {canEdit && (
                 <button
                   onClick={() => setShowAddBlock(true)}
-                  className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm px-3.5 py-2 shadow-lg shadow-accent/25 cursor-pointer"
+                  className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm px-4 py-2 shadow-lg shadow-accent/25 cursor-pointer transition-all"
                 >
                   <IoAddOutline size={16} /> Add Block
                 </button>
@@ -1103,6 +1132,37 @@ const SectionDetailPage = () => {
 
       {/* Workspace Blocks */}
       <div className="space-y-4">
+        {/* Workspace Blocks Controls & Default View Checkmark Toggle */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base sm:text-lg font-bold text-primary font-display flex items-center gap-2">
+              <span>Blocks</span>
+              <span className="text-xs font-normal text-muted bg-surface-raised px-2.5 py-0.5 rounded-full border border-subtle">
+                {subSections.length}
+              </span>
+            </h2>
+          </div>
+
+          <label
+            onClick={handleToggleDefaultExpanded}
+            className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-surface border border-subtle hover:border-accent/40 text-xs text-secondary hover:text-primary transition-all cursor-pointer select-none group shadow-sm"
+            title="Automatically expand all blocks by default when opening any workspace"
+          >
+            <div
+              className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
+                isDefaultExpanded
+                  ? 'bg-accent border-accent text-white shadow-sm shadow-accent/30'
+                  : 'border-subtle bg-surface-raised group-hover:border-strong'
+              }`}
+            >
+              {isDefaultExpanded && <IoCheckmarkOutline size={12} className="stroke-[3]" />}
+            </div>
+            <span className="font-medium">
+              {isDefaultExpanded ? 'Expanded by default' : 'Collapsed by default'}
+            </span>
+          </label>
+        </div>
+
         {subSectionsLoading ? (
           <div className="py-8"><LoadingSpinner text="Loading blocks…" /></div>
         ) : (
@@ -1124,6 +1184,7 @@ const SectionDetailPage = () => {
                   onFocusBlock={emitBlockFocus}
                   onBlurBlock={emitBlockBlur}
                   onConflict={(conf) => setConflictData(conf)}
+                  defaultExpanded={isDefaultExpanded}
                 />
               ))}
             </AnimatePresence>

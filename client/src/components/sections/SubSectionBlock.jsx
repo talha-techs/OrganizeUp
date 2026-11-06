@@ -1762,12 +1762,17 @@ const SubSectionBlock = ({
   onFocusBlock,
   onBlurBlock,
   onConflict,
+  defaultExpanded = false,
 }) => {
   const dispatch = useDispatch();
-  const [collapsed, setCollapsed]         = useState(true);
+  const [collapsed, setCollapsed]         = useState(!defaultExpanded);
   const [renaming, setRenaming]           = useState(false);
   const [nameInput, setNameInput]         = useState(block.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(!defaultExpanded);
+  }, [defaultExpanded]);
 
   useEffect(() => {
     setNameInput(block.name);

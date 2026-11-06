@@ -154,6 +154,13 @@ const userSchema = new mongoose.Schema(
     activityDays: [{ type: String }],
     currentStreak: { type: Number, default: 0 },
     maxStreak: { type: Number, default: 0 },
+    // User interface preferences
+    workspacePreferences: {
+      defaultBlocksExpanded: {
+        type: Boolean,
+        default: false,
+      },
+    },
   },
   {
     timestamps: true,
