@@ -306,11 +306,10 @@ const TeamShareModal = ({ isOpen, onClose, sectionId, sectionName, isOwner, canM
                             {cUser?.name || 'Team Member'} {isMe && '(You)'}
                           </span>
                           <span
-                            className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
-                              c.role === 'editor'
-                                ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30'
-                                : 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30'
-                            }`}
+                            className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${c.role === 'editor'
+                              ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30'
+                              : 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30'
+                              }`}
                           >
                             {c.role === 'editor' ? 'Editor' : 'Viewer'}
                           </span>

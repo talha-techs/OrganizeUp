@@ -7,7 +7,7 @@ compatibility_date = "2024-01-01"
 crons = ["* * * * *"]
 
 [vars]
-API_BASE_URL = "https://your-api.onrender.com"
+API_BASE_URL = "https://organizeup.onrender.com"
 
 # Sensitive variables should be set using:
 # npx wrangler secret put CRON_SECRET
