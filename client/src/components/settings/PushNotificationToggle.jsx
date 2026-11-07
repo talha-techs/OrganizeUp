@@ -192,7 +192,7 @@ const PushNotificationToggle = () => {
         </div>
       )}
 
-      {!supportStatus?.supported && !supportStatus?.needsInstall && (
+      {!loading && !supportStatus?.supported && !supportStatus?.needsInstall && (
         <div className="mt-4 p-3.5 rounded-xl bg-zinc-800 border border-subtle flex items-start gap-2.5 text-xs text-secondary">
           <IoAlertCircle size={18} className="text-muted flex-shrink-0 mt-0.5" />
           <div>

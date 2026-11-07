@@ -39,7 +39,7 @@ export const getPushSupportStatus = () => {
 
   const isStandalone =
     window.navigator.standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches;
+    (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches);
 
   const hasSW = 'serviceWorker' in navigator;
   const hasPush = 'PushManager' in window;

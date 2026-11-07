@@ -25,6 +25,8 @@ import {
   IoCheckmarkCircle,
   IoClipboardOutline,
   IoChevronUpOutline,
+  IoNotificationsOutline,
+  IoWarningOutline,
 } from 'react-icons/io5';
 import { updateProfile, getMe, fetchUserStats } from '../redux/slices/authSlice';
 import { fetchBooks, deleteBook, removeVideoFromBook } from '../redux/slices/bookSlice';
