@@ -32,6 +32,10 @@ const discordRoutes = require("./routes/discord");
 const captureRoutes = require("./routes/captures");
 const whatsappRoutes = require("./routes/whatsapp");
 const suggestionRoutes = require("./routes/suggestions");
+const pushRoutes = require("./routes/pushRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const internalRoutes = require("./routes/internalRoutes");
+const { processDueReminders } = require("./services/reminderService");
 const CapturedResource = require("./models/CapturedResource");
 const YoutubePlaylist = require("./models/YoutubePlaylist");
 const User = require("./models/User");
@@ -204,6 +208,9 @@ app.use("/api/discord", apiLimiter, discordRoutes);
 app.use("/api/captures", apiLimiter, captureRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/suggestions", apiLimiter, suggestionRoutes);
+app.use("/api/push", apiLimiter, pushRoutes);
+app.use("/api/notifications", apiLimiter, notificationRoutes);
+app.use("/api/internal", internalRoutes);
 
 // Image & file serving from GridFS or R2
 app.get("/api/images/r2/*key", optionalProtect, serveImage);
@@ -250,115 +257,16 @@ server.listen(PORT, () => {
   // Initialize Discord Bot
   initDiscordBot();
 
-  // Vault Reminders background worker: checks every 60 seconds
-  const checkVaultReminders = async () => {
+  // Vault Reminders background worker: checks every 60 seconds (local/dev fallback; production uses external cron /api/internal/run-reminders)
+  const runRemindersWorker = async () => {
     try {
-      const now = new Date();
-      const dueCaptures = await CapturedResource.find({
-        remindAt: { $lte: now },
-        reminderFired: false,
-        status: { $ne: "archived" },
-      });
-
-      if (!dueCaptures.length) return;
-
-      for (const capture of dueCaptures) {
-        try {
-          const user = await User.findById(capture.user);
-          if (user) {
-            const platformLabel =
-              capture.platform.charAt(0).toUpperCase() +
-              capture.platform.slice(1);
-            const notifTitle = `⏰ Reminder: ${capture.title || platformLabel}`;
-            const notifMsg = capture.notes
-              ? `${capture.notes.slice(0, 140)}`
-              : `Time to review your saved ${platformLabel} resource!`;
-
-            user.notifications.unshift({
-              type: "reminder",
-              contentTitle: notifTitle,
-              message: notifMsg,
-              link: `/captures?highlight=${capture._id}`,
-              read: false,
-              createdAt: new Date(),
-            });
-            await user.save();
-
-            // Broadcast real-time reminder to user's devices & PWA
-            emitToUser(capture.user, "vault_reminder", {
-              id: capture._id.toString(),
-              title: notifTitle,
-              message: notifMsg,
-              url: `/captures?highlight=${capture._id}`,
-              platform: capture.platform,
-              thumbnailUrl: capture.thumbnailUrl,
-              remindAt: capture.remindAt,
-              priority: capture.priority,
-            });
-          }
-
-          capture.reminderFired = true;
-          await capture.save();
-          console.log(`⏰ Vault reminder triggered for capture "${capture.title}"`);
-        } catch (itemErr) {
-          console.error("Error processing individual reminder:", itemErr);
-        }
-      }
-      // Check YouTube Playlist & Single Video Reminders
-      const dueYouTube = await YoutubePlaylist.find({
-        remindAt: { $lte: now },
-        reminderFired: false,
-      });
-
-      for (const ytItem of dueYouTube) {
-        try {
-          const user = await User.findById(ytItem.addedBy);
-          if (user) {
-            const isVideo = ytItem.type === "video";
-            const itemTypeLabel = isVideo ? "YouTube Video" : "YouTube Playlist";
-            const notifTitle = `⏰ Reminder: ${ytItem.title || itemTypeLabel}`;
-            const notifMsg = ytItem.reminderNote?.trim()
-              ? ytItem.reminderNote.slice(0, 140)
-              : isVideo
-              ? `Time to watch your saved YouTube video: ${ytItem.title}`
-              : `Time to continue your YouTube playlist: ${ytItem.title}`;
-
-            user.notifications.unshift({
-              type: "reminder",
-              contentTitle: notifTitle,
-              message: notifMsg,
-              link: `/youtube-playlists/${ytItem._id}`,
-              read: false,
-              createdAt: new Date(),
-            });
-            await user.save();
-
-            // Broadcast real-time reminder to user's devices & PWA
-            emitToUser(ytItem.addedBy, "vault_reminder", {
-              id: ytItem._id.toString(),
-              title: notifTitle,
-              message: notifMsg,
-              url: `/youtube-playlists/${ytItem._id}`,
-              platform: "youtube",
-              thumbnailUrl: ytItem.thumbnail,
-              remindAt: ytItem.remindAt,
-              type: ytItem.type,
-            });
-          }
-
-          ytItem.reminderFired = true;
-          await ytItem.save();
-          console.log(`⏰ YouTube reminder triggered for ${ytItem.type} "${ytItem.title}"`);
-        } catch (ytErr) {
-          console.error("Error processing YouTube reminder:", ytErr);
-        }
-      }
+      await processDueReminders();
     } catch (err) {
-      console.error("Error in reminder checker:", err);
+      console.error("Error in reminder worker:", err);
     }
   };
 
-  setInterval(checkVaultReminders, 60 * 1000);
+  setInterval(runRemindersWorker, 60 * 1000);
   console.log("⏰ Global reminder engine running (Vault & YouTube checked every 60s)");
 
   // Keep-alive: ping ourselves every 14 minutes to prevent Render free-tier cold starts

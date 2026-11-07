@@ -30,7 +30,12 @@ import {
   IoArrowForwardOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
-import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
+import { logout } from '../../redux/slices/authSlice';
+import {
+  fetchNotifications,
+  markNotificationsRead,
+  markSingleNotificationRead,
+} from '../../redux/slices/notificationSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
 import ThemeToggle from '../ui/ThemeToggle';
 import api from '../../utils/api';
@@ -56,6 +61,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
+  const { notifications: apiNotifications, unreadCount: apiUnreadCount } = useSelector(
+    (state) => state.notifications
+  );
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [telegramUnread, setTelegramUnread] = useState(0);
@@ -90,7 +98,21 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     });
   };
 
-  const unreadCount = user?.notifications?.filter((n) => !n.read).length ?? 0;
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchNotifications());
+    }
+  }, [user, dispatch]);
+
+  const activeNotifications =
+    apiNotifications && apiNotifications.length > 0
+      ? apiNotifications
+      : (user?.notifications || []);
+
+  const unreadCount =
+    apiNotifications && apiNotifications.length > 0
+      ? apiUnreadCount
+      : (user?.notifications?.filter((n) => !n.read).length ?? 0);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -514,7 +536,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
                     {/* Notification List */}
                     <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-subtle/50">
-                      {!user?.notifications?.length ? (
+                      {!activeNotifications?.length ? (
                         <div className="py-8 px-6 text-center space-y-2">
                           <div className="w-10 h-10 rounded-2xl bg-surface border border-subtle flex items-center justify-center mx-auto text-muted">
                             <IoNotificationsOffOutline size={20} />
@@ -525,20 +547,24 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                           </p>
                         </div>
                       ) : (
-                        [...(user.notifications)].reverse().map((n, i) => {
+                        activeNotifications.map((n, i) => {
                           const isReminder = n.type === 'reminder';
                           const isApproval = n.type === 'approval';
                           const isRejection = n.type === 'rejection';
+                          const targetUrl = n.url || n.link;
+                          const title = n.title || n.contentTitle;
+                          const body = n.body || n.message;
 
                           return (
                             <div
-                              key={i}
+                              key={n._id || i}
                               onClick={() => {
                                 setNotifOpen(false);
-                                if (n.link) navigate(n.link);
+                                if (n._id) dispatch(markSingleNotificationRead(n._id));
+                                if (targetUrl) navigate(targetUrl);
                               }}
                               className={`px-3.5 py-3 transition-colors ${
-                                n.link ? 'cursor-pointer hover:bg-surface-raised/60' : ''
+                                targetUrl ? 'cursor-pointer hover:bg-surface-raised/60' : ''
                               } ${!n.read ? 'bg-accent-subtle/20' : ''}`}
                             >
                               <div className="flex items-start gap-2.5">
@@ -565,13 +591,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                  {n.contentTitle && (
+                                  {title && (
                                     <p className="text-xs font-semibold text-primary truncate leading-snug">
-                                      {n.contentTitle}
+                                      {title}
                                     </p>
                                   )}
                                   <p className="text-xs text-secondary mt-0.5 leading-relaxed line-clamp-2">
-                                    {n.message}
+                                    {body}
                                   </p>
                                   {n.adminNote && (
                                     <p className="text-[11px] text-muted italic mt-1 bg-surface px-2 py-1 rounded-lg border border-subtle">
@@ -582,7 +608,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                                     <p className="text-[10px] text-muted">
                                       {formatTimeAgo(n.createdAt)}
                                     </p>
-                                    {n.link && (
+                                    {targetUrl && (
                                       <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 hover:underline">
                                         View <IoArrowForwardOutline size={10} />
                                       </span>
@@ -613,7 +639,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         <IoFlashOutline size={13} /> Open Vault Reminders
                       </Link>
                       <span className="text-[10px] text-muted">
-                        {user?.notifications?.length || 0} total
+                        {activeNotifications?.length || 0} total
                       </span>
                     </div>
                   </motion.div>
@@ -681,7 +707,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
                     {/* Notification List */}
                     <div className="max-h-80 overflow-y-auto custom-scrollbar divide-y divide-subtle/50">
-                      {!user?.notifications?.length ? (
+                      {!activeNotifications?.length ? (
                         <div className="py-8 px-6 text-center space-y-2">
                           <div className="w-10 h-10 rounded-2xl bg-surface border border-subtle flex items-center justify-center mx-auto text-muted">
                             <IoNotificationsOffOutline size={20} />
@@ -692,20 +718,24 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                           </p>
                         </div>
                       ) : (
-                        [...(user.notifications)].reverse().map((n, i) => {
+                        activeNotifications.map((n, i) => {
                           const isReminder = n.type === 'reminder';
                           const isApproval = n.type === 'approval';
                           const isRejection = n.type === 'rejection';
+                          const targetUrl = n.url || n.link;
+                          const title = n.title || n.contentTitle;
+                          const body = n.body || n.message;
 
                           return (
                             <div
-                              key={i}
+                              key={n._id || i}
                               onClick={() => {
                                 setNotifOpen(false);
-                                if (n.link) navigate(n.link);
+                                if (n._id) dispatch(markSingleNotificationRead(n._id));
+                                if (targetUrl) navigate(targetUrl);
                               }}
                               className={`px-3.5 py-3 transition-colors ${
-                                n.link ? 'cursor-pointer hover:bg-surface-raised/60' : ''
+                                targetUrl ? 'cursor-pointer hover:bg-surface-raised/60' : ''
                               } ${!n.read ? 'bg-accent-subtle/20' : ''}`}
                             >
                               <div className="flex items-start gap-2.5">
@@ -732,13 +762,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                  {n.contentTitle && (
+                                  {title && (
                                     <p className="text-xs font-semibold text-primary truncate leading-snug">
-                                      {n.contentTitle}
+                                      {title}
                                     </p>
                                   )}
                                   <p className="text-xs text-secondary mt-0.5 leading-relaxed line-clamp-2">
-                                    {n.message}
+                                    {body}
                                   </p>
                                   {n.adminNote && (
                                     <p className="text-[11px] text-muted italic mt-1 bg-surface px-2 py-1 rounded-lg border border-subtle">
@@ -749,7 +779,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                                     <p className="text-[10px] text-muted">
                                       {formatTimeAgo(n.createdAt)}
                                     </p>
-                                    {n.link && (
+                                    {targetUrl && (
                                       <span className="text-[10px] text-accent font-medium flex items-center gap-0.5 hover:underline">
                                         View <IoArrowForwardOutline size={10} />
                                       </span>
@@ -780,7 +810,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                         <IoFlashOutline size={13} /> Open Vault Reminders
                       </Link>
                       <span className="text-[10px] text-muted">
-                        {user?.notifications?.length || 0} total
+                        {activeNotifications?.length || 0} total
                       </span>
                     </div>
                   </motion.div>

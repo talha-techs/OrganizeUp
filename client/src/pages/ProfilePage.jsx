@@ -33,6 +33,7 @@ import { fetchTools, deleteTool, removeFileFromTool } from '../redux/slices/tool
 import { fetchSections, deleteSection, removeFileFromSection } from '../redux/slices/sectionSlice';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { fetchPlaylists, deletePlaylist } from '../redux/slices/youtubePlaylistSlice';
+import PushNotificationToggle from '../components/settings/PushNotificationToggle';
 import toast from 'react-hot-toast';
 
 /* ── small helpers ──────────────────────────────────────── */
@@ -585,6 +586,16 @@ const ProfilePage = () => {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Reminder & Notification Preferences */}
+                <div className="border-t border-subtle pt-6 mb-6">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-secondary flex items-center gap-2">
+                      <IoNotificationsOutline className="text-accent" size={16} /> Notification Settings
+                    </h3>
+                  </div>
+                  <PushNotificationToggle />
                 </div>
 
                 {/* Stats */}

@@ -1,0 +1,14 @@
+name = "organizeup-reminders-cron"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Trigger every minute: cron format (minute, hour, day-of-month, month, day-of-week)
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+API_BASE_URL = "https://your-api.onrender.com"
+
+# Sensitive variables should be set using:
+# npx wrangler secret put CRON_SECRET
+

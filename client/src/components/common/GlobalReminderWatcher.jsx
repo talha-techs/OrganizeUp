@@ -2,17 +2,18 @@ import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { getSocket, connectSocket } from '../../utils/socket';
+import { connectSocket } from '../../utils/socket';
 import { sendOSNotification, scheduleClientReminder } from '../../utils/notificationService';
+import { resyncPushSubscription } from '../../utils/pushManager';
 import api from '../../utils/api';
 import { fetchCaptures } from '../../redux/slices/captureSlice';
 import { fetchPlaylists } from '../../redux/slices/youtubePlaylistSlice';
 
 /**
  * GlobalReminderWatcher
- * Listens for real-time vault & YouTube reminders via WebSocket and Service Worker,
- * fires native OS-level notifications (Windows/Android/macOS), and maintains
- * local timers for upcoming reminders.
+ * Listens for real-time vault & YouTube reminders via WebSocket and Web Push Service Worker,
+ * fires native OS-level notifications when app is in background, provides in-app interactive toasts
+ * when app is active (avoiding double notifications), and maintains subscription sync.
  */
 const GlobalReminderWatcher = () => {
   const { user } = useSelector((state) => state.auth);
@@ -22,28 +23,19 @@ const GlobalReminderWatcher = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Re-sync Push Subscription with server on app open
+    resyncPushSubscription();
+
     // Connect socket for the authenticated user
     const socket = connectSocket();
 
-    const handleVaultReminder = (data) => {
-      console.log('⏰ [Watcher] Reminder received:', data);
-
-      // 1. Deliver native OS-level system notification
-      sendOSNotification(data.title || '⏰ OrganizeUp Reminder', {
-        id: data.id,
-        body: data.message || 'Time to review your saved resource!',
-        url: data.url || `/captures?highlight=${data.id}`,
-        thumbnailUrl: data.thumbnailUrl,
-        platform: data.platform,
-      });
-
-      // 2. Also show in-app interactive toast
+    const showInAppReminderToast = (title, message, targetUrl) => {
       toast(
         (t) => (
           <div
             onClick={() => {
               toast.dismiss(t.id);
-              if (data.url) navigate(data.url);
+              if (targetUrl) navigate(targetUrl);
             }}
             className="flex items-center gap-3 cursor-pointer py-1"
           >
@@ -52,10 +44,10 @@ const GlobalReminderWatcher = () => {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-primary truncate">
-                {data.title || 'Reminder'}
+                {title || 'Reminder'}
               </p>
               <p className="text-[11px] text-muted line-clamp-1">
-                {data.message || 'Click to view this item'}
+                {message || 'Click to view this item'}
               </p>
             </div>
           </div>
@@ -72,6 +64,28 @@ const GlobalReminderWatcher = () => {
           },
         }
       );
+    };
+
+    const handleVaultReminder = (data) => {
+      console.log('⏰ [Watcher] Reminder received:', data);
+
+      const title = data.title || '⏰ OrganizeUp Reminder';
+      const body = data.message || 'Time to review your saved resource!';
+      const targetUrl = data.url || `/captures?highlight=${data.id}`;
+
+      // Avoid double OS notification: if app tab is focused and visible, show only in-app toast
+      if (document.hidden) {
+        sendOSNotification(title, {
+          id: data.id,
+          body,
+          url: targetUrl,
+          thumbnailUrl: data.thumbnailUrl,
+          platform: data.platform,
+        });
+      }
+
+      // Always show in-app interactive toast when window is alive
+      showInAppReminderToast(title, body, targetUrl);
 
       // Refresh captures list & playlists in Redux
       dispatch(fetchCaptures());
@@ -79,6 +93,22 @@ const GlobalReminderWatcher = () => {
     };
 
     socket.on('vault_reminder', handleVaultReminder);
+
+    // Listen for Service Worker push messages broadcasted to open window clients
+    const handleSWMessage = (event) => {
+      if (event.data?.type === 'PUSH_NOTIFICATION_RECEIVED') {
+        const { payload } = event.data;
+        dispatch(fetchCaptures());
+        dispatch(fetchPlaylists());
+        if (payload?.title && !document.hidden) {
+          showInAppReminderToast(payload.title, payload.body, payload.url);
+        }
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
 
     // Initial check: load upcoming reminders from API to schedule client-side timers
     const scheduleUpcoming = async () => {
@@ -120,6 +150,9 @@ const GlobalReminderWatcher = () => {
 
     return () => {
       socket.off('vault_reminder', handleVaultReminder);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      }
     };
   }, [user, dispatch, navigate]);
 

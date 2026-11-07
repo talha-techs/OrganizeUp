@@ -9,12 +9,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
       registerType: "autoUpdate",
-      workbox: {
-        navigateFallbackDenylist: [/^\/api/],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,json}"],
       },
       includeAssets: [
         "favicon.ico",

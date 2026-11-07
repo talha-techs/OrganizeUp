@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../utils/api";
+import { unsubscribeUserFromPush } from "../../utils/pushManager";
 
 // Only persist user profile (not the token — auth uses httpOnly cookies)
 const storedUser = localStorage.getItem("user");
@@ -106,6 +107,7 @@ export const markNotificationsRead = createAsyncThunk(
 
 export const logout = createAsyncThunk("auth/logout", async () => {
   try {
+    await unsubscribeUserFromPush().catch(() => {});
     await api.post("/auth/logout");
   } catch (err) {
     console.warn("Logout request error:", err.message);

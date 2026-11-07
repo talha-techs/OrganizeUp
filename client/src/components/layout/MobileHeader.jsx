@@ -13,7 +13,11 @@ import {
   IoNotificationsOffOutline,
   IoArrowForwardOutline,
 } from 'react-icons/io5';
-import { markNotificationsRead } from '../../redux/slices/authSlice';
+import {
+  fetchNotifications,
+  markNotificationsRead,
+  markSingleNotificationRead,
+} from '../../redux/slices/notificationSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
 
 const formatTimeAgo = (dateStr) => {
@@ -35,10 +39,27 @@ const MobileHeader = ({ onOpenMenu }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const { notifications: apiNotifications, unreadCount: apiUnreadCount } = useSelector(
+    (state) => state.notifications
+  );
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef(null);
 
-  const unreadCount = user?.notifications?.filter((n) => !n.read).length ?? 0;
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchNotifications());
+    }
+  }, [user, dispatch]);
+
+  const activeNotifications =
+    apiNotifications && apiNotifications.length > 0
+      ? apiNotifications
+      : (user?.notifications || []);
+
+  const unreadCount =
+    apiNotifications && apiNotifications.length > 0
+      ? apiUnreadCount
+      : (user?.notifications?.filter((n) => !n.read).length ?? 0);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -128,7 +149,7 @@ const MobileHeader = ({ onOpenMenu }) => {
 
                 {/* Notifications List */}
                 <div className="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-subtle/50">
-                  {!user?.notifications?.length ? (
+                  {!activeNotifications?.length ? (
                     <div className="py-6 px-4 text-center space-y-1.5">
                       <div className="w-8 h-8 rounded-xl bg-surface border border-subtle flex items-center justify-center mx-auto text-muted">
                         <IoNotificationsOffOutline size={16} />
@@ -137,20 +158,24 @@ const MobileHeader = ({ onOpenMenu }) => {
                       <p className="text-[10px] text-muted">Reminders will appear here</p>
                     </div>
                   ) : (
-                    [...(user.notifications)].reverse().map((n, i) => {
+                    activeNotifications.map((n, i) => {
                       const isReminder = n.type === 'reminder';
                       const isApproval = n.type === 'approval';
                       const isRejection = n.type === 'rejection';
+                      const targetUrl = n.url || n.link;
+                      const title = n.title || n.contentTitle;
+                      const body = n.body || n.message;
 
                       return (
                         <div
-                          key={i}
+                          key={n._id || i}
                           onClick={() => {
                             setNotifOpen(false);
-                            if (n.link) navigate(n.link);
+                            if (n._id) dispatch(markSingleNotificationRead(n._id));
+                            if (targetUrl) navigate(targetUrl);
                           }}
                           className={`px-3 py-2.5 transition-colors ${
-                            n.link ? 'cursor-pointer hover:bg-surface/80' : ''
+                            targetUrl ? 'cursor-pointer hover:bg-surface/80' : ''
                           } ${!n.read ? 'bg-accent-subtle/20' : ''}`}
                         >
                           <div className="flex items-start gap-2">
@@ -177,19 +202,19 @@ const MobileHeader = ({ onOpenMenu }) => {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              {n.contentTitle && (
+                              {title && (
                                 <p className="text-[11px] font-semibold text-primary truncate leading-tight">
-                                  {n.contentTitle}
+                                  {title}
                                 </p>
                               )}
                               <p className="text-[11px] text-secondary mt-0.5 line-clamp-2 leading-relaxed">
-                                {n.message}
+                                {body}
                               </p>
                               <div className="flex items-center justify-between mt-1">
                                 <p className="text-[9px] text-muted">
                                   {formatTimeAgo(n.createdAt)}
                                 </p>
-                                {n.link && (
+                                {targetUrl && (
                                   <span className="text-[9px] text-accent font-medium flex items-center gap-0.5">
                                     View <IoArrowForwardOutline size={9} />
                                   </span>

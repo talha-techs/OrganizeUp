@@ -5,7 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { IoBookOutline, IoSchoolOutline, IoConstructOutline, IoPersonOutline, IoLogOutOutline, IoShieldCheckmarkOutline, IoCompassOutline, IoFolderOutline, IoLogoYoutube, IoNotificationsOutline, IoCheckmarkDoneOutline, IoBookmarkOutline, IoFlashOutline, IoOpenOutline, IoBulbOutline } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
-import { logout, markNotificationsRead } from '../../redux/slices/authSlice';
+import { logout } from '../../redux/slices/authSlice';
+import {
+  fetchNotifications,
+  markNotificationsRead,
+  markSingleNotificationRead,
+} from '../../redux/slices/notificationSlice';
 import { openQuickCapture } from '../../redux/slices/captureSlice';
 import api from '../../utils/api';
 import { getDocsUrl } from '../../utils/docs';
@@ -20,8 +25,25 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const { notifications: apiNotifications, unreadCount: apiUnreadCount } = useSelector(
+    (state) => state.notifications
+  );
 
-  const unreadCount = user?.notifications?.filter((n) => !n.read).length ?? 0;
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchNotifications());
+    }
+  }, [user, dispatch]);
+
+  const activeNotifications =
+    apiNotifications && apiNotifications.length > 0
+      ? apiNotifications
+      : (user?.notifications || []);
+
+  const unreadCount =
+    apiNotifications && apiNotifications.length > 0
+      ? apiUnreadCount
+      : (user?.notifications?.filter((n) => !n.read).length ?? 0);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -159,37 +181,47 @@ const Navbar = () => {
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
-                      {!user?.notifications?.length ? (
+                      {!activeNotifications?.length ? (
                         <p className="text-center text-muted text-sm py-8">No notifications</p>
                       ) : (
-                        [...(user.notifications)].reverse().map((n, i) => (
-                          <div
-                            key={i}
-                            className={`px-4 py-3 border-b border-subtle last:border-0 ${
-                              !n.read ? 'bg-accent-subtle/30' : ''
-                            }`}
-                          >
-                            <div className="flex items-start gap-2">
-                              <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
-                                n.type === 'approval' ? 'bg-emerald-400'
-                                : n.type === 'rejection' ? 'bg-red-400'
-                                : 'bg-accent'
-                              }`} />
-                              <div className="flex-1 min-w-0">
-                                {n.contentTitle && (
-                                  <p className="text-xs font-semibold text-primary truncate">{n.contentTitle}</p>
-                                )}
-                                <p className="text-xs text-secondary mt-0.5">{n.message}</p>
-                                {n.adminNote && (
-                                  <p className="text-xs text-muted italic mt-0.5">"{n.adminNote}"</p>
-                                )}
-                                <p className="text-[10px] text-muted mt-1">
-                                  {new Date(n.createdAt).toLocaleString()}
-                                </p>
+                        activeNotifications.map((n, i) => {
+                          const targetUrl = n.url || n.link;
+                          return (
+                            <div
+                              key={n._id || i}
+                              onClick={() => {
+                                setNotifOpen(false);
+                                if (n._id) dispatch(markSingleNotificationRead(n._id));
+                                if (targetUrl) navigate(targetUrl);
+                              }}
+                              className={`px-4 py-3 border-b border-subtle last:border-0 transition-colors ${
+                                targetUrl ? 'cursor-pointer hover:bg-surface-raised/80' : ''
+                              } ${!n.read ? 'bg-accent-subtle/30' : ''}`}
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
+                                  n.type === 'approval' ? 'bg-emerald-400'
+                                  : n.type === 'rejection' ? 'bg-red-400'
+                                  : 'bg-accent'
+                                }`} />
+                                <div className="flex-1 min-w-0">
+                                  {(n.title || n.contentTitle) && (
+                                    <p className="text-xs font-semibold text-primary truncate">
+                                      {n.title || n.contentTitle}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-secondary mt-0.5">{n.body || n.message}</p>
+                                  {n.adminNote && (
+                                    <p className="text-xs text-muted italic mt-0.5">"{n.adminNote}"</p>
+                                  )}
+                                  <p className="text-[10px] text-muted mt-1">
+                                    {new Date(n.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </motion.div>
