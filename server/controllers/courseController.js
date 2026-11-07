@@ -451,9 +451,31 @@ const removeFileFromCourse = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    // Filter root files
     course.files = course.files.filter(
-      (f) => f._id.toString() !== req.params.fileId,
+      (f) =>
+        f._id.toString() !== req.params.fileId &&
+        f.driveFileId !== req.params.fileId,
     );
+
+    // Recursively filter files inside folders
+    const filterFolderFiles = (folders) => {
+      if (!Array.isArray(folders)) return;
+      for (const folder of folders) {
+        if (Array.isArray(folder.files)) {
+          folder.files = folder.files.filter(
+            (f) =>
+              f._id.toString() !== req.params.fileId &&
+              f.driveFileId !== req.params.fileId,
+          );
+        }
+        if (Array.isArray(folder.subfolders)) {
+          filterFolderFiles(folder.subfolders);
+        }
+      }
+    };
+    filterFolderFiles(course.folders);
+    course.markModified("folders");
 
     await course.save();
 

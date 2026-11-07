@@ -868,6 +868,7 @@ const CoursesPage = () => {
 
             dispatch(fetchCourses());
             dispatch(fetchCategories());
+            setShowDriveImport(false);
             navigate(`/courses/${courseId}`);
           } else {
             toast.error(result.payload || 'Failed to create course');
