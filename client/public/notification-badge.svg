@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- Monochrome clean silhouette for OS Notification Bar / Badge -->
+  <!-- Folder silhouette -->
+  <path d="M 16 32 L 36 32 L 44 40 L 76 40 Q 80 40 80 44 L 80 72 Q 80 76 76 76 L 20 76 Q 16 76 16 72 Z" fill="#ffffff" />
+  <!-- Dynamic upward arrow -->
+  <polygon points="48,16 34,34 43,34 43,54 53,54 53,34 62,34" fill="#ffffff" />
+</svg>

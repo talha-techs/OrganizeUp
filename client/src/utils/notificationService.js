@@ -61,7 +61,7 @@ export const sendOSNotification = async (title, options = {}) => {
   const notificationOptions = {
     body: options.body || options.message || '',
     icon: options.icon || options.thumbnailUrl || '/pwa-192x192.png',
-    badge: options.badge || '/organizeup-favicon.svg',
+    badge: options.badge || '/notification-badge.png',
     tag: options.tag || options.id || 'organizeup-vault-reminder',
     renotify: true,
     requireInteraction: true, // Keep notification visible in OS action center until user interacts

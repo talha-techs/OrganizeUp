@@ -162,7 +162,7 @@ const processDueReminders = async () => {
         url,
         tag,
         icon: "/pwa-192x192.png",
-        badge: "/organizeup-favicon.svg",
+        badge: "/notification-badge.png",
         data: { url, id: capture._id.toString() },
       });
 
@@ -250,7 +250,7 @@ const processDueReminders = async () => {
         url,
         tag,
         icon: "/pwa-192x192.png",
-        badge: "/organizeup-favicon.svg",
+        badge: "/notification-badge.png",
         data: { url, id: ytItem._id.toString() },
       });
 
@@ -370,7 +370,7 @@ const processDueReminders = async () => {
         url,
         tag,
         icon: "/pwa-192x192.png",
-        badge: "/organizeup-favicon.svg",
+        badge: "/notification-badge.png",
         data: { url, id: videoSubId ? videoSubId.toString() : claimedDoc._id.toString() },
       });
 

@@ -1,8 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
+    <!-- Dark Background Canvas Gradients -->
+    <linearGradient id="canvas-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b" />
+      <stop offset="50%" stop-color="#0f0f12" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+    <radialGradient id="canvas-glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ff5722" stop-opacity="0.22" />
+      <stop offset="65%" stop-color="#ff5722" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="canvas-border" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7043" stop-opacity="0.65" />
+      <stop offset="45%" stop-color="#ff5722" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#27272a" stop-opacity="0.5" />
+    </linearGradient>
+
+    <!-- Logo Gradients -->
     <linearGradient id="org-ember" x1="0%" y1="100%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#e64a19" />
-      <stop offset="50%" stop-color="#ff5722" />
+      <stop offset="45%" stop-color="#ff5722" />
       <stop offset="100%" stop-color="#ff9100" />
     </linearGradient>
     <linearGradient id="org-ember-light" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -26,26 +44,31 @@
       <stop offset="100%" stop-color="#e4e4e7" />
     </linearGradient>
     <linearGradient id="org-orbit" x1="0%" y1="50%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#ff5722" stop-opacity="0.1" />
-      <stop offset="40%" stop-color="#ff5722" />
-      <stop offset="100%" stop-color="#ffab40" />
+      <stop offset="0%" stop-color="#ff5722" stop-opacity="0.15" />
+      <stop offset="35%" stop-color="#ff5722" />
+      <stop offset="80%" stop-color="#ff9100" />
+      <stop offset="100%" stop-color="#ffc107" />
     </linearGradient>
   </defs>
 
-  <g transform="translate(0, -10)">
+  <!-- SOLID CONTRASTING DARK CANVAS BASE: Prevents washed-out white appearance on any OS -->
+  <rect x="14" y="14" width="484" height="484" rx="112" fill="url(#canvas-bg)" stroke="url(#canvas-border)" stroke-width="7" />
+  <rect x="14" y="14" width="484" height="484" rx="112" fill="url(#canvas-glow)" />
+
+  <g transform="translate(0, 8)">
     <!-- BACK OF FOLDER -->
     <path d="M 130 190 L 210 190 L 240 215 L 360 215 Q 375 215 375 230 L 375 350 Q 375 365 360 365 L 145 365 Q 130 365 130 350 Z" 
-          fill="url(#org-folder-back)" stroke="#52525b" stroke-width="2"/>
+          fill="url(#org-folder-back)" stroke="#52525b" stroke-width="2.5"/>
 
     <!-- RESOURCE SHEETS POPPING OUT -->
     <!-- Sheet 2: Media Card (Orange, tilted right) -->
     <g transform="rotate(9, 256, 256)">
-      <rect x="220" y="145" width="125" height="165" rx="14" fill="url(#org-card-orange)" stroke="rgba(255,255,255,0.3)" stroke-width="2.5"/>
+      <rect x="220" y="145" width="125" height="165" rx="14" fill="url(#org-card-orange)" stroke="rgba(255,255,255,0.35)" stroke-width="2.5"/>
       <!-- Play Icon inside Media Card -->
       <polygon points="272,192 272,228 302,210" fill="#ffffff" />
       <!-- Course bar lines -->
-      <line x1="240" y1="250" x2="325" y2="250" stroke="rgba(255,255,255,0.7)" stroke-width="5" stroke-linecap="round" />
-      <line x1="240" y1="270" x2="295" y2="270" stroke="rgba(255,255,255,0.4)" stroke-width="5" stroke-linecap="round" />
+      <line x1="240" y1="250" x2="325" y2="250" stroke="rgba(255,255,255,0.75)" stroke-width="5" stroke-linecap="round" />
+      <line x1="240" y1="270" x2="295" y2="270" stroke="rgba(255,255,255,0.45)" stroke-width="5" stroke-linecap="round" />
     </g>
 
     <!-- Sheet 1: Document/PDF Page (White, tilted left) -->
@@ -65,7 +88,7 @@
     <path d="M 105 245 L 205 245 L 235 272 L 385 272 Q 400 272 396 290 L 378 395 Q 375 408 360 408 L 130 408 Q 115 408 112 395 L 94 263 Q 91 245 105 245 Z" 
           fill="url(#org-folder-front)" stroke="#3f3f46" stroke-width="3" />
     <!-- Folder Edge Glow/Rim -->
-    <path d="M 105 245 L 205 245 L 235 272 L 385 272" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+    <path d="M 105 245 L 205 245 L 235 272 L 385 272" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" />
 
     <!-- CLOUD UPLOAD EMBLEM ON FOLDER FRONT -->
     <g transform="translate(205, 310) scale(1.6)">
@@ -79,11 +102,11 @@
     <!-- DYNAMIC SWEEPING ORBITAL ARROW ("UP") -->
     <!-- Orbiting Ring -->
     <path d="M 85 385 C 75 440 155 475 250 475 C 340 475 410 440 435 375 C 448 340 450 305 450 265" 
-          fill="none" stroke="url(#opt1-orbit)" stroke-width="16" stroke-linecap="round" />
+          fill="none" stroke="url(#org-orbit)" stroke-width="18" stroke-linecap="round" />
     <!-- Bright Center Trace -->
     <path d="M 120 420 C 180 455 250 460 315 450 C 375 435 420 395 440 330" 
-          fill="none" stroke="#ffab40" stroke-width="5" stroke-linecap="round" opacity="0.9" />
+          fill="none" stroke="#ffc107" stroke-width="5.5" stroke-linecap="round" opacity="0.95" />
     <!-- Arrowhead at Orbit Apex -->
-    <polygon points="420,285 450,210 482,272 454,262" fill="url(#opt1-ember)" stroke="#ffab40" stroke-width="2" stroke-linejoin="round" />
+    <polygon points="420,285 450,210 482,272 454,262" fill="url(#org-ember)" stroke="#ffab40" stroke-width="2" stroke-linejoin="round" />
   </g>
 </svg>

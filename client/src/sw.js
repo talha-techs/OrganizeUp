@@ -50,7 +50,7 @@ self.addEventListener('push', (event) => {
   const notificationOptions = {
     body,
     icon: payload.icon || '/pwa-192x192.png',
-    badge: payload.badge || '/organizeup-favicon.svg',
+    badge: payload.badge || '/notification-badge.png',
     tag,
     renotify: true,
     requireInteraction: true,
