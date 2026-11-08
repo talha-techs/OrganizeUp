@@ -120,7 +120,7 @@ const MobileDrawer = ({ isOpen, onClose }) => {
       title: 'Knowledge',
       collapsible: true,
       items: [
-        { to: '/notes', label: 'Notes', icon: IoJournalOutline },
+        { to: '/notes', label: 'Quick NotePad', icon: IoJournalOutline },
         { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
         { to: '/explore', label: 'Explore Hub', icon: IoCompassOutline },
       ],
