@@ -86,7 +86,17 @@ async function runTests() {
     throw new Error("MONGO_URI is required to run tests");
   }
 
-  await mongoose.connect(mongoUri);
+  let connected = false;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+      connected = true;
+      break;
+    } catch (e) {
+      if (attempt === 4) throw e;
+      await new Promise((r) => setTimeout(r, 2500));
+    }
+  }
 
   // Setup test users
   const testUserA = new mongoose.Types.ObjectId();
@@ -350,33 +360,13 @@ async function runTests() {
       assert.strictEqual(res.data.message, "Note not found");
     });
 
-    // 8. Version conflict detection (HTTP 409)
-    await test("Version conflict: returns 409 when baseVersion is stale", async () => {
+    // 8. Direct update without 409 conflict interruptions
+    await test("Direct save: updates note cleanly without 409 conflict interruptions", async () => {
       const req = createMockReq(
         { _id: testUserA },
         {
-          body: "Updated text from Device 2",
-          baseVersion: 999, // Stale version
-        },
-        { id: createdNoteId }
-      );
-      const res = createMockRes();
-
-      await noteController.updateNote(req, res);
-      assert.strictEqual(res.statusCode, 409);
-      assert.strictEqual(res.data.success, false);
-      assert(res.data.message.includes("Conflict"));
-      assert(res.data.serverNote);
-      assert.strictEqual(res.data.serverNote.version, 1);
-    });
-
-    // 9. Version increment on successful patch
-    await test("Successful update increments version from 1 to 2", async () => {
-      const req = createMockReq(
-        { _id: testUserA },
-        {
-          body: "Updated text with correct version #exam #physics",
-          baseVersion: 1,
+          title: "Direct Updated Title",
+          body: "Updated text smoothly without conflict errors",
         },
         { id: createdNoteId }
       );
@@ -384,7 +374,25 @@ async function runTests() {
 
       await noteController.updateNote(req, res);
       assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.data.success, true);
+      assert.strictEqual(res.data.note.title, "Direct Updated Title");
       assert.strictEqual(res.data.note.version, 2);
+    });
+
+    // 9. Version increment on successful patch
+    await test("Successful update increments version from 2 to 3", async () => {
+      const req = createMockReq(
+        { _id: testUserA },
+        {
+          body: "Updated text with correct version #exam #physics",
+        },
+        { id: createdNoteId }
+      );
+      const res = createMockRes();
+
+      await noteController.updateNote(req, res);
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.data.note.version, 3);
       assert(res.data.note.tags.includes("physics"));
     });
 

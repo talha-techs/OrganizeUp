@@ -298,17 +298,6 @@ exports.updateNote = async (req, res) => {
       return res.status(404).json({ success: false, message: "Note not found" });
     }
 
-    // Check version conflict
-    if (baseVersion !== undefined && baseVersion !== null) {
-      if (Number(baseVersion) !== note.version) {
-        return res.status(409).json({
-          success: false,
-          message: "Conflict: This note has been modified on another device.",
-          serverNote: note,
-        });
-      }
-    }
-
     // Check size limit if body is being updated
     if (body !== undefined) {
       const newBodyBytes = Buffer.byteLength(String(body), "utf8");

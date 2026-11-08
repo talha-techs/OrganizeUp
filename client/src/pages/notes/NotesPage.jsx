@@ -28,7 +28,6 @@ import {
 import {
   fetchNotes,
   fetchNoteById,
-  createNote,
   updateNote,
   softDeleteNote,
   restoreNote,
@@ -153,7 +152,6 @@ const NotesPage = () => {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showMobileEditor, setShowMobileEditor] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [conflictNotice, setConflictNotice] = useState(null);
 
   const searchInputRef = useRef(null);
   const titleInputRef = useRef(null);
@@ -370,7 +368,6 @@ const NotesPage = () => {
     setLocalTitle('');
     setLocalBody('');
     setIsPreviewMode(false);
-    setConflictNotice(null);
 
     if (window.innerWidth < 768) {
       setShowMobileEditor(true);
@@ -417,9 +414,6 @@ const NotesPage = () => {
       onSuccess: (savedNote) => {
         dispatch(upsertNoteInList(savedNote));
         dispatch(setActiveNote(savedNote));
-      },
-      onConflict: ({ serverNote, localDraft }) => {
-        handleConflictResolution(serverNote, localDraft);
       },
     });
   };
@@ -474,47 +468,7 @@ const NotesPage = () => {
         dispatch(upsertNoteInList(savedNote));
         dispatch(setActiveNote(savedNote));
       },
-      onConflict: ({ serverNote, localDraft }) => {
-        handleConflictResolution(serverNote, localDraft);
-      },
     });
-  };
-
-  // Conflict handling (QN-7): Keep server note, save local text as "<title> (conflict copy)"
-  const handleConflictResolution = async (serverNote, localDraft) => {
-    const conflictTitle = `${serverNote.title || 'Untitled'} (conflict copy)`;
-    const conflictClientId =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `conflict-${Date.now()}`;
-
-    try {
-      await dispatch(
-        createNote({
-          title: conflictTitle,
-          body: localDraft.body,
-          tags: localDraft.tags || [],
-          clientId: conflictClientId,
-        })
-      ).unwrap();
-
-      setConflictNotice({
-        serverNote,
-        conflictTitle,
-      });
-
-      toast.error(
-        `Version conflict detected. Server note was kept and your changes were saved as "${conflictTitle}".`,
-        { duration: 7000 }
-      );
-
-      // Set active note to server note
-      dispatch(setActiveNote(serverNote));
-      setLocalTitle(serverNote.title || '');
-      setLocalBody(serverNote.body || '');
-    } catch (e) {
-      console.error('Failed to create conflict copy:', e);
-    }
   };
 
   // Toggle checklist checkbox from markdown preview (QN-12)
@@ -1137,23 +1091,6 @@ const NotesPage = () => {
                     Delete forever
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Conflict Notification Banner (QN-7) */}
-            {conflictNotice && (
-              <div className="px-4 py-2.5 bg-accent/10 border-b border-accent/20 flex items-center justify-between text-xs text-primary">
-                <div>
-                  <span className="font-semibold text-accent">Notice: </span>
-                  Another device edited this note. We kept the server's version and saved your local edits as{' '}
-                  <span className="font-medium text-accent">"{conflictNotice.conflictTitle}"</span>.
-                </div>
-                <button
-                  onClick={() => setConflictNotice(null)}
-                  className="text-muted hover:text-primary cursor-pointer ml-2"
-                >
-                  <IoCloseOutline size={16} />
-                </button>
               </div>
             )}
 

@@ -87,7 +87,6 @@ class NotesSyncManager {
     userId,
     onStatusChange,
     onSuccess,
-    onConflict,
   }) {
     const uid = userId || getCurrentUserId() || 'default';
     const rawKey = noteId || clientId;
@@ -119,7 +118,6 @@ class NotesSyncManager {
         userId: uid,
         onStatusChange,
         onSuccess,
-        onConflict,
       });
     }, 800);
 
@@ -137,7 +135,6 @@ class NotesSyncManager {
     userId,
     onStatusChange,
     onSuccess,
-    onConflict,
     retryCount = 0,
   }) {
     const uid = userId || getCurrentUserId() || 'default';
@@ -206,21 +203,7 @@ class NotesSyncManager {
           onSuccess(savedNote);
         }
       }
-    } catch (err) {
-      if (err.response?.status === 409) {
-        // Stale version conflict
-        if (onStatusChange) {
-          onStatusChange({ status: 'error', message: 'Conflict detected' });
-        }
-        if (onConflict) {
-          onConflict({
-            serverNote: err.response.data.serverNote,
-            localDraft: draftData,
-          });
-        }
-        return;
-      }
-
+    } catch {
       // Network / 5xx error: schedule retry with backoff
       if (retryCount < 3) {
         if (onStatusChange) {
@@ -236,7 +219,6 @@ class NotesSyncManager {
             userId: uid,
             onStatusChange,
             onSuccess,
-            onConflict,
             retryCount: retryCount + 1,
           });
         }, backoffMs);

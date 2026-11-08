@@ -49,13 +49,6 @@ export const updateNote = createAsyncThunk(
       const res = await api.patch(`/notes/${id}`, payload);
       return res.data;
     } catch (err) {
-      if (err.response?.status === 409) {
-        return rejectWithValue({
-          isConflict: true,
-          message: err.response.data.message || 'Version conflict detected',
-          serverNote: err.response.data.serverNote,
-        });
-      }
       return rejectWithValue(err.response?.data?.message || 'Failed to update note');
     }
   }
@@ -124,7 +117,6 @@ const initialState = {
   viewFilter: 'active', // 'active' | 'archived' | 'trash'
   searchQuery: '',
   selectedTag: null,
-  conflictModalData: null, // { localDraft, serverNote }
 };
 
 const noteSlice = createSlice({
@@ -230,9 +222,6 @@ const noteSlice = createSlice({
     },
     setSelectedTag: (state, action) => {
       state.selectedTag = action.payload;
-    },
-    setConflictModalData: (state, action) => {
-      state.conflictModalData = action.payload;
     },
     clearNotesState: () => initialState,
   },
@@ -376,7 +365,6 @@ export const {
   setViewFilter,
   setSearchQuery,
   setSelectedTag,
-  setConflictModalData,
   clearNotesState,
 } = noteSlice.actions;
 
