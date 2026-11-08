@@ -294,8 +294,15 @@ const detectPlatformAndEmbed = (url = "") => {
 };
 
 // Internal helper to scrape OpenGraph & social metadata from a URL
-const fetchUrlMetadata = async (url) => {
-  if (!url || typeof url !== "string") return null;
+const fetchUrlMetadata = async (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+
+  let url = rawUrl.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    if (/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(url)) {
+      url = `https://${url}`;
+    }
+  }
 
   try {
     let detected = detectPlatformAndEmbed(url);
@@ -337,6 +344,7 @@ const fetchUrlMetadata = async (url) => {
     let directPosterUrl = "";
     let siteName = "";
     let author = "";
+    let documentInfo = null;
     let finalUrl = url;
 
     // Special scraper for YouTube links (Single Videos, Shorts, etc.)
@@ -766,7 +774,7 @@ const fetchUrlMetadata = async (url) => {
 
         // Document / PDF / Presentation detection on LinkedIn
         if (detected.platform === "linkedin") {
-          let documentInfo = null;
+          documentInfo = null;
 
           // 1. Check data-native-document-config attribute
           const docConfigMatch = html.match(
@@ -1036,9 +1044,14 @@ const fetchUrlMetadata = async (url) => {
 // @route   POST /api/captures/scrape
 const scrapeMetadata = async (req, res) => {
   try {
-    const { url } = req.body;
+    let { url } = req.body;
     if (!url || typeof url !== "string") {
       return res.status(400).json({ message: "A valid URL is required" });
+    }
+
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url) && /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(url)) {
+      url = `https://${url}`;
     }
 
     const data = await fetchUrlMetadata(url);
@@ -1289,43 +1302,73 @@ const createCapture = async (req, res) => {
       mediaType = "image";
     }
 
-    // Force LinkedIn platform if sourceUrl matches LinkedIn or lnkd.in
-    if (sourceUrl && /(?:linkedin\.com|lnkd\.in)/i.test(sourceUrl)) {
+    let cleanSourceUrl = sourceUrl ? String(sourceUrl).trim() : "";
+    if (cleanSourceUrl && !/^https?:\/\//i.test(cleanSourceUrl) && /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(cleanSourceUrl)) {
+      cleanSourceUrl = `https://${cleanSourceUrl}`;
+    }
+
+    // Check if this exact link or normalized URL already exists in user's active Vault
+    if (cleanSourceUrl) {
+      const normalizedQueryUrl = cleanSourceUrl.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+      const existingCaptures = await CapturedResource.find({
+        user: req.user._id,
+        status: { $ne: "archived" },
+        sourceUrl: { $exists: true, $ne: "" },
+      }).select("_id title sourceUrl").lean();
+
+      const duplicate = existingCaptures.find((c) => {
+        const existingNorm = (c.sourceUrl || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+        return existingNorm && existingNorm === normalizedQueryUrl;
+      });
+
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          isDuplicate: true,
+          message: "This link is already saved in your Vault",
+          existingId: duplicate._id,
+          existingTitle: duplicate.title,
+        });
+      }
+    }
+
+    // Force LinkedIn platform if cleanSourceUrl matches LinkedIn or lnkd.in
+    if (cleanSourceUrl && /(?:linkedin\.com|lnkd\.in)/i.test(cleanSourceUrl)) {
       platform = "linkedin";
-      const detected = detectPlatformAndEmbed(sourceUrl);
+      const detected = detectPlatformAndEmbed(cleanSourceUrl);
       if (detected.embedId && !embedId) embedId = detected.embedId;
       if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
     }
 
-    // Force Twitter/X platform if sourceUrl matches twitter.com or x.com
-    if (sourceUrl && /(?:twitter\.com|x\.com)/i.test(sourceUrl)) {
+    // Force Twitter/X platform if cleanSourceUrl matches twitter.com or x.com
+    if (cleanSourceUrl && /(?:twitter\.com|x\.com)/i.test(cleanSourceUrl)) {
       platform = "twitter";
-      const detected = detectPlatformAndEmbed(sourceUrl);
+      const detected = detectPlatformAndEmbed(cleanSourceUrl);
       if (detected.embedId && !embedId) embedId = detected.embedId;
       if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
       if (detected.authorName && !authorName) authorName = detected.authorName;
     }
 
-    // Force Facebook platform if sourceUrl matches facebook.com, fb.watch, or fb.me
-    if (sourceUrl && /(?:facebook\.com|fb\.watch|fb\.me)/i.test(sourceUrl)) {
+    // Force Facebook platform if cleanSourceUrl matches facebook.com, fb.watch, or fb.me
+    if (cleanSourceUrl && /(?:facebook\.com|fb\.watch|fb\.me)/i.test(cleanSourceUrl)) {
       platform = "facebook";
       mediaType = "video";
-      const detected = detectPlatformAndEmbed(sourceUrl);
+      const detected = detectPlatformAndEmbed(cleanSourceUrl);
       if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
     }
 
-    // Force YouTube platform if sourceUrl matches youtube.com or youtu.be
-    if (sourceUrl && /(?:youtube\.com|youtu\.be)/i.test(sourceUrl)) {
+    // Force YouTube platform if cleanSourceUrl matches youtube.com or youtu.be
+    if (cleanSourceUrl && /(?:youtube\.com|youtu\.be)/i.test(cleanSourceUrl)) {
       platform = "youtube";
-      const detected = detectPlatformAndEmbed(sourceUrl);
+      const detected = detectPlatformAndEmbed(cleanSourceUrl);
       if (detected.embedId && !embedId) embedId = detected.embedId;
       if (detected.embedUrl && !embedUrl) embedUrl = detected.embedUrl;
       if (detected.mediaType) mediaType = detected.mediaType;
     }
 
-    // If sourceUrl provided and platform was not manually set, auto-detect platform and embed
-    if (sourceUrl && (!platform || platform === "auto")) {
-      const detected = detectPlatformAndEmbed(sourceUrl);
+    // If cleanSourceUrl provided and platform was not manually set, auto-detect platform and embed
+    if (cleanSourceUrl && (!platform || platform === "auto")) {
+      const detected = detectPlatformAndEmbed(cleanSourceUrl);
       platform = detected.platform;
       mediaType = detected.mediaType;
       embedId = detected.embedId || embedId;
@@ -1346,7 +1389,7 @@ const createCapture = async (req, res) => {
       title.toLowerCase().includes("youtube.com");
 
     if (
-      sourceUrl &&
+      cleanSourceUrl &&
       (!thumbnailUrl ||
         !authorName ||
         !rawContent ||
@@ -1356,7 +1399,7 @@ const createCapture = async (req, res) => {
         platform === "youtube")
     ) {
       try {
-        const meta = await fetchUrlMetadata(sourceUrl);
+        const meta = await fetchUrlMetadata(cleanSourceUrl);
         if (meta) {
           if (!thumbnailUrl && meta.thumbnailUrl)
             thumbnailUrl = meta.thumbnailUrl;
@@ -1395,7 +1438,7 @@ const createCapture = async (req, res) => {
     // Auto-promote mediaType to "video" ONLY if actual video file or YouTube
     const isVideoFile =
       /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(mediaUrl) ||
-      /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(sourceUrl) ||
+      /\.(mp4|webm|ogg|mov|m4v|m3u8|mpd)(\?.*)?$/i.test(cleanSourceUrl) ||
       (typeof mediaUrl === "string" &&
         (mediaUrl.includes("video.twimg.com") ||
           mediaUrl.includes(".m3u8") ||
@@ -1474,9 +1517,9 @@ const createCapture = async (req, res) => {
         computedTitle = "Facebook Video";
       } else if (platform === "linkedin") {
         computedTitle = documentInfo?.title || "LinkedIn Post";
-      } else if (sourceUrl) {
+      } else if (cleanSourceUrl) {
         try {
-          const u = new URL(sourceUrl);
+          const u = new URL(cleanSourceUrl);
           computedTitle = `Saved from ${u.hostname.replace(/^www\./, "")}`;
         } catch {
           computedTitle = "Saved Resource";
@@ -1491,7 +1534,7 @@ const createCapture = async (req, res) => {
       platform,
       mediaType,
       title: computedTitle,
-      sourceUrl: sourceUrl?.trim() || "",
+      sourceUrl: cleanSourceUrl,
       rawContent: rawContent?.trim() || "",
       authorName: authorName?.trim() || "",
       embedId,

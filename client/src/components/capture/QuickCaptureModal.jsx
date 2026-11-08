@@ -229,10 +229,15 @@ const QuickCaptureModal = () => {
     }
   }, [scrapedData, title]);
 
-  // Handle URL change with auto scrape
+  // Handle URL change with auto scrape and protocol normalization
   const handleUrlBlur = () => {
-    if (url.trim() && (!scrapedData || scrapedData.url !== url.trim())) {
-      dispatch(scrapeMetadata(url.trim()));
+    let clean = url.trim();
+    if (clean && !/^https?:\/\//i.test(clean) && /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(clean)) {
+      clean = `https://${clean}`;
+      setUrl(clean);
+    }
+    if (clean && (!scrapedData || scrapedData.url !== clean)) {
+      dispatch(scrapeMetadata(clean));
     }
   };
 
@@ -458,23 +463,36 @@ const QuickCaptureModal = () => {
 
         let cleanUrl = trimmedUrl;
         if (!/^https?:\/\//i.test(cleanUrl)) {
-          if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(cleanUrl)) {
+          if (/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(cleanUrl)) {
             cleanUrl = `https://${cleanUrl}`;
           } else {
-            toast.error('Please enter a valid web URL (e.g. https://example.com)');
+            toast.error('Please enter a valid web URL (e.g. https://example.com or lnkd.in/...)');
             setSaving(false);
             return;
           }
         }
+        setUrl(cleanUrl);
 
         // Check if user has already captured this exact link in Vault
-        const isDuplicateCapture = (captures || []).some(
-          (c) =>
-            c.sourceUrl?.trim().toLowerCase() === cleanUrl.toLowerCase() ||
-            c.mediaUrl?.trim().toLowerCase() === cleanUrl.toLowerCase()
-        );
+        const normClean = cleanUrl.replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+        const isDuplicateCapture = (captures || []).some((c) => {
+          const normSource = (c.sourceUrl || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+          const normMedia = (c.mediaUrl || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+          return (normSource && normSource === normClean) || (normMedia && normMedia === normClean);
+        });
+
         if (isDuplicateCapture) {
-          toast('Notice: This link is already in your Vault', { icon: 'ℹ️' });
+          toast.error('This link is already saved in your Vault!', {
+            icon: 'ℹ️',
+            style: {
+              borderRadius: '12px',
+              background: '#18181b',
+              color: '#fff',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+            },
+          });
+          setSaving(false);
+          return;
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -754,7 +772,7 @@ const QuickCaptureModal = () => {
 
         const saved = await dispatch(
           createCapture({
-            sourceUrl: url.trim(),
+            sourceUrl: cleanUrl,
             platform: resolvedPlatform,
             mediaType,
             title: title || scrapedData?.title || 'Saved Link',
@@ -875,7 +893,7 @@ const QuickCaptureModal = () => {
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+          <form onSubmit={handleSubmit} noValidate className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
             {/* TAB 1: Link, YouTube, & Social Media */}
             {activeTab === 'link' && (
               <div className="space-y-3">
@@ -885,7 +903,8 @@ const QuickCaptureModal = () => {
                   </label>
                   <div className="relative">
                     <input
-                      type="url"
+                      type="text"
+                      inputMode="url"
                       value={url}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -895,12 +914,13 @@ const QuickCaptureModal = () => {
                         setHasAttemptedSubmit(false);
                         const trimmed = val.trim();
                         if (trimmed && /(?:youtube\.com|youtu\.be)/i.test(trimmed)) {
-                          dispatch(scrapeMetadata(trimmed));
+                          let cleanYt = trimmed;
+                          if (!/^https?:\/\//i.test(cleanYt)) cleanYt = `https://${cleanYt}`;
+                          dispatch(scrapeMetadata(cleanYt));
                         }
                       }}
                       onBlur={handleUrlBlur}
-                      placeholder="https://www.youtube.com/watch?v=... or https://instagram.com/reel/... or https://..."
-                      required
+                      placeholder="https://... or lnkd.in/... or youtube.com/..."
                       className="w-full pl-10 pr-24 py-2.5 rounded-xl bg-surface border border-subtle text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
                     />
                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
@@ -909,7 +929,14 @@ const QuickCaptureModal = () => {
                     {url && (
                       <button
                         type="button"
-                        onClick={() => dispatch(scrapeMetadata(url.trim()))}
+                        onClick={() => {
+                          let clean = url.trim();
+                          if (clean && !/^https?:\/\//i.test(clean) && /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(clean)) {
+                            clean = `https://${clean}`;
+                            setUrl(clean);
+                          }
+                          dispatch(scrapeMetadata(clean));
+                        }}
                         disabled={scrapeLoading}
                         className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-surface-raised hover:bg-surface border border-subtle text-[11px] font-semibold text-primary transition-all cursor-pointer"
                       >
