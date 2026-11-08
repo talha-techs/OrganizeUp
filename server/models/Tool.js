@@ -52,6 +52,21 @@ const toolSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    topic: {
+      type: String,
+      default: "",
+      index: true,
+      trim: true,
+    },
+    seedId: {
+      type: String,
+    },
+    seedMeta: {
+      license: { type: String, default: "" },
+      level: { type: String, default: "" },
+      cost: { type: String, default: "" },
+      sourceUrl: { type: String, default: "" },
+    },
     driveLink: {
       type: String,
       default: "",
@@ -93,5 +108,9 @@ const toolSchema = new mongoose.Schema(
 
 toolSchema.index({ visibility: 1, createdAt: -1 });
 toolSchema.index({ addedBy: 1, createdAt: -1 });
+toolSchema.index(
+  { seedId: 1 },
+  { unique: true, partialFilterExpression: { seedId: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Tool", toolSchema);

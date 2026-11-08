@@ -1,0 +1,580 @@
+{
+  "generatedAt": "2026-11-08T09:18:34.243Z",
+  "totalChecked": 80,
+  "ok": [
+    {
+      "id": "b-progit",
+      "type": "book",
+      "title": "Pro Git",
+      "url": "https://git-scm.com/book/en/v2",
+      "code": 200
+    },
+    {
+      "id": "b-ostep",
+      "type": "book",
+      "title": "Operating Systems: Three Easy Pieces",
+      "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/",
+      "code": 200
+    },
+    {
+      "id": "b-sicp",
+      "type": "book",
+      "title": "Structure and Interpretation of Computer Programs",
+      "url": "https://web.mit.edu/6.001/6.037/sicp.pdf",
+      "code": 200
+    },
+    {
+      "id": "b-thinkpy",
+      "type": "book",
+      "title": "Think Python",
+      "url": "https://allendowney.github.io/ThinkPython/",
+      "code": 200
+    },
+    {
+      "id": "b-pds",
+      "type": "book",
+      "title": "Python Data Science Handbook",
+      "url": "https://jakevdp.github.io/PythonDataScienceHandbook/",
+      "code": 200
+    },
+    {
+      "id": "b-d2l",
+      "type": "book",
+      "title": "Dive into Deep Learning",
+      "url": "https://d2l.ai/",
+      "code": 200
+    },
+    {
+      "id": "b-dlbook",
+      "type": "book",
+      "title": "Deep Learning (Goodfellow, Bengio, Courville)",
+      "url": "https://www.deeplearningbook.org/",
+      "code": 200
+    },
+    {
+      "id": "b-mml",
+      "type": "book",
+      "title": "Mathematics for Machine Learning",
+      "url": "https://mml-book.github.io/",
+      "code": 200
+    },
+    {
+      "id": "b-eloquent",
+      "type": "book",
+      "title": "Eloquent JavaScript",
+      "url": "https://eloquentjavascript.net/",
+      "code": 200
+    },
+    {
+      "id": "b-py4e",
+      "type": "book",
+      "title": "Python for Everybody",
+      "url": "https://www.py4e.com/book",
+      "code": 200
+    },
+    {
+      "id": "b-nielsen",
+      "type": "book",
+      "title": "Neural Networks and Deep Learning",
+      "url": "http://neuralnetworksanddeeplearning.com/",
+      "code": 200
+    },
+    {
+      "id": "b-esl",
+      "type": "book",
+      "title": "The Elements of Statistical Learning",
+      "url": "https://hastie.su.domains/ElemStatLearn/",
+      "code": 200
+    },
+    {
+      "id": "b-pml",
+      "type": "book",
+      "title": "Probabilistic Machine Learning: An Introduction",
+      "url": "https://probml.github.io/pml-book/",
+      "code": 200
+    },
+    {
+      "id": "b-isl",
+      "type": "book",
+      "title": "An Introduction to Statistical Learning",
+      "url": "https://www.statlearning.com/",
+      "code": 200
+    },
+    {
+      "id": "b-erickson",
+      "type": "book",
+      "title": "Algorithms (Jeff Erickson)",
+      "url": "https://jeffe.cs.illinois.edu/teaching/algorithms/",
+      "code": 200
+    },
+    {
+      "id": "b-rust",
+      "type": "book",
+      "title": "The Rust Programming Language",
+      "url": "https://doc.rust-lang.org/book/",
+      "code": 200
+    },
+    {
+      "id": "b-ods",
+      "type": "book",
+      "title": "Open Data Structures",
+      "url": "https://opendatastructures.org/",
+      "code": 200
+    },
+    {
+      "id": "b-tlcl",
+      "type": "book",
+      "title": "The Linux Command Line",
+      "url": "https://linuxcommand.org/tlcl.php",
+      "code": 200
+    },
+    {
+      "id": "b-byte",
+      "type": "book",
+      "title": "A Byte of Python",
+      "url": "https://python.swaroopch.com/",
+      "code": 200
+    },
+    {
+      "id": "b-openstax-calc",
+      "type": "book",
+      "title": "Calculus Volume 1 (OpenStax)",
+      "url": "https://openstax.org/details/books/calculus-volume-1",
+      "code": 200
+    },
+    {
+      "id": "b-hefferon",
+      "type": "book",
+      "title": "Linear Algebra (Jim Hefferon)",
+      "url": "https://hefferon.net/linearalgebra/",
+      "code": 200
+    },
+    {
+      "id": "b-walden",
+      "type": "book",
+      "title": "Walden (Henry David Thoreau)",
+      "url": "https://www.gutenberg.org/ebooks/205",
+      "code": 200
+    },
+    {
+      "id": "b-artofwar",
+      "type": "book",
+      "title": "The Art of War (Sun Tzu)",
+      "url": "https://www.gutenberg.org/ebooks/132",
+      "code": 200
+    },
+    {
+      "id": "c-cs50x",
+      "type": "course",
+      "title": "CS50x: Introduction to Computer Science (Harvard)",
+      "url": "https://cs50.harvard.edu/x/",
+      "code": 200
+    },
+    {
+      "id": "c-cs50web",
+      "type": "course",
+      "title": "CS50 Web: Web Programming with Python and JavaScript",
+      "url": "https://cs50.harvard.edu/web/",
+      "code": 200
+    },
+    {
+      "id": "c-mit600",
+      "type": "course",
+      "title": "MIT 6.0001: Intro to CS and Programming in Python",
+      "url": "https://ocw.mit.edu/courses/6-0001-introduction-to-computer-science-and-programming-in-python-fall-2016/",
+      "code": 200
+    },
+    {
+      "id": "b-meditations",
+      "type": "book",
+      "title": "Meditations (Marcus Aurelius)",
+      "url": "https://www.gutenberg.org/ebooks/2680",
+      "code": 200
+    },
+    {
+      "id": "c-mit006",
+      "type": "course",
+      "title": "MIT 6.006: Introduction to Algorithms",
+      "url": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/",
+      "code": 200
+    },
+    {
+      "id": "c-mit1806",
+      "type": "course",
+      "title": "MIT 18.06: Linear Algebra (Gilbert Strang)",
+      "url": "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/",
+      "code": 200
+    },
+    {
+      "id": "c-cs50sql",
+      "type": "course",
+      "title": "CS50 SQL: Introduction to Databases",
+      "url": "https://cs50.harvard.edu/sql/",
+      "code": 200
+    },
+    {
+      "id": "c-missing",
+      "type": "course",
+      "title": "The Missing Semester of Your CS Education",
+      "url": "https://missing.csail.mit.edu/",
+      "code": 200
+    },
+    {
+      "id": "c-cs50p",
+      "type": "course",
+      "title": "CS50P: Introduction to Programming with Python",
+      "url": "https://cs50.harvard.edu/python/",
+      "code": 200
+    },
+    {
+      "id": "c-cs50ai",
+      "type": "course",
+      "title": "CS50 AI: Introduction to AI with Python",
+      "url": "https://cs50.harvard.edu/ai/",
+      "code": 200
+    },
+    {
+      "id": "c-cs229",
+      "type": "course",
+      "title": "Stanford CS229: Machine Learning",
+      "url": "https://cs229.stanford.edu/",
+      "code": 200
+    },
+    {
+      "id": "c-fastai",
+      "type": "course",
+      "title": "Practical Deep Learning for Coders (fast.ai)",
+      "url": "https://course.fast.ai/",
+      "code": 200
+    },
+    {
+      "id": "c-cs231n",
+      "type": "course",
+      "title": "Stanford CS231n: Deep Learning for Computer Vision",
+      "url": "https://cs231n.stanford.edu/",
+      "code": 200
+    },
+    {
+      "id": "c-hf",
+      "type": "course",
+      "title": "Hugging Face LLM Course",
+      "url": "https://huggingface.co/learn/llm-course",
+      "code": 200
+    },
+    {
+      "id": "c-kaggle",
+      "type": "course",
+      "title": "Kaggle Learn",
+      "url": "https://www.kaggle.com/learn",
+      "code": 200
+    },
+    {
+      "id": "c-ng",
+      "type": "course",
+      "title": "Machine Learning Specialization (Andrew Ng)",
+      "url": "https://www.coursera.org/specializations/machine-learning-introduction",
+      "code": 200
+    },
+    {
+      "id": "c-fcc",
+      "type": "course",
+      "title": "freeCodeCamp Curriculum",
+      "url": "https://www.freecodecamp.org/learn",
+      "code": 200
+    },
+    {
+      "id": "c-eai",
+      "type": "course",
+      "title": "Elements of AI",
+      "url": "https://www.elementsofai.com/",
+      "code": 200
+    },
+    {
+      "id": "c-dlai",
+      "type": "course",
+      "title": "DeepLearning.AI Short Courses",
+      "url": "https://www.deeplearning.ai/short-courses/",
+      "code": 200
+    },
+    {
+      "id": "c-khan",
+      "type": "course",
+      "title": "Khan Academy",
+      "url": "https://www.khanacademy.org/",
+      "code": 200
+    },
+    {
+      "id": "c-fso",
+      "type": "course",
+      "title": "Full Stack Open",
+      "url": "https://fullstackopen.com/",
+      "code": 200
+    },
+    {
+      "id": "c-mdn",
+      "type": "course",
+      "title": "MDN: Learn Web Development",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
+      "code": 200
+    },
+    {
+      "id": "c-odin",
+      "type": "course",
+      "title": "The Odin Project",
+      "url": "https://www.theodinproject.com/",
+      "code": 200
+    },
+    {
+      "id": "c-nptel",
+      "type": "course",
+      "title": "NPTEL",
+      "url": "https://nptel.ac.in/",
+      "code": 200
+    },
+    {
+      "id": "c-jsinfo",
+      "type": "course",
+      "title": "The Modern JavaScript Tutorial",
+      "url": "https://javascript.info/",
+      "code": 200
+    },
+    {
+      "id": "c-n2t",
+      "type": "course",
+      "title": "Nand2Tetris",
+      "url": "https://www.nand2tetris.org/",
+      "code": 200
+    },
+    {
+      "id": "c-mslearn",
+      "type": "course",
+      "title": "Microsoft Learn",
+      "url": "https://learn.microsoft.com/training/",
+      "code": 200
+    },
+    {
+      "id": "t-excalidraw",
+      "type": "tool",
+      "title": "Excalidraw",
+      "url": "https://excalidraw.com/",
+      "code": 200
+    },
+    {
+      "id": "t-kaggle-nb",
+      "type": "tool",
+      "title": "Kaggle Notebooks",
+      "url": "https://www.kaggle.com/code",
+      "code": 200
+    },
+    {
+      "id": "t-drawio",
+      "type": "tool",
+      "title": "diagrams.net (draw.io)",
+      "url": "https://app.diagrams.net/",
+      "code": 200
+    },
+    {
+      "id": "t-obsidian",
+      "type": "tool",
+      "title": "Obsidian",
+      "url": "https://obsidian.md/",
+      "code": 200
+    },
+    {
+      "id": "t-anki",
+      "type": "tool",
+      "title": "Anki",
+      "url": "https://apps.ankiweb.net/",
+      "code": 200
+    },
+    {
+      "id": "t-colab",
+      "type": "tool",
+      "title": "Google Colab",
+      "url": "https://colab.research.google.com/",
+      "code": 200
+    },
+    {
+      "id": "t-zotero",
+      "type": "tool",
+      "title": "Zotero",
+      "url": "https://www.zotero.org/",
+      "code": 200
+    },
+    {
+      "id": "t-student-pack",
+      "type": "tool",
+      "title": "GitHub Student Developer Pack",
+      "url": "https://education.github.com/pack",
+      "code": 200
+    },
+    {
+      "id": "t-regex101",
+      "type": "tool",
+      "title": "Regex101",
+      "url": "https://regex101.com/",
+      "code": 200
+    },
+    {
+      "id": "t-devdocs",
+      "type": "tool",
+      "title": "DevDocs",
+      "url": "https://devdocs.io/",
+      "code": 200
+    },
+    {
+      "id": "t-gitbranch",
+      "type": "tool",
+      "title": "Learn Git Branching",
+      "url": "https://learngitbranching.js.org/",
+      "code": 200
+    },
+    {
+      "id": "t-roadmapsh",
+      "type": "tool",
+      "title": "roadmap.sh",
+      "url": "https://roadmap.sh/",
+      "code": 200
+    },
+    {
+      "id": "t-pomofocus",
+      "type": "tool",
+      "title": "Pomofocus",
+      "url": "https://pomofocus.io/",
+      "code": 200
+    },
+    {
+      "id": "t-jetbrains",
+      "type": "tool",
+      "title": "JetBrains Student Licenses",
+      "url": "https://www.jetbrains.com/community/education/",
+      "code": 200
+    },
+    {
+      "id": "t-explainshell",
+      "type": "tool",
+      "title": "explainshell",
+      "url": "https://explainshell.com/",
+      "code": 200
+    },
+    {
+      "id": "t-figma-edu",
+      "type": "tool",
+      "title": "Figma for Education",
+      "url": "https://www.figma.com/education/",
+      "code": 200
+    },
+    {
+      "id": "t-hf",
+      "type": "tool",
+      "title": "Hugging Face Hub",
+      "url": "https://huggingface.co/",
+      "code": 200
+    },
+    {
+      "id": "t-visualgo",
+      "type": "tool",
+      "title": "VisuAlgo",
+      "url": "https://visualgo.net/",
+      "code": 200
+    },
+    {
+      "id": "t-mermaid",
+      "type": "tool",
+      "title": "Mermaid Live Editor",
+      "url": "https://mermaid.live/",
+      "code": 200
+    },
+    {
+      "id": "t-pytutor",
+      "type": "tool",
+      "title": "Python Tutor",
+      "url": "https://pythontutor.com/",
+      "code": 200
+    }
+  ],
+  "unverified": [
+    {
+      "id": "t-canva-edu",
+      "type": "tool",
+      "title": "Canva for Education",
+      "url": "https://www.canva.com/education/",
+      "code": 403,
+      "reason": "Status 403 (Bot protection / Rate limit)"
+    },
+    {
+      "id": "b-slp",
+      "type": "book",
+      "title": "Speech and Language Processing",
+      "url": "https://web.stanford.edu/~jurafsky/slp3/",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "b-crafting",
+      "type": "book",
+      "title": "Crafting Interpreters",
+      "url": "https://craftinginterpreters.com/",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "b-atbs",
+      "type": "book",
+      "title": "Automate the Boring Stuff with Python",
+      "url": "https://automatetheboringstuff.com/",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "b-sutton",
+      "type": "book",
+      "title": "Reinforcement Learning: An Introduction",
+      "url": "http://incompleteideas.net/book/the-book-2nd.html",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "b-beej",
+      "type": "book",
+      "title": "Beej's Guide to Network Programming",
+      "url": "https://beej.us/guide/bgnet/",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "b-thinkstats",
+      "type": "book",
+      "title": "Think Stats",
+      "url": "https://greenteapress.com/wp/think-stats-2e/",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "c-cs224n",
+      "type": "course",
+      "title": "Stanford CS224n: NLP with Deep Learning",
+      "url": "https://web.stanford.edu/class/cs224n/",
+      "code": 0,
+      "reason": "Network issue (fetch failed)"
+    },
+    {
+      "id": "t-freefordev",
+      "type": "tool",
+      "title": "free-for-dev",
+      "url": "https://github.com/ripienaar/free-for-dev",
+      "code": 504,
+      "reason": "HTTP 504"
+    }
+  ],
+  "dead": [
+    {
+      "id": "c-mlcc",
+      "type": "course",
+      "title": "Google Machine Learning Crash Course",
+      "url": "https://developers.google.com/machine-learning/crashcourse",
+      "code": 404,
+      "reason": "HTTP 404 Not Found"
+    }
+  ]
+}

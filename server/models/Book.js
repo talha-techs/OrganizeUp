@@ -102,6 +102,30 @@ const bookSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    externalUrl: {
+      type: String,
+      default: "",
+    },
+    sourceType: {
+      type: String,
+      enum: ["upload", "drive", "external"],
+      default: "upload",
+    },
+    topic: {
+      type: String,
+      default: "",
+      index: true,
+      trim: true,
+    },
+    seedId: {
+      type: String,
+    },
+    seedMeta: {
+      license: { type: String, default: "" },
+      level: { type: String, default: "" },
+      cost: { type: String, default: "" },
+      sourceUrl: { type: String, default: "" },
+    },
     totalPages: {
       type: Number,
       default: 0,
@@ -120,6 +144,27 @@ const bookSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
+    // Reminders & completion state
+    remindAt: {
+      type: Date,
+      default: null,
+    },
+    reminderNote: {
+      type: String,
+      default: "",
+    },
+    reminderFired: {
+      type: Boolean,
+      default: false,
+    },
+    isCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -128,5 +173,10 @@ const bookSchema = new mongoose.Schema(
 
 bookSchema.index({ visibility: 1, createdAt: -1 });
 bookSchema.index({ addedBy: 1, createdAt: -1 });
+bookSchema.index({ remindAt: 1, reminderFired: 1, isCompleted: 1 });
+bookSchema.index(
+  { seedId: 1 },
+  { unique: true, partialFilterExpression: { seedId: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Book", bookSchema);

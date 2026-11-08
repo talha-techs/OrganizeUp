@@ -7,6 +7,7 @@ import {
   IoAddCircleOutline,
   IoRemoveCircleOutline,
   IoCheckmarkCircle,
+  IoOpenOutline,
 } from 'react-icons/io5';
 import DefaultResourceCover from './DefaultResourceCover';
 
@@ -100,15 +101,19 @@ const ExploreContentCard = React.memo(
         return `📹 Playlist${count ? ` • ${count} vids` : ''}`;
       }
       if (contentType === 'book') {
+        if (item.sourceType === 'external' || item.externalUrl) return '🌐 Open Resource';
         if (item.type === 'video') return '📹 Video Book';
         if (item.type === 'text') return '📄 PDF Book';
         if (item.type === 'audio') return '🎧 Audio Book';
         return '📖 Book';
       }
-      if (contentType === 'course') return '🎓 Course';
+      if (contentType === 'course') {
+        if (item.sourceType === 'external' || item.externalUrl) return '🌐 Online Course';
+        return '🎓 Course';
+      }
       if (contentType === 'tool') return '⚡ Trick & Tool';
       return '📁 Section';
-    }, [contentType, item.type, item.videoCount, item.videos]);
+    }, [contentType, item.type, item.videoCount, item.videos, item.sourceType, item.externalUrl]);
 
     return (
       <motion.div
@@ -151,6 +156,12 @@ const ExploreContentCard = React.memo(
         {/* Card Body Details */}
         <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
+            {(item.topic || item.category?.name) && (
+              <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-accent-subtle text-accent border border-accent/20">
+                {item.topic || item.category?.name}
+              </span>
+            )}
+
             <h3
               className="text-base sm:text-lg font-bold text-primary group-hover:text-accent transition-colors line-clamp-2 leading-snug cursor-pointer"
               onClick={handleCardClick}
@@ -162,6 +173,22 @@ const ExploreContentCard = React.memo(
               <p className="text-xs sm:text-sm font-medium text-accent/90 truncate">
                 by {item.author || item.channelTitle}
               </p>
+            )}
+
+            {item.externalUrl && (
+              <div className="pt-0.5">
+                <a
+                  href={item.externalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline py-0.5"
+                  title="Open at external source"
+                >
+                  <span>Open at source</span>
+                  <IoOpenOutline size={13} />
+                </a>
+              </div>
             )}
 
             {item.description && (

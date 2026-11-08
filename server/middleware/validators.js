@@ -53,6 +53,7 @@ const bookRules = [
   body("title").trim().notEmpty().withMessage("Title is required"),
   body("author").trim().notEmpty().withMessage("Author is required"),
   body("type")
+    .optional()
     .isIn(["video", "text", "audio"])
     .withMessage("Type must be video, text, or audio"),
 ];

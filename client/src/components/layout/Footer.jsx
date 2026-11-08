@@ -47,7 +47,10 @@ const Footer = () => {
             >
               <IoMailOutline size={15} /> support@organizeup.app
             </a>
-            <p className="text-xs text-muted mt-3">
+            <p className="text-xs text-muted mt-2">
+              Report content or copyright inquiries: <a href="mailto:support@organizeup.app" className="underline hover:text-primary">support@organizeup.app</a>
+            </p>
+            <p className="text-xs text-muted mt-1">
               Built for students and self-learners.
             </p>
           </div>

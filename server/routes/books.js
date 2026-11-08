@@ -18,6 +18,8 @@ const {
   updateReadingProgress,
   getBookProgress,
   getCombinedBookNotes,
+  updateBookReminder,
+  toggleBookComplete,
 } = require("../controllers/bookController");
 const {
   scanDriveFolder,
@@ -50,6 +52,8 @@ router.get("/:id/notes", protect, getCombinedBookNotes);
 router.get("/:id/progress", protect, getBookProgress);
 router.put("/:id/video-progress", protect, updateVideoProgress);
 router.put("/:id/reading-progress", protect, updateReadingProgress);
+router.put("/:id/reminder", protect, updateBookReminder);
+router.put("/:id/toggle-complete", protect, toggleBookComplete);
 
 // Drive import routes (any authenticated user)
 router.post("/scan-drive", protect, scanDriveFolder);

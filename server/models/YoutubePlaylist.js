@@ -58,6 +58,21 @@ const youtubePlaylistSchema = new mongoose.Schema(
       default: 0,
     },
     videos: [videoSchema],
+    topic: {
+      type: String,
+      default: "",
+      index: true,
+      trim: true,
+    },
+    seedId: {
+      type: String,
+    },
+    seedMeta: {
+      license: { type: String, default: "" },
+      level: { type: String, default: "" },
+      cost: { type: String, default: "" },
+      sourceUrl: { type: String, default: "" },
+    },
     addedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -92,5 +107,9 @@ youtubePlaylistSchema.index({ addedBy: 1, createdAt: -1 });
 youtubePlaylistSchema.index({ addedBy: 1, type: 1, createdAt: -1 });
 youtubePlaylistSchema.index({ remindAt: 1, reminderFired: 1 });
 youtubePlaylistSchema.index({ visibility: 1, createdAt: -1 });
+youtubePlaylistSchema.index(
+  { seedId: 1 },
+  { unique: true, partialFilterExpression: { seedId: { $type: "string" } } }
+);
 
 module.exports = mongoose.models.YoutubePlaylist || mongoose.model("YoutubePlaylist", youtubePlaylistSchema);

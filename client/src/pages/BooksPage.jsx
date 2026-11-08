@@ -307,7 +307,21 @@ const BooksPage = () => {
                     toast.error(err.response?.data?.message || 'Failed to update');
                   }
                 } : undefined}
-              />
+              >
+                {(book.isCompleted || book.remindAt) && (
+                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-subtle/50 text-[11px]">
+                    {book.isCompleted ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+                        ✓ Completed
+                      </span>
+                    ) : book.remindAt ? (
+                      <span className="inline-flex items-center gap-1 text-amber-300 font-medium">
+                        ⏰ Reminder: {new Date(book.remindAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+              </ResourceCard>
             ))}
           </AnimatePresence>
         </div>

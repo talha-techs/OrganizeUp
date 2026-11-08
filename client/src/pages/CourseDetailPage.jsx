@@ -588,6 +588,17 @@ const CourseDetailPage = () => {
                 </button>
               )
             )}
+            {currentCourse.externalUrl && (
+              <a
+                href={currentCourse.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-semibold shadow-sm"
+                title="Open course at external source"
+              >
+                <IoOpenOutline size={16} /> Open at source
+              </a>
+            )}
             {currentCourse.driveLink && (
               <a
                 href={currentCourse.driveLink}
@@ -599,7 +610,7 @@ const CourseDetailPage = () => {
               </a>
             )}
             {/* Show Import from Drive button only in initial empty course state */}
-            {canManage && !hasFiles && !hasFolders && (
+            {canManage && !hasFiles && !hasFolders && !currentCourse.externalUrl && (
               <button
                 onClick={() => setShowImport(true)}
                 className="btn-primary flex items-center gap-2 cursor-pointer"
@@ -613,23 +624,76 @@ const CourseDetailPage = () => {
 
       {/* Content: Directory Structure Preserved */}
       {!hasFiles && !hasFolders ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-20"
-        >
-          <IoSchoolOutline className="mx-auto text-muted mb-4" size={48} />
-          <h3 className="text-lg font-medium text-secondary mb-2">No files yet</h3>
-          <p className="text-sm text-muted mb-4">Import content from Google Drive to get started</p>
-          {canManage && (
-            <button
-              onClick={() => setShowImport(true)}
-              className="btn-primary inline-flex items-center gap-2 cursor-pointer"
+        currentCourse.externalUrl ? (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card p-6 sm:p-10 border border-subtle text-center flex flex-col items-center justify-center my-4"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-accent-subtle text-accent flex items-center justify-center mb-4">
+              <IoSchoolOutline size={32} />
+            </div>
+            {currentCourse.category?.name && (
+              <span className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-accent-subtle text-accent border border-accent/20 mb-3">
+                {currentCourse.category.name}
+              </span>
+            )}
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-2 max-w-xl font-display">
+              {currentCourse.title}
+            </h2>
+            {currentCourse.description && (
+              <p className="text-sm text-secondary max-w-xl mb-6 leading-relaxed whitespace-pre-line">
+                {currentCourse.description}
+              </p>
+            )}
+            {currentCourse.seedMeta && (
+              <div className="flex flex-wrap gap-2 justify-center mb-6">
+                {currentCourse.seedMeta.license && (
+                  <span className="px-3 py-1 text-xs rounded-lg bg-surface border border-subtle text-secondary font-medium">
+                    ⚖️ {currentCourse.seedMeta.license}
+                  </span>
+                )}
+                {currentCourse.seedMeta.level && (
+                  <span className="px-3 py-1 text-xs rounded-lg bg-surface border border-subtle text-secondary font-medium">
+                    🎯 {currentCourse.seedMeta.level}
+                  </span>
+                )}
+                {currentCourse.seedMeta.cost && (
+                  <span className="px-3 py-1 text-xs rounded-lg bg-surface border border-subtle text-emerald-400 font-medium">
+                    🏷️ {currentCourse.seedMeta.cost}
+                  </span>
+                )}
+              </div>
+            )}
+            <a
+              href={currentCourse.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary inline-flex items-center gap-2.5 px-6 py-3 text-sm font-semibold rounded-xl shadow-lg cursor-pointer"
             >
-              <IoCloudDownloadOutline size={18} /> Import from Drive
-            </button>
-          )}
-        </motion.div>
+              <span>Open at source</span>
+              <IoOpenOutline size={18} />
+            </a>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-20"
+          >
+            <IoSchoolOutline className="mx-auto text-muted mb-4" size={48} />
+            <h3 className="text-lg font-medium text-secondary mb-2">No files yet</h3>
+            <p className="text-sm text-muted mb-4">Import content from Google Drive to get started</p>
+            {canManage && (
+              <button
+                onClick={() => setShowImport(true)}
+                className="btn-primary inline-flex items-center gap-2 cursor-pointer"
+              >
+                <IoCloudDownloadOutline size={18} /> Import from Drive
+              </button>
+            )}
+          </motion.div>
+        )
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}

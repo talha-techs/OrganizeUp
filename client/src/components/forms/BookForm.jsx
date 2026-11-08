@@ -15,19 +15,32 @@ import {
   IoCloudUploadOutline,
   IoVideocamOutline,
   IoDocumentTextOutline,
+  IoAlarmOutline,
+  IoCheckmarkCircle,
+  IoChevronDownOutline,
+  IoChevronUpOutline,
 } from 'react-icons/io5';
 import CustomSelect from '../ui/CustomSelect';
+import VisualDateTimePicker from '../ui/VisualDateTimePicker';
 
 const BookForm = ({ book, onClose }) => {
   const [formData, setFormData] = useState({
     title: book?.title || '',
     author: book?.author || '',
-    type: book?.type || 'video',
+    type: book?.type || 'text', // Default to text book (PDF) as requested
     description: book?.description || '',
     embedLink: book?.embedLink || '',
+    pdfWebUrl:
+      book?.driveLink?.toLowerCase().endsWith('.pdf') ||
+      (book?.embedLink?.startsWith('http') && book?.type === 'text')
+        ? book?.driveLink || book?.embedLink
+        : '',
     driveLink: book?.driveLink || '',
     coverImage: book?.coverImage || '',
+    remindAt: book?.remindAt ? new Date(book.remindAt).toISOString() : '',
+    reminderNote: book?.reminderNote || '',
   });
+  const [showReminderSection, setShowReminderSection] = useState(Boolean(book?.remindAt));
   const [videos, setVideos] = useState(
     book?.videos?.length > 0
       ? book.videos
@@ -40,6 +53,33 @@ const BookForm = ({ book, onClose }) => {
   const [autoCover, setAutoCover] = useState(!book);
   const audioInputRef = useRef(null);
   const dispatch = useDispatch();
+
+  const setReminderPreset = (preset) => {
+    const d = new Date();
+    if (preset === '1h') {
+      d.setHours(d.getHours() + 1);
+    } else if (preset === 'tonight') {
+      d.setHours(20, 0, 0, 0);
+      if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    } else if (preset === 'tomorrow') {
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+    } else if (preset === '2d') {
+      d.setDate(d.getDate() + 2);
+      d.setHours(9, 0, 0, 0);
+    }
+    setFormData((prev) => ({ ...prev, remindAt: d.toISOString() }));
+  };
+
+  const handleDriveLinkChange = (val) => {
+    const isPdf = val.toLowerCase().endsWith('.pdf') || val.toLowerCase().includes('/pdf');
+    setFormData((prev) => ({
+      ...prev,
+      driveLink: val,
+      pdfWebUrl: isPdf && !prev.pdfWebUrl ? val : prev.pdfWebUrl,
+      type: isPdf && prev.type !== 'text' ? 'text' : prev.type,
+    }));
+  };
 
   const handleVideoChange = (index, field, value) => {
     const updated = [...videos];
@@ -118,13 +158,31 @@ const BookForm = ({ book, onClose }) => {
     }
 
     if (formData.type === 'text') {
-      if (!book && !pdfFile) {
-        toast.error('Please select a PDF file for this text book');
+      const hasPdf =
+        pdfFile ||
+        formData.pdfWebUrl?.trim() ||
+        book?.embedLink ||
+        book?.pdfR2Key ||
+        book?.pdfFileId;
+      if (!hasPdf) {
+        toast.error('Please upload a PDF file or enter a direct PDF web URL');
         return;
       }
       if (pdfFile && pdfFile.size > 100 * 1024 * 1024) {
         toast.error('PDF file must be under 100MB');
         return;
+      }
+      if (formData.pdfWebUrl?.trim()) {
+        try {
+          const parsed = new URL(formData.pdfWebUrl.trim());
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            toast.error('PDF web URL must start with http:// or https://');
+            return;
+          }
+        } catch {
+          toast.error('Please enter a valid PDF web URL');
+          return;
+        }
       }
     }
 
@@ -222,6 +280,15 @@ const BookForm = ({ book, onClose }) => {
     }
 
     if (pdfFile) fd.append('pdfFile', pdfFile);
+    if (formData.pdfWebUrl?.trim()) {
+      fd.append('pdfWebUrl', formData.pdfWebUrl.trim());
+    }
+    if (formData.remindAt) {
+      fd.append('remindAt', formData.remindAt);
+      if (formData.reminderNote) {
+        fd.append('reminderNote', formData.reminderNote.trim());
+      }
+    }
     if (coverImageFile) {
       fd.append('coverImage', coverImageFile);
     } else if (!coverImageFile && formData.coverImage) {
@@ -374,25 +441,64 @@ const BookForm = ({ book, onClose }) => {
       {/* PDF-specific fields */}
       {formData.type === 'text' && (
         <div className="space-y-4 p-4 rounded-xl bg-surface border border-subtle">
-          <h4 className="text-sm font-medium text-accent">PDF Settings</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-accent flex items-center gap-2">
+              <IoDocumentTextOutline size={16} /> Text Book (PDF) Source
+            </h4>
+            <span className="text-[11px] text-muted">Web URL or File</span>
+          </div>
+
+          {/* Direct Web Reference / PDF Web URL */}
           <div>
-            <label className="block text-sm text-secondary mb-1.5">
-              Upload PDF File
+            <label className="block text-xs font-medium text-secondary mb-1.5">
+              Direct Web Reference / PDF Web URL (.pdf import)
+            </label>
+            <input
+              type="url"
+              value={formData.pdfWebUrl}
+              onChange={(e) => setFormData({ ...formData, pdfWebUrl: e.target.value })}
+              placeholder="https://example.com/books/sample.pdf or direct PDF web link"
+              className="input-dark text-sm w-full"
+            />
+            <p className="text-[11px] text-muted mt-1">
+              Provide a direct web link to any online PDF file for automatic referencing.
+            </p>
+          </div>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-subtle"></div>
+            <span className="flex-shrink mx-3 text-muted text-xs uppercase font-medium">OR</span>
+            <div className="flex-grow border-t border-subtle"></div>
+          </div>
+
+          {/* Local PDF File Upload */}
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1.5">
+              Upload Local PDF File (up to 100MB)
             </label>
             <input
               type="file"
               accept="application/pdf"
-              onChange={(e) => setPdfFile(e.target.files[0])}
-              className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:text-accent file:text-sm file:cursor-pointer"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                setPdfFile(f);
+                if (f && !formData.title.trim()) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    title: f.name.replace(/\.pdf$/i, '').replace(/[_-]/g, ' '),
+                  }));
+                }
+              }}
+              className="input-dark text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-accent-subtle file:text-accent file:text-sm file:cursor-pointer w-full"
             />
             {pdfFile && (
-              <p className="text-xs text-emerald-400 mt-1.5">
-                Selected: {pdfFile.name} ({(pdfFile.size / 1024 / 1024).toFixed(1)} MB)
+              <p className="text-xs text-emerald-400 mt-1.5 flex items-center gap-1.5">
+                <IoCheckmarkCircle size={14} /> Selected: {pdfFile.name} ({(pdfFile.size / 1024 / 1024).toFixed(1)} MB)
               </p>
             )}
-            {!pdfFile && book?.embedLink && (
+            {!pdfFile && !formData.pdfWebUrl && book?.embedLink && (
               <p className="text-xs text-muted mt-1.5">
-                Current PDF already uploaded. Upload a new file to replace it.
+                Current PDF already stored. Enter a web URL or select a new file to replace it.
               </p>
             )}
           </div>
@@ -584,10 +690,119 @@ const BookForm = ({ book, onClose }) => {
         <input
           type="url"
           value={formData.driveLink}
-          onChange={(e) => setFormData({ ...formData, driveLink: e.target.value })}
+          onChange={(e) => handleDriveLinkChange(e.target.value)}
           placeholder="https://drive.google.com/..."
           className="input-dark"
         />
+      </div>
+
+      {/* Study / Reading Reminder Section */}
+      <div className="p-4 rounded-xl bg-surface border border-subtle space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <IoAlarmOutline size={18} className="text-accent" />
+            <div>
+              <h4 className="text-sm font-medium text-primary">Study / Reading Reminder</h4>
+              <p className="text-[11px] text-muted">
+                Receive notifications when it's time to read (automatically halted after book is completed)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowReminderSection(!showReminderSection)}
+            className="text-xs text-accent hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            {showReminderSection ? (
+              <>
+                Hide <IoChevronUpOutline size={13} />
+              </>
+            ) : (
+              <>
+                {formData.remindAt ? 'Edit Reminder' : 'Set Reminder'} <IoChevronDownOutline size={13} />
+              </>
+            )}
+          </button>
+        </div>
+
+        {showReminderSection && (
+          <div className="space-y-3 pt-3 border-t border-subtle">
+            {/* Quick Presets */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted block mb-1">Quick Presets</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setReminderPreset('1h')}
+                  className="px-2.5 py-1.5 rounded-xl bg-surface-raised hover:bg-surface border border-subtle text-xs text-secondary hover:text-primary transition-colors text-center cursor-pointer"
+                >
+                  ⚡ +1 Hour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReminderPreset('tonight')}
+                  className="px-2.5 py-1.5 rounded-xl bg-surface-raised hover:bg-surface border border-subtle text-xs text-secondary hover:text-primary transition-colors text-center cursor-pointer"
+                >
+                  🌙 Tonight (8 PM)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReminderPreset('tomorrow')}
+                  className="px-2.5 py-1.5 rounded-xl bg-surface-raised hover:bg-surface border border-subtle text-xs text-secondary hover:text-primary transition-colors text-center cursor-pointer"
+                >
+                  ☀️ Tomorrow (9 AM)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReminderPreset('2d')}
+                  className="px-2.5 py-1.5 rounded-xl bg-surface-raised hover:bg-surface border border-subtle text-xs text-secondary hover:text-primary transition-colors text-center cursor-pointer"
+                >
+                  📅 In 2 Days
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Visual Date & Time Picker */}
+            <div>
+              <label className="text-[11px] font-semibold text-muted block mb-1">
+                Custom Date & Time
+              </label>
+              <VisualDateTimePicker
+                value={formData.remindAt}
+                onChange={(val) => setFormData((prev) => ({ ...prev, remindAt: val }))}
+              />
+            </div>
+
+            {/* Reminder Note */}
+            <div>
+              <label className="text-[11px] font-semibold text-muted block mb-1">
+                Reminder Note (Optional)
+              </label>
+              <input
+                type="text"
+                value={formData.reminderNote}
+                onChange={(e) => setFormData((prev) => ({ ...prev, reminderNote: e.target.value }))}
+                placeholder="e.g. Read chapters 3 and 4..."
+                className="input-dark text-xs w-full"
+              />
+            </div>
+
+            {formData.remindAt && (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-xs text-emerald-400">
+                  Reminder set for {new Date(formData.remindAt).toLocaleString()}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, remindAt: '', reminderNote: '' }))}
+                  className="text-xs text-red-400 hover:underline cursor-pointer"
+                >
+                  Clear Reminder
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions */}

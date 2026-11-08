@@ -120,6 +120,21 @@ const customSectionSchema = new mongoose.Schema(
       ref: "CustomSection",
       default: null,
     },
+    topic: {
+      type: String,
+      default: "",
+      index: true,
+      trim: true,
+    },
+    seedId: {
+      type: String,
+    },
+    seedMeta: {
+      license: { type: String, default: "" },
+      level: { type: String, default: "" },
+      cost: { type: String, default: "" },
+      sourceUrl: { type: String, default: "" },
+    },
   },
   {
     timestamps: true,
@@ -129,5 +144,9 @@ const customSectionSchema = new mongoose.Schema(
 customSectionSchema.index({ addedBy: 1, createdAt: -1 });
 customSectionSchema.index({ "collaborators.user": 1, createdAt: -1 });
 customSectionSchema.index({ visibility: 1, createdAt: -1 });
+customSectionSchema.index(
+  { seedId: 1 },
+  { unique: true, partialFilterExpression: { seedId: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("CustomSection", customSectionSchema);

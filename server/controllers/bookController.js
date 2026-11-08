@@ -157,14 +157,29 @@ const createBook = async (req, res) => {
     const {
       title,
       author,
-      type,
+      type: rawType,
       description,
-      embedLink,
-      driveLink,
+      embedLink: rawEmbedLink,
+      pdfWebUrl,
+      driveLink: rawDriveLink,
       totalPages,
       videos,
       autoCover,
+      remindAt,
+      reminderNote,
     } = req.body;
+
+    const effectivePdfUrl = (pdfWebUrl || rawEmbedLink || "").trim();
+    // Default book type is "text" (Text Book PDF) as requested
+    let type = rawType || "text";
+    if (
+      effectivePdfUrl &&
+      (effectivePdfUrl.toLowerCase().endsWith(".pdf") ||
+        effectivePdfUrl.toLowerCase().includes("/pdf") ||
+        !rawType)
+    ) {
+      type = "text";
+    }
 
     // Handle PDF file upload
     let pdfFileId = null;
@@ -186,6 +201,51 @@ const createBook = async (req, res) => {
       pdfFileId = uploadedPdf.fileId;
       pdfR2Key = uploadedPdf.key;
       bookStorageProvider = uploadedPdf.provider;
+    }
+
+    // Handle direct web reference (.pdf web url import)
+    const newBookId = new mongoose.Types.ObjectId();
+    const slug = encodeURIComponent((title || "document").replace(/[^a-zA-Z0-9-]/g, "-"));
+    let generatedEmbedLink =
+      pdfFileId || pdfR2Key
+        ? `/api/books/pdf/${newBookId}/${slug}.pdf`
+        : effectivePdfUrl || "";
+
+    // If a direct web PDF URL is given without a local file, attempt to cache in R2 if active
+    if (!pdfFileId && !pdfR2Key && effectivePdfUrl && /^https?:\/\//i.test(effectivePdfUrl) && isR2Active()) {
+      try {
+        const parsedUrl = new URL(effectivePdfUrl);
+        const response = await fetch(parsedUrl, {
+          redirect: "follow",
+          signal: AbortSignal.timeout(15000),
+          headers: { Accept: "application/pdf,application/octet-stream;q=0.9" },
+        });
+        if (response.ok) {
+          const buffer = Buffer.from(await response.arrayBuffer());
+          if (buffer.length <= 50 * 1024 * 1024) {
+            const filename = decodeURIComponent(
+              parsedUrl.pathname.split("/").pop() || "document.pdf",
+            ).replace(/[^a-zA-Z0-9._-]/g, "-");
+            const uploadedPdf = await uploadFile({
+              buffer,
+              originalname: filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`,
+              mimetype: "application/pdf",
+              folder: "books/pdfs",
+              isPublic: false,
+              bucketType: "pdf",
+            });
+            if (uploadedPdf.key) {
+              pdfFileId = uploadedPdf.fileId;
+              pdfR2Key = uploadedPdf.key;
+              bookStorageProvider = uploadedPdf.provider;
+              generatedEmbedLink = `/api/books/pdf/${newBookId}/${slug}.pdf`;
+            }
+          }
+        }
+      } catch (dlErr) {
+        console.warn("Direct PDF web reference download fallback:", dlErr.message);
+        generatedEmbedLink = effectivePdfUrl;
+      }
     }
 
     // Handle cover image upload
@@ -262,12 +322,16 @@ const createBook = async (req, res) => {
       });
     }
 
-    const newBookId = new mongoose.Types.ObjectId();
-    const slug = encodeURIComponent(title.replace(/[^a-zA-Z0-9-]/g, "-"));
-    const generatedEmbedLink =
-      pdfFileId || pdfR2Key
-        ? `/api/books/pdf/${newBookId}/${slug}.pdf`
-        : embedLink || "";
+    // Parse optional reminder date
+    let parsedRemindAt = null;
+    if (remindAt) {
+      const d = new Date(remindAt);
+      if (!isNaN(d.getTime())) {
+        parsedRemindAt = d;
+      }
+    }
+
+    const driveLink = rawDriveLink || (effectivePdfUrl ? effectivePdfUrl : "");
 
     const book = await Book.create({
       _id: newBookId,
@@ -288,6 +352,10 @@ const createBook = async (req, res) => {
       audioFiles,
       addedBy: req.user._id,
       visibility,
+      remindAt: parsedRemindAt,
+      reminderNote: String(reminderNote || "").trim(),
+      reminderFired: false,
+      isCompleted: false,
     });
 
     res.status(201).json({ message: "Book created successfully", book });
@@ -427,6 +495,9 @@ const updateBook = async (req, res) => {
       driveLink,
       totalPages,
       videos,
+      remindAt,
+      reminderNote,
+      isCompleted,
     } = req.body;
 
     // Handle new PDF file upload
@@ -508,6 +579,40 @@ const updateBook = async (req, res) => {
     if (driveLink !== undefined) book.driveLink = driveLink;
     if (totalPages !== undefined) book.totalPages = totalPages;
     if (videos) book.videos = JSON.parse(videos);
+
+    if (isCompleted !== undefined) {
+      const markCompleted = isCompleted === true || isCompleted === "true";
+      book.isCompleted = markCompleted;
+      if (markCompleted) {
+        book.completedAt = new Date();
+        // Automatically halt any active reminders
+        book.remindAt = null;
+        book.reminderFired = true;
+      } else {
+        book.completedAt = null;
+        book.reminderFired = false;
+      }
+    }
+
+    if (remindAt !== undefined) {
+      if (remindAt) {
+        const d = new Date(remindAt);
+        if (!isNaN(d.getTime())) {
+          book.remindAt = d;
+          book.reminderFired = false;
+          if (book.isCompleted) {
+            book.isCompleted = false;
+            book.completedAt = null;
+          }
+        }
+      } else {
+        book.remindAt = null;
+        book.reminderFired = false;
+      }
+    }
+    if (reminderNote !== undefined) {
+      book.reminderNote = String(reminderNote || "").trim();
+    }
 
     // Append new audio file uploads (existing tracks are preserved unless explicitly removed)
     const newAudioUploads = req.files?.audioFiles || [];
@@ -652,6 +757,29 @@ const updateVideoProgress = async (req, res) => {
     }
 
     await user.save();
+
+    // If all videos in the book are completed, mark the book as completed and halt reminders
+    try {
+      const book = await Book.findById(bookId);
+      if (book && Array.isArray(book.videos) && book.videos.length > 0) {
+        const allVideosDone = book.videos.every((_, idx) => {
+          const vp = user.videoProgress.find(
+            (p) => p.bookId && p.bookId.toString() === bookId && p.videoIndex === idx
+          );
+          return vp && vp.completed;
+        });
+        if (allVideosDone && !book.isCompleted) {
+          book.isCompleted = true;
+          book.completedAt = new Date();
+          book.remindAt = null;
+          book.reminderFired = true;
+          await book.save();
+        }
+      }
+    } catch (bkErr) {
+      console.warn("Auto-complete book check on video progress failed:", bkErr.message);
+    }
+
     res.json({
       message: "Video progress updated",
       videoProgress: user.videoProgress,
@@ -760,6 +888,23 @@ const updateReadingProgress = async (req, res) => {
     }
 
     await user.save();
+
+    // If reading is completed, automatically halt active reminders and mark book complete
+    if (isCompleted) {
+      try {
+        await Book.findByIdAndUpdate(bookId, {
+          $set: {
+            isCompleted: true,
+            completedAt: new Date(),
+            remindAt: null,
+            reminderFired: true,
+          },
+        });
+      } catch (bkErr) {
+        console.warn("Auto-complete book on reading progress failed:", bkErr.message);
+      }
+    }
+
     res.json({
       message: "Reading progress updated",
       readingProgress: user.readingProgress,
@@ -816,6 +961,16 @@ const getBookPdfUrl = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Not authorized to access this file" });
+    }
+
+    if (book.externalUrl) {
+      return res.json({
+        url: book.externalUrl,
+        expiresAt: null,
+        provider: "external",
+        bookId: book._id,
+        title: book.title,
+      });
     }
 
     const slug = encodeURIComponent(
@@ -882,6 +1037,10 @@ const servePdf = async (req, res) => {
       return res
         .status(403)
         .json({ message: "Not authorized to access this file" });
+    }
+
+    if (book.externalUrl && !book.pdfR2Key && !book.pdfFileId) {
+      return res.redirect(302, book.externalUrl);
     }
 
     // Only allow same-origin framing for owned/public PDFs
@@ -1415,6 +1574,152 @@ const serveImage = async (req, res) => {
   }
 };
 
+// @desc    Update reminder for a book (or clear reminder)
+// @route   PUT /api/books/:id/reminder
+const updateBookReminder = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      book.addedBy &&
+      book.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Not authorized to set reminder for this book" });
+    }
+
+    const { remindAt, reminderNote } = req.body;
+
+    if (remindAt) {
+      const parsedDate = new Date(remindAt);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ message: "Invalid date format for reminder" });
+      }
+      book.remindAt = parsedDate;
+      book.reminderNote = String(reminderNote || "").trim();
+      book.reminderFired = false;
+      // Re-activating reminder reactivates the book if marked completed
+      if (book.isCompleted) {
+        book.isCompleted = false;
+        book.completedAt = null;
+      }
+    } else {
+      book.remindAt = null;
+      book.reminderNote = "";
+      book.reminderFired = false;
+    }
+
+    await book.save();
+    return res.json({
+      message: book.remindAt ? "Book reminder set successfully" : "Book reminder cleared",
+      book,
+    });
+  } catch (error) {
+    console.error("Update book reminder error:", error);
+    return res.status(500).json({ message: "Server error updating book reminder" });
+  }
+};
+
+// @desc    Toggle book completion status (halts reminders when marked complete)
+// @route   PUT /api/books/:id/toggle-complete
+const toggleBookComplete = async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    if (
+      req.user.role !== "admin" &&
+      book.addedBy &&
+      book.addedBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Not authorized to update this book" });
+    }
+
+    const nextCompleted =
+      req.body.isCompleted !== undefined
+        ? Boolean(req.body.isCompleted)
+        : !book.isCompleted;
+
+    book.isCompleted = nextCompleted;
+    if (nextCompleted) {
+      book.completedAt = new Date();
+      // Automatically halt any active reminders
+      book.remindAt = null;
+      book.reminderFired = true;
+    } else {
+      book.completedAt = null;
+      book.reminderFired = false;
+    }
+
+    // Also sync user's progress
+    const user = await User.findById(req.user._id);
+    if (user) {
+      if (book.type === "text") {
+        const rp = user.readingProgress.find(
+          (p) => p.bookId && p.bookId.toString() === book._id.toString()
+        );
+        if (rp) {
+          rp.completed = nextCompleted;
+          if (nextCompleted) {
+            rp.progress = 100;
+            if (book.totalPages) rp.currentPage = book.totalPages;
+          }
+          rp.lastRead = new Date();
+        } else if (nextCompleted) {
+          user.readingProgress.push({
+            bookId: book._id,
+            currentPage: book.totalPages || 1,
+            totalPages: book.totalPages || 1,
+            progress: 100,
+            completed: true,
+            note: "",
+            lastRead: new Date(),
+          });
+        }
+      } else if (book.type === "video" && Array.isArray(book.videos) && book.videos.length > 0) {
+        book.videos.forEach((_, idx) => {
+          const vp = user.videoProgress.find(
+            (p) => p.bookId && p.bookId.toString() === book._id.toString() && p.videoIndex === idx
+          );
+          if (vp) {
+            vp.completed = nextCompleted;
+            if (nextCompleted) vp.progress = 100;
+            vp.lastWatched = new Date();
+          } else if (nextCompleted) {
+            user.videoProgress.push({
+              bookId: book._id,
+              contentType: "book",
+              videoIndex: idx,
+              title: book.videos[idx]?.title || "",
+              progress: 100,
+              completed: true,
+              lastWatched: new Date(),
+            });
+          }
+        });
+      }
+      await user.save();
+    }
+
+    await book.save();
+    return res.json({
+      message: nextCompleted
+        ? "Book completed! Reminders have been automatically halted."
+        : "Book marked as in progress.",
+      book,
+      isCompleted: book.isCompleted,
+    });
+  } catch (error) {
+    console.error("Toggle book complete error:", error);
+    return res.status(500).json({ message: "Server error toggling book complete" });
+  }
+};
+
 module.exports = {
   getBooks,
   getBook,
@@ -1433,4 +1738,6 @@ module.exports = {
   updateReadingProgress,
   getBookProgress,
   getCombinedBookNotes,
+  updateBookReminder,
+  toggleBookComplete,
 };

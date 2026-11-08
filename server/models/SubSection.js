@@ -111,10 +111,17 @@ const subSectionSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    seedId: {
+      type: String,
+    },
   },
   { timestamps: true },
 );
 
 subSectionSchema.index({ sectionId: 1, order: 1 });
+subSectionSchema.index(
+  { seedId: 1 },
+  { unique: true, partialFilterExpression: { seedId: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("SubSection", subSectionSchema);

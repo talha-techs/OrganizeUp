@@ -32,6 +32,7 @@ process.env.VAPID_SUBJECT = "mailto:test@organizeup.app";
 
 const CapturedResource = require("../models/CapturedResource");
 const YoutubePlaylist = require("../models/YoutubePlaylist");
+const Book = require("../models/Book");
 const Notification = require("../models/Notification");
 const PushSubscription = require("../models/PushSubscription");
 const User = require("../models/User");
@@ -63,11 +64,17 @@ async function runAllTests() {
   const originalFindOneAndUpdateCap = CapturedResource.findOneAndUpdate;
   const originalFindOneAndUpdateYt = YoutubePlaylist.findOneAndUpdate;
   const originalFindOneYt = YoutubePlaylist.findOne;
+  const originalBookFindOneAndUpdate = Book.findOneAndUpdate;
+  const originalBookUpdateMany = Book.updateMany;
   const originalNotifCreate = Notification.create;
   const originalUserFindByIdAndUpdate = User.findByIdAndUpdate;
   const originalSubFind = PushSubscription.find;
   const originalSubDeleteOne = PushSubscription.deleteOne;
   const originalSendNotification = webpush.sendNotification;
+
+  // Global default mocks for untouched models to prevent DB buffering
+  Book.updateMany = async () => ({ acknowledged: true, modifiedCount: 0 });
+  Book.findOneAndUpdate = async () => null;
 
   try {
     // ---------------------------------------------------------
@@ -224,6 +231,59 @@ async function runAllTests() {
       assert.ok(notificationCreated.title.includes("Generics and Conditional Types"));
     });
 
+    await test("Atomically claims due Book reminder and halts completed books", async () => {
+      const mockUserId = new mongoose.Types.ObjectId();
+      const mockBookId = new mongoose.Types.ObjectId();
+
+      let bookClaimed = false;
+      let notificationCreated = null;
+      let cleanedCompleted = false;
+
+      CapturedResource.findOneAndUpdate = async () => null;
+      YoutubePlaylist.findOneAndUpdate = async () => null;
+      YoutubePlaylist.findOne = async () => null;
+
+      Book.updateMany = async (filter, update) => {
+        if (filter.isCompleted === true) {
+          cleanedCompleted = true;
+        }
+        return { acknowledged: true, modifiedCount: 1 };
+      };
+
+      Book.findOneAndUpdate = async (query, update) => {
+        if (!bookClaimed && query.remindAt && query.reminderFired && query.isCompleted) {
+          bookClaimed = true;
+          return {
+            _id: mockBookId,
+            addedBy: mockUserId,
+            title: "Designing Data-Intensive Applications",
+            type: "text",
+            remindAt: new Date(Date.now() - 30000),
+            reminderNote: "Read Chapter 5 on Replication",
+            reminderFired: true,
+            isCompleted: false,
+          };
+        }
+        return null;
+      };
+
+      Notification.create = async (doc) => {
+        notificationCreated = doc;
+        return doc;
+      };
+
+      const result = await processDueReminders();
+
+      assert.strictEqual(cleanedCompleted, true, "Should automatically halt pending reminders on completed books");
+      assert.strictEqual(bookClaimed, true, "Book reminder must be claimed atomically");
+      assert.strictEqual(result.processedCount, 1);
+      assert.ok(notificationCreated, "Notification for book must be created");
+      assert.strictEqual(notificationCreated.refId, mockBookId.toString());
+      assert.ok(notificationCreated.title.includes("Designing Data-Intensive Applications"));
+      assert.ok(notificationCreated.body.includes("Read Chapter 5"));
+      assert.strictEqual(notificationCreated.url, `/books/${mockBookId}`);
+    });
+
     // ---------------------------------------------------------
     // Suite 2: Non-due Reminders & Double Run Idempotency
     // ---------------------------------------------------------
@@ -319,6 +379,8 @@ async function runAllTests() {
     CapturedResource.findOneAndUpdate = originalFindOneAndUpdateCap;
     YoutubePlaylist.findOneAndUpdate = originalFindOneAndUpdateYt;
     YoutubePlaylist.findOne = originalFindOneYt;
+    Book.findOneAndUpdate = originalBookFindOneAndUpdate;
+    Book.updateMany = originalBookUpdateMany;
     Notification.create = originalNotifCreate;
     User.findByIdAndUpdate = originalUserFindByIdAndUpdate;
     PushSubscription.find = originalSubFind;

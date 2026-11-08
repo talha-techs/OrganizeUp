@@ -34,6 +34,7 @@ import {
   IoExpandOutline,
   IoBulbOutline,
   IoShareSocialOutline,
+  IoAlarmOutline,
 } from 'react-icons/io5';
 import {
   fetchBook,
@@ -45,12 +46,15 @@ import {
   deleteBook,
   fetchCombinedBookNotes,
   clearCombinedBookNotes,
+  updateBookReminder,
+  toggleBookComplete,
 } from '../redux/slices/bookSlice';
 import { addToLibrary, removeFromLibrary } from '../redux/slices/librarySlice';
 import { getMe } from '../redux/slices/authSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ProgressBar from '../components/ui/ProgressBar';
 import Modal from '../components/ui/Modal';
+import VisualDateTimePicker from '../components/ui/VisualDateTimePicker';
 import PdfReader from '../components/books/PdfReader';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -79,6 +83,13 @@ const BookDetailPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Reminder & Completion states
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [remindDate, setRemindDate] = useState('');
+  const [reminderNote, setReminderNote] = useState('');
+  const [isSavingReminder, setIsSavingReminder] = useState(false);
+  const [isTogglingComplete, setIsTogglingComplete] = useState(false);
 
   // Text Book Study Notes & Key Takeaways state
   const [textBookNotes, setTextBookNotes] = useState('');
@@ -1020,6 +1031,96 @@ const BookDetailPage = () => {
     }
   };
 
+  const handleOpenReminderModal = () => {
+    setRemindDate(currentBook?.remindAt ? new Date(currentBook.remindAt).toISOString() : '');
+    setReminderNote(currentBook?.reminderNote || '');
+    setShowReminderModal(true);
+  };
+
+  const setReminderPreset = (preset) => {
+    const d = new Date();
+    if (preset === '1h') {
+      d.setHours(d.getHours() + 1);
+    } else if (preset === 'tonight') {
+      d.setHours(20, 0, 0, 0);
+      if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    } else if (preset === 'tomorrow') {
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+    } else if (preset === '2d') {
+      d.setDate(d.getDate() + 2);
+      d.setHours(9, 0, 0, 0);
+    }
+    setRemindDate(d.toISOString());
+  };
+
+  const handleSaveReminder = async () => {
+    if (!remindDate) {
+      toast.error('Please choose a date and time for the reminder');
+      return;
+    }
+    setIsSavingReminder(true);
+    const result = await dispatch(
+      updateBookReminder({
+        bookId: id,
+        remindAt: remindDate,
+        reminderNote: reminderNote.trim(),
+      })
+    );
+    setIsSavingReminder(false);
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Book reminder scheduled!');
+      setShowReminderModal(false);
+      dispatch(fetchBook(id));
+    } else {
+      toast.error(result.payload || 'Failed to set reminder');
+    }
+  };
+
+  const handleClearReminder = async () => {
+    setIsSavingReminder(true);
+    const result = await dispatch(
+      updateBookReminder({
+        bookId: id,
+        remindAt: null,
+        reminderNote: '',
+      })
+    );
+    setIsSavingReminder(false);
+    if (result.meta.requestStatus === 'fulfilled') {
+      toast.success('Book reminder cleared');
+      setRemindDate('');
+      setReminderNote('');
+      setShowReminderModal(false);
+      dispatch(fetchBook(id));
+    } else {
+      toast.error(result.payload || 'Failed to clear reminder');
+    }
+  };
+
+  const handleToggleComplete = async () => {
+    const nextCompleted = !currentBook?.isCompleted;
+    setIsTogglingComplete(true);
+    const result = await dispatch(
+      toggleBookComplete({
+        bookId: id,
+        isCompleted: nextCompleted,
+      })
+    );
+    setIsTogglingComplete(false);
+    if (result.meta.requestStatus === 'fulfilled') {
+      if (nextCompleted) {
+        toast.success('Book completed! Scheduled reminders automatically halted.');
+      } else {
+        toast.success('Book marked as in-progress');
+      }
+      dispatch(fetchBook(id));
+      dispatch(getMe());
+    } else {
+      toast.error(result.payload || 'Failed to update completion status');
+    }
+  };
+
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Back button */}
@@ -1044,6 +1145,18 @@ const BookDetailPage = () => {
               <IoFilmOutline size={13} />
               {currentBook.type === 'video' ? 'Video Book' : currentBook.type === 'youtube' ? 'YouTube Course' : 'Book'}
             </span>
+
+            {currentBook.isCompleted && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <IoCheckmarkCircle size={13} /> Completed
+              </span>
+            )}
+
+            {currentBook.remindAt && !currentBook.isCompleted && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                <IoAlarmOutline size={13} /> Reminder: {new Date(currentBook.remindAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+              </span>
+            )}
 
             {isVideoBook && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface text-secondary border border-subtle flex items-center gap-1">
@@ -1110,6 +1223,55 @@ const BookDetailPage = () => {
             </button>
           )}
 
+          {/* Reminder Button */}
+          <button
+            type="button"
+            onClick={handleOpenReminderModal}
+            className={`flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
+              currentBook?.remindAt
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                : 'btn-secondary'
+            }`}
+            title={
+              currentBook?.remindAt
+                ? `Reminder set for ${new Date(currentBook.remindAt).toLocaleString()}`
+                : 'Set study reminder'
+            }
+          >
+            <IoAlarmOutline size={15} className={currentBook?.remindAt ? 'text-amber-400' : ''} />
+            <span>
+              {currentBook?.remindAt
+                ? `Reminder: ${new Date(currentBook.remindAt).toLocaleDateString([], {
+                    month: 'short',
+                    day: 'numeric',
+                  })}`
+                : 'Set Reminder'}
+            </span>
+          </button>
+
+          {/* Mark Complete / In-Progress */}
+          <button
+            type="button"
+            onClick={handleToggleComplete}
+            disabled={isTogglingComplete}
+            className={`flex items-center gap-1.5 text-xs sm:text-sm px-3 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
+              currentBook?.isCompleted
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
+                : 'btn-secondary hover:text-emerald-400 hover:border-emerald-500/30'
+            }`}
+            title={
+              currentBook?.isCompleted
+                ? 'Mark as in-progress'
+                : 'Mark as completed (automatically halts reminders)'
+            }
+          >
+            <IoCheckmarkCircle
+              size={15}
+              className={currentBook?.isCompleted ? 'text-emerald-400' : 'text-muted'}
+            />
+            <span>{currentBook?.isCompleted ? 'Completed ✓' : 'Mark Complete'}</span>
+          </button>
+
           <button
             type="button"
             onClick={handleShareResource}
@@ -1119,6 +1281,19 @@ const BookDetailPage = () => {
             <IoShareSocialOutline size={15} />
             <span>Share</span>
           </button>
+
+          {currentBook?.externalUrl && (
+            <a
+              href={currentBook.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm font-semibold cursor-pointer shadow-sm"
+              title="Open book at external source"
+            >
+              <IoOpenOutline size={15} />
+              <span>Open at source</span>
+            </a>
+          )}
 
           {!isOwner && (
             <div>
@@ -1209,6 +1384,116 @@ const BookDetailPage = () => {
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Reminder Modal */}
+      <AnimatePresence>
+        {showReminderModal && (
+          <Modal
+            isOpen={showReminderModal}
+            onClose={() => setShowReminderModal(false)}
+            title={`Set Study Reminder — ${currentBook.title}`}
+          >
+            <div className="space-y-4">
+              <p className="text-xs text-secondary">
+                Receive notifications when it's time to read or study. Reminders are automatically halted once the book is completed!
+              </p>
+
+              {/* Quick Presets */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-semibold text-muted block">Quick Presets</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setReminderPreset('1h')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    ⚡ +1 Hour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPreset('tonight')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    🌙 Tonight (8 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPreset('tomorrow')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    ☀️ Tomorrow (9 AM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReminderPreset('2d')}
+                    className="px-2.5 py-1.5 rounded-xl bg-surface hover:bg-surface-raised border border-subtle text-xs text-secondary hover:text-primary transition-colors text-left cursor-pointer"
+                  >
+                    📅 In 2 Days
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Date & Time with VisualDateTimePicker */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted block mb-1">
+                  Custom Date & Time
+                </label>
+                <VisualDateTimePicker
+                  value={remindDate}
+                  onChange={(val) => setRemindDate(val)}
+                />
+              </div>
+
+              {/* Optional Reminder Note */}
+              <div>
+                <label className="text-[11px] font-semibold text-muted block mb-1">
+                  Reminder Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={reminderNote}
+                  onChange={(e) => setReminderNote(e.target.value)}
+                  placeholder="e.g. Read chapter 2, finish summary notes..."
+                  className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent placeholder:text-muted/60"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-2 border-t border-subtle">
+                {currentBook?.remindAt ? (
+                  <button
+                    type="button"
+                    onClick={handleClearReminder}
+                    disabled={isSavingReminder}
+                    className="text-xs text-red-400 hover:underline cursor-pointer"
+                  >
+                    Clear Reminder
+                  </button>
+                ) : (
+                  <div />
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReminderModal(false)}
+                    className="px-3 py-1.5 rounded-xl text-xs text-secondary hover:bg-surface cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveReminder}
+                    disabled={isSavingReminder}
+                    className="px-4 py-1.5 rounded-xl bg-accent text-white text-xs font-bold shadow hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    {isSavingReminder ? 'Saving...' : 'Save Reminder'}
+                  </button>
+                </div>
               </div>
             </div>
           </Modal>
@@ -2039,6 +2324,154 @@ Formatting tips:
                 {/* Panel Footer */}
                 <div className="flex items-center justify-between px-4 py-2.5 border-t border-subtle bg-surface-raised/80">
                   <div className="text-[11px] text-muted flex items-center gap-1.5">
+                    <span>
+                      {textBookNotes.trim()
+                        ? `${textBookNotes.trim().split(/\s+/).length} words`
+                        : '0 words'}
+                    </span>
+                    <span>•</span>
+                    <span>{textBookNotes.length} chars</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveTextBookNotes()}
+                    className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 font-medium shadow-sm cursor-pointer"
+                    title="Save notes (Ctrl+S)"
+                  >
+                    <IoSaveOutline size={13} />
+                    <span>Save Notes</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : currentBook.externalUrl ? (
+            <div className="relative w-full flex flex-col lg:flex-row items-stretch">
+              {/* External Resource Card */}
+              <div
+                className={`w-full transition-all duration-300 min-w-0 ${
+                  isTextNotesCollapsed ? 'lg:w-full' : 'lg:flex-1'
+                } ${textBookMobileTab === 'notes' ? 'hidden lg:block' : 'block'}`}
+              >
+                <div className="glass-card p-6 sm:p-10 flex flex-col items-center text-center justify-center min-h-[460px] border border-subtle">
+                  <div className="w-16 h-16 rounded-2xl bg-accent-subtle text-accent flex items-center justify-center mb-4">
+                    <IoBookOutline size={32} />
+                  </div>
+                  {currentBook.topic && (
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-accent-subtle text-accent border border-accent/20 mb-3">
+                      {currentBook.topic}
+                    </span>
+                  )}
+                  <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-2 max-w-xl font-display">
+                    {currentBook.title}
+                  </h2>
+                  <p className="text-sm text-secondary mb-4">
+                    by <span className="font-semibold text-primary">{currentBook.author}</span>
+                  </p>
+                  {currentBook.description && (
+                    <p className="text-sm text-secondary max-w-lg mb-6 leading-relaxed whitespace-pre-line">
+                      {currentBook.description}
+                    </p>
+                  )}
+                  {currentBook.seedMeta && (
+                    <div className="flex flex-wrap gap-2 justify-center mb-6">
+                      {currentBook.seedMeta.license && (
+                        <span className="px-3 py-1 text-xs rounded-lg bg-surface border border-subtle text-secondary font-medium">
+                          ⚖️ {currentBook.seedMeta.license}
+                        </span>
+                      )}
+                      {currentBook.seedMeta.level && (
+                        <span className="px-3 py-1 text-xs rounded-lg bg-surface border border-subtle text-secondary font-medium">
+                          🎯 {currentBook.seedMeta.level}
+                        </span>
+                      )}
+                      {currentBook.seedMeta.cost && (
+                        <span className="px-3 py-1 text-xs rounded-lg bg-surface border border-subtle text-emerald-400 font-medium">
+                          🏷️ {currentBook.seedMeta.cost}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <a
+                    href={currentBook.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary inline-flex items-center gap-2.5 px-6 py-3 text-sm font-semibold rounded-xl shadow-lg cursor-pointer"
+                  >
+                    <span>Open at source</span>
+                    <IoOpenOutline size={18} />
+                  </a>
+                </div>
+              </div>
+
+              {/* Floating Restore Badge when notes panel is collapsed on desktop */}
+              {isTextNotesCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setIsTextNotesCollapsed(false)}
+                  className="hidden lg:flex absolute right-4 top-4 z-20 items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-raised/95 border border-accent/40 shadow-xl text-primary hover:text-accent hover:border-accent font-medium text-xs backdrop-blur-md transition-all group cursor-pointer"
+                  title="Expand Study Notes Panel (Ctrl+S to save)"
+                >
+                  <div className="p-1 rounded-md bg-accent-subtle text-accent group-hover:scale-110 transition-transform">
+                    <IoDocumentTextOutline size={14} />
+                  </div>
+                  <span>Study Notes</span>
+                  {textBookNotes.trim().length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  )}
+                  <IoExpandOutline size={14} className="text-secondary group-hover:text-primary ml-0.5" />
+                </button>
+              )}
+
+              {/* Side Notes & Key Takeaways Panel */}
+              <div
+                className={`w-full lg:w-[380px] xl:w-[420px] 2xl:w-[450px] flex-shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-subtle bg-surface/85 backdrop-blur-md transition-all ${
+                  isTextNotesCollapsed
+                    ? 'hidden'
+                    : textBookMobileTab === 'reader'
+                    ? 'hidden lg:flex'
+                    : 'flex'
+                }`}
+              >
+                {/* Notes Header */}
+                <div className="p-4 border-b border-subtle flex items-center justify-between gap-3 bg-surface-raised/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <IoDocumentTextOutline className="text-accent flex-shrink-0" size={18} />
+                    <h3 className="font-semibold text-sm text-primary truncate">Study Notes</h3>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsTextNotesCollapsed(true)}
+                      className="hidden lg:flex p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+                      title="Collapse Notes Panel"
+                    >
+                      <IoChevronForwardOutline size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes Textarea */}
+                <div className="flex-1 p-3 flex flex-col min-h-[320px]">
+                  <textarea
+                    value={textBookNotes}
+                    onChange={(e) => {
+                      setTextBookNotes(e.target.value);
+                      setIsTextNotesDirty(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        handleSaveTextBookNotes();
+                      }
+                    }}
+                    placeholder="Write your study notes, key takeaways, chapter summaries, or action steps here... (Ctrl+S to save)"
+                    className="w-full flex-1 min-h-[280px] p-3 text-xs sm:text-sm text-primary bg-surface-raised/40 border border-subtle rounded-xl focus:outline-none focus:border-accent resize-none leading-relaxed placeholder:text-muted/60 font-sans"
+                  />
+                </div>
+
+                {/* Notes Footer */}
+                <div className="p-3 border-t border-subtle flex items-center justify-between gap-2 bg-surface-raised/30">
+                  <div className="flex items-center gap-2 text-[11px] text-muted">
                     <span>
                       {textBookNotes.trim()
                         ? `${textBookNotes.trim().split(/\s+/).length} words`

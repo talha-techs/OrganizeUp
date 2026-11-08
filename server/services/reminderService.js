@@ -1,6 +1,7 @@
 const webpush = require("web-push");
 const CapturedResource = require("../models/CapturedResource");
 const YoutubePlaylist = require("../models/YoutubePlaylist");
+const Book = require("../models/Book");
 const Notification = require("../models/Notification");
 const PushSubscription = require("../models/PushSubscription");
 const User = require("../models/User");
@@ -390,6 +391,103 @@ const processDueReminders = async () => {
     } catch (err) {
       console.error("[Reminder] Error processing YouTube video item reminder:", err);
       errors.push({ type: "youtube_video", error: err.message });
+      break;
+    }
+  }
+
+  // 4. Process Book reminders (automatically skip & halt completed books)
+  while (true) {
+    try {
+      // First ensure any completed books with pending reminders have reminders halted
+      await Book.updateMany(
+        { isCompleted: true, remindAt: { $ne: null } },
+        { $set: { remindAt: null, reminderFired: true } }
+      ).catch(() => {});
+
+      const book = await Book.findOneAndUpdate(
+        {
+          remindAt: { $lte: now },
+          reminderFired: { $ne: true },
+          isCompleted: { $ne: true },
+        },
+        { $set: { reminderFired: true } },
+        { new: true }
+      );
+
+      if (!book) break; // No more due book reminders
+
+      processedCount++;
+      const typeLabel =
+        book.type === "text"
+          ? "Book (PDF)"
+          : book.type === "audio"
+          ? "Audio Book"
+          : "Video Book";
+      const title = `⏰ Reminder: ${book.title || typeLabel}`;
+      const body = book.reminderNote?.trim()
+        ? book.reminderNote.slice(0, 140)
+        : `Time to continue reading/studying "${book.title}"!`;
+      const url = `/books/${book._id}`;
+      const tag = `reminder-book-${book._id}`;
+
+      // Create Notification record
+      await Notification.create({
+        user: book.addedBy,
+        type: "reminder",
+        title,
+        body,
+        url,
+        refId: book._id.toString(),
+        createdAt: new Date(),
+      }).catch((notifErr) => console.error("[Reminder] Failed to create book notification:", notifErr));
+
+      // Update User.notifications for backwards compatibility
+      await User.findByIdAndUpdate(book.addedBy, {
+        $push: {
+          notifications: {
+            $each: [
+              {
+                type: "reminder",
+                contentTitle: title,
+                message: body,
+                link: url,
+                read: false,
+                createdAt: new Date(),
+              },
+            ],
+            $position: 0,
+            $slice: 100,
+          },
+        },
+      }).catch(() => {});
+
+      // Send Web Push notification
+      await sendPushToUser(book.addedBy, {
+        title,
+        body,
+        url,
+        tag,
+        icon: "/pwa-192x192.png",
+        badge: "/notification-badge.png",
+        data: { url, id: book._id.toString() },
+      });
+
+      // Broadcast real-time reminder via Socket.IO
+      emitToUser(book.addedBy, "vault_reminder", {
+        id: book._id.toString(),
+        title,
+        message: body,
+        url,
+        platform: "book",
+        thumbnailUrl: book.coverImage,
+        remindAt: book.remindAt,
+        type: book.type,
+      });
+
+      console.log(`⏰ Book reminder claimed and processed: "${book.title || book._id}"`);
+    } catch (err) {
+      console.error("[Reminder] Error processing Book reminder:", err);
+      errors.push({ type: "book", error: err.message });
       break;
     }
   }

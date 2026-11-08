@@ -3,16 +3,17 @@ const Course = require("../models/Course");
 const Tool = require("../models/Tool");
 const CustomSection = require("../models/CustomSection");
 const YoutubePlaylist = require("../models/YoutubePlaylist");
+const Category = require("../models/Category");
 const Vote = require("../models/Vote");
 const Comment = require("../models/Comment");
 
 const EXPLORE_LIST_SELECT = {
-  book: "title author type description coverImage videos.thumbnail addedBy",
-  course: "title description bannerImage addedBy",
-  tool: "title description bannerImage addedBy",
-  section: "title name description bannerImage addedBy",
+  book: "title author type description coverImage videos.thumbnail addedBy externalUrl sourceType topic seedMeta",
+  course: "title description bannerImage addedBy category externalUrl sourceType seedMeta",
+  tool: "title description bannerImage link addedBy topic seedMeta",
+  section: "title name description bannerImage color addedBy topic seedMeta",
   playlist:
-    "title type channelTitle thumbnail videoCount videos.thumbnail addedBy",
+    "title type channelTitle thumbnail videoCount videos.thumbnail addedBy topic seedMeta",
 };
 
 // Escape special regex chars to prevent ReDoS / injection
@@ -165,6 +166,8 @@ const getExploreContent = async (req, res) => {
       type = "all",
       sort = "latest",
       search = "",
+      topic = "",
+      category = "",
       page = 1,
       limit = 20,
     } = req.query;
@@ -183,42 +186,62 @@ const getExploreContent = async (req, res) => {
     // "all" view shows 6 items per category; specific type views use full pagination
     const perType = normalizedType === "all" ? 6 : lim;
 
-    const filter = { visibility: /^public$/i };
-    if (search) {
-      const safe = escapeRegex(search);
-      filter.$or = [
-        { title: { $regex: safe, $options: "i" } },
-        { description: { $regex: safe, $options: "i" } },
-      ];
+    const baseFilter = { visibility: /^public$/i };
+    const bookFilter = { ...baseFilter };
+    const courseFilter = { ...baseFilter };
+    const toolFilter = { ...baseFilter };
+    const sectionFilter = { ...baseFilter };
+    const playlistFilter = { ...baseFilter };
+
+    const filterTopic = (topic || category || "").trim();
+    if (filterTopic && filterTopic.toLowerCase() !== "all") {
+      const topicRegex = new RegExp(`^${escapeRegex(filterTopic)}$`, "i");
+      bookFilter.topic = topicRegex;
+      toolFilter.topic = topicRegex;
+      sectionFilter.topic = topicRegex;
+      playlistFilter.topic = topicRegex;
+
+      const matchingCats = await Category.find({ name: topicRegex }).select("_id").lean();
+      courseFilter.category = { $in: matchingCats.map((c) => c._id) };
     }
 
-    // Section search uses 'name' instead of 'title'
-    const sectionFilter = { visibility: /^public$/i };
     if (search) {
       const safe = escapeRegex(search);
-      sectionFilter.$or = [
-        { name: { $regex: safe, $options: "i" } },
-        { description: { $regex: safe, $options: "i" } },
-      ];
-    }
+      const searchRegex = { $regex: safe, $options: "i" };
 
-    // Playlist search includes channelTitle
-    const playlistFilter = { visibility: /^public$/i };
-    if (search) {
-      const safe = escapeRegex(search);
-      playlistFilter.$or = [
-        { title: { $regex: safe, $options: "i" } },
-        { description: { $regex: safe, $options: "i" } },
-        { channelTitle: { $regex: safe, $options: "i" } },
-      ];
-    }
-
-    const bookFilter = { ...filter };
-    if (search) {
-      const safe = escapeRegex(search);
       bookFilter.$or = [
-        ...(bookFilter.$or || []),
-        { author: { $regex: safe, $options: "i" } },
+        { title: searchRegex },
+        { description: searchRegex },
+        { author: searchRegex },
+        { topic: searchRegex },
+      ];
+
+      const matchingCatsForSearch = await Category.find({ name: searchRegex }).select("_id").lean();
+      courseFilter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+      ];
+      if (matchingCatsForSearch.length > 0) {
+        courseFilter.$or.push({ category: { $in: matchingCatsForSearch.map((c) => c._id) } });
+      }
+
+      toolFilter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { topic: searchRegex },
+      ];
+
+      sectionFilter.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { topic: searchRegex },
+      ];
+
+      playlistFilter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { channelTitle: searchRegex },
+        { topic: searchRegex },
       ];
     }
 
@@ -226,8 +249,8 @@ const getExploreContent = async (req, res) => {
     const [bookCount, courseCount, toolCount, sectionCount, playlistCount] =
       await Promise.all([
         Book.countDocuments(bookFilter),
-        Course.countDocuments(filter),
-        Tool.countDocuments(filter),
+        Course.countDocuments(courseFilter),
+        Tool.countDocuments(toolFilter),
         CustomSection.countDocuments(sectionFilter),
         YoutubePlaylist.countDocuments(playlistFilter),
       ]);
@@ -277,7 +300,7 @@ const getExploreContent = async (req, res) => {
 
     if (normalizedType === "all" || normalizedType === "courses") {
       const dbSkip = isPopular ? 0 : normalizedType === "courses" ? skip : 0;
-      let courseQuery = Course.find(filter)
+      let courseQuery = Course.find(courseFilter)
         .select(EXPLORE_LIST_SELECT.course)
         .populate("addedBy", "name avatar")
         .populate("category", "name")
@@ -288,7 +311,7 @@ const getExploreContent = async (req, res) => {
       if (isPopular) {
         results.courses = await fetchPopularItems({
           Model: Course,
-          filter,
+          filter: courseFilter,
           contentType: "course",
           select: EXPLORE_LIST_SELECT.course,
           populate: { path: "addedBy", select: "name avatar" },
@@ -308,7 +331,7 @@ const getExploreContent = async (req, res) => {
 
     if (normalizedType === "all" || normalizedType === "tools") {
       const dbSkip = isPopular ? 0 : normalizedType === "tools" ? skip : 0;
-      let toolQuery = Tool.find(filter)
+      let toolQuery = Tool.find(toolFilter)
         .select(EXPLORE_LIST_SELECT.tool)
         .populate("addedBy", "name avatar")
         .sort({ createdAt: -1 })
@@ -318,7 +341,7 @@ const getExploreContent = async (req, res) => {
       if (isPopular) {
         results.tools = await fetchPopularItems({
           Model: Tool,
-          filter,
+          filter: toolFilter,
           contentType: "tool",
           select: EXPLORE_LIST_SELECT.tool,
           populate: { path: "addedBy", select: "name avatar" },

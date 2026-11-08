@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { HiPencil, HiTrash } from 'react-icons/hi';
-import { IoGlobeOutline, IoLockClosedOutline, IoTimeOutline, IoRocketOutline, IoEyeOutline, IoEyeOffOutline, IoChatbubbleOutline, IoBookmark, IoCloseOutline } from 'react-icons/io5';
+import { IoGlobeOutline, IoLockClosedOutline, IoTimeOutline, IoRocketOutline, IoEyeOutline, IoEyeOffOutline, IoChatbubbleOutline, IoBookmark, IoCloseOutline, IoOpenOutline } from 'react-icons/io5';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import DefaultResourceCover from './DefaultResourceCover';
@@ -22,6 +22,7 @@ const ResourceCard = ({
   commentSection,  // React node rendered inline at the bottom of the card
   type,
   contentType,
+  externalUrl,
   children,
 }) => {
   const { user } = useSelector((state) => state.auth);
@@ -204,6 +205,21 @@ const ResourceCard = ({
       <div onClick={onClick} className="p-4 pb-2">
         <h3 className="text-base font-semibold text-primary truncate mb-1">{title}</h3>
         {subtitle && <p className="text-sm text-accent mb-2">{subtitle}</p>}
+        {externalUrl && (
+          <div className="mb-2">
+            <a
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline py-0.5"
+              title="Open at external source"
+            >
+              <span>Open at source</span>
+              <IoOpenOutline size={13} />
+            </a>
+          </div>
+        )}
         {description && (
           <p className="text-sm text-secondary line-clamp-2">{description}</p>
         )}

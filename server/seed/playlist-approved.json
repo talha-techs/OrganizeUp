@@ -1,0 +1,212 @@
+[
+  {
+    "id": "p-cs50",
+    "title": "CS50x Lectures",
+    "playlistId": "PLhQjrBD2T380hlTqAU8HfvVepCcjCqTg6",
+    "channelTitle": "CS50",
+    "videoCount": 13,
+    "url": "https://www.youtube.com/playlist?list=PLhQjrBD2T380hlTqAU8HfvVepCcjCqTg6",
+    "thumbnail": "https://i.ytimg.com/vi/3ugnflDudfk/mqdefault.jpg",
+    "catalogTitle": "CS50 Lectures (Harvard)"
+  },
+  {
+    "id": "p-3b1b-la",
+    "title": "Essence of linear algebra",
+    "playlistId": "PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+    "channelTitle": "3Blue1Brown",
+    "videoCount": 16,
+    "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+    "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICOqwiNsFEAE=&rs=AOn4CLB4O6cKiyp236MG3Sja6zY4xsA1mA&v=1533155434",
+    "catalogTitle": "Essence of Linear Algebra"
+  },
+  {
+    "id": "p-3b1b-nn",
+    "title": "Neural networks",
+    "playlistId": "PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi",
+    "channelTitle": "3Blue1Brown",
+    "videoCount": 10,
+    "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi",
+    "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICNGyiNsFEAE=&rs=AOn4CLAKA6yHEkRm2VDlftVdQu2lFy7rEA&v=1533155665",
+    "catalogTitle": "Neural Networks (3Blue1Brown)"
+  },
+  {
+    "id": "p-3b1b-calc",
+    "title": "Essence of calculus",
+    "playlistId": "PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+    "channelTitle": "3Blue1Brown",
+    "videoCount": 12,
+    "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+    "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICIuyiNsFEAE=&rs=AOn4CLApy89RJ4Tcha7bf7rDwhMFtoOSLg&v=1533155595",
+    "catalogTitle": "Essence of Calculus"
+  },
+  {
+    "id": "p-karpathy",
+    "title": "Neural Networks: Zero to Hero",
+    "playlistId": "PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ",
+    "channelTitle": "Andrej Karpathy",
+    "videoCount": 10,
+    "url": "https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ",
+    "thumbnail": "https://i.ytimg.com/vi/VMj-3S1tku0/mqdefault.jpg",
+    "catalogTitle": "Neural Networks: Zero to Hero"
+  },
+  {
+    "id": "p-sq-stats",
+    "title": "Statistics Fundamentals",
+    "playlistId": "PLblh5JKOoLUK0FLuzwntyYI10UQFUhsY9",
+    "channelTitle": "StatQuest with Josh Starmer",
+    "videoCount": 62,
+    "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUK0FLuzwntyYI10UQFUhsY9",
+    "thumbnail": "https://i.ytimg.com/vi/qBigTkBLU6g/mqdefault.jpg",
+    "catalogTitle": "Statistics Fundamentals"
+  },
+  {
+    "id": "p-sq-ml",
+    "title": "Machine Learning",
+    "playlistId": "PLblh5JKOoLUICTaGLRoHQDuF_7q2GfuJF",
+    "channelTitle": "StatQuest with Josh Starmer",
+    "videoCount": 106,
+    "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUICTaGLRoHQDuF_7q2GfuJF",
+    "thumbnail": "https://i.ytimg.com/vi/Gv9_4yMHFhI/mqdefault.jpg",
+    "catalogTitle": "Machine Learning (StatQuest)"
+  },
+  {
+    "id": "p-mit-1806",
+    "title": "MIT 18.06 Linear Algebra, Spring 2005",
+    "playlistId": "PLE7DDD91010BC51F8",
+    "channelTitle": "MIT OpenCourseWare",
+    "videoCount": 36,
+    "url": "https://www.youtube.com/playlist?list=PLE7DDD91010BC51F8",
+    "thumbnail": "https://i.ytimg.com/vi/ZK3O402wf1c/mqdefault.jpg",
+    "catalogTitle": "MIT 18.06 Linear Algebra Lectures"
+  },
+  {
+    "id": "p-mit-006",
+    "title": "MIT 6.006 Introduction to Algorithms, Spring 2020",
+    "playlistId": "PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY",
+    "channelTitle": "MIT OpenCourseWare",
+    "videoCount": 32,
+    "url": "https://www.youtube.com/playlist?list=PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY",
+    "thumbnail": "https://i.ytimg.com/vi/ZA-tUyM_y7s/mqdefault.jpg",
+    "catalogTitle": "MIT 6.006 Algorithms Lectures"
+  },
+  {
+    "id": "p-cs229",
+    "title": "Stanford CS229: Machine Learning led by Andrew Ng | Autumn 2018",
+    "playlistId": "PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU",
+    "channelTitle": "Stanford Online",
+    "videoCount": 21,
+    "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU",
+    "thumbnail": "https://i.ytimg.com/vi/jGwO_UgTS7I/mqdefault.jpg",
+    "catalogTitle": "Stanford CS229 Machine Learning (Andrew Ng)"
+  },
+  {
+    "id": "p-cs231n",
+    "title": "Lecture Collection | Convolutional Neural Networks for Visual Recognition (Spring 2017)",
+    "playlistId": "PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv",
+    "channelTitle": "Stanford University School of Engineering",
+    "videoCount": 16,
+    "url": "https://www.youtube.com/playlist?list=PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv",
+    "thumbnail": "https://i.ytimg.com/vi/vT1JzLTH4G4/mqdefault.jpg",
+    "catalogTitle": "Stanford CS231n Convolutional Neural Networks"
+  },
+  {
+    "id": "p-cs224n",
+    "title": "Stanford CS224N Natural Language Processing with Deep Learning | Spring 2024",
+    "playlistId": "PLoROMvodv4rOaMFbaqxPDoLWjDaRAdP9D",
+    "channelTitle": "Stanford Online",
+    "videoCount": 23,
+    "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rOaMFbaqxPDoLWjDaRAdP9D",
+    "thumbnail": "https://i.ytimg.com/vi/rmVRLeJRkl4/mqdefault.jpg",
+    "catalogTitle": "Stanford CS224N NLP with Deep Learning"
+  },
+  {
+    "id": "p-crashcourse-cs",
+    "title": "Computer Science",
+    "playlistId": "PL8dPuuaLjXtNlUrzyH5r6jN9ulIgZBpdo",
+    "channelTitle": "CrashCourse",
+    "videoCount": 41,
+    "url": "https://www.youtube.com/playlist?list=PL8dPuuaLjXtNlUrzyH5r6jN9ulIgZBpdo",
+    "thumbnail": "https://i.ytimg.com/vi/tpIctyqH29Q/mqdefault.jpg",
+    "catalogTitle": "Crash Course Computer Science"
+  },
+  {
+    "id": "p-corey-py",
+    "title": "Python Programming Beginner Tutorials",
+    "playlistId": "PL-osiE80TeTskrapNbzXhwoFUiLCjGgY7",
+    "channelTitle": "Corey Schafer",
+    "videoCount": 26,
+    "url": "https://www.youtube.com/playlist?list=PL-osiE80TeTskrapNbzXhwoFUiLCjGgY7",
+    "thumbnail": "https://i.ytimg.com/vi/YYXdXT2l-Gg/mqdefault.jpg",
+    "catalogTitle": "Python Programming Beginner Tutorials"
+  },
+  {
+    "id": "p-netninja-js",
+    "title": "Modern JavaScript Tutorial",
+    "playlistId": "PL4cUxeGkcC9haFPT7J25Q9GRB_ZkFrQAc",
+    "channelTitle": "Net Ninja",
+    "videoCount": 6,
+    "url": "https://www.youtube.com/playlist?list=PL4cUxeGkcC9haFPT7J25Q9GRB_ZkFrQAc",
+    "thumbnail": "https://i.ytimg.com/vi/iWOYAxlnaww/mqdefault.jpg",
+    "catalogTitle": "Modern JavaScript Tutorial"
+  },
+  {
+    "id": "p-netninja-react",
+    "title": "Full Modern React Tutorial",
+    "playlistId": "PL4cUxeGkcC9gZD-Tvwfod2gaISzfRiP9d",
+    "channelTitle": "Net Ninja",
+    "videoCount": 32,
+    "url": "https://www.youtube.com/playlist?list=PL4cUxeGkcC9gZD-Tvwfod2gaISzfRiP9d",
+    "thumbnail": "https://i.ytimg.com/vi/j942wKiXFu8/mqdefault.jpg",
+    "catalogTitle": "React Tutorial for Beginners"
+  },
+  {
+    "id": "p-leonard-calc1",
+    "title": "Calculus 1 (Full Length Videos)",
+    "playlistId": "PLF797E961509B4EB5",
+    "channelTitle": "Professor Leonard",
+    "videoCount": 32,
+    "url": "https://www.youtube.com/playlist?list=PLF797E961509B4EB5",
+    "thumbnail": "https://i.ytimg.com/vi/fYyARMqiaag/mqdefault.jpg",
+    "catalogTitle": "Calculus 1 (Professor Leonard)"
+  },
+  {
+    "id": "p-khan-stats",
+    "title": "Probability and Statistics (Complete Playlist)",
+    "playlistId": "PLxCzCOWd7aiFjZP4z1_3Kr3m3J5wu5Q8V",
+    "channelTitle": "Gate Smashers",
+    "videoCount": 44,
+    "url": "https://www.youtube.com/playlist?list=PLxCzCOWd7aiFjZP4z1_3Kr3m3J5wu5Q8V",
+    "thumbnail": "https://i.ytimg.com/vi/Q_u3Lt5AV3c/mqdefault.jpg",
+    "catalogTitle": "Statistics and Probability (Khan Academy)"
+  },
+  {
+    "id": "p-cwh-py",
+    "title": "Python for Beginners (Full Course) | #100DaysOfCode Programming Tutorial in Hindi",
+    "playlistId": "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+    "channelTitle": "CodeWithHarry",
+    "videoCount": 100,
+    "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+    "thumbnail": "https://i.ytimg.com/vi/7wnove7K-ZQ/mqdefault.jpg",
+    "catalogTitle": "Python Tutorial for Beginners (Hindi)"
+  },
+  {
+    "id": "p-apna-dsa",
+    "title": "Complete C++ DSA Course | Data Structures & Algorithms Playlist",
+    "playlistId": "PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt",
+    "channelTitle": "Apna College",
+    "videoCount": 144,
+    "url": "https://www.youtube.com/playlist?list=PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt",
+    "thumbnail": "https://i.ytimg.com/vi/VTLCoHnyACE/mqdefault.jpg",
+    "catalogTitle": "Data Structures and Algorithms (Hindi)"
+  },
+  {
+    "id": "p-jenny-dbms",
+    "title": "DBMS (Database Management System)",
+    "playlistId": "PLdo5W4Nhv31b33kF46f9aFjoJPOkdlsRc",
+    "channelTitle": "Jenny's Lectures CS IT",
+    "videoCount": 24,
+    "url": "https://www.youtube.com/playlist?list=PLdo5W4Nhv31b33kF46f9aFjoJPOkdlsRc",
+    "thumbnail": "https://i.ytimg.com/vi/T7AxM7Vqvaw/mqdefault.jpg",
+    "catalogTitle": "DBMS Lectures"
+  }
+]

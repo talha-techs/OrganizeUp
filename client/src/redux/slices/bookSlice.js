@@ -221,6 +221,39 @@ export const importDriveBook = createAsyncThunk(
   },
 );
 
+export const updateBookReminder = createAsyncThunk(
+  "books/updateReminder",
+  async ({ bookId, remindAt, reminderNote }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/books/${bookId}/reminder`, {
+        remindAt,
+        reminderNote,
+      });
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update book reminder",
+      );
+    }
+  },
+);
+
+export const toggleBookComplete = createAsyncThunk(
+  "books/toggleComplete",
+  async ({ bookId, isCompleted }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.put(`/books/${bookId}/toggle-complete`, {
+        isCompleted,
+      });
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update book completion status",
+      );
+    }
+  },
+);
+
 const bookSlice = createSlice({
   name: "books",
   initialState: {
@@ -302,6 +335,24 @@ const bookSlice = createSlice({
         if (index !== -1) state.books[index] = action.payload.book;
         if (state.currentBook?._id === action.payload.book._id) {
           state.currentBook = action.payload.book;
+        }
+      })
+      .addCase(updateBookReminder.fulfilled, (state, action) => {
+        const updated = action.payload.book;
+        if (!updated) return;
+        const index = state.books.findIndex((b) => b._id === updated._id);
+        if (index !== -1) state.books[index] = { ...state.books[index], ...updated };
+        if (state.currentBook?._id === updated._id) {
+          state.currentBook = { ...state.currentBook, ...updated };
+        }
+      })
+      .addCase(toggleBookComplete.fulfilled, (state, action) => {
+        const updated = action.payload.book;
+        if (!updated) return;
+        const index = state.books.findIndex((b) => b._id === updated._id);
+        if (index !== -1) state.books[index] = { ...state.books[index], ...updated };
+        if (state.currentBook?._id === updated._id) {
+          state.currentBook = { ...state.currentBook, ...updated };
         }
       })
       .addCase(deleteBook.fulfilled, (state, action) => {

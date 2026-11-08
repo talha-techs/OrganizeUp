@@ -1,0 +1,1090 @@
+{
+ "version": 1,
+ "curator": "OrganizeUp",
+ "rules": [
+  "Link-only: do not host or copy third-party files.",
+  "Only legally free or openly licensed resources, or official free tiers.",
+  "Descriptions are short and original; no copied text.",
+  "Every URL must be link-checked before insertion; playlists need human approval."
+ ],
+ "items": [
+  {
+   "id": "b-sicp",
+   "type": "book",
+   "title": "Structure and Interpretation of Computer Programs",
+   "category": "Computer Science",
+   "level": "advanced",
+   "url": "https://web.mit.edu/6.001/6.037/sicp.pdf",
+   "description": "Classic MIT text on abstraction, recursion and language design.",
+   "license": "CC BY-SA (MIT Press open access)",
+   "cost": "free"
+  },
+  {
+   "id": "b-ostep",
+   "type": "book",
+   "title": "Operating Systems: Three Easy Pieces",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/",
+   "description": "Friendly textbook on virtualization, concurrency and persistence.",
+   "license": "Free online (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-crafting",
+   "type": "book",
+   "title": "Crafting Interpreters",
+   "category": "Programming",
+   "level": "intermediate",
+   "url": "https://craftinginterpreters.com/",
+   "description": "Build two complete interpreters from scratch, step by step.",
+   "license": "Free online (author)",
+   "cost": "free"
+  },
+  {
+   "id": "b-progit",
+   "type": "book",
+   "title": "Pro Git",
+   "category": "Tools & Systems",
+   "level": "beginner",
+   "url": "https://git-scm.com/book/en/v2",
+   "description": "The official, complete guide to Git.",
+   "license": "CC BY-NC-SA 3.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-eloquent",
+   "type": "book",
+   "title": "Eloquent JavaScript",
+   "category": "Web Development",
+   "level": "beginner",
+   "url": "https://eloquentjavascript.net/",
+   "description": "Modern introduction to JavaScript and programming concepts.",
+   "license": "CC BY-NC 3.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-atbs",
+   "type": "book",
+   "title": "Automate the Boring Stuff with Python",
+   "category": "Programming",
+   "level": "beginner",
+   "url": "https://automatetheboringstuff.com/",
+   "description": "Practical Python for automating everyday computer tasks.",
+   "license": "CC BY-NC-SA 3.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-thinkpy",
+   "type": "book",
+   "title": "Think Python",
+   "category": "Programming",
+   "level": "beginner",
+   "url": "https://allendowney.github.io/ThinkPython/",
+   "description": "Gentle introduction to programming with Python.",
+   "license": "CC BY-NC-SA 4.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-py4e",
+   "type": "book",
+   "title": "Python for Everybody",
+   "category": "Programming",
+   "level": "beginner",
+   "url": "https://www.py4e.com/book",
+   "description": "Beginner Python textbook by Dr. Chuck, paired with free lectures.",
+   "license": "CC BY",
+   "cost": "free"
+  },
+  {
+   "id": "b-pds",
+   "type": "book",
+   "title": "Python Data Science Handbook",
+   "category": "Data Science",
+   "level": "intermediate",
+   "url": "https://jakevdp.github.io/PythonDataScienceHandbook/",
+   "description": "NumPy, Pandas, Matplotlib and scikit-learn in notebooks.",
+   "license": "CC BY-NC-ND 3.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-d2l",
+   "type": "book",
+   "title": "Dive into Deep Learning",
+   "category": "AI & ML",
+   "level": "intermediate",
+   "url": "https://d2l.ai/",
+   "description": "Interactive deep learning book with runnable code and math.",
+   "license": "CC BY-SA 4.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-dlbook",
+   "type": "book",
+   "title": "Deep Learning (Goodfellow, Bengio, Courville)",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "https://www.deeplearningbook.org/",
+   "description": "Standard reference on deep learning theory.",
+   "license": "Free online (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-mml",
+   "type": "book",
+   "title": "Mathematics for Machine Learning",
+   "category": "Math & Statistics",
+   "level": "intermediate",
+   "url": "https://mml-book.github.io/",
+   "description": "Linear algebra, calculus and probability for ML.",
+   "license": "Free PDF (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-isl",
+   "type": "book",
+   "title": "An Introduction to Statistical Learning",
+   "category": "Data Science",
+   "level": "intermediate",
+   "url": "https://www.statlearning.com/",
+   "description": "Accessible statistical learning with R and Python labs.",
+   "license": "Free PDF (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-esl",
+   "type": "book",
+   "title": "The Elements of Statistical Learning",
+   "category": "Data Science",
+   "level": "advanced",
+   "url": "https://hastie.su.domains/ElemStatLearn/",
+   "description": "Rigorous reference on statistical learning methods.",
+   "license": "Free PDF (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-nielsen",
+   "type": "book",
+   "title": "Neural Networks and Deep Learning",
+   "category": "AI & ML",
+   "level": "beginner",
+   "url": "http://neuralnetworksanddeeplearning.com/",
+   "description": "Intuitive online book building neural nets from first principles.",
+   "license": "Free online (author)",
+   "cost": "free"
+  },
+  {
+   "id": "b-slp",
+   "type": "book",
+   "title": "Speech and Language Processing",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "https://web.stanford.edu/~jurafsky/slp3/",
+   "description": "Comprehensive NLP textbook (free draft).",
+   "license": "Free online (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-sutton",
+   "type": "book",
+   "title": "Reinforcement Learning: An Introduction",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "http://incompleteideas.net/book/the-book-2nd.html",
+   "description": "The foundational textbook on reinforcement learning.",
+   "license": "Free online (authors)",
+   "cost": "free"
+  },
+  {
+   "id": "b-pml",
+   "type": "book",
+   "title": "Probabilistic Machine Learning: An Introduction",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "https://probml.github.io/pml-book/",
+   "description": "Modern probabilistic view of machine learning.",
+   "license": "Free PDF (author)",
+   "cost": "free"
+  },
+  {
+   "id": "b-erickson",
+   "type": "book",
+   "title": "Algorithms (Jeff Erickson)",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://jeffe.cs.illinois.edu/teaching/algorithms/",
+   "description": "Free university-level algorithms textbook.",
+   "license": "CC BY 4.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-ods",
+   "type": "book",
+   "title": "Open Data Structures",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://opendatastructures.org/",
+   "description": "Data structures textbook with implementations.",
+   "license": "CC BY",
+   "cost": "free"
+  },
+  {
+   "id": "b-rust",
+   "type": "book",
+   "title": "The Rust Programming Language",
+   "category": "Programming",
+   "level": "intermediate",
+   "url": "https://doc.rust-lang.org/book/",
+   "description": "Official, free guide to learning Rust.",
+   "license": "MIT / Apache 2.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-tlcl",
+   "type": "book",
+   "title": "The Linux Command Line",
+   "category": "Tools & Systems",
+   "level": "beginner",
+   "url": "https://linuxcommand.org/tlcl.php",
+   "description": "Complete beginner's guide to the Linux shell.",
+   "license": "CC BY-NC-ND 3.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-beej",
+   "type": "book",
+   "title": "Beej's Guide to Network Programming",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://beej.us/guide/bgnet/",
+   "description": "Practical sockets programming guide in C.",
+   "license": "Free online (author)",
+   "cost": "free"
+  },
+  {
+   "id": "b-thinkstats",
+   "type": "book",
+   "title": "Think Stats",
+   "category": "Math & Statistics",
+   "level": "beginner",
+   "url": "https://greenteapress.com/wp/think-stats-2e/",
+   "description": "Statistics for programmers, using Python.",
+   "license": "CC BY-NC 4.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-byte",
+   "type": "book",
+   "title": "A Byte of Python",
+   "category": "Programming",
+   "level": "beginner",
+   "url": "https://python.swaroopch.com/",
+   "description": "Short, readable Python introduction.",
+   "license": "CC BY-NC-SA 4.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-hefferon",
+   "type": "book",
+   "title": "Linear Algebra (Jim Hefferon)",
+   "category": "Math & Statistics",
+   "level": "intermediate",
+   "url": "https://hefferon.net/linearalgebra/",
+   "description": "Free linear algebra text with exercises.",
+   "license": "CC BY-SA / GFDL",
+   "cost": "free"
+  },
+  {
+   "id": "b-openstax-calc",
+   "type": "book",
+   "title": "Calculus Volume 1 (OpenStax)",
+   "category": "Math & Statistics",
+   "level": "beginner",
+   "url": "https://openstax.org/details/books/calculus-volume-1",
+   "description": "Peer-reviewed open calculus textbook.",
+   "license": "CC BY-NC-SA 4.0",
+   "cost": "free"
+  },
+  {
+   "id": "b-meditations",
+   "type": "book",
+   "title": "Meditations (Marcus Aurelius)",
+   "category": "Philosophy & Classics",
+   "level": "beginner",
+   "url": "https://www.gutenberg.org/ebooks/2680",
+   "description": "Stoic reflections on discipline and perspective.",
+   "license": "Public domain",
+   "cost": "free"
+  },
+  {
+   "id": "b-artofwar",
+   "type": "book",
+   "title": "The Art of War (Sun Tzu)",
+   "category": "Philosophy & Classics",
+   "level": "beginner",
+   "url": "https://www.gutenberg.org/ebooks/132",
+   "description": "Ancient treatise on strategy and decision making.",
+   "license": "Public domain",
+   "cost": "free"
+  },
+  {
+   "id": "b-walden",
+   "type": "book",
+   "title": "Walden (Henry David Thoreau)",
+   "category": "Philosophy & Classics",
+   "level": "beginner",
+   "url": "https://www.gutenberg.org/ebooks/205",
+   "description": "Reflections on simple, self-directed living.",
+   "license": "Public domain",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs50x",
+   "type": "course",
+   "title": "CS50x: Introduction to Computer Science (Harvard)",
+   "category": "Computer Science",
+   "level": "beginner",
+   "url": "https://cs50.harvard.edu/x/",
+   "description": "Harvard's flagship intro to computer science and programming.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs50p",
+   "type": "course",
+   "title": "CS50P: Introduction to Programming with Python",
+   "category": "Programming",
+   "level": "beginner",
+   "url": "https://cs50.harvard.edu/python/",
+   "description": "Python fundamentals with problem sets and lectures.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs50ai",
+   "type": "course",
+   "title": "CS50 AI: Introduction to AI with Python",
+   "category": "AI & ML",
+   "level": "intermediate",
+   "url": "https://cs50.harvard.edu/ai/",
+   "description": "Search, knowledge, learning and neural networks in Python.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs50web",
+   "type": "course",
+   "title": "CS50 Web: Web Programming with Python and JavaScript",
+   "category": "Web Development",
+   "level": "intermediate",
+   "url": "https://cs50.harvard.edu/web/",
+   "description": "Django, JavaScript, databases and deployment.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs50sql",
+   "type": "course",
+   "title": "CS50 SQL: Introduction to Databases",
+   "category": "Data Science",
+   "level": "beginner",
+   "url": "https://cs50.harvard.edu/sql/",
+   "description": "Relational databases and SQL from the ground up.",
+   "cost": "free"
+  },
+  {
+   "id": "c-mit600",
+   "type": "course",
+   "title": "MIT 6.0001: Intro to CS and Programming in Python",
+   "category": "Programming",
+   "level": "beginner",
+   "url": "https://ocw.mit.edu/courses/6-0001-introduction-to-computer-science-and-programming-in-python-fall-2016/",
+   "description": "MIT's introductory Python course with lectures and assignments.",
+   "cost": "free"
+  },
+  {
+   "id": "c-mit006",
+   "type": "course",
+   "title": "MIT 6.006: Introduction to Algorithms",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/",
+   "description": "Core algorithms and data structures with full lecture videos.",
+   "cost": "free"
+  },
+  {
+   "id": "c-mit1806",
+   "type": "course",
+   "title": "MIT 18.06: Linear Algebra (Gilbert Strang)",
+   "category": "Math & Statistics",
+   "level": "intermediate",
+   "url": "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/",
+   "description": "Legendary linear algebra course with lectures and problem sets.",
+   "cost": "free"
+  },
+  {
+   "id": "c-missing",
+   "type": "course",
+   "title": "The Missing Semester of Your CS Education",
+   "category": "Tools & Systems",
+   "level": "beginner",
+   "url": "https://missing.csail.mit.edu/",
+   "description": "Shell, Git, editors and tooling that courses rarely teach.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs229",
+   "type": "course",
+   "title": "Stanford CS229: Machine Learning",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "https://cs229.stanford.edu/",
+   "description": "Stanford's classic machine learning course materials.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs231n",
+   "type": "course",
+   "title": "Stanford CS231n: Deep Learning for Computer Vision",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "https://cs231n.stanford.edu/",
+   "description": "Convolutional networks and vision, with notes and assignments.",
+   "cost": "free"
+  },
+  {
+   "id": "c-cs224n",
+   "type": "course",
+   "title": "Stanford CS224n: NLP with Deep Learning",
+   "category": "AI & ML",
+   "level": "advanced",
+   "url": "https://web.stanford.edu/class/cs224n/",
+   "description": "Natural language processing with neural networks.",
+   "cost": "free"
+  },
+  {
+   "id": "c-fastai",
+   "type": "course",
+   "title": "Practical Deep Learning for Coders (fast.ai)",
+   "category": "AI & ML",
+   "level": "intermediate",
+   "url": "https://course.fast.ai/",
+   "description": "Hands-on, code-first deep learning course.",
+   "cost": "free"
+  },
+  {
+   "id": "c-hf",
+   "type": "course",
+   "title": "Hugging Face LLM Course",
+   "category": "AI & ML",
+   "level": "intermediate",
+   "url": "https://huggingface.co/learn/llm-course",
+   "description": "Learn transformers and LLM tooling with the Hugging Face stack.",
+   "cost": "free"
+  },
+  {
+   "id": "c-kaggle",
+   "type": "course",
+   "title": "Kaggle Learn",
+   "category": "Data Science",
+   "level": "beginner",
+   "url": "https://www.kaggle.com/learn",
+   "description": "Short, practical micro-courses on Python, pandas and ML.",
+   "cost": "free"
+  },
+  {
+   "id": "c-mlcc",
+   "type": "course",
+   "title": "Google Machine Learning Crash Course",
+   "category": "AI & ML",
+   "level": "beginner",
+   "url": "https://developers.google.com/machine-learning/crashcourse",
+   "description": "Fast-paced intro to ML with exercises.",
+   "cost": "free"
+  },
+  {
+   "id": "c-dlai",
+   "type": "course",
+   "title": "DeepLearning.AI Short Courses",
+   "category": "AI & ML",
+   "level": "intermediate",
+   "url": "https://www.deeplearning.ai/short-courses/",
+   "description": "Short hands-on courses on modern AI tools and LLMs.",
+   "cost": "free"
+  },
+  {
+   "id": "c-ng",
+   "type": "course",
+   "title": "Machine Learning Specialization (Andrew Ng)",
+   "category": "AI & ML",
+   "level": "beginner",
+   "url": "https://www.coursera.org/specializations/machine-learning-introduction",
+   "description": "Popular ML starter on Coursera; free to audit, certificate is paid.",
+   "cost": "free-to-audit"
+  },
+  {
+   "id": "c-eai",
+   "type": "course",
+   "title": "Elements of AI",
+   "category": "AI & ML",
+   "level": "beginner",
+   "url": "https://www.elementsofai.com/",
+   "description": "Non-technical introduction to AI from the University of Helsinki.",
+   "cost": "free"
+  },
+  {
+   "id": "c-fcc",
+   "type": "course",
+   "title": "freeCodeCamp Curriculum",
+   "category": "Web Development",
+   "level": "beginner",
+   "url": "https://www.freecodecamp.org/learn",
+   "description": "Free, project-based coding curriculum with certifications.",
+   "cost": "free"
+  },
+  {
+   "id": "c-odin",
+   "type": "course",
+   "title": "The Odin Project",
+   "category": "Web Development",
+   "level": "beginner",
+   "url": "https://www.theodinproject.com/",
+   "description": "Open-source full-stack web development path.",
+   "cost": "free"
+  },
+  {
+   "id": "c-fso",
+   "type": "course",
+   "title": "Full Stack Open",
+   "category": "Web Development",
+   "level": "intermediate",
+   "url": "https://fullstackopen.com/",
+   "description": "University of Helsinki course on modern web development.",
+   "cost": "free"
+  },
+  {
+   "id": "c-mdn",
+   "type": "course",
+   "title": "MDN: Learn Web Development",
+   "category": "Web Development",
+   "level": "beginner",
+   "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development",
+   "description": "Reference-quality HTML, CSS and JavaScript learning path.",
+   "cost": "free"
+  },
+  {
+   "id": "c-jsinfo",
+   "type": "course",
+   "title": "The Modern JavaScript Tutorial",
+   "category": "Web Development",
+   "level": "beginner",
+   "url": "https://javascript.info/",
+   "description": "Deep, well-organized JavaScript tutorial.",
+   "cost": "free"
+  },
+  {
+   "id": "c-khan",
+   "type": "course",
+   "title": "Khan Academy",
+   "category": "Math & Statistics",
+   "level": "beginner",
+   "url": "https://www.khanacademy.org/",
+   "description": "Free lessons in math, science and computing.",
+   "cost": "free"
+  },
+  {
+   "id": "c-n2t",
+   "type": "course",
+   "title": "Nand2Tetris",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://www.nand2tetris.org/",
+   "description": "Build a computer from logic gates up to a working OS.",
+   "cost": "free"
+  },
+  {
+   "id": "c-nptel",
+   "type": "course",
+   "title": "NPTEL",
+   "category": "Computer Science",
+   "level": "intermediate",
+   "url": "https://nptel.ac.in/",
+   "description": "Free university-level lectures from Indian institutes.",
+   "cost": "free"
+  },
+  {
+   "id": "c-mslearn",
+   "type": "course",
+   "title": "Microsoft Learn",
+   "category": "Tools & Systems",
+   "level": "beginner",
+   "url": "https://learn.microsoft.com/training/",
+   "description": "Free learning paths on Azure, Python, data and dev tools.",
+   "cost": "free"
+  },
+  {
+   "id": "t-student-pack",
+   "type": "tool",
+   "title": "GitHub Student Developer Pack",
+   "category": "Tools & Systems",
+   "url": "https://education.github.com/pack",
+   "description": "Free developer tools and credits for verified students.",
+   "cost": "free"
+  },
+  {
+   "id": "t-colab",
+   "type": "tool",
+   "title": "Google Colab",
+   "category": "AI & ML",
+   "url": "https://colab.research.google.com/",
+   "description": "Free hosted notebooks with GPU access for ML experiments.",
+   "cost": "free"
+  },
+  {
+   "id": "t-kaggle-nb",
+   "type": "tool",
+   "title": "Kaggle Notebooks",
+   "category": "Data Science",
+   "url": "https://www.kaggle.com/code",
+   "description": "Free notebooks, datasets and competitions.",
+   "cost": "free"
+  },
+  {
+   "id": "t-excalidraw",
+   "type": "tool",
+   "title": "Excalidraw",
+   "category": "Productivity & Study",
+   "url": "https://excalidraw.com/",
+   "description": "Simple whiteboard for sketching diagrams.",
+   "cost": "free"
+  },
+  {
+   "id": "t-drawio",
+   "type": "tool",
+   "title": "diagrams.net (draw.io)",
+   "category": "Productivity & Study",
+   "url": "https://app.diagrams.net/",
+   "description": "Free diagramming for flowcharts, UML and architecture.",
+   "cost": "free"
+  },
+  {
+   "id": "t-anki",
+   "type": "tool",
+   "title": "Anki",
+   "category": "Productivity & Study",
+   "url": "https://apps.ankiweb.net/",
+   "description": "Spaced-repetition flashcards for long-term memory.",
+   "cost": "free"
+  },
+  {
+   "id": "t-obsidian",
+   "type": "tool",
+   "title": "Obsidian",
+   "category": "Productivity & Study",
+   "url": "https://obsidian.md/",
+   "description": "Local-first Markdown notes with linked thinking.",
+   "cost": "free"
+  },
+  {
+   "id": "t-zotero",
+   "type": "tool",
+   "title": "Zotero",
+   "category": "Productivity & Study",
+   "url": "https://www.zotero.org/",
+   "description": "Free reference manager for papers and citations.",
+   "cost": "free"
+  },
+  {
+   "id": "t-devdocs",
+   "type": "tool",
+   "title": "DevDocs",
+   "category": "Tools & Systems",
+   "url": "https://devdocs.io/",
+   "description": "Fast, searchable documentation for many languages.",
+   "cost": "free"
+  },
+  {
+   "id": "t-regex101",
+   "type": "tool",
+   "title": "Regex101",
+   "category": "Tools & Systems",
+   "url": "https://regex101.com/",
+   "description": "Test and explain regular expressions.",
+   "cost": "free"
+  },
+  {
+   "id": "t-freefordev",
+   "type": "tool",
+   "title": "free-for-dev",
+   "category": "Tools & Systems",
+   "url": "https://github.com/ripienaar/free-for-dev",
+   "description": "Curated list of services with free tiers for developers.",
+   "cost": "free"
+  },
+  {
+   "id": "t-gitbranch",
+   "type": "tool",
+   "title": "Learn Git Branching",
+   "category": "Tools & Systems",
+   "url": "https://learngitbranching.js.org/",
+   "description": "Interactive visual tutorial for Git.",
+   "cost": "free"
+  },
+  {
+   "id": "t-pomofocus",
+   "type": "tool",
+   "title": "Pomofocus",
+   "category": "Productivity & Study",
+   "url": "https://pomofocus.io/",
+   "description": "Simple Pomodoro timer for focused study.",
+   "cost": "free"
+  },
+  {
+   "id": "t-roadmapsh",
+   "type": "tool",
+   "title": "roadmap.sh",
+   "category": "Computer Science",
+   "url": "https://roadmap.sh/",
+   "description": "Community roadmaps for developer career paths.",
+   "cost": "free"
+  },
+  {
+   "id": "t-jetbrains",
+   "type": "tool",
+   "title": "JetBrains Student Licenses",
+   "category": "Tools & Systems",
+   "url": "https://www.jetbrains.com/community/education/",
+   "description": "Free professional IDEs for students and teachers.",
+   "cost": "free"
+  },
+  {
+   "id": "t-figma-edu",
+   "type": "tool",
+   "title": "Figma for Education",
+   "category": "Web Development",
+   "url": "https://www.figma.com/education/",
+   "description": "Free Figma plan for students and educators.",
+   "cost": "free"
+  },
+  {
+   "id": "t-canva-edu",
+   "type": "tool",
+   "title": "Canva for Education",
+   "category": "Productivity & Study",
+   "url": "https://www.canva.com/education/",
+   "description": "Free design tools for verified students and teachers.",
+   "cost": "free"
+  },
+  {
+   "id": "t-visualgo",
+   "type": "tool",
+   "title": "VisuAlgo",
+   "category": "Computer Science",
+   "url": "https://visualgo.net/",
+   "description": "Animated visualizations of data structures and algorithms.",
+   "cost": "free"
+  },
+  {
+   "id": "t-pytutor",
+   "type": "tool",
+   "title": "Python Tutor",
+   "category": "Programming",
+   "url": "https://pythontutor.com/",
+   "description": "Step through code execution visually.",
+   "cost": "free"
+  },
+  {
+   "id": "t-explainshell",
+   "type": "tool",
+   "title": "explainshell",
+   "category": "Tools & Systems",
+   "url": "https://explainshell.com/",
+   "description": "Paste a shell command and see what each part does.",
+   "cost": "free"
+  },
+  {
+   "id": "t-mermaid",
+   "type": "tool",
+   "title": "Mermaid Live Editor",
+   "category": "Tools & Systems",
+   "url": "https://mermaid.live/",
+   "description": "Write text, get diagrams.",
+   "cost": "free"
+  },
+  {
+   "id": "t-hf",
+   "type": "tool",
+   "title": "Hugging Face Hub",
+   "category": "AI & ML",
+   "url": "https://huggingface.co/",
+   "description": "Open models, datasets and demos.",
+   "cost": "free"
+  },
+  {
+   "id": "p-cs50",
+   "type": "playlist",
+   "title": "CS50 Lectures (Harvard)",
+   "category": "Computer Science",
+   "channelHint": "CS50",
+   "searchQuery": "CS50x lectures full playlist",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-3b1b-la",
+   "type": "playlist",
+   "title": "Essence of Linear Algebra",
+   "category": "Math & Statistics",
+   "channelHint": "3Blue1Brown",
+   "searchQuery": "Essence of linear algebra",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-3b1b-nn",
+   "type": "playlist",
+   "title": "Neural Networks (3Blue1Brown)",
+   "category": "AI & ML",
+   "channelHint": "3Blue1Brown",
+   "searchQuery": "Neural networks deep learning chapters",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-3b1b-calc",
+   "type": "playlist",
+   "title": "Essence of Calculus",
+   "category": "Math & Statistics",
+   "channelHint": "3Blue1Brown",
+   "searchQuery": "Essence of calculus",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-karpathy",
+   "type": "playlist",
+   "title": "Neural Networks: Zero to Hero",
+   "category": "AI & ML",
+   "channelHint": "Andrej Karpathy",
+   "searchQuery": "Neural Networks Zero to Hero",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-sq-stats",
+   "type": "playlist",
+   "title": "Statistics Fundamentals",
+   "category": "Math & Statistics",
+   "channelHint": "StatQuest with Josh Starmer",
+   "searchQuery": "Statistics Fundamentals",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-sq-ml",
+   "type": "playlist",
+   "title": "Machine Learning (StatQuest)",
+   "category": "AI & ML",
+   "channelHint": "StatQuest with Josh Starmer",
+   "searchQuery": "StatQuest Machine Learning",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-mit-1806",
+   "type": "playlist",
+   "title": "MIT 18.06 Linear Algebra Lectures",
+   "category": "Math & Statistics",
+   "channelHint": "MIT OpenCourseWare",
+   "searchQuery": "18.06 Linear Algebra Gilbert Strang lectures",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-mit-006",
+   "type": "playlist",
+   "title": "MIT 6.006 Algorithms Lectures",
+   "category": "Computer Science",
+   "channelHint": "MIT OpenCourseWare",
+   "searchQuery": "6.006 Introduction to Algorithms lectures",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-cs229",
+   "type": "playlist",
+   "title": "Stanford CS229 Machine Learning (Andrew Ng)",
+   "category": "AI & ML",
+   "channelHint": "Stanford Online",
+   "searchQuery": "CS229 Machine Learning Andrew Ng lectures",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-cs231n",
+   "type": "playlist",
+   "title": "Stanford CS231n Convolutional Neural Networks",
+   "category": "AI & ML",
+   "channelHint": "Stanford University School of Engineering",
+   "searchQuery": "CS231n convolutional neural networks lectures",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-cs224n",
+   "type": "playlist",
+   "title": "Stanford CS224N NLP with Deep Learning",
+   "category": "AI & ML",
+   "channelHint": "Stanford Online",
+   "searchQuery": "CS224N NLP with deep learning lectures",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-crashcourse-cs",
+   "type": "playlist",
+   "title": "Crash Course Computer Science",
+   "category": "Computer Science",
+   "channelHint": "CrashCourse",
+   "searchQuery": "Crash Course Computer Science",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-corey-py",
+   "type": "playlist",
+   "title": "Python Programming Beginner Tutorials",
+   "category": "Programming",
+   "channelHint": "Corey Schafer",
+   "searchQuery": "Python Programming Beginner Tutorials",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-netninja-js",
+   "type": "playlist",
+   "title": "Modern JavaScript Tutorial",
+   "category": "Web Development",
+   "channelHint": "Net Ninja",
+   "searchQuery": "Modern JavaScript tutorial",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-netninja-react",
+   "type": "playlist",
+   "title": "React Tutorial for Beginners",
+   "category": "Web Development",
+   "channelHint": "Net Ninja",
+   "searchQuery": "React tutorial for beginners",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-leonard-calc1",
+   "type": "playlist",
+   "title": "Calculus 1 (Professor Leonard)",
+   "category": "Math & Statistics",
+   "channelHint": "Professor Leonard",
+   "searchQuery": "Calculus 1 lectures",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-khan-stats",
+   "type": "playlist",
+   "title": "Statistics and Probability (Khan Academy)",
+   "category": "Math & Statistics",
+   "channelHint": "Khan Academy",
+   "searchQuery": "Statistics and probability",
+   "language": "en",
+   "cost": "free"
+  },
+  {
+   "id": "p-cwh-py",
+   "type": "playlist",
+   "title": "Python Tutorial for Beginners (Hindi)",
+   "category": "Programming",
+   "channelHint": "CodeWithHarry",
+   "searchQuery": "Python tutorial for beginners Hindi",
+   "language": "hi-ur",
+   "cost": "free"
+  },
+  {
+   "id": "p-apna-dsa",
+   "type": "playlist",
+   "title": "Data Structures and Algorithms (Hindi)",
+   "category": "Computer Science",
+   "channelHint": "Apna College",
+   "searchQuery": "Data structures and algorithms Hindi",
+   "language": "hi-ur",
+   "cost": "free"
+  },
+  {
+   "id": "p-jenny-dbms",
+   "type": "playlist",
+   "title": "DBMS Lectures",
+   "category": "Computer Science",
+   "channelHint": "Jenny's Lectures CS IT",
+   "searchQuery": "DBMS database management system lectures",
+   "language": "en-hi",
+   "cost": "free"
+  },
+  {
+   "id": "r-python-ml",
+   "type": "roadmap",
+   "title": "From Python to Machine Learning",
+   "category": "AI & ML",
+   "itemIds": [
+    "b-thinkpy",
+    "c-cs50p",
+    "b-pds",
+    "c-kaggle",
+    "b-isl",
+    "c-fastai",
+    "p-3b1b-nn",
+    "p-karpathy"
+   ]
+  },
+  {
+   "id": "r-fullstack",
+   "type": "roadmap",
+   "title": "Full-Stack Web Development Path",
+   "category": "Web Development",
+   "itemIds": [
+    "c-odin",
+    "c-mdn",
+    "b-eloquent",
+    "c-jsinfo",
+    "c-fso",
+    "c-cs50web",
+    "t-devdocs"
+   ]
+  },
+  {
+   "id": "r-dsa",
+   "type": "roadmap",
+   "title": "Algorithms and Data Structures Path",
+   "category": "Computer Science",
+   "itemIds": [
+    "c-cs50x",
+    "b-erickson",
+    "c-mit006",
+    "p-mit-006",
+    "t-visualgo",
+    "b-ods"
+   ]
+  },
+  {
+   "id": "r-math-ml",
+   "type": "roadmap",
+   "title": "Math Foundations for ML",
+   "category": "Math & Statistics",
+   "itemIds": [
+    "c-khan",
+    "p-3b1b-la",
+    "b-hefferon",
+    "c-mit1806",
+    "b-thinkstats",
+    "b-mml"
+   ]
+  }
+ ]
+}
+

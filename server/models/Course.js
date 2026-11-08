@@ -52,6 +52,24 @@ const courseSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    externalUrl: {
+      type: String,
+      default: "",
+    },
+    sourceType: {
+      type: String,
+      enum: ["drive", "external"],
+      default: "drive",
+    },
+    seedId: {
+      type: String,
+    },
+    seedMeta: {
+      license: { type: String, default: "" },
+      level: { type: String, default: "" },
+      cost: { type: String, default: "" },
+      sourceUrl: { type: String, default: "" },
+    },
     driveFolderId: {
       type: String,
       default: "",
@@ -94,5 +112,9 @@ const courseSchema = new mongoose.Schema(
 
 courseSchema.index({ visibility: 1, createdAt: -1 });
 courseSchema.index({ addedBy: 1, createdAt: -1 });
+courseSchema.index(
+  { seedId: 1 },
+  { unique: true, partialFilterExpression: { seedId: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Course", courseSchema);

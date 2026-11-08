@@ -1,0 +1,1136 @@
+[
+  {
+    "id": "p-cs50",
+    "catalogTitle": "CS50 Lectures (Harvard)",
+    "category": "Computer Science",
+    "channelHint": "CS50",
+    "searchQuery": "CS50x lectures full playlist",
+    "candidates": [
+      {
+        "playlistId": "PLhQjrBD2T380hlTqAU8HfvVepCcjCqTg6",
+        "title": "CS50x Lectures",
+        "channelTitle": "CS50",
+        "videoCount": 13,
+        "url": "https://www.youtube.com/playlist?list=PLhQjrBD2T380hlTqAU8HfvVepCcjCqTg6",
+        "thumbnail": "https://i.ytimg.com/vi/HJP0a6vKvlo/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLhQjrBD2T383q7Vn8QnTsVgSvyLpsqL_R",
+        "title": "CS50x 2025 Lectures",
+        "channelTitle": "CS50",
+        "videoCount": 13,
+        "url": "https://www.youtube.com/playlist?list=PLhQjrBD2T383q7Vn8QnTsVgSvyLpsqL_R",
+        "thumbnail": "https://i.ytimg.com/vi/h6lqxDwUmJQ/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLhQjrBD2T381WAHyx1pq-sBfykqMBI7V4",
+        "title": "CS50x 2024 Lectures",
+        "channelTitle": "CS50",
+        "videoCount": 12,
+        "url": "https://www.youtube.com/playlist?list=PLhQjrBD2T381WAHyx1pq-sBfykqMBI7V4",
+        "thumbnail": "https://i.ytimg.com/vi/3LPJfIKxwWc/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLXOJEg4xbr50",
+        "title": "CS50x en Español",
+        "channelTitle": "CS50",
+        "videoCount": 13,
+        "url": "https://www.youtube.com/playlist?list=PLXOJEg4xbr50",
+        "thumbnail": "https://i.ytimg.com/vi/MU_Q6fNZUK8/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLhQjrBD2T3817j24-GogXmWqO5Q5vYy0V",
+        "title": "CS50's Introduction to Programming with Python (CS50P) 2022",
+        "channelTitle": "CS50",
+        "videoCount": 11,
+        "url": "https://www.youtube.com/playlist?list=PLhQjrBD2T3817j24-GogXmWqO5Q5vYy0V",
+        "thumbnail": "https://i.ytimg.com/vi/OvKCESUCWII/mqdefault.jpg",
+        "matchesChannelHint": true
+      }
+    ]
+  },
+  {
+    "id": "p-3b1b-la",
+    "catalogTitle": "Essence of Linear Algebra",
+    "category": "Math & Statistics",
+    "channelHint": "3Blue1Brown",
+    "searchQuery": "Essence of linear algebra",
+    "candidates": [
+      {
+        "playlistId": "PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+        "title": "Essence of linear algebra",
+        "channelTitle": "3Blue1Brown",
+        "videoCount": 16,
+        "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab",
+        "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICOqwiNsFEAE=&rs=AOn4CLB4O6cKiyp236MG3Sja6zY4xsA1mA&v=1533155434",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLMRyVGZ4EO0bvT-7HU2o918-DnE5IFnbh",
+        "title": "Essence of linear algebra",
+        "channelTitle": "Augustlol",
+        "videoCount": 17,
+        "url": "https://www.youtube.com/playlist?list=PLMRyVGZ4EO0bvT-7HU2o918-DnE5IFnbh",
+        "thumbnail": "https://i.ytimg.com/vi/kjBOesZCoqc/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL0-GT3co4r2y2YErbmuJw2L5tW4Ew2O5B",
+        "title": "3Blue1Brown: Linear Alg",
+        "channelTitle": "imightberong",
+        "videoCount": 15,
+        "url": "https://www.youtube.com/playlist?list=PL0-GT3co4r2y2YErbmuJw2L5tW4Ew2O5B",
+        "thumbnail": "https://i.ytimg.com/vi/kjBOesZCoqc/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLeIm2H-ScmLUcd64p-Q1S-cyLo1EFrEka",
+        "title": "Linear Algebra by 3Blue1Brown",
+        "channelTitle": "Seattle Applied Deep Learning",
+        "videoCount": 16,
+        "url": "https://www.youtube.com/playlist?list=PLeIm2H-ScmLUcd64p-Q1S-cyLo1EFrEka",
+        "thumbnail": "https://i.ytimg.com/vi/kjBOesZCoqc/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLZp3DBBJWHBSq1N-pPKJRn8m3ox4y-0rR",
+        "title": "Essence of linear algebra",
+        "channelTitle": "kune",
+        "videoCount": 16,
+        "url": "https://www.youtube.com/playlist?list=PLZp3DBBJWHBSq1N-pPKJRn8m3ox4y-0rR",
+        "thumbnail": "https://i.ytimg.com/vi/fNk_zzaMoSs/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-3b1b-nn",
+    "catalogTitle": "Neural Networks (3Blue1Brown)",
+    "category": "AI & ML",
+    "channelHint": "3Blue1Brown",
+    "searchQuery": "Neural networks deep learning chapters",
+    "candidates": [
+      {
+        "playlistId": "PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi",
+        "title": "Neural networks",
+        "channelTitle": "3Blue1Brown",
+        "videoCount": 10,
+        "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi",
+        "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICNGyiNsFEAE=&rs=AOn4CLAKA6yHEkRm2VDlftVdQu2lFy7rEA&v=1533155665",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLblh5JKOoLUIxGDQs4LFFD--41Vzf-ME1",
+        "title": "Neural Networks / Deep Learning",
+        "channelTitle": "StatQuest with Josh Starmer",
+        "videoCount": 33,
+        "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUIxGDQs4LFFD--41Vzf-ME1",
+        "thumbnail": "https://i.ytimg.com/vi/zxagGtF9MeU/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLxCzCOWd7aiHQ9Qyo70JCTkTxczPnVC6s",
+        "title": "Deep Learning (ANN, RNN, Tranformers, RNN)",
+        "channelTitle": "Gate Smashers",
+        "videoCount": 36,
+        "url": "https://www.youtube.com/playlist?list=PLxCzCOWd7aiHQ9Qyo70JCTkTxczPnVC6s",
+        "thumbnail": "https://i.ytimg.com/vi/lXtckbkqjmw/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLKnIA16_RmvYuZauWaPlRTC54KxSNLtNn",
+        "title": "100 Days of Deep Learning",
+        "channelTitle": "CampusX",
+        "videoCount": 84,
+        "url": "https://www.youtube.com/playlist?list=PLKnIA16_RmvYuZauWaPlRTC54KxSNLtNn",
+        "thumbnail": "https://i.ytimg.com/vi/2dH_qjc9mFg/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLkDaE6sCZn6Ec-XTbcX1uRg2_u4xOEky0",
+        "title": "Neural Networks and Deep Learning (Course 1 of the Deep Learning Specialization)",
+        "channelTitle": "DeepLearningAI",
+        "videoCount": 43,
+        "url": "https://www.youtube.com/playlist?list=PLkDaE6sCZn6Ec-XTbcX1uRg2_u4xOEky0",
+        "thumbnail": "https://i.ytimg.com/vi/CS4cs9xVecg/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-3b1b-calc",
+    "catalogTitle": "Essence of Calculus",
+    "category": "Math & Statistics",
+    "channelHint": "3Blue1Brown",
+    "searchQuery": "Essence of calculus",
+    "candidates": [
+      {
+        "playlistId": "PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+        "title": "Essence of calculus",
+        "channelTitle": "3Blue1Brown",
+        "videoCount": 12,
+        "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr",
+        "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDMsr9K-rj53DwVRMYO3t5Yr/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICIuyiNsFEAE=&rs=AOn4CLApy89RJ4Tcha7bf7rDwhMFtoOSLg&v=1533155595",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PL0-GT3co4r2wlh6UHTUeQsrf3mlS2lk6x",
+        "title": "3Blue1Brown: Calculus",
+        "channelTitle": "imightberong",
+        "videoCount": 11,
+        "url": "https://www.youtube.com/playlist?list=PL0-GT3co4r2wlh6UHTUeQsrf3mlS2lk6x",
+        "thumbnail": "https://i.ytimg.com/vi/WUvTyaaNkzM/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLtp5ZM1VZTVHK4xCT-8Rkw9N4I_HrVc7Z",
+        "title": "Essence of calculus (3Blue1Brown)",
+        "channelTitle": "WeLearn",
+        "videoCount": 12,
+        "url": "https://www.youtube.com/playlist?list=PLtp5ZM1VZTVHK4xCT-8Rkw9N4I_HrVc7Z",
+        "thumbnail": "https://i.ytimg.com/vi/WUvTyaaNkzM/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLdlPA9pGVVtZtmYfyrrA7ZXXF9dpGopCh",
+        "title": "Essence of Calculus(3Blue1Brown)",
+        "channelTitle": "Jan Arias",
+        "videoCount": 12,
+        "url": "https://www.youtube.com/playlist?list=PLdlPA9pGVVtZtmYfyrrA7ZXXF9dpGopCh",
+        "thumbnail": "https://i.ytimg.com/vi/WUvTyaaNkzM/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLuuPfScgaEj3FBgcybZTfSHghQdqQY6fd",
+        "title": "Essence of Calculus | 3Blue1Brown",
+        "channelTitle": "Pyroxxene",
+        "videoCount": 12,
+        "url": "https://www.youtube.com/playlist?list=PLuuPfScgaEj3FBgcybZTfSHghQdqQY6fd",
+        "thumbnail": "https://i.ytimg.com/vi/WUvTyaaNkzM/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-karpathy",
+    "catalogTitle": "Neural Networks: Zero to Hero",
+    "category": "AI & ML",
+    "channelHint": "Andrej Karpathy",
+    "searchQuery": "Neural Networks Zero to Hero",
+    "candidates": [
+      {
+        "playlistId": "PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ",
+        "title": "Neural Networks: Zero to Hero",
+        "channelTitle": "Andrej Karpathy",
+        "videoCount": 10,
+        "url": "https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ",
+        "thumbnail": "https://i.ytimg.com/vi/VMj-3S1tku0/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLXYLzZ3XzIbi4lL43O6fIU_ojuZwBO6vi",
+        "title": "Andrej Karpathy Neural Networks: Zero to Hero",
+        "channelTitle": "JetsonHacks",
+        "videoCount": 11,
+        "url": "https://www.youtube.com/playlist?list=PLXYLzZ3XzIbi4lL43O6fIU_ojuZwBO6vi",
+        "thumbnail": "https://i.ytimg.com/vi/VMj-3S1tku0/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLmfRrLDoAxjzeNNzbjHlUEwbVyaW-FyGQ",
+        "title": "Andrej Karpathy - Neural Networks: Zero to Hero",
+        "channelTitle": "Amit Parashar",
+        "videoCount": 11,
+        "url": "https://www.youtube.com/playlist?list=PLmfRrLDoAxjzeNNzbjHlUEwbVyaW-FyGQ",
+        "thumbnail": "https://i.ytimg.com/vi/VMj-3S1tku0/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi",
+        "title": "Neural networks",
+        "channelTitle": "3Blue1Brown",
+        "videoCount": 10,
+        "url": "https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi",
+        "thumbnail": "https://i9.ytimg.com/s_p/PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi/landscape_mqdefault.jpg?sqp=CJD0wNcGir7X7AMICNGyiNsFEAE=&rs=AOn4CLAKA6yHEkRm2VDlftVdQu2lFy7rEA&v=1533155665",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLKtaNnI_gMOA",
+        "title": "🧠 Deep Learning: Neural Networks Zero to Hero (Karpathy)",
+        "channelTitle": "Louis Mestas",
+        "videoCount": 10,
+        "url": "https://www.youtube.com/playlist?list=PLKtaNnI_gMOA",
+        "thumbnail": "https://i.ytimg.com/vi/VMj-3S1tku0/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-sq-stats",
+    "catalogTitle": "Statistics Fundamentals",
+    "category": "Math & Statistics",
+    "channelHint": "StatQuest with Josh Starmer",
+    "searchQuery": "Statistics Fundamentals",
+    "candidates": [
+      {
+        "playlistId": "PLblh5JKOoLUK0FLuzwntyYI10UQFUhsY9",
+        "title": "Statistics Fundamentals",
+        "channelTitle": "StatQuest with Josh Starmer",
+        "videoCount": 62,
+        "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUK0FLuzwntyYI10UQFUhsY9",
+        "thumbnail": "https://i.ytimg.com/vi/qBigTkBLU6g/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLunlGNVWDAaY7AeDDzTeu4-DD3g7zmAXs",
+        "title": "Statistics for Data Analytics/ Data Science | Complete Statistics Tutorial",
+        "channelTitle": "Tech Classes",
+        "videoCount": 34,
+        "url": "https://www.youtube.com/playlist?list=PLunlGNVWDAaY7AeDDzTeu4-DD3g7zmAXs",
+        "thumbnail": "https://i.ytimg.com/vi/o7WkGYIPUM8/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL0o_zxa4K1BVsziIRdfv4Hl4UIqDZhXWV",
+        "title": "Statistics",
+        "channelTitle": "The Organic Chemistry Tutor",
+        "videoCount": 102,
+        "url": "https://www.youtube.com/playlist?list=PL0o_zxa4K1BVsziIRdfv4Hl4UIqDZhXWV",
+        "thumbnail": "https://i.ytimg.com/vi/XZo4xyJXCak/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLl3-0Xe_motQ0L0i1Gakdjm-2wD70adSR",
+        "title": "Statistics Fundamentals | Free Course",
+        "channelTitle": "Corporate Finance Institute",
+        "videoCount": 8,
+        "url": "https://www.youtube.com/playlist?list=PLl3-0Xe_motQ0L0i1Gakdjm-2wD70adSR",
+        "thumbnail": "https://i.ytimg.com/vi/aMsLvzEGQew/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL5102DFDC6790F3D0",
+        "title": "Statistics (Full Length Videos)",
+        "channelTitle": "Professor Leonard",
+        "videoCount": 28,
+        "url": "https://www.youtube.com/playlist?list=PL5102DFDC6790F3D0",
+        "thumbnail": "https://i.ytimg.com/vi/9FtHB7V14Fo/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-sq-ml",
+    "catalogTitle": "Machine Learning (StatQuest)",
+    "category": "AI & ML",
+    "channelHint": "StatQuest with Josh Starmer",
+    "searchQuery": "StatQuest Machine Learning",
+    "candidates": [
+      {
+        "playlistId": "PLblh5JKOoLUICTaGLRoHQDuF_7q2GfuJF",
+        "title": "Machine Learning",
+        "channelTitle": "StatQuest with Josh Starmer",
+        "videoCount": 106,
+        "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUICTaGLRoHQDuF_7q2GfuJF",
+        "thumbnail": "https://i.ytimg.com/vi/Gv9_4yMHFhI/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLblh5JKOoLUIcdlgu78MnlATeyx4cEVeR",
+        "title": "StatQuest",
+        "channelTitle": "StatQuest with Josh Starmer",
+        "videoCount": 178,
+        "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUIcdlgu78MnlATeyx4cEVeR",
+        "thumbnail": "https://i.ytimg.com/vi/FgakZw6K1QQ/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLhSqZY-Zd9vGMMNbEF0BqH0pp34Aawcaz",
+        "title": "Machine learning Statquest",
+        "channelTitle": "Arbaz",
+        "videoCount": 96,
+        "url": "https://www.youtube.com/playlist?list=PLhSqZY-Zd9vGMMNbEF0BqH0pp34Aawcaz",
+        "thumbnail": "https://i.ytimg.com/vi/Gv9_4yMHFhI/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLblh5JKOoLUK0FLuzwntyYI10UQFUhsY9",
+        "title": "Statistics Fundamentals",
+        "channelTitle": "StatQuest with Josh Starmer",
+        "videoCount": 62,
+        "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUK0FLuzwntyYI10UQFUhsY9",
+        "thumbnail": "https://i.ytimg.com/vi/qBigTkBLU6g/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLblh5JKOoLUIxGDQs4LFFD--41Vzf-ME1",
+        "title": "Neural Networks / Deep Learning",
+        "channelTitle": "StatQuest with Josh Starmer",
+        "videoCount": 33,
+        "url": "https://www.youtube.com/playlist?list=PLblh5JKOoLUIxGDQs4LFFD--41Vzf-ME1",
+        "thumbnail": "https://i.ytimg.com/vi/zxagGtF9MeU/mqdefault.jpg",
+        "matchesChannelHint": true
+      }
+    ]
+  },
+  {
+    "id": "p-mit-1806",
+    "catalogTitle": "MIT 18.06 Linear Algebra Lectures",
+    "category": "Math & Statistics",
+    "channelHint": "MIT OpenCourseWare",
+    "searchQuery": "18.06 Linear Algebra Gilbert Strang lectures",
+    "candidates": [
+      {
+        "playlistId": "PLE7DDD91010BC51F8",
+        "title": "MIT 18.06 Linear Algebra, Spring 2005",
+        "channelTitle": "MIT OpenCourseWare",
+        "videoCount": 36,
+        "url": "https://www.youtube.com/playlist?list=PLE7DDD91010BC51F8",
+        "thumbnail": "https://i.ytimg.com/vi/ZK3O402wf1c/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PL49CF3715CB9EF31D",
+        "title": "Gilbert Strang lectures on Linear Algebra (MIT)",
+        "channelTitle": "Robert Talbert",
+        "videoCount": 35,
+        "url": "https://www.youtube.com/playlist?list=PL49CF3715CB9EF31D",
+        "thumbnail": "https://i.ytimg.com/vi/ZK3O402wf1c/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL221E2BBF13BECF6C",
+        "title": "MIT 18.06SC Linear Algebra, Fall 2011",
+        "channelTitle": "MIT OpenCourseWare",
+        "videoCount": 74,
+        "url": "https://www.youtube.com/playlist?list=PL221E2BBF13BECF6C",
+        "thumbnail": "https://i.ytimg.com/vi/uNKDw46_Ev4/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PL41A1C92F1766D4AB",
+        "title": "Prof. Gilbert Strang - Linear Algebra Lectures",
+        "channelTitle": "doubllle",
+        "videoCount": 36,
+        "url": "https://www.youtube.com/playlist?list=PL41A1C92F1766D4AB",
+        "thumbnail": "https://i.ytimg.com/vi/6-wh6yvk6uc/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLUl4u3cNGP63oMNUHXqIUcrkS2PivhN3k",
+        "title": "MIT 18.065 Matrix Methods in Data Analysis, Signal Processing, and Machine Learning, Spring 2018",
+        "channelTitle": "MIT OpenCourseWare",
+        "videoCount": 36,
+        "url": "https://www.youtube.com/playlist?list=PLUl4u3cNGP63oMNUHXqIUcrkS2PivhN3k",
+        "thumbnail": "https://i.ytimg.com/vi/Cx5Z-OslNWE/mqdefault.jpg",
+        "matchesChannelHint": true
+      }
+    ]
+  },
+  {
+    "id": "p-mit-006",
+    "catalogTitle": "MIT 6.006 Algorithms Lectures",
+    "category": "Computer Science",
+    "channelHint": "MIT OpenCourseWare",
+    "searchQuery": "6.006 Introduction to Algorithms lectures",
+    "candidates": [
+      {
+        "playlistId": "PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY",
+        "title": "MIT 6.006 Introduction to Algorithms, Spring 2020",
+        "channelTitle": "MIT OpenCourseWare",
+        "videoCount": 32,
+        "url": "https://www.youtube.com/playlist?list=PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY",
+        "thumbnail": "https://i.ytimg.com/vi/ZA-tUyM_y7s/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLUl4u3cNGP61Oq3tWYp6V_F-5jb5L2iHb",
+        "title": "MIT 6.006 Introduction to Algorithms, Fall 2011",
+        "channelTitle": "MIT OpenCourseWare",
+        "videoCount": 47,
+        "url": "https://www.youtube.com/playlist?list=PLUl4u3cNGP61Oq3tWYp6V_F-5jb5L2iHb",
+        "thumbnail": "https://i.ytimg.com/vi/moPtwq_cVH8/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLxR_6l4pE6quoVjSj_ShLfIftUpd_e5yo",
+        "title": "Introduction to algorithms and analysis",
+        "channelTitle": "Introduction to Algorithms and Analysis",
+        "videoCount": 60,
+        "url": "https://www.youtube.com/playlist?list=PLxR_6l4pE6quoVjSj_ShLfIftUpd_e5yo",
+        "thumbnail": "https://i.ytimg.com/vi/oZgbwa8lvDE/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLBbCu3SnCcwKwxI0Xo_OsaeMrYKZHJ6kk",
+        "title": "MIT 6.006- Introduction to Algorithms",
+        "channelTitle": "David Franz",
+        "videoCount": 24,
+        "url": "https://www.youtube.com/playlist?list=PLBbCu3SnCcwKwxI0Xo_OsaeMrYKZHJ6kk",
+        "thumbnail": "https://i.ytimg.com/vi/HtSuA80QTyo/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLFXdam636ef0nESQ6ya4fDA0Th43foCDl",
+        "title": "MIT 6.006 Introduction to Algorithms",
+        "channelTitle": "THSurvivalGear",
+        "videoCount": 47,
+        "url": "https://www.youtube.com/playlist?list=PLFXdam636ef0nESQ6ya4fDA0Th43foCDl",
+        "thumbnail": "https://i.ytimg.com/vi/HtSuA80QTyo/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-cs229",
+    "catalogTitle": "Stanford CS229 Machine Learning (Andrew Ng)",
+    "category": "AI & ML",
+    "channelHint": "Stanford Online",
+    "searchQuery": "CS229 Machine Learning Andrew Ng lectures",
+    "candidates": [
+      {
+        "playlistId": "PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU",
+        "title": "Stanford CS229: Machine Learning led by Andrew Ng | Autumn 2018",
+        "channelTitle": "Stanford Online",
+        "videoCount": 21,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU",
+        "thumbnail": "https://i.ytimg.com/vi/jGwO_UgTS7I/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLkDaE6sCZn6FNC6YRfRQc_FbeQrF8BwGI",
+        "title": "Machine Learning Specialization by Andrew Ng",
+        "channelTitle": "DeepLearningAI",
+        "videoCount": 41,
+        "url": "https://www.youtube.com/playlist?list=PLkDaE6sCZn6FNC6YRfRQc_FbeQrF8BwGI",
+        "thumbnail": "https://i.ytimg.com/vi/vStJoetOxJg/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLaqpC4kq8Gpw",
+        "title": "Stanford CS229 Machine Learning | Spring 2026",
+        "channelTitle": "Stanford Online",
+        "videoCount": 17,
+        "url": "https://www.youtube.com/playlist?list=PLaqpC4kq8Gpw",
+        "thumbnail": "https://i.ytimg.com/vi/DATnpGoGhM8/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLoROMvodv4rNH7qL6-efu_q2_bPuy0adh",
+        "title": "Stanford CS229: Machine Learning Course | Summer 2019 (Anand Avati)",
+        "channelTitle": "Stanford Online",
+        "videoCount": 23,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rNH7qL6-efu_q2_bPuy0adh",
+        "thumbnail": "https://i.ytimg.com/vi/KzH1ovd4Ots/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLA89DCFA6ADACE599",
+        "title": "Lecture Collection | Machine Learning",
+        "channelTitle": "Stanford",
+        "videoCount": 20,
+        "url": "https://www.youtube.com/playlist?list=PLA89DCFA6ADACE599",
+        "thumbnail": "https://i.ytimg.com/vi/UzxYlbK2c7E/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-cs231n",
+    "catalogTitle": "Stanford CS231n Convolutional Neural Networks",
+    "category": "AI & ML",
+    "channelHint": "Stanford University School of Engineering",
+    "searchQuery": "CS231n convolutional neural networks lectures",
+    "candidates": [
+      {
+        "playlistId": "PLoROMvodv4rOmsNzYBMe0gJY2XS8AQg16",
+        "title": "Stanford CS231N Deep Learning for Computer Vision I 2025",
+        "channelTitle": "Stanford Online",
+        "videoCount": 18,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rOmsNzYBMe0gJY2XS8AQg16",
+        "thumbnail": "https://i.ytimg.com/vi/2fq9wYslV0A/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv",
+        "title": "Lecture Collection | Convolutional Neural Networks for Visual Recognition (Spring 2017)",
+        "channelTitle": "Stanford University School of Engineering",
+        "videoCount": 16,
+        "url": "https://www.youtube.com/playlist?list=PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv",
+        "thumbnail": "https://i.ytimg.com/vi/vT1JzLTH4G4/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLGP2q2bIgaNzhSv4yMX6yPxwQ0mk4CPwS",
+        "title": "CNN CAMPUSX",
+        "channelTitle": "Sandeep Khanna",
+        "videoCount": 9,
+        "url": "https://www.youtube.com/playlist?list=PLGP2q2bIgaNzhSv4yMX6yPxwQ0mk4CPwS",
+        "thumbnail": "https://i.ytimg.com/vi/hDVFXf74P-U/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLkDaE6sCZn6Gl29AoE31iwdVwSG-KnDzF",
+        "title": "Convolutional Neural Networks (Course 4 of the Deep Learning Specialization)",
+        "channelTitle": "DeepLearningAI",
+        "videoCount": 42,
+        "url": "https://www.youtube.com/playlist?list=PLkDaE6sCZn6Gl29AoE31iwdVwSG-KnDzF",
+        "thumbnail": "https://i.ytimg.com/vi/ArPaAX_PhIs/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC",
+        "title": "CS231n Winter 2016",
+        "channelTitle": "Andrej Karpathy",
+        "videoCount": 15,
+        "url": "https://www.youtube.com/playlist?list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC",
+        "thumbnail": "https://i.ytimg.com/vi/NfnWJUyUJYU/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-cs224n",
+    "catalogTitle": "Stanford CS224N NLP with Deep Learning",
+    "category": "AI & ML",
+    "channelHint": "Stanford Online",
+    "searchQuery": "CS224N NLP with deep learning lectures",
+    "candidates": [
+      {
+        "playlistId": "PLoROMvodv4rOaMFbaqxPDoLWjDaRAdP9D",
+        "title": "Stanford CS224N Natural Language Processing with Deep Learning I Spring 2024 I Professor Christopher Manning",
+        "channelTitle": "Stanford Online",
+        "videoCount": 23,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rOaMFbaqxPDoLWjDaRAdP9D",
+        "thumbnail": "https://i.ytimg.com/vi/DzpHeXVSC5I/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLoROMvodv4rMFqRtEuo6SGjY4XbRIVRd4",
+        "title": "Stanford CS224N: Natural Language Processing with Deep Learning | 2023",
+        "channelTitle": "Stanford Online",
+        "videoCount": 23,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rMFqRtEuo6SGjY4XbRIVRd4",
+        "thumbnail": "https://i.ytimg.com/vi/rmVRLeJRkl4/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLoROMvodv4rOhcuXMZkNm7j3fVwBBY42z",
+        "title": "Stanford CS224N: Natural Language Processing with Deep Learning Course | Winter 2019",
+        "channelTitle": "Stanford Online",
+        "videoCount": 22,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rOhcuXMZkNm7j3fVwBBY42z",
+        "thumbnail": "https://i.ytimg.com/vi/8rXD5-xhemo/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ",
+        "title": "Stanford CS224N: Natural Language Processing with Deep Learning | Winter 2021",
+        "channelTitle": "Stanford Online",
+        "videoCount": 23,
+        "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ",
+        "thumbnail": "https://i.ytimg.com/vi/rmVRLeJRkl4/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PL613dYIGMXoZ0Wl6tj8VvHaFUTAWE8fbW",
+        "title": "Stanford CS224N NLP with Deep Learning | 2023",
+        "channelTitle": "Zafar Mahmood",
+        "videoCount": 11,
+        "url": "https://www.youtube.com/playlist?list=PL613dYIGMXoZ0Wl6tj8VvHaFUTAWE8fbW",
+        "thumbnail": "https://i.ytimg.com/vi/LWMzyfvuehA/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-crashcourse-cs",
+    "catalogTitle": "Crash Course Computer Science",
+    "category": "Computer Science",
+    "channelHint": "CrashCourse",
+    "searchQuery": "Crash Course Computer Science",
+    "candidates": [
+      {
+        "playlistId": "PL8dPuuaLjXtNlUrzyH5r6jN9ulIgZBpdo",
+        "title": "Computer Science",
+        "channelTitle": "CrashCourse",
+        "videoCount": 41,
+        "url": "https://www.youtube.com/playlist?list=PL8dPuuaLjXtNlUrzyH5r6jN9ulIgZBpdo",
+        "thumbnail": "https://i.ytimg.com/vi/tpIctyqH29Q/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLH2l6uzC4UEW0s7-KewFLBC1D0l6XRfye",
+        "title": "Crash Course: Computer Science",
+        "channelTitle": "MrLeoni2",
+        "videoCount": 41,
+        "url": "https://www.youtube.com/playlist?list=PLH2l6uzC4UEW0s7-KewFLBC1D0l6XRfye",
+        "thumbnail": "https://i.ytimg.com/vi/tpIctyqH29Q/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLclmJTk42QP6BtSpjRyaVl8jz0kkZLOcg",
+        "title": "Crash Course Computer Science Playlist!",
+        "channelTitle": "CountryGal Megg",
+        "videoCount": 63,
+        "url": "https://www.youtube.com/playlist?list=PLclmJTk42QP6BtSpjRyaVl8jz0kkZLOcg",
+        "thumbnail": "https://i.ytimg.com/vi/tpIctyqH29Q/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLME-KWdxI8dcaHSzzRsNuOLXtM2Ep_C7a",
+        "title": "Crash Course Computer Science",
+        "channelTitle": "Geek Gurl Diaries",
+        "videoCount": 12,
+        "url": "https://www.youtube.com/playlist?list=PLME-KWdxI8dcaHSzzRsNuOLXtM2Ep_C7a",
+        "thumbnail": "https://i.ytimg.com/vi/tpIctyqH29Q/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLq0Imqvdtkf50DOOpC47G5MXTc3GxUFC4",
+        "title": "Carrie Anne Philbin Crash Course in Computer Science",
+        "channelTitle": "Mrs Staves Comp Sci",
+        "videoCount": 40,
+        "url": "https://www.youtube.com/playlist?list=PLq0Imqvdtkf50DOOpC47G5MXTc3GxUFC4",
+        "thumbnail": "https://i.ytimg.com/vi/tpIctyqH29Q/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-corey-py",
+    "catalogTitle": "Python Programming Beginner Tutorials",
+    "category": "Programming",
+    "channelHint": "Corey Schafer",
+    "searchQuery": "Python Programming Beginner Tutorials",
+    "candidates": [
+      {
+        "playlistId": "PL-osiE80TeTskrapNbzXhwoFUiLCjGgY7",
+        "title": "Python Programming Beginner Tutorials",
+        "channelTitle": "Corey Schafer",
+        "videoCount": 26,
+        "url": "https://www.youtube.com/playlist?list=PL-osiE80TeTskrapNbzXhwoFUiLCjGgY7",
+        "thumbnail": "https://i.ytimg.com/vi/YYXdXT2l-Gg/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0",
+        "title": "Python Language Full Course (2026)",
+        "channelTitle": "Shradha Khapra",
+        "videoCount": 9,
+        "url": "https://www.youtube.com/playlist?list=PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0",
+        "thumbnail": "https://i.ytimg.com/vi/t2_Q2BRzeEE/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+        "title": "Python for Beginners (Full Course) | #100DaysOfCode Programming Tutorial in Hindi",
+        "channelTitle": "CodeWithHarry",
+        "videoCount": 100,
+        "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+        "thumbnail": "https://i.ytimg.com/vi/7wnove7K-ZQ/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLsyeobzWxl7poL9JTVyndKe62ieoN-MZ3",
+        "title": "Python for Beginners (Full Course) | Programming Tutorial",
+        "channelTitle": "Telusko",
+        "videoCount": 124,
+        "url": "https://www.youtube.com/playlist?list=PLsyeobzWxl7poL9JTVyndKe62ieoN-MZ3",
+        "thumbnail": "https://i.ytimg.com/vi/QXeEoD0pB3E/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLxCzCOWd7aiEb4apyN1Y8mD-QuUTr3SPQ",
+        "title": "Python for Beginners",
+        "channelTitle": "Gate Smashers",
+        "videoCount": 88,
+        "url": "https://www.youtube.com/playlist?list=PLxCzCOWd7aiEb4apyN1Y8mD-QuUTr3SPQ",
+        "thumbnail": "https://i.ytimg.com/vi/LNteQNuGF-E/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-netninja-js",
+    "catalogTitle": "Modern JavaScript Tutorial",
+    "category": "Web Development",
+    "channelHint": "Net Ninja",
+    "searchQuery": "Modern JavaScript tutorial",
+    "candidates": [
+      {
+        "playlistId": "PL4cUxeGkcC9haFPT7J25Q9GRB_ZkFrQAc",
+        "title": "Modern JavaScript Tutorial",
+        "channelTitle": "Net Ninja",
+        "videoCount": 6,
+        "url": "https://www.youtube.com/playlist?list=PL4cUxeGkcC9haFPT7J25Q9GRB_ZkFrQAc",
+        "thumbnail": "https://i.ytimg.com/vi/iWOYAxlnaww/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PL1BztTYDF-QPrMlSSMvYsjpKCUf36w7VI",
+        "title": "🔥 JavaScript Mastery Course (2026) | Modern JavaScript ES6+ from Beginner to Advanced",
+        "channelTitle": "procademy",
+        "videoCount": 99,
+        "url": "https://www.youtube.com/playlist?list=PL1BztTYDF-QPrMlSSMvYsjpKCUf36w7VI",
+        "thumbnail": "https://i.ytimg.com/vi/CSo8pb6T7Tk/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLGjplNEQ1it_oTvuLRNqXfz_v_0pq6unW",
+        "title": "JavaScript Full Course (2025-26) - Beginners to Pro",
+        "channelTitle": "Shradha Khapra",
+        "videoCount": 14,
+        "url": "https://www.youtube.com/playlist?list=PLGjplNEQ1it_oTvuLRNqXfz_v_0pq6unW",
+        "thumbnail": "https://i.ytimg.com/vi/ajdRvxDWH4w/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLu0W_9lII9ahR1blWXxgSlL4y9iQBnLpR",
+        "title": "JavaScript Tutorials for Beginners in Hindi",
+        "channelTitle": "CodeWithHarry",
+        "videoCount": 103,
+        "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9ahR1blWXxgSlL4y9iQBnLpR",
+        "thumbnail": "https://i.ytimg.com/vi/ER9SspLe4Hg/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLwGdqUZWnOp19VX-DM4oHtmWhDfWblFh-",
+        "title": "Modern JavaScript ES6 Tutorial in Hindi in 2020",
+        "channelTitle": "Thapa Technical",
+        "videoCount": 24,
+        "url": "https://www.youtube.com/playlist?list=PLwGdqUZWnOp19VX-DM4oHtmWhDfWblFh-",
+        "thumbnail": "https://i.ytimg.com/vi/JTcjSvFptEM/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-netninja-react",
+    "catalogTitle": "React Tutorial for Beginners",
+    "category": "Web Development",
+    "channelHint": "Net Ninja",
+    "searchQuery": "React tutorial for beginners",
+    "candidates": [
+      {
+        "playlistId": "PLu0W_9lII9agx66oZnT6IyhcMIbUMNMdt",
+        "title": "React Js Tutorials in Hindi",
+        "channelTitle": "CodeWithHarry",
+        "videoCount": 78,
+        "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9agx66oZnT6IyhcMIbUMNMdt",
+        "thumbnail": "https://i.ytimg.com/vi/-mJFZp84TIY/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL8p2I9GklV463WUKdVzUZ17IDZ3SwoSTu",
+        "title": "React JS 19 tutorial in Hindi 2026",
+        "channelTitle": "Code Step By Step",
+        "videoCount": 178,
+        "url": "https://www.youtube.com/playlist?list=PL8p2I9GklV463WUKdVzUZ17IDZ3SwoSTu",
+        "thumbnail": "https://i.ytimg.com/vi/_cl4gIpfjq0/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLC3y8-rFHvwgg3vaYJgHGnModB54rxOk3",
+        "title": "ReactJS Tutorial for Beginners",
+        "channelTitle": "Codevolution",
+        "videoCount": 120,
+        "url": "https://www.youtube.com/playlist?list=PLC3y8-rFHvwgg3vaYJgHGnModB54rxOk3",
+        "thumbnail": "https://i.ytimg.com/vi/QFaFIcGhPoM/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL8p2I9GklV47BCAjiCtuV_liN9IwAl8pM",
+        "title": "React tutorial for beginners in Hindi",
+        "channelTitle": "Code Step By Step",
+        "videoCount": 120,
+        "url": "https://www.youtube.com/playlist?list=PL8p2I9GklV47BCAjiCtuV_liN9IwAl8pM",
+        "thumbnail": "https://i.ytimg.com/vi/9Tz2tY-ZEwQ/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PL0b6OzIxLPbzGtrDFaF6uoC33cPNHDmeV",
+        "title": "🚀 ReactJS 19 Tutorial Course for Beginner to advanced in Hindi / Urdu",
+        "channelTitle": "YOOBABA",
+        "videoCount": 38,
+        "url": "https://www.youtube.com/playlist?list=PL0b6OzIxLPbzGtrDFaF6uoC33cPNHDmeV",
+        "thumbnail": "https://i.ytimg.com/vi/d4LvlpMhKgk/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-leonard-calc1",
+    "catalogTitle": "Calculus 1 (Professor Leonard)",
+    "category": "Math & Statistics",
+    "channelHint": "Professor Leonard",
+    "searchQuery": "Calculus 1 lectures",
+    "candidates": [
+      {
+        "playlistId": "PLKyB9RYzaFRgKyh12Ij3_-m_T2te6JFxB",
+        "title": "MTH5101 | Calculus 1",
+        "channelTitle": "Virtual University of Pakistan",
+        "videoCount": 150,
+        "url": "https://www.youtube.com/playlist?list=PLKyB9RYzaFRgKyh12Ij3_-m_T2te6JFxB",
+        "thumbnail": "https://i.ytimg.com/vi/cUnf0Fi-wbI/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLF797E961509B4EB5",
+        "title": "Calculus 1 (Full Length Videos)",
+        "channelTitle": "Professor Leonard",
+        "videoCount": 32,
+        "url": "https://www.youtube.com/playlist?list=PLF797E961509B4EB5",
+        "thumbnail": "https://i.ytimg.com/vi/fYyARMqiaag/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLl-Np5U6u5E54PygbTaBsSzpSmVQVeJHq",
+        "title": "Calculus 1 Video Lectures",
+        "channelTitle": "Math with Professor V",
+        "videoCount": 95,
+        "url": "https://www.youtube.com/playlist?list=PLl-Np5U6u5E54PygbTaBsSzpSmVQVeJHq",
+        "thumbnail": "https://i.ytimg.com/vi/0ejLyTHvgjc/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLF1D-hulhAg5cBHf27fB42lf5ZcAaPwVO",
+        "title": "REAL NUMBERS, LIMITS, AND, CONTINUITY\nChapter # 01 (Calculus and analytic Geometry)\nBy SM Yusuf",
+        "channelTitle": "Maths by Prof. Iqbal Haider Bhatti",
+        "videoCount": 33,
+        "url": "https://www.youtube.com/playlist?list=PLF1D-hulhAg5cBHf27fB42lf5ZcAaPwVO",
+        "thumbnail": "https://i.ytimg.com/vi/fv2TmKnsgBY/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLGtPmu26QR_Xo7Xm_-f6oHePwvuoxfmI-",
+        "title": "Calculus 1 - MTH101",
+        "channelTitle": "The Mathematics Outlet",
+        "videoCount": 50,
+        "url": "https://www.youtube.com/playlist?list=PLGtPmu26QR_Xo7Xm_-f6oHePwvuoxfmI-",
+        "thumbnail": "https://i.ytimg.com/vi/Iwl1cDfAl5I/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-khan-stats",
+    "catalogTitle": "Statistics and Probability (Khan Academy)",
+    "category": "Math & Statistics",
+    "channelHint": "Khan Academy",
+    "searchQuery": "Statistics and probability",
+    "candidates": [
+      {
+        "playlistId": "PLxCzCOWd7aiFjZP4z1_3Kr3m3J5wu5Q8V",
+        "title": "Probability and Statistics (Complete Playlist)",
+        "channelTitle": "Gate Smashers",
+        "videoCount": 44,
+        "url": "https://www.youtube.com/playlist?list=PLxCzCOWd7aiFjZP4z1_3Kr3m3J5wu5Q8V",
+        "thumbnail": "https://i.ytimg.com/vi/Q_u3Lt5AV3c/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLclRfsTOSn-0teau1IIFb9FRU_jdVdUfc",
+        "title": "Probability and Statistics",
+        "channelTitle": "Knowledge Philosophy",
+        "videoCount": 132,
+        "url": "https://www.youtube.com/playlist?list=PLclRfsTOSn-0teau1IIFb9FRU_jdVdUfc",
+        "thumbnail": "https://i.ytimg.com/vi/Wput1UuRE7M/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8",
+        "title": "Statistics And Probability 2.0",
+        "channelTitle": "Dr.Gajendra Purohit",
+        "videoCount": 67,
+        "url": "https://www.youtube.com/playlist?list=PLU6SqdYcYsfJPF-4HphQQ8OceDtqhlSW8",
+        "thumbnail": "https://i.ytimg.com/vi/qNGDD_Rh8ps/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLGkgNnHca5KOXFfLMmu9LLSlSDXbaIQtJ",
+        "title": "Probability and Statistics Lectures| Basic Statistics |Basic Probability",
+        "channelTitle": "Lecturer Asad Ali ",
+        "videoCount": 31,
+        "url": "https://www.youtube.com/playlist?list=PLGkgNnHca5KOXFfLMmu9LLSlSDXbaIQtJ",
+        "thumbnail": "https://i.ytimg.com/vi/w8Eu5STY2wM/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK",
+        "title": "Statistics and Probability",
+        "channelTitle": "Dr.Gajendra Purohit",
+        "videoCount": 33,
+        "url": "https://www.youtube.com/playlist?list=PLU6SqdYcYsfLRq3tu-g_hvkHDcorrtcBK",
+        "thumbnail": "https://i.ytimg.com/vi/V3iEsLPAD68/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-cwh-py",
+    "catalogTitle": "Python Tutorial for Beginners (Hindi)",
+    "category": "Programming",
+    "channelHint": "CodeWithHarry",
+    "searchQuery": "Python tutorial for beginners Hindi",
+    "candidates": [
+      {
+        "playlistId": "PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+        "title": "Python for Beginners (Full Course) | #100DaysOfCode Programming Tutorial in Hindi",
+        "channelTitle": "CodeWithHarry",
+        "videoCount": 100,
+        "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg",
+        "thumbnail": "https://i.ytimg.com/vi/7wnove7K-ZQ/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLjVLYmrlmjGcQfNj_SLlLV4Ytf39f8BF7",
+        "title": "Complete Python Tutorial for Beginners to Advanced in Hindi 🔥",
+        "channelTitle": "WsCube Tech",
+        "videoCount": 91,
+        "url": "https://www.youtube.com/playlist?list=PLjVLYmrlmjGcQfNj_SLlLV4Ytf39f8BF7",
+        "thumbnail": "https://i.ytimg.com/vi/OZIRAavoGng/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0",
+        "title": "Python Language Full Course (2026)",
+        "channelTitle": "Shradha Khapra",
+        "videoCount": 9,
+        "url": "https://www.youtube.com/playlist?list=PLGjplNEQ1it8-0CmoljS5yeV-GlKSUEt0",
+        "thumbnail": "https://i.ytimg.com/vi/t2_Q2BRzeEE/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLu0W_9lII9agICnT8t4iYVSZ3eykIAOME",
+        "title": "Python Tutorials For Absolute Beginners In Hindi",
+        "channelTitle": "CodeWithHarry",
+        "videoCount": 129,
+        "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9agICnT8t4iYVSZ3eykIAOME",
+        "thumbnail": "https://i.ytimg.com/vi/aqvDTCpNRek/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PL0b6OzIxLPbz5blLyrQB25pmbHaWEfg7m",
+        "title": "Python Full Tutorial Course in Hindi / Urdu",
+        "channelTitle": "YOOBABA",
+        "videoCount": 80,
+        "url": "https://www.youtube.com/playlist?list=PL0b6OzIxLPbz5blLyrQB25pmbHaWEfg7m",
+        "thumbnail": "https://i.ytimg.com/vi/a3LWIZZQC3A/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  },
+  {
+    "id": "p-apna-dsa",
+    "catalogTitle": "Data Structures and Algorithms (Hindi)",
+    "category": "Computer Science",
+    "channelHint": "Apna College",
+    "searchQuery": "Data structures and algorithms Hindi",
+    "candidates": [
+      {
+        "playlistId": "PLu0W_9lII9ahIappRPN0MCAgtOu3lQjQi",
+        "title": "Data Structures and Algorithms Course in Hindi",
+        "channelTitle": "CodeWithHarry",
+        "videoCount": 92,
+        "url": "https://www.youtube.com/playlist?list=PLu0W_9lII9ahIappRPN0MCAgtOu3lQjQi",
+        "thumbnail": "https://i.ytimg.com/vi/5_5oE5lgrhw/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLPbgcxheSpE3NlJ30EDpxNYU6P2Jylns8",
+        "title": "Hindi Data Structures And Algorithms Tutorial Python",
+        "channelTitle": "codebasics Hindi",
+        "videoCount": 13,
+        "url": "https://www.youtube.com/playlist?list=PLPbgcxheSpE3NlJ30EDpxNYU6P2Jylns8",
+        "thumbnail": "https://i.ytimg.com/vi/scNEzQPL3X0/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLUhebcqFf6aHYUojqYufy5eXxLXVF6LyE",
+        "title": "Data Structures And Algorithms for beginners in Hindi",
+        "channelTitle": "Zeenat Hasan Academy",
+        "videoCount": 55,
+        "url": "https://www.youtube.com/playlist?list=PLUhebcqFf6aHYUojqYufy5eXxLXVF6LyE",
+        "thumbnail": "https://i.ytimg.com/vi/mH0lRS4ztgI/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLf0LpPWikpPfA_vez2NndnYuQy6WkpTzc",
+        "title": "Data Structures and Algorithms Course in Hindi using C - Free DSA Full Course",
+        "channelTitle": "DataFlair",
+        "videoCount": 34,
+        "url": "https://www.youtube.com/playlist?list=PLf0LpPWikpPfA_vez2NndnYuQy6WkpTzc",
+        "thumbnail": "https://i.ytimg.com/vi/0UZ_G2mcYVQ/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt",
+        "title": "Complete C++ DSA Course | Data Structures & Algorithms Playlist",
+        "channelTitle": "Apna College",
+        "videoCount": 144,
+        "url": "https://www.youtube.com/playlist?list=PLfqMhTWNBTe137I_EPQd34TsgV6IO55pt",
+        "thumbnail": "https://i.ytimg.com/vi/VTLCoHnyACE/mqdefault.jpg",
+        "matchesChannelHint": true
+      }
+    ]
+  },
+  {
+    "id": "p-jenny-dbms",
+    "catalogTitle": "DBMS Lectures",
+    "category": "Computer Science",
+    "channelHint": "Jenny's Lectures CS IT",
+    "searchQuery": "DBMS database management system lectures",
+    "candidates": [
+      {
+        "playlistId": "PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y",
+        "title": "DBMS (Database Management system) Complete Playlist",
+        "channelTitle": "Gate Smashers",
+        "videoCount": 140,
+        "url": "https://www.youtube.com/playlist?list=PLxCzCOWd7aiFAN6I8CuViBuCdJgiOkT2Y",
+        "thumbnail": "https://i.ytimg.com/vi/kBdlM6hNDAE/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLKyB9RYzaFRhZhcyMwFxDvWEvbs6i2QvG",
+        "title": "CS403 Database Management System",
+        "channelTitle": "Virtual University of Pakistan",
+        "videoCount": 45,
+        "url": "https://www.youtube.com/playlist?list=PLKyB9RYzaFRhZhcyMwFxDvWEvbs6i2QvG",
+        "thumbnail": "https://i.ytimg.com/vi/DWo6eYgCwRM/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLdo5W4Nhv31b33kF46f9aFjoJPOkdlsRc",
+        "title": "DBMS (Database Management System)",
+        "channelTitle": "Jenny's Lectures CS IT",
+        "videoCount": 24,
+        "url": "https://www.youtube.com/playlist?list=PLdo5W4Nhv31b33kF46f9aFjoJPOkdlsRc",
+        "thumbnail": "https://i.ytimg.com/vi/T7AxM7Vqvaw/mqdefault.jpg",
+        "matchesChannelHint": true
+      },
+      {
+        "playlistId": "PLBlnK6fEyqRiyryTrbKHX1Sh9luYI0dhX",
+        "title": "Database Management Systems (DBMS)",
+        "channelTitle": "Neso Academy",
+        "videoCount": 91,
+        "url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRiyryTrbKHX1Sh9luYI0dhX",
+        "thumbnail": "https://i.ytimg.com/vi/OMwgGL3lHlI/mqdefault.jpg",
+        "matchesChannelHint": false
+      },
+      {
+        "playlistId": "PLBlnK6fEyqRi_CUQ-FXxgzKQ1dwr_ZJWZ",
+        "title": "Database Management Systems",
+        "channelTitle": "Neso Academy",
+        "videoCount": 57,
+        "url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRi_CUQ-FXxgzKQ1dwr_ZJWZ",
+        "thumbnail": "https://i.ytimg.com/vi/6Iu45VZGQDk/mqdefault.jpg",
+        "matchesChannelHint": false
+      }
+    ]
+  }
+]
