@@ -57,6 +57,7 @@ import ProgressBar from '../components/ui/ProgressBar';
 import Modal from '../components/ui/Modal';
 import VisualDateTimePicker from '../components/ui/VisualDateTimePicker';
 import PdfReader from '../components/books/PdfReader';
+import ReadingSessionTimer from '../components/books/ReadingSessionTimer';
 import { scheduleClientReminder, cancelClientReminder } from '../utils/notificationService';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -2132,8 +2133,25 @@ const BookDetailPage = () => {
                 />
               </div>
 
-              {/* Page tracking inputs & notes toggle */}
-              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+              {/* Reading Session Timer & Page tracking inputs & notes toggle */}
+              <div className="flex items-center gap-2.5 flex-shrink-0 flex-wrap">
+                {/* Book Reading Session Focus Timer */}
+                <ReadingSessionTimer
+                  bookId={currentBook._id}
+                  bookTitle={currentBook.title}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  userName={user?.name || 'Scholar'}
+                  onSessionComplete={() => {
+                    handleSaveReadingProgress(currentPage, totalPages);
+                  }}
+                  onOpenNotes={() => {
+                    setIsTextNotesCollapsed(false);
+                    setTextBookMobileTab('notes');
+                    setTimeout(() => textNotesTextareaRef.current?.focus(), 150);
+                  }}
+                />
+
                 <div className="flex items-center gap-2">
                   <IoBookOutline className="text-accent" size={16} />
                   <span className="text-xs text-secondary">Page</span>
