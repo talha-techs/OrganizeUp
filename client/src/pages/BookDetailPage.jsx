@@ -26,6 +26,7 @@ import {
   IoCodeSlashOutline,
   IoChevronDownOutline,
   IoChevronUpOutline,
+  IoChevronForwardOutline,
   IoOpenOutline,
   IoPlayCircleOutline,
   IoFilmOutline,

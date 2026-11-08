@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { IoBookOutline, IoVideocamOutline, IoDocumentTextOutline, IoMusicalNotesOutline, IoLogoYoutube, IoAdd, IoCloudDownloadOutline, IoGlobeOutline } from 'react-icons/io5';
+import { IoBookOutline, IoVideocamOutline, IoDocumentTextOutline, IoMusicalNotesOutline, IoLogoYoutube, IoAdd, IoCloudDownloadOutline, IoCloudUploadOutline, IoGlobeOutline } from 'react-icons/io5';
 import { fetchBooks, deleteBook } from '../redux/slices/bookSlice';
 import { removeFromLibrary } from '../redux/slices/librarySlice';
 import { requestPublish } from '../redux/slices/exploreSlice';
