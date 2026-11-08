@@ -153,6 +153,15 @@ const bookSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    isDailyReminder: {
+      type: Boolean,
+      default: false,
+    },
+    reminderRepeat: {
+      type: String,
+      enum: ["none", "daily"],
+      default: "none",
+    },
     reminderFired: {
       type: Boolean,
       default: false,

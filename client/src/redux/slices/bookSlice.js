@@ -223,11 +223,16 @@ export const importDriveBook = createAsyncThunk(
 
 export const updateBookReminder = createAsyncThunk(
   "books/updateReminder",
-  async ({ bookId, remindAt, reminderNote }, { rejectWithValue }) => {
+  async (
+    { bookId, remindAt, reminderNote, isDailyReminder, reminderRepeat },
+    { rejectWithValue }
+  ) => {
     try {
       const { data } = await api.put(`/books/${bookId}/reminder`, {
         remindAt,
         reminderNote,
+        isDailyReminder,
+        reminderRepeat,
       });
       return data;
     } catch (error) {

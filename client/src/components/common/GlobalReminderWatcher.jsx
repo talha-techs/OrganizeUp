@@ -8,6 +8,7 @@ import { resyncPushSubscription } from '../../utils/pushManager';
 import api from '../../utils/api';
 import { fetchCaptures } from '../../redux/slices/captureSlice';
 import { fetchPlaylists } from '../../redux/slices/youtubePlaylistSlice';
+import { fetchBooks } from '../../redux/slices/bookSlice';
 
 /**
  * GlobalReminderWatcher
@@ -87,9 +88,10 @@ const GlobalReminderWatcher = () => {
       // Always show in-app interactive toast when window is alive
       showInAppReminderToast(title, body, targetUrl);
 
-      // Refresh captures list & playlists in Redux
+      // Refresh captures list, playlists, & books in Redux
       dispatch(fetchCaptures());
       dispatch(fetchPlaylists());
+      dispatch(fetchBooks({ mine: true }));
     };
 
     socket.on('vault_reminder', handleVaultReminder);
@@ -100,6 +102,7 @@ const GlobalReminderWatcher = () => {
         const { payload } = event.data;
         dispatch(fetchCaptures());
         dispatch(fetchPlaylists());
+        dispatch(fetchBooks({ mine: true }));
         if (payload?.title && !document.hidden) {
           showInAppReminderToast(payload.title, payload.body, payload.url);
         }
@@ -113,9 +116,10 @@ const GlobalReminderWatcher = () => {
     // Initial check: load upcoming reminders from API to schedule client-side timers
     const scheduleUpcoming = async () => {
       try {
-        const [capRes, ytRes] = await Promise.allSettled([
+        const [capRes, ytRes, bookRes] = await Promise.allSettled([
           api.get('/captures', { params: { remindersOnly: 'true', limit: 20 } }),
           api.get('/youtube-playlists'),
+          api.get('/books', { params: { mine: 'true' } }),
         ]);
 
         if (capRes.status === 'fulfilled') {
@@ -137,6 +141,27 @@ const GlobalReminderWatcher = () => {
                 platform: 'youtube',
                 thumbnailUrl: item.thumbnail,
                 type: item.type,
+              });
+            }
+          });
+        }
+
+        if (bookRes.status === 'fulfilled') {
+          const bookItems = bookRes.value.data?.books || [];
+          bookItems.forEach((b) => {
+            if (b.remindAt && !b.isCompleted) {
+              scheduleClientReminder({
+                _id: b._id,
+                title: b.title,
+                remindAt: b.remindAt,
+                reminderFired: b.reminderFired,
+                reminderNote: b.reminderNote,
+                isDailyReminder: Boolean(b.isDailyReminder || b.reminderRepeat === 'daily'),
+                reminderRepeat: b.reminderRepeat || (b.isDailyReminder ? 'daily' : 'none'),
+                url: `/books/${b._id}`,
+                platform: 'book',
+                thumbnailUrl: b.coverImage,
+                type: b.type,
               });
             }
           });

@@ -129,7 +129,10 @@ export const scheduleClientReminder = (item) => {
   // Only schedule if in future and within the next 24 hours (setTimeout max precision window)
   if (delayMs > 0 && delayMs <= 24 * 60 * 60 * 1000) {
     const timer = setTimeout(() => {
-      const platformLabel = item.platform
+      const isDaily = Boolean(item.isDailyReminder || item.reminderRepeat === 'daily');
+      const platformLabel = item.platform === 'book'
+        ? (item.type === 'audio' ? 'Audio Book' : item.type === 'video' ? 'Video Book' : 'Book')
+        : item.platform
         ? item.platform.charAt(0).toUpperCase() + item.platform.slice(1)
         : item.type === 'video'
         ? 'YouTube Video'
@@ -137,8 +140,8 @@ export const scheduleClientReminder = (item) => {
       const title = `⏰ Reminder: ${item.title || platformLabel}`;
       const message = (item.reminderNote || item.notes)
         ? (item.reminderNote || item.notes).slice(0, 140)
-        : `Time to watch your saved ${platformLabel}!`;
-      const targetUrl = item.url || (item.platform === 'youtube' || item.playlistUrl || item.videoId ? `/youtube-playlists/${id}` : `/captures?highlight=${id}`);
+        : (item.platform === 'book' ? `Time for your daily reading of "${item.title || 'Book'}"!` : `Time to watch your saved ${platformLabel}!`);
+      const targetUrl = item.url || (item.platform === 'book' ? `/books/${id}` : item.platform === 'youtube' || item.playlistUrl || item.videoId ? `/youtube-playlists/${id}` : `/captures?highlight=${id}`);
 
       sendOSNotification(title, {
         id,
@@ -149,6 +152,15 @@ export const scheduleClientReminder = (item) => {
       });
 
       scheduledTimers.delete(id);
+
+      // If daily reminder, automatically schedule for tomorrow at the same time
+      if (isDaily) {
+        const nextRemindDate = new Date(remindTime + 24 * 60 * 60 * 1000).toISOString();
+        scheduleClientReminder({
+          ...item,
+          remindAt: nextRemindDate,
+        });
+      }
     }, delayMs);
 
     scheduledTimers.set(id, timer);

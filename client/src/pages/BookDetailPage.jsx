@@ -57,6 +57,7 @@ import ProgressBar from '../components/ui/ProgressBar';
 import Modal from '../components/ui/Modal';
 import VisualDateTimePicker from '../components/ui/VisualDateTimePicker';
 import PdfReader from '../components/books/PdfReader';
+import { scheduleClientReminder, cancelClientReminder } from '../utils/notificationService';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
@@ -89,6 +90,7 @@ const BookDetailPage = () => {
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [remindDate, setRemindDate] = useState('');
   const [reminderNote, setReminderNote] = useState('');
+  const [isDailyReminder, setIsDailyReminder] = useState(false);
   const [isSavingReminder, setIsSavingReminder] = useState(false);
   const [isTogglingComplete, setIsTogglingComplete] = useState(false);
 
@@ -1035,6 +1037,7 @@ const BookDetailPage = () => {
   const handleOpenReminderModal = () => {
     setRemindDate(currentBook?.remindAt ? new Date(currentBook.remindAt).toISOString() : '');
     setReminderNote(currentBook?.reminderNote || '');
+    setIsDailyReminder(Boolean(currentBook?.isDailyReminder || currentBook?.reminderRepeat === 'daily'));
     setShowReminderModal(true);
   };
 
@@ -1066,12 +1069,26 @@ const BookDetailPage = () => {
         bookId: id,
         remindAt: remindDate,
         reminderNote: reminderNote.trim(),
+        isDailyReminder,
+        reminderRepeat: isDailyReminder ? 'daily' : 'none',
       })
     );
     setIsSavingReminder(false);
     if (result.meta.requestStatus === 'fulfilled') {
-      toast.success('Book reminder scheduled!');
+      toast.success(isDailyReminder ? 'Daily reading reminder scheduled!' : 'Book reminder scheduled!');
       setShowReminderModal(false);
+      scheduleClientReminder({
+        _id: id,
+        title: currentBook?.title,
+        remindAt: remindDate,
+        reminderNote: reminderNote.trim(),
+        isDailyReminder,
+        reminderRepeat: isDailyReminder ? 'daily' : 'none',
+        url: `/books/${id}`,
+        platform: 'book',
+        thumbnailUrl: currentBook?.coverImage,
+        type: currentBook?.type,
+      });
       dispatch(fetchBook(id));
     } else {
       toast.error(result.payload || 'Failed to set reminder');
@@ -1085,6 +1102,8 @@ const BookDetailPage = () => {
         bookId: id,
         remindAt: null,
         reminderNote: '',
+        isDailyReminder: false,
+        reminderRepeat: 'none',
       })
     );
     setIsSavingReminder(false);
@@ -1092,6 +1111,8 @@ const BookDetailPage = () => {
       toast.success('Book reminder cleared');
       setRemindDate('');
       setReminderNote('');
+      setIsDailyReminder(false);
+      cancelClientReminder(id);
       setShowReminderModal(false);
       dispatch(fetchBook(id));
     } else {
@@ -1155,7 +1176,10 @@ const BookDetailPage = () => {
 
             {currentBook.remindAt && !currentBook.isCompleted && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
-                <IoAlarmOutline size={13} /> Reminder: {new Date(currentBook.remindAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                <IoAlarmOutline size={13} />
+                {currentBook.isDailyReminder || currentBook.reminderRepeat === 'daily'
+                  ? `Daily at ${new Date(currentBook.remindAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : `Reminder: ${new Date(currentBook.remindAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}`}
               </span>
             )}
 
@@ -1235,17 +1259,21 @@ const BookDetailPage = () => {
             }`}
             title={
               currentBook?.remindAt
-                ? `Reminder set for ${new Date(currentBook.remindAt).toLocaleString()}`
+                ? (currentBook.isDailyReminder || currentBook.reminderRepeat === 'daily'
+                    ? `Daily reminder scheduled at ${new Date(currentBook.remindAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : `Reminder set for ${new Date(currentBook.remindAt).toLocaleString()}`)
                 : 'Set study reminder'
             }
           >
             <IoAlarmOutline size={15} className={currentBook?.remindAt ? 'text-amber-400' : ''} />
             <span>
               {currentBook?.remindAt
-                ? `Reminder: ${new Date(currentBook.remindAt).toLocaleDateString([], {
-                    month: 'short',
-                    day: 'numeric',
-                  })}`
+                ? (currentBook.isDailyReminder || currentBook.reminderRepeat === 'daily'
+                    ? `Daily ${new Date(currentBook.remindAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    : `Reminder: ${new Date(currentBook.remindAt).toLocaleDateString([], {
+                        month: 'short',
+                        day: 'numeric',
+                      })}`)
                 : 'Set Reminder'}
             </span>
           </button>
@@ -1448,6 +1476,35 @@ const BookDetailPage = () => {
                   value={remindDate}
                   onChange={(val) => setRemindDate(val)}
                 />
+              </div>
+
+              {/* Daily Reminder Option (Check Box) */}
+              <div className="p-3 rounded-xl bg-surface border border-subtle hover:border-amber-500/40 transition-colors">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isDailyReminder}
+                    onChange={(e) => setIsDailyReminder(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-amber-500 bg-surface-raised border-subtle focus:ring-amber-500 focus:ring-offset-0 cursor-pointer accent-amber-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-primary">Daily remind at this time</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        🔁 Daily Recurring
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted mt-0.5 leading-relaxed">
+                      Automatically triggers every day at{' '}
+                      <strong className="text-amber-300">
+                        {remindDate
+                          ? new Date(remindDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          : 'the set time'}
+                      </strong>{' '}
+                      to maintain your consistent daily reading habit.
+                    </p>
+                  </div>
+                </label>
               </div>
 
               {/* Optional Reminder Note */}

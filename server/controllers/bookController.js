@@ -607,8 +607,15 @@ const updateBook = async (req, res) => {
         }
       } else {
         book.remindAt = null;
+        book.isDailyReminder = false;
+        book.reminderRepeat = "none";
         book.reminderFired = false;
       }
+    }
+    if (isDailyReminder !== undefined || reminderRepeat !== undefined) {
+      const isDaily = Boolean(isDailyReminder || reminderRepeat === "daily");
+      book.isDailyReminder = isDaily;
+      book.reminderRepeat = isDaily ? "daily" : "none";
     }
     if (reminderNote !== undefined) {
       book.reminderNote = String(reminderNote || "").trim();
@@ -1591,15 +1598,18 @@ const updateBookReminder = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to set reminder for this book" });
     }
 
-    const { remindAt, reminderNote } = req.body;
+    const { remindAt, reminderNote, isDailyReminder, reminderRepeat } = req.body;
 
     if (remindAt) {
       const parsedDate = new Date(remindAt);
       if (isNaN(parsedDate.getTime())) {
         return res.status(400).json({ message: "Invalid date format for reminder" });
       }
+      const isDaily = Boolean(isDailyReminder || reminderRepeat === "daily");
       book.remindAt = parsedDate;
       book.reminderNote = String(reminderNote || "").trim();
+      book.isDailyReminder = isDaily;
+      book.reminderRepeat = isDaily ? "daily" : "none";
       book.reminderFired = false;
       // Re-activating reminder reactivates the book if marked completed
       if (book.isCompleted) {
@@ -1609,12 +1619,16 @@ const updateBookReminder = async (req, res) => {
     } else {
       book.remindAt = null;
       book.reminderNote = "";
+      book.isDailyReminder = false;
+      book.reminderRepeat = "none";
       book.reminderFired = false;
     }
 
     await book.save();
     return res.json({
-      message: book.remindAt ? "Book reminder set successfully" : "Book reminder cleared",
+      message: book.remindAt
+        ? (book.isDailyReminder ? "Daily book reminder set successfully" : "Book reminder set successfully")
+        : "Book reminder cleared",
       book,
     });
   } catch (error) {

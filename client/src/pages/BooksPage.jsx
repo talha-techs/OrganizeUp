@@ -316,7 +316,9 @@ const BooksPage = () => {
                       </span>
                     ) : book.remindAt ? (
                       <span className="inline-flex items-center gap-1 text-amber-300 font-medium">
-                        ⏰ Reminder: {new Date(book.remindAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        ⏰ {book.isDailyReminder || book.reminderRepeat === 'daily'
+                          ? `Daily at ${new Date(book.remindAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : `Reminder: ${new Date(book.remindAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}`}
                       </span>
                     ) : null}
                   </div>

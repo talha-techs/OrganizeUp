@@ -482,7 +482,24 @@ const processDueReminders = async () => {
         thumbnailUrl: book.coverImage,
         remindAt: book.remindAt,
         type: book.type,
+        isDailyReminder: Boolean(book.isDailyReminder || book.reminderRepeat === "daily"),
       });
+
+      // If this is a recurring daily reminder, automatically advance to tomorrow at the exact set time
+      if (book.isDailyReminder || book.reminderRepeat === "daily") {
+        const nextDate = new Date(book.remindAt || now);
+        nextDate.setDate(nextDate.getDate() + 1);
+        while (nextDate <= now) {
+          nextDate.setDate(nextDate.getDate() + 1);
+        }
+        await Book.findByIdAndUpdate(book._id, {
+          $set: {
+            remindAt: nextDate,
+            reminderFired: false,
+          },
+        });
+        console.log(`🔁 Book daily reminder automatically advanced to: ${nextDate.toISOString()} for "${book.title || book._id}"`);
+      }
 
       console.log(`⏰ Book reminder claimed and processed: "${book.title || book._id}"`);
     } catch (err) {
