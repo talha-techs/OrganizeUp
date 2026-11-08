@@ -403,21 +403,33 @@ const SectionsPage = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-20"
+          className="text-center py-20 px-4 glass-card border border-subtle rounded-3xl max-w-lg mx-auto space-y-4"
         >
-          <IoFolderOutline className="mx-auto text-muted mb-4" size={48} />
-          <h3 className="text-lg font-medium text-secondary mb-2">
-            {filterTab === 'shared'
-              ? 'No shared workspaces yet'
-              : filterTab === 'mine'
-              ? 'No created workspaces yet'
-              : 'No workspaces yet'}
-          </h3>
-          <p className="text-sm text-muted">
-            {filterTab === 'shared'
-              ? 'When colleagues or teammates invite you to shared workspaces, they will appear here.'
-              : 'Create your first workspace to organize blocks, docs, and team tasks.'}
-          </p>
+          <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/20 shadow-inner">
+            <IoFolderOutline size={32} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold text-primary">
+              {filterTab === 'shared'
+                ? 'No shared workspaces yet'
+                : filterTab === 'mine'
+                ? 'No created workspaces yet'
+                : 'No workspaces yet'}
+            </h3>
+            <p className="text-xs sm:text-sm text-secondary max-w-sm mx-auto leading-relaxed">
+              {filterTab === 'shared'
+                ? 'When colleagues or teammates invite you to shared workspaces, they will appear here.'
+                : 'Create modular, collaborative workspaces with rich blocks, code snippets, custom docs, and team tasks.'}
+            </p>
+          </div>
+          {filterTab !== 'shared' && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+            >
+              <IoAdd size={16} /> Create Workspace
+            </button>
+          )}
         </motion.div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

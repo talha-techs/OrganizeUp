@@ -87,8 +87,9 @@ const Navbar = () => {
     { to: '/captures', label: 'Vault', icon: <IoFlashOutline size={18} /> },
     { to: '/books', label: 'Books', icon: <IoBookOutline size={18} /> },
     { to: '/courses', label: 'Courses', icon: <IoSchoolOutline size={18} /> },
+    { to: '/workspaces', label: 'Workspaces', icon: <IoFolderOutline size={18} /> },
     { to: '/youtube-playlists', label: 'Playlists', icon: <IoLogoYoutube size={18} /> },
-    { to: '/telegram-inbox', label: 'Library', icon: <FaTelegramPlane size={18} /> },
+    { to: '/telegram-inbox', label: 'Telegram', icon: <FaTelegramPlane size={18} /> },
   ];
 
   const navLinkClass = ({ isActive }) =>
@@ -386,33 +387,6 @@ const Navbar = () => {
             className="md:hidden overflow-hidden border-t border-subtle"
           >
             <div className="px-4 py-3 space-y-1 bg-surface">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => {
-                    setMobileOpen(false);
-                    if (link.to === '/telegram-inbox') setTelegramUnread(0);
-                  }}
-                  className={navLinkClass}
-                >
-                  <div className="relative">
-                    {link.icon}
-                    {link.to === '/telegram-inbox' && telegramUnread > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
-                    )}
-                  </div>
-                  {link.label}
-                </NavLink>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
               {navLinks.map((link) => (
                 <NavLink
                   key={link.to}

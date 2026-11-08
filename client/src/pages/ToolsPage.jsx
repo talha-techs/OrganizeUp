@@ -91,18 +91,36 @@ const ToolsPage = () => {
       {isLoading ? (
         <LoadingSpinner text="Loading tools..." />
       ) : tools.length === 0 ? (
-        <div className="text-center py-20">
-          <IoConstructOutline className="mx-auto text-muted mb-4" size={48} />
-          <h3 className="text-lg text-secondary mb-2">No tools yet</h3>
-          <p className="text-sm text-muted mb-4">
-            {isAdmin ? 'Click "Add New" to get started or browse public tricks in Explore' : 'Explore developer tools and tricks shared by the community'}
-          </p>
-          <button
-            onClick={() => navigate('/explore?type=tricks')}
-            className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
-          >
-            <IoConstructOutline size={16} /> Explore Public Tricks
-          </button>
+        <div className="text-center py-16 px-4 glass-card border border-subtle rounded-3xl max-w-xl mx-auto space-y-4">
+          <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20 shadow-inner">
+            <IoConstructOutline size={32} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold text-primary">Your Tricks & Tools Library is Empty</h3>
+            <p className="text-xs sm:text-sm text-secondary max-w-md mx-auto leading-relaxed">
+              Organize developer utilities, productivity hacks, API keys, cheatsheets, and free trials into one searchable workspace.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setShowForm(true)}
+              className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+            >
+              <IoAdd size={16} /> Add New Trick
+            </button>
+            <button
+              onClick={() => setShowDriveImport(true)}
+              className="btn-secondary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer"
+            >
+              <IoCloudDownloadOutline size={16} /> Import from Drive
+            </button>
+            <button
+              onClick={() => navigate('/explore')}
+              className="btn-secondary text-xs py-2.5 px-4 inline-flex items-center gap-2 cursor-pointer text-accent hover:text-accent-hover"
+            >
+              <IoGlobeOutline size={16} /> Browse Explore Hub
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

@@ -23,7 +23,9 @@ import {
   IoCompassOutline,
   IoAddCircleOutline,
   IoOpenOutline,
+  IoFlashOutline,
 } from 'react-icons/io5';
+import { FaTelegramPlane } from 'react-icons/fa';
 import api from '../utils/api';
 import { getDocsUrl } from '../utils/docs';
 import AnimatedCounter from '../components/ui/AnimatedCounter';
@@ -650,8 +652,8 @@ const Dashboard = () => {
       </motion.div>
 
 
-      {/* 4. CONTINUE WHERE YOU LEFT OFF (IN-PROGRESS SHELF) */}
-      {(continueBooks.length > 0 || continueCourses.length > 0) && (
+      {/* 4. CONTINUE WHERE YOU LEFT OFF OR ONBOARDING JOURNEY */}
+      {continueBooks.length > 0 || continueCourses.length > 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -736,6 +738,123 @@ const Dashboard = () => {
                 </div>
               </Link>
             ))}
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-3xl p-6 sm:p-7 bg-surface border border-subtle shadow-lg space-y-5"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent-subtle text-accent border border-accent/20 mb-1">
+                <IoSparkles size={12} />
+                <span>Quick Start Guide</span>
+              </div>
+              <h2 className="text-xl font-bold text-primary font-display">
+                Welcome to OrganizeUp — Here is How to Get Started
+              </h2>
+            </div>
+            <p className="text-xs text-muted max-w-xs sm:text-right">
+              Your resources stay synced across web, desktop, and mobile.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Step 1: Explore Public Content */}
+            <Link
+              to="/explore"
+              className="p-4 rounded-2xl bg-surface-raised/70 hover:bg-surface-raised border border-subtle hover:border-sky-500/40 transition-all duration-200 flex flex-col justify-between group space-y-3"
+            >
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <IoCompassOutline size={22} />
+                </div>
+                <h4 className="text-sm font-bold text-primary group-hover:text-sky-500 transition-colors">
+                  1. Explore Community Hub
+                </h4>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Discover curated books, modern bestseller audiobooks, and courses. Save any item to your personal shelf.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-sky-500 group-hover:underline pt-2">
+                <span>Browse Explore</span>
+                <IoArrowForward size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Step 2: Quick Capture */}
+            <div
+              onClick={() => dispatch(openQuickCapture())}
+              className="p-4 rounded-2xl bg-surface-raised/70 hover:bg-surface-raised border border-subtle hover:border-accent/40 transition-all duration-200 flex flex-col justify-between group space-y-3 cursor-pointer"
+            >
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-accent flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <IoFlashOutline size={22} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-primary group-hover:text-accent transition-colors">
+                    2. Quick Capture
+                  </h4>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-subtle text-muted">
+                    Ctrl+K
+                  </span>
+                </div>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Paste LinkedIn slides, YouTube videos, Instagram Reels, or articles. Instant metadata & stream extraction.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-accent group-hover:underline pt-2">
+                <span>Open Capture</span>
+                <IoArrowForward size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Step 3: Books with Reading Memory */}
+            <Link
+              to="/books"
+              className="p-4 rounded-2xl bg-surface-raised/70 hover:bg-surface-raised border border-subtle hover:border-emerald-500/40 transition-all duration-200 flex flex-col justify-between group space-y-3"
+            >
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <IoBookOutline size={22} />
+                </div>
+                <h4 className="text-sm font-bold text-primary group-hover:text-emerald-500 transition-colors">
+                  3. Add Your First Book
+                </h4>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Upload PDF books with automatic page memory, or listen to WaveSurfer audio with pitch & speed controls.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500 group-hover:underline pt-2">
+                <span>Go to Books</span>
+                <IoArrowForward size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Step 4: Telegram & Discord Ingestion */}
+            <Link
+              to="/telegram-inbox"
+              className="p-4 rounded-2xl bg-surface-raised/70 hover:bg-surface-raised border border-subtle hover:border-[#229ED9]/40 transition-all duration-200 flex flex-col justify-between group space-y-3"
+            >
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-[#229ED9]/10 text-[#229ED9] flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FaTelegramPlane size={22} />
+                </div>
+                <h4 className="text-sm font-bold text-primary group-hover:text-[#229ED9] transition-colors">
+                  4. Link Telegram Bot
+                </h4>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Forward links, text notes, and voice memos straight from your phone chat into OrganizeUp automatically.
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-semibold text-[#229ED9] group-hover:underline pt-2">
+                <span>Connect Telegram</span>
+                <IoArrowForward size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
           </div>
         </motion.div>
       )}

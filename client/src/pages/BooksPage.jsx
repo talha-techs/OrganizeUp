@@ -217,9 +217,7 @@ const BooksPage = () => {
               ? 'Browse thousands of free classic audiobooks from LibriVox on the Explore page and add them to your shelf with one click.'
               : activeTab === 'youtube'
               ? 'Browse modern bestseller audiobooks and video summaries on Explore and save them directly to your personal library.'
-              : isAdmin
-              ? 'Click "Add Book" to get started with video or PDF books.'
-              : 'Add your own books or browse public books shared in Explore.'}
+              : 'Add your own books or browse public community books. OrganizeUp features automatic page memory for PDFs, interactive video books with timestamped reflections, and WaveSurfer audio with pitch & speed controls.'}
           </p>
           {activeTab === 'audio' ? (
             <button

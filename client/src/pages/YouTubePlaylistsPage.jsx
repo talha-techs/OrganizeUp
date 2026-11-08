@@ -754,7 +754,7 @@ const YouTubePlaylistsPage = () => {
             Your YouTube library is empty
           </h3>
           <p className="text-sm text-secondary max-w-md mx-auto mb-6">
-            Add your own playlist or video link, or discover admin-curated playlists in Explore to start taking notes and tracking your progress.
+            Add your own playlist or video link, or discover community-curated playlists in Explore to start taking notes and tracking your progress.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <button

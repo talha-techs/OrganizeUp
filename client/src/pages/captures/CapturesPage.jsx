@@ -786,24 +786,45 @@ const CapturesPage = () => {
           ))}
         </div>
       ) : sortedCaptures.length === 0 ? (
-        <div className="text-center py-16 px-4 rounded-3xl bg-surface border border-subtle space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-accent-subtle text-accent flex items-center justify-center mx-auto shadow-inner">
+        <div className="text-center py-16 px-4 rounded-3xl bg-surface border border-subtle space-y-6 max-w-2xl mx-auto shadow-xl">
+          <div className="w-16 h-16 rounded-3xl bg-accent-subtle text-accent flex items-center justify-center mx-auto shadow-inner border border-accent/20">
             <IoFlashOutline size={32} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-primary">No captures found</h3>
-            <p className="text-xs text-muted max-w-sm mx-auto">
-              {activeTab !== 'all'
-                ? `You haven't saved any items under ${activeTab} yet.`
-                : 'Your Vault is empty. Start capturing YouTube videos, Instagram Reels, or screenshots!'}
+            <h3 className="text-xl font-bold text-primary">Your Knowledge Vault is Empty</h3>
+            <p className="text-xs sm:text-sm text-secondary max-w-md mx-auto leading-relaxed">
+              Capture web articles, LinkedIn carousel slides, YouTube videos, Instagram Reels, and code snippets into your searchable second brain.
             </p>
           </div>
-          <button
-            onClick={() => dispatch(openQuickCapture({ tab: activeTab !== 'all' ? activeTab : 'link' }))}
-            className="px-5 py-2.5 rounded-xl bg-accent text-white text-xs font-bold shadow-md shadow-accent/20 hover:scale-105 transition-all cursor-pointer"
-          >
-            Capture Now
-          </button>
+
+          {/* Superpower Showcase */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+            <div className="p-3.5 rounded-2xl bg-surface-raised border border-subtle space-y-1">
+              <span className="text-[10px] font-black uppercase text-accent tracking-wider">⚡ Quick Shortcut</span>
+              <p className="text-xs font-semibold text-primary">Press Ctrl+K Anywhere</p>
+              <p className="text-[11px] text-muted leading-relaxed">Open the capture drawer from any page without losing your place.</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-surface-raised border border-subtle space-y-1">
+              <span className="text-[10px] font-black uppercase text-sky-400 tracking-wider">🤖 Phone Sync</span>
+              <p className="text-xs font-semibold text-primary">Telegram & Discord</p>
+              <p className="text-[11px] text-muted leading-relaxed">Forward links and media directly from your phone chat apps.</p>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-surface-raised border border-subtle space-y-1">
+              <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">🔔 Action Reminders</span>
+              <p className="text-xs font-semibold text-primary">Native OS Alerts</p>
+              <p className="text-[11px] text-muted leading-relaxed">Schedule review dates and get alerted right on your desktop.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => dispatch(openQuickCapture({ tab: activeTab !== 'all' ? activeTab : 'link' }))}
+              className="px-5 py-2.5 rounded-xl bg-accent text-white text-xs font-bold shadow-md shadow-accent/20 hover:scale-105 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <IoFlashOutline size={16} />
+              <span>Capture First Resource</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
