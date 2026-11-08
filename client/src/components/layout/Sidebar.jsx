@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   IoGridOutline,
@@ -28,9 +29,11 @@ import {
   IoAlertCircleOutline,
   IoNotificationsOffOutline,
   IoArrowForwardOutline,
+  IoJournalOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout } from '../../redux/slices/authSlice';
+import { notesSyncManager } from '../../services/notesSyncService';
 import {
   fetchNotifications,
   markNotificationsRead,
@@ -140,7 +143,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     }
   }, [user]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const canLogout = await notesSyncManager.prepareLogout(user?._id || user?.id);
+    if (!canLogout) return;
     dispatch(logout());
     navigate('/');
   };
@@ -171,6 +176,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       title: 'Knowledge',
       collapsible: true,
       items: [
+        { to: '/notes', label: 'Notes', icon: IoJournalOutline },
         { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
         { to: '/explore', label: 'Explore Hub', icon: IoCompassOutline },
       ],
@@ -238,7 +244,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             const next = { ...prev, [group.id]: true };
             try {
               localStorage.setItem('organizeup-sidebar-groups', JSON.stringify(next));
-            } catch (e) {}
+            } catch {
+              // Ignore localStorage quota errors
+            }
             return next;
           });
         }

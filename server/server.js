@@ -34,6 +34,7 @@ const whatsappRoutes = require("./routes/whatsapp");
 const suggestionRoutes = require("./routes/suggestions");
 const pushRoutes = require("./routes/pushRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const noteRoutes = require("./routes/notes");
 const internalRoutes = require("./routes/internalRoutes");
 const { processDueReminders } = require("./services/reminderService");
 const CapturedResource = require("./models/CapturedResource");
@@ -210,6 +211,7 @@ app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/suggestions", apiLimiter, suggestionRoutes);
 app.use("/api/push", apiLimiter, pushRoutes);
 app.use("/api/notifications", apiLimiter, notificationRoutes);
+app.use("/api/notes", noteRoutes);
 app.use("/api/internal", internalRoutes);
 
 // Image & file serving from GridFS or R2

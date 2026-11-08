@@ -180,4 +180,14 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// Cascade delete user notes on user document deletion
+userSchema.pre("deleteOne", { document: true, query: false }, async function () {
+  try {
+    const Note = mongoose.model("Note");
+    await Note.deleteMany({ user: this._id });
+  } catch (err) {
+    console.warn("User deleteOne Note cascade error:", err.message);
+  }
+});
+
 module.exports = mongoose.model("User", userSchema);

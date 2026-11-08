@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { processDueReminders } = require("../services/reminderService");
+const { purgeExpiredSoftDeletedNotes } = require("../controllers/noteController");
 
 const router = express.Router();
 
@@ -53,6 +54,9 @@ const verifyCronSecret = (req, res, next) => {
   next();
 };
 
+let lastNotesPurgeTime = 0;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
 /**
  * Trigger background reminder processing
  * POST /api/internal/run-reminders
@@ -62,13 +66,9 @@ router.post(
   internalCronLimiter,
   verifyCronSecret,
   async (req, res) => {
+    let reminderResult = {};
     try {
-      const result = await processDueReminders();
-      return res.status(200).json({
-        success: true,
-        message: "Reminders processed successfully",
-        ...result,
-      });
+      reminderResult = await processDueReminders();
     } catch (err) {
       console.error("[Internal] run-reminders processing error:", err);
       return res.status(500).json({
@@ -77,6 +77,26 @@ router.post(
         error: err.message,
       });
     }
+
+    // Isolate note purge with its own try/catch and throttle to at most once per hour
+    let purgeResult = { notesPurged: 0, skipped: true };
+    const now = Date.now();
+    if (now - lastNotesPurgeTime >= ONE_HOUR_MS) {
+      try {
+        purgeResult = await purgeExpiredSoftDeletedNotes();
+        lastNotesPurgeTime = now;
+      } catch (purgeErr) {
+        console.error("[Internal] purgeExpiredSoftDeletedNotes error:", purgeErr.message);
+        purgeResult = { notesPurged: 0, error: purgeErr.message };
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Reminders processed successfully",
+      ...reminderResult,
+      notesPurge: purgeResult,
+    });
   }
 );
 

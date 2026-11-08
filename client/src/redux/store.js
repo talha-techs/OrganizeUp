@@ -12,6 +12,7 @@ import playlistReducer from "./slices/youtubePlaylistSlice";
 import captureReducer from "./slices/captureSlice";
 import suggestionReducer from "./slices/suggestionSlice";
 import notificationReducer from "./slices/notificationSlice";
+import noteReducer from "./slices/noteSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,5 +29,6 @@ export const store = configureStore({
     captures: captureReducer,
     suggestions: suggestionReducer,
     notifications: notificationReducer,
+    notes: noteReducer,
   },
 });

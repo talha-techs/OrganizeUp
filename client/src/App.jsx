@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { Suspense, useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import { getMe } from './redux/slices/authSlice';
 
 // Layout (critical path — kept static)
@@ -66,6 +66,7 @@ const TelegramLibrary = lazyWithRetry(() => import('./pages/telegram/TelegramLib
 const DiscordLibrary = lazyWithRetry(() => import('./pages/discord/DiscordLibrary'), 'DiscordLibrary');
 const CapturesPage = lazyWithRetry(() => import('./pages/captures/CapturesPage'), 'CapturesPage');
 const SuggestionsPage = lazyWithRetry(() => import('./pages/SuggestionsPage'), 'SuggestionsPage');
+const NotesPage = lazyWithRetry(() => import('./pages/notes/NotesPage'), 'NotesPage');
 
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
@@ -75,6 +76,9 @@ import { openQuickCapture } from './redux/slices/captureSlice';
 
 const App = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useSelector((state) => state.auth);
   // Only show splash screen on mobile devices (width < 768px)
   const [showSplash, setShowSplash] = useState(window.innerWidth < 768);
 
@@ -83,13 +87,41 @@ const App = () => {
     dispatch(getMe());
   }, [dispatch]);
 
-  // Global shortcut listeners (Ctrl+K, Ctrl+Shift+S, custom event)
+  // Global shortcut listeners (Ctrl+K, Ctrl+Shift+S, N for notes, custom event)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || (e.shiftKey && (e.key === 's' || e.key === 'S')))) {
         // Prevent default browser search/save
         e.preventDefault();
         dispatch(openQuickCapture());
+        return;
+      }
+
+      // Quick Notes shortcut: 'N' or 'n'
+      // Rules: Ignore modifier keys, inputs, textareas, contenteditable, and logged-out pages
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (!user) return;
+
+        const currentPath = location.pathname;
+        const publicPaths = ['/', '/login', '/signup', '/auth/google/success', '/docs', '/invite'];
+        const isPublicPage = publicPaths.some(
+          (p) => currentPath === p || currentPath.startsWith('/docs') || currentPath.startsWith('/invite')
+        );
+        if (isPublicPage) return;
+
+        const target = e.target;
+        const tag = target?.tagName?.toLowerCase();
+        const isEditable =
+          tag === 'input' ||
+          tag === 'textarea' ||
+          tag === 'select' ||
+          target?.isContentEditable ||
+          target?.closest?.('[contenteditable="true"]');
+
+        if (!isEditable) {
+          e.preventDefault();
+          navigate('/notes?new=true');
+        }
       }
     };
 
@@ -125,7 +157,7 @@ const App = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('open-quick-capture', handleCustomOpen);
     };
-  }, [dispatch]);
+  }, [dispatch, navigate, user, location.pathname]);
 
   // Check if current hostname is the docs subdomain
   const isDocsSubdomain = typeof window !== 'undefined' && (
@@ -186,6 +218,7 @@ const App = () => {
               {/* Workspaces (formerly Custom Sections) */}
               <Route path="/workspaces" element={<SectionsPage />} />
               <Route path="/workspaces/:id" element={<SectionDetailPage />} />
+              <Route path="/notes" element={<NotesPage />} />
               <Route path="/sections" element={<Navigate to="/workspaces" replace />} />
               <Route path="/sections/:id" element={<WorkspaceLegacyRedirect />} />
               <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />

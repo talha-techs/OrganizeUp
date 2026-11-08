@@ -11,6 +11,7 @@ const CustomSection = require("../models/CustomSection");
 const SubSection = require("../models/SubSection");
 const UserLibrary = require("../models/UserLibrary");
 const YoutubePlaylist = require("../models/YoutubePlaylist");
+const Note = require("../models/Note");
 const AdminAuditLog = require("../models/AdminAuditLog");
 const { logAdminAction } = require("../services/auditLogger");
 const {
@@ -500,6 +501,11 @@ const deleteUser = async (req, res) => {
       }
     }
     await CapturedResource.deleteMany({ user: user._id });
+
+    // Cascade delete user notes
+    await Note.deleteMany({ user: user._id }).catch((err) =>
+      console.warn("User notes cleanup warning:", err.message),
+    );
 
     // Shared workspaces policy:
     // 1. Workspaces owned by user:
