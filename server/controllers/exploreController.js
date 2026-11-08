@@ -271,13 +271,16 @@ const getExploreContent = async (req, res) => {
       playlists: [],
     };
 
+    // In "all" view, prioritize user/community content (seedId missing) first, followed by newest catalog items
+    const defaultSort = { seedId: 1, createdAt: -1 };
+
     if (normalizedType === "all" || normalizedType === "books") {
       // For latest sort: paginate at DB level; for popular: fetch all for in-memory scoring
       const dbSkip = isPopular ? 0 : normalizedType === "books" ? skip : 0;
       let bookQuery = Book.find(bookFilter)
         .select(EXPLORE_LIST_SELECT.book)
         .populate("addedBy", "name avatar")
-        .sort({ createdAt: -1 })
+        .sort(defaultSort)
         .lean();
       if (!isPopular) bookQuery = bookQuery.skip(dbSkip).limit(perType);
 
@@ -304,7 +307,7 @@ const getExploreContent = async (req, res) => {
         .select(EXPLORE_LIST_SELECT.course)
         .populate("addedBy", "name avatar")
         .populate("category", "name")
-        .sort({ createdAt: -1 })
+        .sort(defaultSort)
         .lean();
       if (!isPopular) courseQuery = courseQuery.skip(dbSkip).limit(perType);
 
@@ -334,7 +337,7 @@ const getExploreContent = async (req, res) => {
       let toolQuery = Tool.find(toolFilter)
         .select(EXPLORE_LIST_SELECT.tool)
         .populate("addedBy", "name avatar")
-        .sort({ createdAt: -1 })
+        .sort(defaultSort)
         .lean();
       if (!isPopular) toolQuery = toolQuery.skip(dbSkip).limit(perType);
 
@@ -360,7 +363,7 @@ const getExploreContent = async (req, res) => {
       let sectionQuery = CustomSection.find(sectionFilter)
         .select(EXPLORE_LIST_SELECT.section)
         .populate("addedBy", "name avatar")
-        .sort({ createdAt: -1 })
+        .sort(defaultSort)
         .lean();
       if (!isPopular) sectionQuery = sectionQuery.skip(dbSkip).limit(perType);
 
@@ -396,7 +399,7 @@ const getExploreContent = async (req, res) => {
       let playlistQuery = YoutubePlaylist.find(playlistFilter)
         .select(EXPLORE_LIST_SELECT.playlist)
         .populate("addedBy", "name avatar")
-        .sort({ createdAt: -1 })
+        .sort(defaultSort)
         .lean();
       if (!isPopular) playlistQuery = playlistQuery.skip(dbSkip).limit(perType);
 
