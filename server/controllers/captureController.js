@@ -539,17 +539,21 @@ const fetchUrlMetadata = async (rawUrl) => {
       if (response.ok) {
         html = await response.text();
 
+        let rawHtmlTitle = "";
         // Extract <title>
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (titleMatch) finalTitle = titleMatch[1].trim();
+        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        if (titleMatch) {
+          rawHtmlTitle = titleMatch[1].trim();
+          finalTitle = rawHtmlTitle;
+        }
 
         // Extract og:title
         const ogTitleMatch =
           html.match(
-            /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+            /<meta[^>]+property=["']og:title["'][^>]+content=["']([\s\S]*?)["']/i,
           ) ||
           html.match(
-            /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
+            /<meta[^>]+content=["']([\s\S]*?)["'][^>]+property=["']og:title["']/i,
           );
         if (ogTitleMatch) finalTitle = ogTitleMatch[1].trim();
 
@@ -764,11 +768,39 @@ const fetchUrlMetadata = async (rawUrl) => {
 
         // Heuristics for author on LinkedIn
         if (!author && detected.platform === "linkedin") {
-          if (finalTitle.includes("|")) {
-            const parts = finalTitle.split("|");
-            author = parts[parts.length - 1].trim();
-          } else if (finalTitle.includes("on LinkedIn:")) {
-            author = finalTitle.split("on LinkedIn:")[0].trim();
+          const candidateStrings = [rawHtmlTitle, finalTitle];
+          for (const cand of candidateStrings) {
+            if (!cand || !cand.includes("|")) continue;
+            const parts = cand.split("|").map((p) => p.trim()).filter(Boolean);
+            const nonStatsParts = parts.filter(
+              (p) =>
+                !/(?:comments?|reactions?|followers?|members?|views?|likes?|shared?|posted|linkedin)/i.test(p)
+            );
+            if (nonStatsParts.length > 1) {
+              author = nonStatsParts[nonStatsParts.length - 1];
+              break;
+            }
+          }
+
+          if (!author && (finalTitle.includes("on LinkedIn:") || rawHtmlTitle.includes("on LinkedIn:"))) {
+            const target = finalTitle.includes("on LinkedIn:") ? finalTitle : rawHtmlTitle;
+            author = target.split("on LinkedIn:")[0].trim();
+          }
+
+          if (!author && finalUrl) {
+            const pathMatch = finalUrl.match(/\/posts\/([a-zA-Z0-9-]+)_[^/?#]+/i);
+            if (pathMatch) {
+              const slug = pathMatch[1].replace(/[-_]+/g, " ").trim();
+              if (slug) {
+                author = slug.replace(/\b\w/g, (c) => c.toUpperCase());
+              }
+            }
+          }
+
+          // Clean up multi-line title so the headline is punchy
+          if (finalTitle.includes("\n")) {
+            const lines = finalTitle.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+            if (lines.length > 0) finalTitle = lines[0];
           }
         }
 
