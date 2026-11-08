@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -20,6 +20,8 @@ import { FaXTwitter } from 'react-icons/fa6';
 import {
   IoFlashOutline,
   IoImageOutline,
+  IoImagesOutline,
+  IoChatbubbleEllipsesOutline,
   IoTimeOutline,
   IoCheckmarkCircle,
   IoCheckmarkCircleOutline,
@@ -48,7 +50,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import CustomSelect from '../../components/ui/CustomSelect';
 import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
 import VisualDateTimePicker from '../../components/ui/VisualDateTimePicker';
-import { getInstagramEmbedUrl, getFacebookEmbedUrl } from '../../utils/linkMediaUtils';
+import { getInstagramEmbedUrl, getFacebookEmbedUrl, getLinkedInEmbedUrl } from '../../utils/linkMediaUtils';
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -127,6 +129,145 @@ const getCaptureImageUrl = (capture) => {
   );
 };
 
+// Collects all images available for a capture (multi-image posts, document slides, or single preview)
+const getCaptureImages = (capture) => {
+  if (!capture) return [];
+  const list = [];
+  if (Array.isArray(capture.images) && capture.images.length > 0) {
+    for (const img of capture.images) {
+      if (img && typeof img === 'string') {
+        const resolved = resolveMediaUrl(img);
+        if (resolved && !list.includes(resolved)) list.push(resolved);
+      }
+    }
+  }
+  if (Array.isArray(capture.documentInfo?.coverPages) && capture.documentInfo.coverPages.length > 0) {
+    for (const cp of capture.documentInfo.coverPages) {
+      if (cp && typeof cp === 'string') {
+        const resolved = resolveMediaUrl(cp);
+        if (resolved && !list.includes(resolved)) list.push(resolved);
+      }
+    }
+  }
+  const single = getCaptureImageUrl(capture);
+  if (single && !list.includes(single)) {
+    list.unshift(single);
+  }
+  return list;
+};
+
+// Interactive carousel for multi-image post cards (touch swipe + click to zoom)
+const MultiImageCarousel = ({
+  images = [],
+  title = '',
+  onImageClick,
+  activeIdx = 0,
+  onChangeIdx,
+  className = '',
+}) => {
+  const [touchStartX, setTouchStartX] = useState(null);
+
+  if (!images || images.length === 0) return null;
+
+  const currentIdx = Math.min(Math.max(0, activeIdx), images.length - 1);
+  const currentImg = images[currentIdx];
+
+  const handleTouchStart = (e) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    if (diff > 45 && currentIdx < images.length - 1) {
+      onChangeIdx?.(currentIdx + 1);
+    } else if (diff < -45 && currentIdx > 0) {
+      onChangeIdx?.(currentIdx - 1);
+    }
+    setTouchStartX(null);
+  };
+
+  return (
+    <div
+      className={`relative w-full bg-neutral-950 overflow-hidden select-none group/carousel border-b border-subtle ${className}`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div
+        onClick={() => onImageClick?.(images, currentIdx)}
+        className="w-full aspect-[4/3] max-h-80 bg-neutral-900 cursor-zoom-in flex items-center justify-center relative overflow-hidden"
+      >
+        <img
+          src={currentImg}
+          alt={`${title || 'Post image'} ${currentIdx + 1}`}
+          loading="lazy"
+          className="w-full h-full object-contain transition-transform duration-300 group-hover/carousel:scale-[1.02]"
+        />
+
+        {/* Counter Badge */}
+        <div className="absolute top-2.5 right-2.5 z-10 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[11px] font-mono font-medium text-white shadow-lg flex items-center gap-1.5 pointer-events-none">
+          <IoImagesOutline size={13} className="text-accent" />
+          <span>
+            {currentIdx + 1} / {images.length}
+          </span>
+        </div>
+
+        {/* Hover Click to Enlarge Badge */}
+        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/carousel:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span className="px-3 py-1 rounded-full bg-black/70 backdrop-blur-sm text-white text-xs font-semibold shadow">
+            Click to Enlarge
+          </span>
+        </div>
+      </div>
+
+      {/* Navigation Controls */}
+      {images.length > 1 && (
+        <>
+          {currentIdx > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChangeIdx?.(currentIdx - 1);
+              }}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/75 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-xl z-20"
+              title="Previous image"
+            >
+              <IoChevronBack size={18} />
+            </button>
+          )}
+          {currentIdx < images.length - 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChangeIdx?.(currentIdx + 1);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/75 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-xl z-20"
+              title="Next image"
+            >
+              <IoChevronForward size={18} />
+            </button>
+          )}
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm pointer-events-none">
+            {images.map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === currentIdx ? 'w-4 bg-accent' : 'w-1.5 bg-white/40'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // Robust helper to extract/build a playable YouTube iframe embed URL (ONLY genuine YouTube links)
 const getYouTubeEmbedUrl = (capture) => {
   if (!capture) return null;
@@ -162,7 +303,7 @@ const CapturesPage = () => {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'inbox', 'completed'
   const [sortBy, setSortBy] = useState('newest'); // 'newest', 'remindAt', 'priority'
 
-  // Card modal states
+  // Card modal & interaction states
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [lightboxImage, setLightboxImage] = useState(null);
@@ -171,6 +312,8 @@ const CapturesPage = () => {
   const [copiedId, setCopiedId] = useState(null);
   const [expandedEmbeds, setExpandedEmbeds] = useState({});
   const [docPageIndexes, setDocPageIndexes] = useState({});
+  const [cardImageIndexes, setCardImageIndexes] = useState({});
+  const [expandedCaptions, setExpandedCaptions] = useState({});
   const [deleteCaptureItem, setDeleteCaptureItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [maximizedCapture, setMaximizedCapture] = useState(null);
@@ -178,6 +321,25 @@ const CapturesPage = () => {
   const [isSavingMaximizedNote, setIsSavingMaximizedNote] = useState(false);
   const [notificationPerm, setNotificationPerm] = useState(() => getNotificationPermission());
   const retriedCapturesRef = useRef(new Map());
+
+  // Priority weights for client-side sort guarantee: urgent (4) -> high (3) -> medium (2) -> low (1)
+  const priorityWeights = { urgent: 4, high: 3, medium: 2, low: 1 };
+  const sortedCaptures = useMemo(() => {
+    if (!Array.isArray(captures)) return [];
+    if (sortBy === 'priority_urgent_to_low' || sortBy === 'priority') {
+      return [...captures].sort((a, b) => {
+        const diff = (priorityWeights[b.priority] || 2) - (priorityWeights[a.priority] || 2);
+        return diff !== 0 ? diff : new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+    }
+    if (sortBy === 'priority_low_to_urgent') {
+      return [...captures].sort((a, b) => {
+        const diff = (priorityWeights[a.priority] || 2) - (priorityWeights[b.priority] || 2);
+        return diff !== 0 ? diff : new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+    }
+    return captures;
+  }, [captures, sortBy]);
 
   const handleRequestOSPermission = async () => {
     const res = await requestNotificationPermission();
@@ -604,7 +766,8 @@ const CapturesPage = () => {
               options={[
                 { value: 'newest', label: 'Sort: Newest First' },
                 { value: 'remindAt', label: 'Sort: Reminder Date' },
-                { value: 'priority', label: 'Sort: Priority' },
+                { value: 'priority_urgent_to_low', label: 'Priority: Urgent to Low' },
+                { value: 'priority_low_to_urgent', label: 'Priority: Low to Urgent' },
                 { value: 'oldest', label: 'Sort: Oldest First' },
               ]}
             />
@@ -622,7 +785,7 @@ const CapturesPage = () => {
             />
           ))}
         </div>
-      ) : captures.length === 0 ? (
+      ) : sortedCaptures.length === 0 ? (
         <div className="text-center py-16 px-4 rounded-3xl bg-surface border border-subtle space-y-4">
           <div className="w-16 h-16 rounded-3xl bg-accent-subtle text-accent flex items-center justify-center mx-auto shadow-inner">
             <IoFlashOutline size={32} />
@@ -644,7 +807,7 @@ const CapturesPage = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {captures.map((capture) => {
+          {sortedCaptures.map((capture) => {
             const meta = getPlatformMeta(capture.platform, capture.mediaType);
             const isCompleted = capture.status === 'completed';
             const hasReminder = Boolean(capture.remindAt);
@@ -708,110 +871,100 @@ const CapturesPage = () => {
 
                 {/* 2. Facebook Video / Reel / Post */}
                 {capture.platform === 'facebook' && (
-                  <>
-                    {/* Media Display: Interactive Embed if expanded, else Direct Video if video file, else Visual Poster with Play Button */}
-                    {expandedEmbeds[capture._id] ? (
-                      <div className="w-full bg-black/60 relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
-                        <iframe
-                          src={capture.embedUrl || getFacebookEmbedUrl(capture.sourceUrl || capture.url)}
-                          className="w-full h-full border-0"
-                          scrolling="no"
-                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                          allowFullScreen={true}
-                          title={capture.title || 'Facebook Video'}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
-                      <UniversalVideoPlayer
-                        src={capture.mediaUrl}
-                        poster={capture.thumbnailUrl}
-                        title={capture.title || 'Facebook Video'}
-                        embedUrl={capture.embedUrl}
-                        sourceUrl={capture.sourceUrl || capture.url}
-                        platform="facebook"
-                        className="border-b border-subtle"
-                      />
-                    ) : getCaptureImageUrl(capture) ? (
-                      <div
-                        onClick={() => {
-                          if (capture.embedUrl) {
-                            toggleEmbed(capture._id);
-                          } else {
-                            setLightboxImage(getCaptureImageUrl(capture));
-                          }
-                        }}
-                        className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-pointer group/img flex items-center justify-center border-b border-subtle"
-                      >
-                        <img
-                          src={getCaptureImageUrl(capture)}
-                          alt={capture.title || 'Facebook Video'}
-                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.parentElement.style.display = 'none';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col items-center justify-center transition-all group-hover/img:bg-black/40">
-                          <div className="w-12 h-12 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-lg transform group-hover/img:scale-110 transition-transform">
-                            <IoPlayCircleOutline size={30} />
-                          </div>
-                          <span className="mt-2 text-[11px] font-semibold text-white/90 drop-shadow">
-                            {capture.embedUrl ? 'Click to Play Embed' : 'View Media'}
-                          </span>
-                        </div>
-                      </div>
-                    ) : capture.embedUrl ? (
-                      <div className="w-full bg-black/40 relative aspect-video overflow-hidden flex items-center justify-center border-b border-subtle">
-                        <iframe
-                          src={capture.embedUrl}
-                          className="w-full h-full border-0"
-                          scrolling="no"
-                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                          allowFullScreen={true}
-                          title={capture.title || 'Facebook Video'}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : null}
+                  (() => {
+                    const fbEmbed = capture.embedUrl || getFacebookEmbedUrl(capture.sourceUrl || capture.url);
+                    const images = getCaptureImages(capture);
 
-                    {/* Author & Post Excerpt Header */}
-                    <div className="p-4 bg-blue-950/20 border-b border-subtle">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FaFacebook size={16} className="text-blue-500 flex-shrink-0" />
-                          <span className="text-xs font-bold text-blue-200 truncate">
-                            {capture.authorName || 'Facebook Video'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {capture.embedUrl && (
-                            <button
-                              onClick={() => toggleEmbed(capture._id)}
-                              className="text-[10px] px-2 py-0.5 rounded-md bg-blue-900/40 hover:bg-blue-800/60 text-blue-300 transition-colors cursor-pointer border border-blue-700/40"
-                              title={expandedEmbeds[capture._id] ? 'Show Video Thumbnail' : 'Play Live Interactive Video'}
-                            >
-                              {expandedEmbeds[capture._id] ? 'Show Media' : 'Interactive'}
-                            </button>
-                          )}
+                    return (
+                      <>
+                        {/* Playable directly in both card view and maximized view */}
+                        {isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
+                          <UniversalVideoPlayer
+                            src={capture.mediaUrl}
+                            poster={capture.thumbnailUrl}
+                            title={capture.title || 'Facebook Video'}
+                            embedUrl={fbEmbed}
+                            sourceUrl={capture.sourceUrl || capture.url}
+                            platform="facebook"
+                            className="border-b border-subtle"
+                          />
+                        ) : fbEmbed ? (
+                          <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
+                            <iframe
+                              src={fbEmbed}
+                              className="w-full h-full border-0"
+                              scrolling="no"
+                              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                              allowFullScreen={true}
+                              title={capture.title || 'Facebook Video'}
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : images.length > 1 ? (
+                          <MultiImageCarousel
+                            images={images}
+                            title={capture.title}
+                            activeIdx={cardImageIndexes[capture._id] || 0}
+                            onChangeIdx={(idx) =>
+                              setCardImageIndexes((prev) => ({ ...prev, [capture._id]: idx }))
+                            }
+                            onImageClick={(imgs, idx) =>
+                              setLightboxImage({ images: imgs, index: idx })
+                            }
+                          />
+                        ) : getCaptureImageUrl(capture) ? (
+                          <div
+                            onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
+                            className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                          >
+                            <img
+                              src={getCaptureImageUrl(capture)}
+                              alt={capture.title || 'Facebook Post'}
+                              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                              onError={(e) => handleImageError(e, capture)}
+                            />
+                          </div>
+                        ) : null}
+
+                        {/* Author & Post Excerpt Header */}
+                        <div className="p-4 bg-blue-950/20 border-b border-subtle">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FaFacebook size={16} className="text-blue-500 flex-shrink-0" />
+                              <span className="text-xs font-bold text-blue-200 truncate">
+                                {capture.authorName || 'Facebook Video'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                onClick={() => handleOpenMaximize(capture)}
+                                className="text-[10px] px-2 py-0.5 rounded-md bg-blue-900/60 hover:bg-blue-800 text-blue-200 transition-colors cursor-pointer border border-blue-700/50 flex items-center gap-1"
+                                title="Maximize to Wide Screen & Notes"
+                              >
+                                <IoExpandOutline size={11} />
+                                <span>Maximize</span>
+                              </button>
+                              {capture.rawContent && (
+                                <button
+                                  onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                                  className="text-[10px] text-blue-400 hover:text-blue-200 transition-colors cursor-pointer flex items-center gap-1"
+                                  title="Copy post content"
+                                >
+                                  {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
+                                  <span>Copy</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
                           {capture.rawContent && (
-                            <button
-                              onClick={() => handleCopyText(capture.rawContent, capture._id)}
-                              className="text-[10px] text-blue-400 hover:text-blue-200 transition-colors cursor-pointer flex items-center gap-1"
-                              title="Copy post content"
-                            >
-                              {copiedId === capture._id ? <FaCheck size={11} /> : <FaRegCopy size={11} />}
-                              <span>Copy</span>
-                            </button>
+                            <p className="text-xs text-secondary line-clamp-3 leading-relaxed whitespace-pre-wrap font-sans">
+                              {capture.rawContent}
+                            </p>
                           )}
                         </div>
-                      </div>
-                      {capture.rawContent && (
-                        <p className="text-xs text-secondary line-clamp-3 leading-relaxed whitespace-pre-wrap font-sans">
-                          {capture.rawContent}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                      </>
+                    );
+                  })()
                 )}
 
                 {/* 3. YouTube Embed Video (Playable in-app) */}
@@ -827,39 +980,74 @@ const CapturesPage = () => {
                   </div>
                 )}
 
-                {/* 4. Web Image, Article Banner, or Direct Video Player */}
+                {/* 4. Web Image, Article Banner, Multi-Image Carousel, or Direct Video Player */}
                 {['web_image', 'web', 'other'].includes(capture.platform) && !getYouTubeEmbedUrl(capture) && (
-                  (capture.mediaType === 'video' || isDirectVideoFile(capture.mediaUrl) || (capture.embedUrl && !['facebook', 'instagram', 'youtube', 'linkedin', 'twitter', 'whatsapp'].includes(capture.platform))) ? (
-                    <UniversalVideoPlayer
-                      src={capture.mediaUrl}
-                      poster={capture.thumbnailUrl}
-                      title={capture.title || 'Video Player'}
-                      embedUrl={capture.embedUrl}
-                      sourceUrl={capture.sourceUrl || capture.url}
-                      platform={capture.platform}
-                      className="border-b border-subtle"
-                    />
-                  ) : getCaptureImageUrl(capture) ? (
-                    <div
-                      onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
-                      className="w-full bg-surface-raised relative min-h-[160px] max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
-                    >
-                      <img
-                        src={getCaptureImageUrl(capture)}
-                        alt={capture.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                        onError={(e) => handleImageError(e, capture)}
-                      />
-                      <div className="hidden absolute inset-0 flex flex-col items-center justify-center bg-surface-raised text-secondary p-4 text-center">
-                        <IoImageOutline size={36} className="text-secondary/60 mb-2" />
-                        <span className="text-xs font-medium text-secondary">Image preview unavailable</span>
-                      </div>
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
-                        Click to Enlarge Image
-                      </div>
-                    </div>
-                  ) : null
+                  (() => {
+                    const images = getCaptureImages(capture);
+
+                    if (
+                      capture.mediaType === 'video' ||
+                      isDirectVideoFile(capture.mediaUrl) ||
+                      (capture.embedUrl &&
+                        !['facebook', 'instagram', 'youtube', 'linkedin', 'twitter', 'whatsapp'].includes(
+                          capture.platform,
+                        ))
+                    ) {
+                      return (
+                        <UniversalVideoPlayer
+                          src={capture.mediaUrl}
+                          poster={capture.thumbnailUrl}
+                          title={capture.title || 'Video Player'}
+                          embedUrl={capture.embedUrl}
+                          sourceUrl={capture.sourceUrl || capture.url}
+                          platform={capture.platform}
+                          className="border-b border-subtle"
+                        />
+                      );
+                    }
+
+                    if (images.length > 1) {
+                      return (
+                        <MultiImageCarousel
+                          images={images}
+                          title={capture.title}
+                          activeIdx={cardImageIndexes[capture._id] || 0}
+                          onChangeIdx={(idx) =>
+                            setCardImageIndexes((prev) => ({ ...prev, [capture._id]: idx }))
+                          }
+                          onImageClick={(imgs, idx) =>
+                            setLightboxImage({ images: imgs, index: idx })
+                          }
+                        />
+                      );
+                    }
+
+                    if (getCaptureImageUrl(capture)) {
+                      return (
+                        <div
+                          onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
+                          className="w-full bg-surface-raised relative min-h-[160px] max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                        >
+                          <img
+                            src={getCaptureImageUrl(capture)}
+                            alt={capture.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                            onError={(e) => handleImageError(e, capture)}
+                          />
+                          <div className="hidden absolute inset-0 flex flex-col items-center justify-center bg-surface-raised text-secondary p-4 text-center">
+                            <IoImageOutline size={36} className="text-secondary/60 mb-2" />
+                            <span className="text-xs font-medium text-secondary">Image preview unavailable</span>
+                          </div>
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold">
+                            Click to Enlarge Image
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()
                 )}
 
                 {/* 5. WhatsApp Chat Bubble Card */}
@@ -900,44 +1088,85 @@ const CapturesPage = () => {
                   </div>
                 )}
 
-                {/* 6. LinkedIn Interactive Embed, Document / PDF Viewer, or Image Card */}
+                {/* 6. LinkedIn Interactive Embed, Document / PDF Viewer, Video, or Multi-Image Card */}
                 {capture.platform === 'linkedin' && (
                   (() => {
                     const isDoc =
                       Boolean(capture.documentInfo) ||
                       capture.mediaType === 'document' ||
-                      capture.mediaType === 'pdf';
+                      capture.mediaType === 'pdf' ||
+                      /\.pdf(\?.*)?$/i.test(capture.sourceUrl || '') ||
+                      /\.pdf(\?.*)?$/i.test(capture.mediaUrl || '');
                     const coverPages = capture.documentInfo?.coverPages || [];
                     const currentPageIdx = docPageIndexes[capture._id] || 0;
                     const activeCover = coverPages[currentPageIdx] || getCaptureImageUrl(capture);
+                    const linkedInEmbed = capture.embedUrl || getLinkedInEmbedUrl(capture.sourceUrl || capture.url);
+                    const isVideo =
+                      capture.mediaType === 'video' ||
+                      isVideoUrl(capture.mediaUrl) ||
+                      (capture.sourceUrl && capture.sourceUrl.includes('/video/'));
+                    const images = getCaptureImages(capture);
 
                     return (
                       <>
-                        {/* Media Display: Interactive Embed if expanded */}
+                        {/* A. If expanded or LinkedIn Video Embed */}
                         {expandedEmbeds[capture._id] ? (
                           <div className="w-full bg-surface-raised relative h-[460px] overflow-hidden border-b border-subtle">
                             <iframe
-                              src={capture.embedUrl}
+                              src={linkedInEmbed || capture.embedUrl}
                               className="w-full h-full border-0"
                               allowFullScreen={true}
                               title={capture.title || 'LinkedIn Post'}
                               loading="lazy"
                             />
                           </div>
-                        ) : isDoc && activeCover ? (
+                        ) : isVideo ? (
+                          /* Direct Video or LinkedIn Embed Video */
+                          isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
+                            <UniversalVideoPlayer
+                              src={capture.mediaUrl}
+                              poster={capture.thumbnailUrl}
+                              title={capture.title || 'LinkedIn Video'}
+                              embedUrl={linkedInEmbed}
+                              sourceUrl={capture.sourceUrl || capture.url}
+                              platform="linkedin"
+                              className="border-b border-subtle"
+                            />
+                          ) : linkedInEmbed ? (
+                            <div className="w-full bg-black relative aspect-video min-h-[260px] overflow-hidden border-b border-subtle flex items-center justify-center">
+                              <iframe
+                                src={linkedInEmbed}
+                                className="w-full h-full border-0"
+                                allowFullScreen={true}
+                                title={capture.title || 'LinkedIn Video'}
+                                loading="lazy"
+                              />
+                            </div>
+                          ) : getCaptureImageUrl(capture) ? (
+                            <div
+                              onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
+                              className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
+                            >
+                              <img
+                                src={getCaptureImageUrl(capture)}
+                                alt={capture.title || 'LinkedIn Video'}
+                                className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                                onError={(e) => handleImageError(e, capture)}
+                              />
+                            </div>
+                          ) : null
+                        ) : isDoc && (coverPages.length > 0 || activeCover) ? (
                           /* Document / PDF Cover Carousel & Multi-page Preview */
                           <div className="w-full bg-neutral-950 relative overflow-hidden border-b border-subtle flex flex-col">
                             <div
                               onClick={() => setLightboxImage(activeCover)}
-                              className="relative w-full aspect-[4/3] max-h-72 bg-neutral-900 overflow-hidden cursor-zoom-in group/img flex items-center justify-center select-none"
+                              className="relative w-full aspect-[4/3] max-h-72 bg-neutral-900 cursor-zoom-in group/img flex items-center justify-center select-none"
                             >
                               <img
                                 src={activeCover}
                                 alt={capture.documentInfo?.title || capture.title || 'LinkedIn Document'}
                                 className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-300"
-                                onError={(e) => {
-                                  e.currentTarget.parentElement.style.display = 'none';
-                                }}
+                                onError={(e) => handleImageError(e, capture)}
                               />
 
                               {/* Floating Document Badge & Actions */}
@@ -965,7 +1194,7 @@ const CapturesPage = () => {
                                       <IoOpenOutline size={12} />
                                     </a>
                                   )}
-                                  {capture.embedUrl && (
+                                  {linkedInEmbed && (
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -1023,22 +1252,30 @@ const CapturesPage = () => {
                               )}
                             </div>
                           </div>
-                        ) : isDirectVideoFile(capture.mediaUrl) && capture.mediaUrl ? (
-                          <div className="w-full bg-black relative aspect-video overflow-hidden border-b border-subtle flex items-center justify-center">
-                            <video
-                              src={getVideoSrc(capture.mediaUrl)}
-                              poster={capture.thumbnailUrl}
-                              controls
-                              playsInline
-                              preload="metadata"
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-contain"
+                        ) : isDoc && (capture.mediaUrl || capture.documentInfo?.fileUrl) ? (
+                          <div className="w-full bg-neutral-950 relative h-72 overflow-hidden border-b border-subtle">
+                            <iframe
+                              src={capture.mediaUrl || capture.documentInfo.fileUrl}
+                              title={capture.title || 'LinkedIn PDF'}
+                              className="w-full h-full border-0"
                             />
                           </div>
-                        ) : capture.embedUrl && !(capture.mediaUrl || capture.thumbnailUrl) ? (
+                        ) : images.length > 1 ? (
+                          <MultiImageCarousel
+                            images={images}
+                            title={capture.title}
+                            activeIdx={cardImageIndexes[capture._id] || 0}
+                            onChangeIdx={(idx) =>
+                              setCardImageIndexes((prev) => ({ ...prev, [capture._id]: idx }))
+                            }
+                            onImageClick={(imgs, idx) =>
+                              setLightboxImage({ images: imgs, index: idx })
+                            }
+                          />
+                        ) : linkedInEmbed && !(capture.mediaUrl || capture.thumbnailUrl) ? (
                           <div className="w-full bg-surface-raised relative h-[440px] overflow-hidden border-b border-subtle">
                             <iframe
-                              src={capture.embedUrl}
+                              src={linkedInEmbed}
                               className="w-full h-full border-0"
                               allowFullScreen={true}
                               title={capture.title || 'LinkedIn Post'}
@@ -1054,9 +1291,7 @@ const CapturesPage = () => {
                               src={getCaptureImageUrl(capture)}
                               alt={capture.title || 'LinkedIn Post'}
                               className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                              onError={(e) => {
-                                e.currentTarget.parentElement.style.display = 'none';
-                              }}
+                              onError={(e) => handleImageError(e, capture)}
                             />
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
                               <span>Click to Enlarge</span>
@@ -1082,7 +1317,7 @@ const CapturesPage = () => {
                                 <IoExpandOutline size={11} />
                                 <span>Maximize</span>
                               </button>
-                              {capture.embedUrl && !isDoc && (
+                              {linkedInEmbed && !isDoc && !isVideo && (
                                 <button
                                   onClick={() => toggleEmbed(capture._id)}
                                   className="text-[10px] px-2 py-0.5 rounded-md bg-sky-900/40 hover:bg-sky-800/60 text-sky-300 transition-colors cursor-pointer border border-sky-700/40"
@@ -1110,7 +1345,7 @@ const CapturesPage = () => {
                             </p>
                           )}
                           {capture.rawContent && (
-                            <p className="text-xs text-secondary line-clamp-3 leading-relaxed">
+                            <p className="text-xs text-secondary line-clamp-3 leading-relaxed whitespace-pre-wrap">
                               {capture.rawContent}
                             </p>
                           )}
@@ -1120,69 +1355,88 @@ const CapturesPage = () => {
                   })()
                 )}
 
-                {/* 7. Twitter / X Interactive Fast Embed or High-Res Image (CloudStream removed per user request) */}
+                {/* 7. Twitter / X Interactive Fast Embed, Multi-Image Carousel, or High-Res Image */}
                 {capture.platform === 'twitter' && (
-                  <>
-                    {/* Media Display: Fast Interactive Embed (clean single view without congested 3 panels) */}
-                    {capture.embedUrl ? (
-                      <div className="w-full bg-[#000000] relative min-h-[380px] max-h-[520px] overflow-y-auto border-b border-subtle flex items-center justify-center">
-                        <iframe
-                          src={capture.embedUrl}
-                          className="w-full h-full min-h-[380px] border-0"
-                          allowFullScreen={true}
-                          title={capture.title || 'X Post'}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : getCaptureImageUrl(capture) ? (
-                      <div
-                        onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
-                        className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
-                      >
-                        <img
-                          src={getCaptureImageUrl(capture)}
-                          alt={capture.title || 'X Post'}
-                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.parentElement.style.display = 'none';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
-                          <span>Click to Enlarge</span>
-                        </div>
-                      </div>
-                    ) : null}
+                  (() => {
+                    const images = getCaptureImages(capture);
 
-                    {/* Compact Author & Actions Bar (without duplicate repeated text) */}
-                    <div className="px-4 py-2 bg-zinc-950/60 border-b border-subtle flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FaXTwitter size={14} className="text-white flex-shrink-0" />
-                        <span className="text-xs font-bold text-white truncate">
-                          {capture.authorName || 'Post on X'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => handleOpenMaximize(capture)}
-                          className="text-[10px] text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/50"
-                          title="Maximize to Wide Screen & Notes"
-                        >
-                          <IoExpandOutline size={12} />
-                          <span>Maximize</span>
-                        </button>
-                        {capture.rawContent && (
-                          <button
-                            onClick={() => handleCopyText(capture.rawContent, capture._id)}
-                            className="text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700/40"
-                            title="Copy tweet text"
+                    return (
+                      <>
+                        {capture.embedUrl ? (
+                          <div className="w-full bg-[#000000] relative min-h-[380px] max-h-[520px] overflow-y-auto border-b border-subtle flex items-center justify-center">
+                            <iframe
+                              src={capture.embedUrl}
+                              className="w-full h-full min-h-[380px] border-0"
+                              allowFullScreen={true}
+                              title={capture.title || 'X Post'}
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : images.length > 1 ? (
+                          <MultiImageCarousel
+                            images={images}
+                            title={capture.title}
+                            activeIdx={cardImageIndexes[capture._id] || 0}
+                            onChangeIdx={(idx) =>
+                              setCardImageIndexes((prev) => ({ ...prev, [capture._id]: idx }))
+                            }
+                            onImageClick={(imgs, idx) =>
+                              setLightboxImage({ images: imgs, index: idx })
+                            }
+                          />
+                        ) : getCaptureImageUrl(capture) ? (
+                          <div
+                            onClick={() => setLightboxImage(getCaptureImageUrl(capture))}
+                            className="w-full bg-surface-raised relative max-h-72 overflow-hidden cursor-zoom-in group/img flex items-center justify-center border-b border-subtle"
                           >
-                            {copiedId === capture._id ? <FaCheck size={11} className="text-emerald-400" /> : <FaRegCopy size={11} />}
-                            <span>Copy Text</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </>
+                            <img
+                              src={getCaptureImageUrl(capture)}
+                              alt={capture.title || 'X Post'}
+                              className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                              onError={(e) => handleImageError(e, capture)}
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-semibold gap-1.5">
+                              <span>Click to Enlarge</span>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {/* Compact Author & Actions Bar */}
+                        <div className="px-4 py-2 bg-zinc-950/60 border-b border-subtle flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FaXTwitter size={14} className="text-white flex-shrink-0" />
+                            <span className="text-xs font-bold text-white truncate">
+                              {capture.authorName || 'Post on X'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              onClick={() => handleOpenMaximize(capture)}
+                              className="text-[10px] text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/50"
+                              title="Maximize to Wide Screen & Notes"
+                            >
+                              <IoExpandOutline size={12} />
+                              <span>Maximize</span>
+                            </button>
+                            {capture.rawContent && (
+                              <button
+                                onClick={() => handleCopyText(capture.rawContent, capture._id)}
+                                className="text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700/40"
+                                title="Copy tweet text"
+                              >
+                                {copiedId === capture._id ? (
+                                  <FaCheck size={11} className="text-emerald-400" />
+                                ) : (
+                                  <FaRegCopy size={11} />
+                                )}
+                                <span>Copy Text</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()
                 )}
 
                 {/* Card Body Details */}
@@ -1271,6 +1525,52 @@ const CapturesPage = () => {
                         <FaExternalLinkAlt size={10} />
                         <span className="truncate">{capture.sourceUrl}</span>
                       </a>
+                    )}
+
+                    {/* Post Caption / Description (Instant reading without extra clicks) */}
+                    {(capture.rawContent || capture.description) && (
+                      <div className="p-3 rounded-2xl bg-surface-raised/70 border border-subtle/80 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] text-muted font-semibold">
+                          <span className="flex items-center gap-1.5 text-primary/80">
+                            <IoChatbubbleEllipsesOutline size={13} className="text-accent" />
+                            <span>Post Caption</span>
+                          </span>
+                          {capture.rawContent && (
+                            <button
+                              onClick={() => handleCopyText(capture.rawContent, `${capture._id}-caption`)}
+                              className="hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
+                              title="Copy caption"
+                            >
+                              {copiedId === `${capture._id}-caption` ? (
+                                <FaCheck size={10} className="text-emerald-400" />
+                              ) : (
+                                <FaRegCopy size={10} />
+                              )}
+                              <span className="text-[10px]">Copy</span>
+                            </button>
+                          )}
+                        </div>
+                        <p
+                          className={`text-xs text-secondary leading-relaxed whitespace-pre-wrap break-words ${
+                            expandedCaptions[capture._id] ? '' : 'line-clamp-4'
+                          }`}
+                        >
+                          {capture.rawContent || capture.description}
+                        </p>
+                        {(capture.rawContent || capture.description || '').length > 180 && (
+                          <button
+                            onClick={() =>
+                              setExpandedCaptions((prev) => ({
+                                ...prev,
+                                [capture._id]: !prev[capture._id],
+                              }))
+                            }
+                            className="text-[11px] font-semibold text-accent hover:underline cursor-pointer pt-0.5"
+                          >
+                            {expandedCaptions[capture._id] ? 'Show less' : 'Read more...'}
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     {/* Personal Notes Section */}
@@ -1409,6 +1709,8 @@ const CapturesPage = () => {
           const maxDocPageIdx = docPageIndexes[cap._id] || 0;
           const activeCover = coverPages[maxDocPageIdx] || getCaptureImageUrl(cap);
           const docFileUrl = cap.documentInfo?.fileUrl || (cap.sourceUrl && (cap.sourceUrl.includes('drive.google.com') || cap.sourceUrl.toLowerCase().endsWith('.pdf')) ? cap.sourceUrl : null);
+          const capImages = getCaptureImages(cap);
+          const maxImgIdx = Math.min(cardImageIndexes[cap._id] || 0, Math.max(0, capImages.length - 1));
 
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-xl">
@@ -1669,6 +1971,74 @@ const CapturesPage = () => {
                           />
                         ) : null}
                       </div>
+                    ) : capImages.length > 1 ? (
+                      /* Multi-Image Gallery in Maximized View */
+                      <div className="w-full h-full flex flex-col items-center justify-center relative p-2 select-none">
+                        <div className="relative max-h-[70vh] max-w-full flex items-center justify-center">
+                          <img
+                            src={capImages[maxImgIdx] || capImages[0]}
+                            alt={`${cap.title || 'Image'} ${maxImgIdx + 1}`}
+                            className="max-h-[70vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/10 cursor-zoom-in"
+                            onClick={() =>
+                              setLightboxImage({ images: capImages, index: maxImgIdx })
+                            }
+                          />
+
+                          {/* Navigation buttons */}
+                          {maxImgIdx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCardImageIndexes((prev) => ({
+                                  ...prev,
+                                  [cap._id]: Math.max(0, maxImgIdx - 1),
+                                }))
+                              }
+                              className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/80 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-xl z-20"
+                              title="Previous image"
+                            >
+                              <IoChevronBack size={20} />
+                            </button>
+                          )}
+                          {maxImgIdx < capImages.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCardImageIndexes((prev) => ({
+                                  ...prev,
+                                  [cap._id]: Math.min(capImages.length - 1, maxImgIdx + 1),
+                                }))
+                              }
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/80 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-xl z-20"
+                              title="Next image"
+                            >
+                              <IoChevronForward size={20} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Thumbnails strip & counter */}
+                        <div className="mt-3 flex items-center gap-2 max-w-full overflow-x-auto py-1 px-2">
+                          <span className="text-xs font-mono font-medium text-gray-300 mr-2 flex-shrink-0">
+                            {maxImgIdx + 1} / {capImages.length}
+                          </span>
+                          {capImages.map((imgUrl, i) => (
+                            <button
+                              key={i}
+                              onClick={() =>
+                                setCardImageIndexes((prev) => ({ ...prev, [cap._id]: i }))
+                              }
+                              className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                                i === maxImgIdx
+                                  ? 'border-accent scale-105 shadow-md'
+                                  : 'border-transparent opacity-60 hover:opacity-100'
+                              }`}
+                            >
+                              <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ) : getCaptureImageUrl(cap) ? (
                       /* 6. Default Image or Video */
                       isDirectVideoFile(cap.mediaUrl) ? (
@@ -1792,32 +2162,82 @@ const CapturesPage = () => {
         })()}
       </AnimatePresence>
 
-      {/* Lightbox Modal for Full-Resolution Image Viewing */}
+      {/* Lightbox Modal for Full-Resolution Image Viewing with Carousel */}
       <AnimatePresence>
         {lightboxImage && (
-          <div
-            onClick={() => setLightboxImage(null)}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl"
-            >
-              <img
-                src={resolveMediaUrl(lightboxImage)}
-                alt="Full preview"
-                className="max-h-[85vh] w-auto object-contain rounded-2xl shadow-2xl"
-              />
-              <button
+          (() => {
+            const isMulti =
+              typeof lightboxImage === 'object' && Array.isArray(lightboxImage.images);
+            const images = isMulti ? lightboxImage.images : [lightboxImage];
+            const idx = isMulti ? (lightboxImage.index || 0) : 0;
+            const currentSrc = resolveMediaUrl(images[idx]);
+
+            return (
+              <div
                 onClick={() => setLightboxImage(null)}
-                className="absolute top-3 right-3 p-2 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out select-none"
               >
-                <IoClose size={20} />
-              </button>
-            </motion.div>
-          </div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="relative max-w-5xl max-h-[90vh] flex flex-col items-center justify-center cursor-default"
+                >
+                  <img
+                    src={currentSrc}
+                    alt="Full preview"
+                    className="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl"
+                  />
+
+                  {images.length > 1 && (
+                    <div className="mt-3 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-xs font-mono font-medium text-white shadow-xl">
+                      {idx + 1} of {images.length}
+                    </div>
+                  )}
+
+                  {images.length > 1 && (
+                    <>
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxImage({ images, index: idx - 1 });
+                          }}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/80 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-2xl z-30"
+                          title="Previous image"
+                        >
+                          <IoChevronBack size={24} />
+                        </button>
+                      )}
+                      {idx < images.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxImage({ images, index: idx + 1 });
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/80 hover:bg-black text-white border border-white/20 transition-all cursor-pointer shadow-2xl z-30"
+                          title="Next image"
+                        >
+                          <IoChevronForward size={24} />
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => setLightboxImage(null)}
+                    className="absolute top-3 right-3 p-2 rounded-full bg-black/70 text-white hover:bg-black border border-white/20 transition-colors cursor-pointer z-30"
+                    title="Close preview"
+                  >
+                    <IoClose size={22} />
+                  </button>
+                </motion.div>
+              </div>
+            );
+          })()
         )}
       </AnimatePresence>
 

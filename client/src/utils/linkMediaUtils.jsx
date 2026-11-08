@@ -32,20 +32,47 @@ export const getFacebookEmbedUrl = (url = '', existingEmbedUrl = '') => {
   if (existingEmbedUrl && existingEmbedUrl.includes('facebook.com/plugins/video.php')) {
     return existingEmbedUrl;
   }
-  const target = url || '';
+  const target = url || existingEmbedUrl || '';
   if (/(?:facebook\.com|fb\.watch|fb\.me)/i.test(target)) {
     let cleanUrl = target;
     try {
       const u = new URL(target);
-      if (u.pathname.includes('/reel/')) {
-        cleanUrl = `${u.origin}${u.pathname}`;
-      } else if (u.pathname.includes('/watch') && u.searchParams.has('v')) {
+      // Clean off tracking query params (e.g. fbclid, mibextid, rdr, etc.) while preserving watch?v= id
+      if (u.pathname.includes('/watch') && u.searchParams.has('v')) {
         cleanUrl = `${u.origin}${u.pathname}?v=${u.searchParams.get('v')}`;
+      } else {
+        // Keeps clean path like /share/r/1ByDbKLDX9/ or /reel/12345/
+        cleanUrl = `${u.origin}${u.pathname}`;
       }
     } catch {
-      // url parse fallback
+      // fallback
     }
     return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=false&t=0`;
+  }
+  return existingEmbedUrl || '';
+};
+
+/**
+ * Resolves an embed iframe URL for LinkedIn posts / videos
+ */
+export const getLinkedInEmbedUrl = (url = '', existingEmbedUrl = '') => {
+  if (existingEmbedUrl && existingEmbedUrl.includes('linkedin.com/embed')) {
+    return existingEmbedUrl;
+  }
+  const target = url || existingEmbedUrl || '';
+  if (/(?:linkedin\.com)/i.test(target)) {
+    // 1. Direct update URN: urn:li:(activity|share|ugcPost):\d+
+    const urnMatch = target.match(/urn:li:(activity|share|ugcPost):(\d+)/i);
+    if (urnMatch) {
+      return `https://www.linkedin.com/embed/feed/update/urn:li:${urnMatch[1]}:${urnMatch[2]}`;
+    }
+    // 2. Activity ID from /posts/ or /feed/update/: activity-\d+ or \d+
+    const activityMatch =
+      target.match(/(?:activity|post|feed\/update)[-_/](?:urn:li:activity:)?(\d+)/i) ||
+      target.match(/linkedin\.com\/posts\/[^_]+_.*?-(\d+)/i);
+    if (activityMatch) {
+      return `https://www.linkedin.com/embed/feed/update/urn:li:activity:${activityMatch[1]}`;
+    }
   }
   return existingEmbedUrl || '';
 };

@@ -765,6 +765,7 @@ const QuickCaptureModal = () => {
             rawContent: scrapedData?.rawContent || scrapedData?.description || notes,
             mediaUrl: scrapedData?.mediaUrl || (isVideo ? scrapedData?.embedUrl : scrapedData?.thumbnailUrl),
             thumbnailUrl: scrapedData?.thumbnailUrl,
+            images: scrapedData?.images || [],
             embedId: scrapedData?.embedId,
             embedUrl: scrapedData?.embedUrl,
             authorName: scrapedData?.authorName,

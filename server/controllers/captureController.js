@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const CapturedResource = require("../models/CapturedResource");
 const {
   uploadFile,
@@ -949,6 +950,26 @@ const fetchUrlMetadata = async (url) => {
       directVideoUrl = directVideoUrl.replace(/&amp;/g, "&");
     }
 
+    // Extract all og:image tags into images array for multi-image / carousel posts
+    const allOgImages = [];
+    if (finalImage) allOgImages.push(finalImage);
+    const ogImageRegex =
+      /<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)["']/gi;
+    let imgM;
+    while ((imgM = ogImageRegex.exec(html)) !== null) {
+      const cleanImg = imgM[1].trim().replace(/&amp;/g, "&");
+      if (cleanImg && !allOgImages.includes(cleanImg)) {
+        allOgImages.push(cleanImg);
+      }
+    }
+    if (documentInfo?.coverPages && Array.isArray(documentInfo.coverPages)) {
+      for (const cp of documentInfo.coverPages) {
+        if (cp && !allOgImages.includes(cp)) {
+          allOgImages.push(cp);
+        }
+      }
+    }
+
     // Heuristics for title fallback
     if (!finalTitle) {
       try {
@@ -998,6 +1019,7 @@ const fetchUrlMetadata = async (url) => {
       rawContent: finalDescription,
       thumbnailUrl: directPosterUrl || finalImage,
       mediaUrl: resolvedMediaUrl,
+      images: allOgImages.length > 0 ? allOgImages : (finalImage ? [finalImage] : []),
       siteName: siteName || detected.platform,
       authorName: author,
       ...detected,
@@ -1037,7 +1059,11 @@ const getCaptures = async (req, res) => {
     const { platform, mediaType, status, remindersOnly, search, sortBy } =
       req.query;
 
-    const query = { user: req.user._id };
+    const userObjectId =
+      typeof req.user._id === "string"
+        ? new mongoose.Types.ObjectId(req.user._id)
+        : req.user._id;
+    const query = { user: userObjectId };
 
     // Platform filtering
     if (platform && platform !== "all") {
@@ -1078,20 +1104,40 @@ const getCaptures = async (req, res) => {
       ];
     }
 
-    // Sort definition
-    let sortOptions = { createdAt: -1 };
-    if (sortBy === "remindAt") {
-      sortOptions = { remindAt: 1, createdAt: -1 };
-    } else if (sortBy === "priority") {
-      // Urgent / high first
-      sortOptions = { priority: -1, createdAt: -1 };
+    // Sort definition with accurate priority scoring:
+    // urgent: 4, high: 3, medium: 2, low: 1
+    const pipeline = [
+      { $match: query },
+      {
+        $addFields: {
+          priorityScore: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$priority", "urgent"] }, then: 4 },
+                { case: { $eq: ["$priority", "high"] }, then: 3 },
+                { case: { $eq: ["$priority", "medium"] }, then: 2 },
+                { case: { $eq: ["$priority", "low"] }, then: 1 },
+              ],
+              default: 2,
+            },
+          },
+        },
+      },
+    ];
+
+    if (sortBy === "priority_low_to_urgent") {
+      pipeline.push({ $sort: { priorityScore: 1, createdAt: -1 } });
+    } else if (sortBy === "priority_urgent_to_low" || sortBy === "priority") {
+      pipeline.push({ $sort: { priorityScore: -1, createdAt: -1 } });
+    } else if (sortBy === "remindAt") {
+      pipeline.push({ $sort: { remindAt: 1, createdAt: -1 } });
     } else if (sortBy === "oldest") {
-      sortOptions = { createdAt: 1 };
+      pipeline.push({ $sort: { createdAt: 1 } });
+    } else {
+      pipeline.push({ $sort: { createdAt: -1 } });
     }
 
-    const captures = await CapturedResource.find(query)
-      .sort(sortOptions)
-      .lean();
+    const captures = await CapturedResource.aggregate(pipeline);
 
     // Compute aggregated stats for the user's dashboard/vault view
     const allUserCaptures = await CapturedResource.find({
@@ -1188,6 +1234,7 @@ const createCapture = async (req, res) => {
       embedUrl: rawEmbedUrl,
       mediaUrl: rawMediaUrl,
       thumbnailUrl: rawThumbnailUrl,
+      images: rawImages,
       notes,
       tags,
       priority,
@@ -1205,6 +1252,24 @@ const createCapture = async (req, res) => {
     let mediaGridFsId = null;
     let mediaR2Key = null;
     let storageProvider = "gridfs";
+
+    let images = [];
+    if (Array.isArray(rawImages)) {
+      images = rawImages.map((img) => String(img).trim()).filter(Boolean);
+    } else if (typeof rawImages === "string") {
+      try {
+        const parsed = JSON.parse(rawImages);
+        if (Array.isArray(parsed)) {
+          images = parsed.map((img) => String(img).trim()).filter(Boolean);
+        } else if (rawImages.trim()) {
+          images = [rawImages.trim()];
+        }
+      } catch {
+        if (rawImages.trim()) {
+          images = [rawImages.trim()];
+        }
+      }
+    }
 
     // Handle uploaded file (image file or clipboard paste)
     if (req.file) {
@@ -1312,6 +1377,9 @@ const createCapture = async (req, res) => {
           if (!embedId && meta.embedId) embedId = meta.embedId;
           if (!documentInfo && meta.documentInfo)
             documentInfo = meta.documentInfo;
+          if (images.length === 0 && meta.images && Array.isArray(meta.images) && meta.images.length > 0) {
+            images = meta.images;
+          }
           if (
             meta.documentInfo &&
             (!mediaType || mediaType === "video" || mediaType === "post")
@@ -1433,6 +1501,7 @@ const createCapture = async (req, res) => {
       mediaR2Key,
       storageProvider,
       thumbnailUrl: thumbnailUrl || "",
+      images: images.length > 0 ? images : (thumbnailUrl ? [thumbnailUrl] : []),
       documentInfo: documentInfo || null,
       notes: notes?.trim() || "",
       tags: parsedTags,
@@ -1480,6 +1549,7 @@ const updateCapture = async (req, res) => {
       thumbnailUrl,
       mediaType: updateMediaType,
       embedUrl,
+      images: updateImages,
     } = req.body;
 
     if (title !== undefined) capture.title = title.trim();
@@ -1492,6 +1562,21 @@ const updateCapture = async (req, res) => {
     if (thumbnailUrl !== undefined) capture.thumbnailUrl = thumbnailUrl;
     if (updateMediaType !== undefined) capture.mediaType = updateMediaType;
     if (embedUrl !== undefined) capture.embedUrl = embedUrl;
+
+    if (updateImages !== undefined) {
+      if (Array.isArray(updateImages)) {
+        capture.images = updateImages.map((img) => String(img).trim()).filter(Boolean);
+      } else if (typeof updateImages === "string") {
+        try {
+          const parsed = JSON.parse(updateImages);
+          capture.images = Array.isArray(parsed)
+            ? parsed.map((img) => String(img).trim()).filter(Boolean)
+            : [updateImages.trim()].filter(Boolean);
+        } catch {
+          capture.images = [updateImages.trim()].filter(Boolean);
+        }
+      }
+    }
 
     if (tags !== undefined) {
       if (Array.isArray(tags)) {

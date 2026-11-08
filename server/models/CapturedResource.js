@@ -74,6 +74,13 @@ const capturedResourceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
+    // Multiple images for carousel / gallery posts
+    images: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     mediaR2Key: {
       type: String,
       default: null,
