@@ -36,6 +36,8 @@ import {
   setActiveNote,
   setActiveNoteId,
   updateActiveNoteDraft,
+  upsertNoteInList,
+  removeNoteFromList,
   setSaveStatus,
   setViewFilter,
   setSearchQuery,
@@ -87,6 +89,33 @@ const deriveTitle = (body) => {
   return 'Untitled note';
 };
 
+// Helper: Extract clean first line segment with ..... for note list preview
+const getFirstLineSegment = (body, snippet, displayTitle) => {
+  const content = (body || snippet || '').trim();
+  if (!content) return '';
+  const lines = content
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/^[#*-\s]+/, ''))
+    .filter(Boolean);
+  if (lines.length === 0) return '';
+
+  let seg = lines[0];
+  // If line 1 was identical to displayTitle and line 2 exists, show line 2
+  if (lines.length > 1 && displayTitle && seg.toLowerCase() === displayTitle.trim().toLowerCase()) {
+    seg = lines[1];
+  }
+
+  // Strip markdown formatting for clean snippet
+  seg = seg
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .trim();
+
+  if (!seg) return '';
+  const cleanSeg = seg.length > 65 ? `${seg.slice(0, 65).trim()}` : seg;
+  return cleanSeg.endsWith('.....') ? cleanSeg : `${cleanSeg.replace(/\.+$/, '')}.....`;
+};
+
 // Helper: Toggle checkbox in markdown body by sequential index
 const toggleChecklistAt = (text, targetIndex) => {
   let count = 0;
@@ -119,6 +148,7 @@ const NotesPage = () => {
     selectedTag,
   } = useSelector((state) => state.notes);
 
+  const [localTitle, setLocalTitle] = useState('');
   const [localBody, setLocalBody] = useState('');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showMobileEditor, setShowMobileEditor] = useState(false);
@@ -126,9 +156,22 @@ const NotesPage = () => {
   const [conflictNotice, setConflictNotice] = useState(null);
 
   const searchInputRef = useRef(null);
+  const titleInputRef = useRef(null);
   const editorTextareaRef = useRef(null);
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
+
+  // Memoized sorted notes list with pinned items permanently sorted to the top
+  const sortedNotes = useMemo(() => {
+    return [...notes].sort((a, b) => {
+      const aPin = Boolean(a.pinned);
+      const bPin = Boolean(b.pinned);
+      if (aPin !== bPin) {
+        return aPin ? -1 : 1;
+      }
+      return new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime();
+    });
+  }, [notes]);
 
   // Resume sync after login / mount
   useEffect(() => {
@@ -173,15 +216,17 @@ const NotesPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  // Synchronize localBody when activeNote changes
+  // Synchronize localTitle and localBody when activeNote changes
   useEffect(() => {
     if (activeNote) {
+      setLocalTitle(activeNote.title || '');
       setLocalBody(activeNote.body || '');
       // If we are selecting an existing note on mobile, display the editor
       if (window.innerWidth < 768) {
         setShowMobileEditor(true);
       }
     } else {
+      setLocalTitle('');
       setLocalBody('');
     }
   }, [activeNote]);
@@ -231,8 +276,8 @@ const NotesPage = () => {
   const handleSelectNote = async (noteId) => {
     // If current note is blank local draft, discard it before switching
     if (activeNoteRef.current && activeNoteRef.current._id?.startsWith('local-')) {
-      if (!localBody.trim()) {
-        // Discard blank local note
+      if (!localTitle.trim() && !localBody.trim()) {
+        dispatch(removeNoteFromList(activeNoteRef.current._id));
         dispatch(setActiveNote(null));
       }
     }
@@ -244,7 +289,7 @@ const NotesPage = () => {
       const uid = user?._id || user?.id || 'default';
       const draftKey = `${uid}:${noteId}`;
       const localDraft = (await notesDb.drafts.get(draftKey)) || (await notesDb.drafts.get(noteId));
-      if (localDraft && localDraft.body) {
+      if (localDraft && (localDraft.body || localDraft.title)) {
         dispatch(
           setActiveNote({
             _id: localDraft.id,
@@ -289,8 +334,13 @@ const NotesPage = () => {
   // Instant New Note (QN-1)
   const handleCreateNewNote = () => {
     // If currently on an empty local note, keep focusing it
-    if (activeNoteRef.current && activeNoteRef.current._id?.startsWith('local-') && !localBody.trim()) {
-      editorTextareaRef.current?.focus();
+    if (
+      activeNoteRef.current &&
+      activeNoteRef.current._id?.startsWith('local-') &&
+      !localTitle.trim() &&
+      !localBody.trim()
+    ) {
+      titleInputRef.current?.focus();
       if (window.innerWidth < 768) setShowMobileEditor(true);
       return;
     }
@@ -303,7 +353,7 @@ const NotesPage = () => {
     const blank = {
       _id: `local-${clientId}`,
       clientId,
-      title: 'Untitled note',
+      title: '',
       body: '',
       pinned: false,
       archived: false,
@@ -314,7 +364,10 @@ const NotesPage = () => {
       isLocalDraft: true,
     };
 
+    // Instantly add to notes list so it is immediately visible
+    dispatch(upsertNoteInList(blank));
     dispatch(setActiveNote(blank));
+    setLocalTitle('');
     setLocalBody('');
     setIsPreviewMode(false);
     setConflictNotice(null);
@@ -324,11 +377,54 @@ const NotesPage = () => {
     }
 
     setTimeout(() => {
-      editorTextareaRef.current?.focus();
+      titleInputRef.current?.focus();
     }, 50);
   };
 
-  // Handle Textarea Change
+  // Handle Title Input Change
+  const handleTitleChange = (newTitle) => {
+    setLocalTitle(newTitle);
+
+    // Update Redux state immediately so list item updates in real-time
+    dispatch(
+      updateActiveNoteDraft({
+        title: newTitle,
+      })
+    );
+
+    const currentNote = activeNoteRef.current;
+    if (!currentNote) return;
+
+    const isNew = currentNote._id?.startsWith('local-');
+    const noteId = isNew ? null : currentNote._id;
+    const clientId = currentNote.clientId;
+    const baseVersion = currentNote.version || 1;
+
+    notesSyncManager.scheduleDebouncedSync({
+      noteId,
+      clientId,
+      draftData: {
+        title: newTitle,
+        body: localBody,
+        pinned: currentNote.pinned,
+        archived: currentNote.archived,
+        tags: extractTags(localBody),
+      },
+      baseVersion,
+      onStatusChange: (statusObj) => {
+        dispatch(setSaveStatus(statusObj));
+      },
+      onSuccess: (savedNote) => {
+        dispatch(upsertNoteInList(savedNote));
+        dispatch(setActiveNote(savedNote));
+      },
+      onConflict: ({ serverNote, localDraft }) => {
+        handleConflictResolution(serverNote, localDraft);
+      },
+    });
+  };
+
+  // Handle Textarea Body Change
   const handleBodyChange = (newBody) => {
     // Check 50 KB limit
     const byteLength = getByteLength(newBody);
@@ -339,7 +435,7 @@ const NotesPage = () => {
 
     setLocalBody(newBody);
 
-    const derivedTitle = deriveTitle(newBody);
+    const derivedTitle = localTitle.trim() || deriveTitle(newBody) || 'Untitled note';
     const extractedTags = extractTags(newBody);
 
     // Update Redux state immediately for responsive title/snippet updates
@@ -375,6 +471,7 @@ const NotesPage = () => {
         dispatch(setSaveStatus(statusObj));
       },
       onSuccess: (savedNote) => {
+        dispatch(upsertNoteInList(savedNote));
         dispatch(setActiveNote(savedNote));
       },
       onConflict: ({ serverNote, localDraft }) => {
@@ -413,6 +510,7 @@ const NotesPage = () => {
 
       // Set active note to server note
       dispatch(setActiveNote(serverNote));
+      setLocalTitle(serverNote.title || '');
       setLocalBody(serverNote.body || '');
     } catch (e) {
       console.error('Failed to create conflict copy:', e);
@@ -426,11 +524,17 @@ const NotesPage = () => {
     handleBodyChange(updated);
   };
 
-  // Toggle Pin
+  // Toggle Pin for Active Note
   const handleTogglePin = async () => {
     if (!activeNote) return;
     const newPinned = !activeNote.pinned;
-    dispatch(updateActiveNoteDraft({ pinned: newPinned }));
+    const updated = {
+      ...activeNote,
+      pinned: newPinned,
+      updatedAt: new Date().toISOString(),
+    };
+    dispatch(setActiveNote(updated));
+    dispatch(upsertNoteInList(updated));
 
     if (!activeNote._id.startsWith('local-')) {
       try {
@@ -444,6 +548,40 @@ const NotesPage = () => {
         toast.success(newPinned ? 'Note pinned to top' : 'Note unpinned');
       } catch {
         toast.error('Failed to update pin status');
+        const rollback = { ...activeNote, pinned: !newPinned };
+        dispatch(setActiveNote(rollback));
+        dispatch(upsertNoteInList(rollback));
+      }
+    }
+  };
+
+  // Toggle Pin directly from Note Card in List
+  const handleTogglePinForNote = async (note) => {
+    const newPinned = !note.pinned;
+    const updated = {
+      ...note,
+      pinned: newPinned,
+      updatedAt: new Date().toISOString(),
+    };
+    if (activeNote && (activeNote._id === note._id || activeNote.clientId === note.clientId)) {
+      dispatch(setActiveNote({ ...activeNote, pinned: newPinned }));
+    }
+    dispatch(upsertNoteInList(updated));
+
+    if (!note._id.startsWith('local-')) {
+      try {
+        await dispatch(
+          updateNote({
+            id: note._id,
+            data: { pinned: newPinned },
+            baseVersion: note.version,
+          })
+        ).unwrap();
+        toast.success(newPinned ? 'Note pinned to top' : 'Note unpinned');
+      } catch {
+        toast.error('Failed to update pin status');
+        const rollback = { ...note, pinned: !newPinned };
+        dispatch(upsertNoteInList(rollback));
       }
     }
   };
@@ -452,7 +590,16 @@ const NotesPage = () => {
   const handleToggleArchive = async () => {
     if (!activeNote) return;
     const newArchived = !activeNote.archived;
-    dispatch(updateActiveNoteDraft({ archived: newArchived }));
+    const updated = { ...activeNote, archived: newArchived };
+    dispatch(setActiveNote(updated));
+
+    if (viewFilter === 'active' && newArchived) {
+      dispatch(removeNoteFromList(activeNote._id));
+    } else if (viewFilter === 'archived' && !newArchived) {
+      dispatch(removeNoteFromList(activeNote._id));
+    } else {
+      dispatch(upsertNoteInList(updated));
+    }
 
     if (!activeNote._id.startsWith('local-')) {
       try {
@@ -464,8 +611,6 @@ const NotesPage = () => {
           })
         ).unwrap();
         toast.success(newArchived ? 'Note archived' : 'Note unarchived');
-        // Refresh list
-        dispatch(fetchNotes({ deleted: 'false', archived: viewFilter === 'archived' ? 'true' : 'false' }));
       } catch {
         toast.error('Failed to update archive status');
       }
@@ -478,7 +623,9 @@ const NotesPage = () => {
 
     if (activeNote._id.startsWith('local-')) {
       // Local draft not yet saved on server
+      dispatch(removeNoteFromList(activeNote._id));
       dispatch(setActiveNote(null));
+      setLocalTitle('');
       setLocalBody('');
       setShowMobileEditor(false);
       return;
@@ -486,6 +633,7 @@ const NotesPage = () => {
 
     try {
       await dispatch(softDeleteNote(activeNote._id)).unwrap();
+      dispatch(removeNoteFromList(activeNote._id));
       setShowMobileEditor(false);
     } catch {
       toast.error('Failed to move note to trash');
@@ -525,7 +673,7 @@ const NotesPage = () => {
   // Export Note as .md or .txt (QN-17)
   const handleExportNote = (format = 'md') => {
     if (!activeNote) return;
-    const title = activeNote.title || 'Untitled note';
+    const title = localTitle.trim() || activeNote.title || 'Untitled note';
     const cleanTitle = title
       .split('')
       .filter((ch) => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) !== 127 && !'<>/\\|?*:"'.includes(ch))
@@ -730,14 +878,18 @@ const NotesPage = () => {
               )}
             </div>
           ) : (
-            notes.map((note) => {
-              const isSelected = activeNote?._id === note._id || activeNoteId === note._id;
-              const displayTitle = note.title || 'Untitled note';
-              const snippetText = note.snippet || '';
+            sortedNotes.map((note) => {
+              const isSelected =
+                activeNote?._id === note._id ||
+                activeNoteId === note._id ||
+                (activeNote?.clientId && note.clientId && activeNote.clientId === note.clientId);
+              const displayTitle =
+                note.title?.trim() || deriveTitle(note.body || note.snippet) || 'Untitled note';
+              const firstLineSegment = getFirstLineSegment(note.body, note.snippet, displayTitle);
 
               return (
                 <div
-                  key={note._id || note.id}
+                  key={note._id || note.id || note.clientId}
                   onClick={() => handleSelectNote(note._id || note.id)}
                   className={`p-3 cursor-pointer transition-colors border-l-4 group relative ${
                     isSelected
@@ -754,22 +906,30 @@ const NotesPage = () => {
                       {highlightMatch(displayTitle, searchQuery)}
                     </h3>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {note.pinned && (
-                        <IoBookmark
-                          size={12}
-                          className="text-accent"
-                          title="Pinned"
-                        />
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTogglePinForNote(note);
+                        }}
+                        className={`p-0.5 rounded transition-colors cursor-pointer ${
+                          note.pinned
+                            ? 'text-accent hover:text-accent/80'
+                            : 'text-muted/40 hover:text-primary opacity-0 group-hover:opacity-100'
+                        }`}
+                        title={note.pinned ? 'Unpin note' : 'Pin note to top'}
+                      >
+                        {note.pinned ? <IoBookmark size={13} /> : <IoBookmarkOutline size={13} />}
+                      </button>
                       <span className="text-[10px] text-muted">
                         {formatTimeAgo(note.updatedAt || note.createdAt)}
                       </span>
                     </div>
                   </div>
 
-                  {snippetText && (
-                    <p className="text-[11px] text-muted line-clamp-2 mt-1 leading-relaxed">
-                      {highlightMatch(snippetText, searchQuery)}
+                  {firstLineSegment && (
+                    <p className="text-[11px] text-muted line-clamp-1 mt-1 leading-relaxed break-words">
+                      {highlightMatch(firstLineSegment, searchQuery)}
                     </p>
                   )}
 
@@ -1001,6 +1161,11 @@ const NotesPage = () => {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {isPreviewMode ? (
                 <div className="max-w-3xl mx-auto text-primary leading-relaxed">
+                  {localTitle.trim() && (
+                    <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-4 pb-2 border-b border-subtle">
+                      {localTitle}
+                    </h1>
+                  )}
                   {localBody.trim() ? (
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
@@ -1076,14 +1241,32 @@ const NotesPage = () => {
                 </div>
               ) : (
                 <div className="h-full flex flex-col max-w-3xl mx-auto">
+                  {/* Note Title on top */}
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={localTitle}
+                    disabled={isTrashView}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        editorTextareaRef.current?.focus();
+                      }
+                    }}
+                    placeholder="Note title..."
+                    className="w-full text-xl sm:text-2xl font-bold text-primary bg-transparent focus:outline-none placeholder:text-muted/40 pb-2 mb-3 border-b border-subtle/50 disabled:opacity-50 transition-colors focus:border-accent"
+                  />
+
+                  {/* Note Body Textarea */}
                   <textarea
                     ref={editorTextareaRef}
                     value={localBody}
                     disabled={isTrashView}
                     onChange={(e) => handleBodyChange(e.target.value)}
-                    placeholder="Start typing your note here...&#10;&#10;Tips:&#10;• First line becomes the title automatically&#10;• Write #tags to organize (e.g. #exam #ideas)&#10;• Use - [ ] for interactive checklists&#10;• Full markdown formatting supported"
+                    placeholder="Start typing your note here...&#10;&#10;Tips:&#10;• First line becomes the title automatically if title is blank&#10;• Write #tags to organize (e.g. #exam #ideas)&#10;• Use - [ ] for interactive checklists&#10;• Full markdown formatting supported"
                     className="w-full flex-1 resize-none bg-transparent text-primary text-sm sm:text-base leading-relaxed placeholder:text-muted/60 focus:outline-none border-none p-0 disabled:opacity-50 font-sans"
-                    autoFocus
+                    autoFocus={!localTitle}
                   />
                 </div>
               )}

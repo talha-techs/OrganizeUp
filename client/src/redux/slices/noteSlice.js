@@ -97,6 +97,20 @@ export const permanentDeleteNote = createAsyncThunk(
   }
 );
 
+const sortNotesArray = (arr) => {
+  if (!Array.isArray(arr)) return;
+  arr.sort((a, b) => {
+    const aPin = Boolean(a.pinned);
+    const bPin = Boolean(b.pinned);
+    if (aPin !== bPin) {
+      return aPin ? -1 : 1;
+    }
+    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+};
+
 const initialState = {
   notes: [],
   hasMore: false,
@@ -129,18 +143,79 @@ const noteSlice = createSlice({
     updateActiveNoteDraft: (state, action) => {
       if (state.activeNote) {
         state.activeNote = { ...state.activeNote, ...action.payload };
-        // Also update matching snippet and title in list item if present
-        const item = state.notes.find((n) => n._id === state.activeNote._id);
-        if (item) {
+        const activeId = state.activeNote._id;
+        const activeClient = state.activeNote.clientId;
+        const idx = state.notes.findIndex(
+          (n) => (activeId && (n._id === activeId || n.id === activeId)) || (activeClient && n.clientId === activeClient)
+        );
+        if (idx !== -1) {
+          const item = state.notes[idx];
           if (action.payload.title !== undefined) item.title = action.payload.title;
           if (action.payload.body !== undefined) {
+            item.body = action.payload.body;
             item.snippet = action.payload.body.slice(0, 160).replace(/\r?\n/g, ' ');
           }
-          if (action.payload.pinned !== undefined) item.pinned = action.payload.pinned;
-          if (action.payload.archived !== undefined) item.archived = action.payload.archived;
+          if (action.payload.pinned !== undefined) item.pinned = Boolean(action.payload.pinned);
+          if (action.payload.archived !== undefined) item.archived = Boolean(action.payload.archived);
           if (action.payload.tags !== undefined) item.tags = action.payload.tags;
+          item.updatedAt = new Date().toISOString();
+        } else {
+          state.notes.unshift({
+            _id: activeId,
+            id: activeId,
+            clientId: activeClient || null,
+            title: state.activeNote.title || '',
+            body: state.activeNote.body || '',
+            snippet: state.activeNote.body ? state.activeNote.body.slice(0, 160).replace(/\r?\n/g, ' ') : '',
+            pinned: Boolean(state.activeNote.pinned),
+            archived: Boolean(state.activeNote.archived),
+            tags: state.activeNote.tags || [],
+            version: state.activeNote.version || 1,
+            createdAt: state.activeNote.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isLocalDraft: Boolean(state.activeNote.isLocalDraft),
+          });
         }
+        sortNotesArray(state.notes);
       }
+    },
+    upsertNoteInList: (state, action) => {
+      const note = action.payload;
+      if (!note) return;
+      const id = note._id || note.id;
+      const clientId = note.clientId;
+      const idx = state.notes.findIndex(
+        (n) => (id && (n._id === id || n.id === id)) || (clientId && n.clientId === clientId)
+      );
+
+      const item = {
+        _id: id,
+        id: id,
+        clientId: clientId || null,
+        title: note.title !== undefined ? note.title : '',
+        body: note.body !== undefined ? note.body : '',
+        snippet: note.body ? note.body.slice(0, 160).replace(/\r?\n/g, ' ') : (note.snippet || ''),
+        pinned: Boolean(note.pinned),
+        archived: Boolean(note.archived),
+        tags: note.tags || [],
+        version: note.version || 1,
+        createdAt: note.createdAt || new Date().toISOString(),
+        updatedAt: note.updatedAt || new Date().toISOString(),
+        isLocalDraft: Boolean(note.isLocalDraft),
+      };
+
+      if (idx !== -1) {
+        state.notes[idx] = { ...state.notes[idx], ...item };
+      } else {
+        state.notes.unshift(item);
+      }
+      sortNotesArray(state.notes);
+    },
+    removeNoteFromList: (state, action) => {
+      const targetId = action.payload;
+      state.notes = state.notes.filter(
+        (n) => n._id !== targetId && n.id !== targetId && n.clientId !== targetId
+      );
     },
     setSaveStatus: (state, action) => {
       state.saveStatus = action.payload.status;
@@ -170,6 +245,7 @@ const noteSlice = createSlice({
       .addCase(fetchNotes.fulfilled, (state, action) => {
         state.isLoading = false;
         state.notes = action.payload.notes || [];
+        sortNotesArray(state.notes);
         state.hasMore = action.payload.hasMore || false;
         state.nextCursor = action.payload.nextCursor || null;
       })
@@ -199,24 +275,28 @@ const noteSlice = createSlice({
       if (created) {
         state.activeNote = created;
         state.activeNoteId = created._id;
-        // Prepend to notes list
         const listItem = {
           _id: created._id,
           id: created._id,
           title: created.title,
           snippet: created.body ? created.body.slice(0, 160).replace(/\r?\n/g, ' ') : '',
-          pinned: created.pinned,
-          archived: created.archived,
+          pinned: Boolean(created.pinned),
+          archived: Boolean(created.archived),
           tags: created.tags || [],
           version: created.version || 1,
           clientId: created.clientId,
           updatedAt: created.updatedAt,
           createdAt: created.createdAt,
         };
-        const exists = state.notes.some((n) => n._id === created._id);
-        if (!exists) {
+        const idx = state.notes.findIndex(
+          (n) => n._id === created._id || (created.clientId && n.clientId === created.clientId)
+        );
+        if (idx !== -1) {
+          state.notes[idx] = { ...state.notes[idx], ...listItem };
+        } else {
           state.notes.unshift(listItem);
         }
+        sortNotesArray(state.notes);
       }
     });
 
@@ -225,18 +305,25 @@ const noteSlice = createSlice({
       const updated = action.payload.note;
       if (updated) {
         state.activeNote = updated;
-        const idx = state.notes.findIndex((n) => n._id === updated._id);
+        const idx = state.notes.findIndex(
+          (n) => n._id === updated._id || (updated.clientId && n.clientId === updated.clientId)
+        );
         if (idx !== -1) {
           state.notes[idx] = {
             ...state.notes[idx],
+            _id: updated._id,
+            id: updated._id,
             title: updated.title,
-            snippet: updated.body ? updated.body.slice(0, 160).replace(/\r?\n/g, ' ') : '',
-            pinned: updated.pinned,
-            archived: updated.archived,
+            snippet: updated.body
+              ? updated.body.slice(0, 160).replace(/\r?\n/g, ' ')
+              : updated.snippet || state.notes[idx].snippet || '',
+            pinned: Boolean(updated.pinned),
+            archived: Boolean(updated.archived),
             tags: updated.tags || [],
             version: updated.version,
             updatedAt: updated.updatedAt,
           };
+          sortNotesArray(state.notes);
         }
       }
     });
@@ -283,6 +370,8 @@ export const {
   setActiveNoteId,
   setActiveNote,
   updateActiveNoteDraft,
+  upsertNoteInList,
+  removeNoteFromList,
   setSaveStatus,
   setViewFilter,
   setSearchQuery,
