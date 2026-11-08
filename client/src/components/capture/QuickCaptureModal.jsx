@@ -37,6 +37,7 @@ import {
   scheduleClientReminder,
   testOSNotification,
 } from '../../utils/notificationService';
+import VisualDateTimePicker, { toLocalISOString } from '../ui/VisualDateTimePicker';
 
 
 /**
@@ -239,6 +240,12 @@ const QuickCaptureModal = () => {
 
   const handleSelectReminderPreset = async (presetId) => {
     setReminderPreset(presetId);
+    if (presetId === 'custom' && !customRemindAt) {
+      const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const roundedMins = Math.ceil(d.getMinutes() / 15) * 15;
+      d.setMinutes(roundedMins, 0, 0);
+      setCustomRemindAt(toLocalISOString(d));
+    }
     if (presetId !== 'none' && isNotificationSupported() && getNotificationPermission() === 'default') {
       const res = await requestNotificationPermission();
       setNotificationPerm(res);
@@ -1422,21 +1429,14 @@ const QuickCaptureModal = () => {
                 ))}
               </div>
 
-              {/* Custom DateTime picker */}
+              {/* Visual Custom DateTime picker */}
               {reminderPreset === 'custom' && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="pt-1"
-                >
-                  <input
-                    type="datetime-local"
+                <div className="pt-1.5">
+                  <VisualDateTimePicker
                     value={customRemindAt}
-                    onChange={(e) => setCustomRemindAt(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent transition-all"
+                    onChange={(val) => setCustomRemindAt(val)}
                   />
-                </motion.div>
+                </div>
               )}
             </div>
 

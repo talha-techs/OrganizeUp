@@ -36,6 +36,7 @@ import {
 } from '../redux/slices/youtubePlaylistSlice';
 import { toggleVisibility } from '../redux/slices/adminSlice';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import VisualDateTimePicker from '../components/ui/VisualDateTimePicker';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -1436,11 +1437,9 @@ const YouTubePlaylistDetailPage = () => {
                 <label className="text-[11px] font-semibold text-muted block mb-1">
                   Custom Date & Time
                 </label>
-                <input
-                  type="datetime-local"
+                <VisualDateTimePicker
                   value={newRemindDate}
-                  onChange={(e) => setNewRemindDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent"
+                  onChange={(val) => setNewRemindDate(val)}
                 />
               </div>
 

@@ -47,6 +47,7 @@ import {
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import CustomSelect from '../../components/ui/CustomSelect';
 import UniversalVideoPlayer from '../../components/capture/UniversalVideoPlayer';
+import VisualDateTimePicker from '../../components/ui/VisualDateTimePicker';
 import { getInstagramEmbedUrl, getFacebookEmbedUrl } from '../../utils/linkMediaUtils';
 import {
   isNotificationSupported,
@@ -1939,11 +1940,9 @@ const CapturesPage = () => {
                 <label className="text-[11px] font-semibold text-muted block mb-1">
                   Custom Date & Time
                 </label>
-                <input
-                  type="datetime-local"
+                <VisualDateTimePicker
                   value={newRemindDate}
-                  onChange={(e) => setNewRemindDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent"
+                  onChange={(val) => setNewRemindDate(val)}
                 />
               </div>
 

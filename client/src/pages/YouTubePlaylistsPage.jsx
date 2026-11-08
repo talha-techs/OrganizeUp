@@ -30,6 +30,7 @@ import api from '../utils/api';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import CustomSelect from '../components/ui/CustomSelect';
+import VisualDateTimePicker from '../components/ui/VisualDateTimePicker';
 import toast from 'react-hot-toast';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import {
@@ -1216,11 +1217,9 @@ const YouTubePlaylistsPage = () => {
                 <label className="text-[11px] font-semibold text-muted block mb-1">
                   Custom Date & Time
                 </label>
-                <input
-                  type="datetime-local"
+                <VisualDateTimePicker
                   value={newRemindDate}
-                  onChange={(e) => setNewRemindDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-surface border border-subtle text-xs text-primary focus:outline-none focus:border-accent"
+                  onChange={(val) => setNewRemindDate(val)}
                 />
               </div>
 
