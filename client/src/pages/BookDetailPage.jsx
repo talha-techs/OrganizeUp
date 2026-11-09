@@ -659,6 +659,11 @@ const BookDetailPage = () => {
       setSelectedVideo(newIndex);
       const nextSaved = getVideoProgress(newIndex)?.note || '';
       setLocalNotes(nextSaved);
+
+      // On mobile viewports, smoothly scroll up to the video player
+      if (typeof window !== 'undefined' && window.innerWidth < 1024 && cockpitRef.current) {
+        cockpitRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     },
     [selectedVideo, localNotes, getVideoProgress, currentBook, dispatch, id]
   );
@@ -985,6 +990,13 @@ const BookDetailPage = () => {
     totalVideos > 0 ? Math.round((completedVideosCount / totalVideos) * 100) : 0;
   const isCurrentVideoCompleted = Boolean(getVideoProgress(selectedVideo)?.completed);
   const activeVideo = currentBook?.videos?.[selectedVideo];
+  const activeVideoId = activeVideo?.driveFileId || activeVideo?.videoId;
+  const isCurrentVideoYouTube =
+    currentBook.source === 'youtube' ||
+    Boolean(activeVideoId && /^[a-zA-Z0-9_-]{11}$/.test(activeVideoId));
+  const currentIframeSrc = isCurrentVideoYouTube
+    ? `https://www.youtube.com/embed/${activeVideoId}?autoplay=1&rel=0`
+    : `https://drive.google.com/file/d/${activeVideoId}/preview`;
   const hasPrevVideo = selectedVideo > 0;
   const hasNextVideo = totalVideos > 0 && selectedVideo < totalVideos - 1;
 
@@ -1596,7 +1608,7 @@ const BookDetailPage = () => {
           {/* Desktop & Responsive Cockpit Container */}
           <div
             ref={cockpitRef}
-            className={`flex flex-col lg:flex-row gap-0 relative w-full items-stretch ${
+            className={`flex flex-col lg:flex-row gap-0 relative w-full items-stretch scroll-mt-20 ${
               isDragging ? 'select-none' : ''
             }`}
           >
@@ -1617,38 +1629,31 @@ const BookDetailPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card overflow-hidden border border-subtle rounded-2xl shadow-xl flex flex-col"
               >
-                {/* Embed Video Iframe with aspect-video */}
-                <div className="relative w-full aspect-video bg-black">
+                {/* Embed Video Iframe with responsive Drive-aware aspect ratio */}
+                <div
+                  className={`relative w-full bg-black overflow-hidden transition-all ${
+                    isCurrentVideoYouTube
+                      ? 'aspect-video'
+                      : 'aspect-[4/3] sm:aspect-[16/10] md:aspect-video lg:aspect-video min-h-[290px] sm:min-h-[350px] md:min-h-[390px] lg:min-h-0'
+                  }`}
+                >
                   {/* Overlay during drag so iframe doesn't swallow mouse events */}
                   {isDragging && (
                     <div className="absolute inset-0 z-50 cursor-col-resize bg-black/10" />
                   )}
 
-                  {selectedVideo !== null && currentBook.videos?.[selectedVideo] ? (
-                    (() => {
-                      const videoItem = currentBook.videos[selectedVideo];
-                      const videoId = videoItem?.driveFileId || videoItem?.videoId;
-                      const isYouTube =
-                        currentBook.source === 'youtube' ||
-                        (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId));
-                      const iframeSrc = isYouTube
-                        ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
-                        : `https://drive.google.com/file/d/${videoId}/preview`;
-
-                      return (
-                        <iframe
-                          key={`${selectedVideo}-${videoId}`}
-                          src={iframeSrc}
-                          width="100%"
-                          height="100%"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="w-full h-full border-0"
-                        />
-                      );
-                    })()
+                  {selectedVideo !== null && activeVideo && activeVideoId ? (
+                    <iframe
+                      key={`${selectedVideo}-${activeVideoId}`}
+                      src={currentIframeSrc}
+                      title={activeVideo?.title || currentBook.title || `Video ${selectedVideo + 1}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allowFullScreen
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full block border-0"
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-surface-raised">
+                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-surface-raised">
                       <div className="text-center p-4">
                         <IoPlayCircle className="text-accent/30 mx-auto mb-2" size={48} />
                         <p className="text-secondary text-xs sm:text-sm">Select a video to start watching</p>
@@ -1677,6 +1682,19 @@ const BookDetailPage = () => {
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {!isCurrentVideoYouTube && activeVideoId && (
+                        <a
+                          href={`https://drive.google.com/file/d/${activeVideoId}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg cursor-pointer hover:text-accent transition-colors"
+                          title="Open chapter in Google Drive (pop-out viewer)"
+                        >
+                          <IoOpenOutline size={13} />
+                          <span>Drive</span>
+                        </a>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleToggleVideoComplete(selectedVideo)}
