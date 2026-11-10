@@ -8,6 +8,7 @@ const {
   deleteCourse,
   importToCourse,
   removeFileFromCourse,
+  removeFolderFromCourse,
   getCategories,
   createCategory,
   deleteCategory,
@@ -57,5 +58,6 @@ router.put(
 );
 router.delete("/:id", protect, deleteCourse);
 router.delete("/:id/files/:fileId", protect, removeFileFromCourse);
+router.delete("/:id/folders/:folderId", protect, removeFolderFromCourse);
 
 module.exports = router;

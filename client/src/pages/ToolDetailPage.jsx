@@ -281,7 +281,7 @@ const ToolDetailPage = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRemoveFile(file._id);
+                          handleRemoveFile(file._id || file.driveFileId);
                         }}
                         className="p-1 rounded hover:bg-red-500/10 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                       >

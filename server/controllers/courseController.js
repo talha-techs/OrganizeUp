@@ -445,29 +445,38 @@ const removeFileFromCourse = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    const isOwner = course.addedBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin";
+    const isOwner =
+      course.addedBy &&
+      course.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user && req.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Filter root files
-    course.files = course.files.filter(
-      (f) =>
-        f._id.toString() !== req.params.fileId &&
-        f.driveFileId !== req.params.fileId,
-    );
+    const targetFileId = decodeURIComponent(String(req.params.fileId));
 
-    // Recursively filter files inside folders
+    const matchesTarget = (f) => {
+      if (!f) return false;
+      const fId = f._id ? String(f._id) : null;
+      const driveId = f.driveFileId ? String(f.driveFileId) : null;
+      return (
+        (fId && fId === targetFileId) ||
+        (driveId && driveId === targetFileId)
+      );
+    };
+
+    // Filter root files
+    if (Array.isArray(course.files)) {
+      course.files = course.files.filter((f) => !matchesTarget(f));
+    }
+
+    // Recursively filter files inside folders and subfolders
     const filterFolderFiles = (folders) => {
       if (!Array.isArray(folders)) return;
       for (const folder of folders) {
+        if (!folder) continue;
         if (Array.isArray(folder.files)) {
-          folder.files = folder.files.filter(
-            (f) =>
-              f._id.toString() !== req.params.fileId &&
-              f.driveFileId !== req.params.fileId,
-          );
+          folder.files = folder.files.filter((f) => !matchesTarget(f));
         }
         if (Array.isArray(folder.subfolders)) {
           filterFolderFiles(folder.subfolders);
@@ -475,6 +484,8 @@ const removeFileFromCourse = async (req, res) => {
       }
     };
     filterFolderFiles(course.folders);
+
+    course.markModified("files");
     course.markModified("folders");
 
     await course.save();
@@ -487,6 +498,106 @@ const removeFileFromCourse = async (req, res) => {
     res.json({ message: "File removed", course: populated });
   } catch (error) {
     console.error("Remove file from course error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// @desc    Remove a folder and its contents from a course
+// @route   DELETE /api/courses/:id/folders/:folderId
+const removeFolderFromCourse = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const isOwner =
+      course.addedBy &&
+      course.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user && req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const targetFolderId = decodeURIComponent(String(req.params.folderId));
+
+    const removedFileDriveIds = new Set();
+    const removedFileObjIds = new Set();
+
+    const collectFileIds = (fld) => {
+      if (!fld) return;
+      if (Array.isArray(fld.files)) {
+        for (const f of fld.files) {
+          if (!f) continue;
+          if (f.driveFileId) removedFileDriveIds.add(String(f.driveFileId));
+          if (f._id) removedFileObjIds.add(String(f._id));
+        }
+      }
+      if (Array.isArray(fld.subfolders)) {
+        for (const sub of fld.subfolders) {
+          collectFileIds(sub);
+        }
+      }
+    };
+
+    const matchesFolder = (fld) => {
+      if (!fld) return false;
+      const fldId = fld._id ? String(fld._id) : null;
+      const driveId = fld.driveFileId ? String(fld.driveFileId) : null;
+      const name = fld.name ? String(fld.name) : null;
+      const path = fld.path ? String(fld.path) : null;
+      return (
+        (fldId && fldId === targetFolderId) ||
+        (driveId && driveId === targetFolderId) ||
+        (path && path === targetFolderId) ||
+        (name && name === targetFolderId)
+      );
+    };
+
+    const filterFolders = (folderList) => {
+      if (!Array.isArray(folderList)) return [];
+      const result = [];
+      for (const fld of folderList) {
+        if (!fld) continue;
+        if (matchesFolder(fld)) {
+          collectFileIds(fld);
+          continue; // Drop this folder
+        }
+        if (Array.isArray(fld.subfolders)) {
+          fld.subfolders = filterFolders(fld.subfolders);
+        }
+        result.push(fld);
+      }
+      return result;
+    };
+
+    course.folders = filterFolders(course.folders);
+
+    // Also remove files from root course.files if they belonged to this folder
+    if (Array.isArray(course.files)) {
+      course.files = course.files.filter((f) => {
+        if (!f) return false;
+        const fId = f._id ? String(f._id) : null;
+        const driveId = f.driveFileId ? String(f.driveFileId) : null;
+        if (driveId && removedFileDriveIds.has(driveId)) return false;
+        if (fId && removedFileObjIds.has(fId)) return false;
+        return true;
+      });
+    }
+
+    course.markModified("folders");
+    course.markModified("files");
+
+    await course.save();
+
+    const populated = await course.populate([
+      { path: "category", select: "name" },
+      { path: "addedBy", select: "name avatar" },
+    ]);
+
+    res.json({ message: "Folder removed", course: populated });
+  } catch (error) {
+    console.error("Remove folder from course error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -779,6 +890,7 @@ module.exports = {
   deleteCourse,
   importToCourse,
   removeFileFromCourse,
+  removeFolderFromCourse,
   getCategories,
   createCategory,
   deleteCategory,

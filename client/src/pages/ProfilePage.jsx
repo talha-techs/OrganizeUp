@@ -774,23 +774,23 @@ const ProfilePage = () => {
                       {/* top-level files */}
                       {(course.files || []).map((f) => (
                         <SubRow
-                          key={f._id}
+                          key={f._id || f.driveFileId}
                           name={f.name}
-                          onDelete={() => confirmRemoveFile(removeFileFromCourse({ courseId: course._id, fileId: f._id }), f.name)}
+                          onDelete={() => confirmRemoveFile(removeFileFromCourse({ courseId: course._id, fileId: f._id || f.driveFileId }), f.name)}
                         />
                       ))}
                       {/* folder files */}
                       {(course.folders || []).map((folder) => (
-                        <div key={folder._id || folder.name}>
+                        <div key={folder._id || folder.driveFileId || folder.name}>
                           <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-surface-raised border-y border-subtle">
                             <IoFolderOutline size={12} className="text-accent flex-shrink-0" />
                             <span className="text-xs text-secondary font-medium truncate">{folder.name}</span>
                           </div>
                           {(folder.files || []).map((f) => (
                             <SubRow
-                              key={f._id}
+                              key={f._id || f.driveFileId}
                               name={f.name}
-                              onDelete={() => confirmRemoveFile(removeFileFromCourse({ courseId: course._id, fileId: f._id }), f.name)}
+                              onDelete={() => confirmRemoveFile(removeFileFromCourse({ courseId: course._id, fileId: f._id || f.driveFileId }), f.name)}
                             />
                           ))}
                         </div>
@@ -824,22 +824,22 @@ const ProfilePage = () => {
                     >
                       {(tool.files || []).map((f) => (
                         <SubRow
-                          key={f._id}
+                          key={f._id || f.driveFileId}
                           name={f.name}
-                          onDelete={() => confirmRemoveFile(removeFileFromTool({ toolId: tool._id, fileId: f._id }), f.name)}
+                          onDelete={() => confirmRemoveFile(removeFileFromTool({ toolId: tool._id, fileId: f._id || f.driveFileId }), f.name)}
                         />
                       ))}
                       {(tool.folders || []).map((folder) => (
-                        <div key={folder._id || folder.name}>
+                        <div key={folder._id || folder.driveFileId || folder.name}>
                           <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-surface-raised border-y border-subtle">
                             <IoFolderOutline size={12} className="text-amber-400 flex-shrink-0" />
                             <span className="text-xs text-secondary font-medium truncate">{folder.name}</span>
                           </div>
                           {(folder.files || []).map((f) => (
                             <SubRow
-                              key={f._id}
+                              key={f._id || f.driveFileId}
                               name={f.name}
-                              onDelete={() => confirmRemoveFile(removeFileFromTool({ toolId: tool._id, fileId: f._id }), f.name)}
+                              onDelete={() => confirmRemoveFile(removeFileFromTool({ toolId: tool._id, fileId: f._id || f.driveFileId }), f.name)}
                             />
                           ))}
                         </div>
@@ -873,22 +873,22 @@ const ProfilePage = () => {
                     >
                       {(section.files || []).map((f) => (
                         <SubRow
-                          key={f._id}
+                          key={f._id || f.driveFileId}
                           name={f.name}
-                          onDelete={() => confirmRemoveFile(removeFileFromSection({ sectionId: section._id, fileId: f._id }), f.name)}
+                          onDelete={() => confirmRemoveFile(removeFileFromSection({ sectionId: section._id, fileId: f._id || f.driveFileId }), f.name)}
                         />
                       ))}
                       {(section.folders || []).map((folder) => (
-                        <div key={folder._id || folder.name}>
+                        <div key={folder._id || folder.driveFileId || folder.name}>
                           <div className="flex items-center gap-2 pl-8 pr-5 py-1.5 bg-surface-raised border-y border-subtle">
                             <IoFolderOutline size={12} className="text-emerald-400 flex-shrink-0" />
                             <span className="text-xs text-secondary font-medium truncate">{folder.name}</span>
                           </div>
                           {(folder.files || []).map((f) => (
                             <SubRow
-                              key={f._id}
+                              key={f._id || f.driveFileId}
                               name={f.name}
-                              onDelete={() => confirmRemoveFile(removeFileFromSection({ sectionId: section._id, fileId: f._id }), f.name)}
+                              onDelete={() => confirmRemoveFile(removeFileFromSection({ sectionId: section._id, fileId: f._id || f.driveFileId }), f.name)}
                             />
                           ))}
                         </div>

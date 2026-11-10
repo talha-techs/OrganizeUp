@@ -310,15 +310,45 @@ const removeFileFromTool = async (req, res) => {
       return res.status(404).json({ message: "Tool not found" });
     }
 
-    const isOwner = tool.addedBy.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === "admin";
+    const isOwner =
+      tool.addedBy &&
+      tool.addedBy.toString() === req.user._id.toString();
+    const isAdmin = req.user && req.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    tool.files = tool.files.filter(
-      (f) => f._id.toString() !== req.params.fileId,
-    );
+    const targetFileId = decodeURIComponent(String(req.params.fileId));
+    const matchesTarget = (f) => {
+      if (!f) return false;
+      const fId = f._id ? String(f._id) : null;
+      const driveId = f.driveFileId ? String(f.driveFileId) : null;
+      return (
+        (fId && fId === targetFileId) ||
+        (driveId && driveId === targetFileId)
+      );
+    };
+
+    if (Array.isArray(tool.files)) {
+      tool.files = tool.files.filter((f) => !matchesTarget(f));
+    }
+
+    const filterFolderFiles = (folders) => {
+      if (!Array.isArray(folders)) return;
+      for (const folder of folders) {
+        if (!folder) continue;
+        if (Array.isArray(folder.files)) {
+          folder.files = folder.files.filter((f) => !matchesTarget(f));
+        }
+        if (Array.isArray(folder.subfolders)) {
+          filterFolderFiles(folder.subfolders);
+        }
+      }
+    };
+    filterFolderFiles(tool.folders);
+
+    tool.markModified("files");
+    tool.markModified("folders");
 
     await tool.save();
 

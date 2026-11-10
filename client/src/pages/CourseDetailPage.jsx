@@ -31,6 +31,7 @@ import {
   fetchCategories,
   importToCourse,
   removeFileFromCourse,
+  removeFolderFromCourse,
   clearCurrentCourse,
   fetchCourseProgress,
   updateCourseFileProgress,
@@ -242,6 +243,7 @@ const FolderTree = ({
   completedFiles = [],
   onToggleComplete,
   onRemoveFile,
+  onRemoveFolder,
   canManage,
   depth = 0,
 }) => {
@@ -254,11 +256,18 @@ const FolderTree = ({
 
   return (
     <div className="mb-2.5">
-      {/* Folder Header / Collapsible Dropdown Button */}
-      <button
-        type="button"
+      {/* Folder Header / Collapsible Dropdown */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2.5 py-2.5 px-3 w-full rounded-xl bg-surface/60 hover:bg-surface-raised border border-subtle/50 transition-all cursor-pointer text-left group"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
+        className="flex items-center gap-2.5 py-2.5 px-3 w-full rounded-xl bg-surface/60 hover:bg-surface-raised border border-subtle/50 transition-all cursor-pointer text-left group select-none"
         style={{ marginLeft: `${depth * 16}px`, width: `calc(100% - ${depth * 16}px)` }}
       >
         <span className="text-secondary group-hover:text-primary transition-transform duration-200">
@@ -286,8 +295,21 @@ const FolderTree = ({
               <IoCheckmarkCircle size={11} /> {completedCount}/{folderFiles.length}
             </span>
           )}
+          {canManage && onRemoveFolder && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveFolder(folder);
+              }}
+              className="p-1 rounded-md text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+              title="Delete folder and contents"
+            >
+              <IoTrashOutline size={14} />
+            </button>
+          )}
         </div>
-      </button>
+      </div>
 
       {/* Expanded Folder Content (Subfolders and Files) */}
       {expanded && (
@@ -314,12 +336,13 @@ const FolderTree = ({
           {/* Subfolders with recursive structure */}
           {folder.subfolders?.map((sub, i) => (
             <FolderTree
-              key={sub.driveFileId || i}
+              key={sub.driveFileId || sub._id || i}
               folder={sub}
               onFileClick={onFileClick}
               completedFiles={completedFiles}
               onToggleComplete={onToggleComplete}
               onRemoveFile={onRemoveFile}
+              onRemoveFolder={onRemoveFolder}
               canManage={canManage}
               depth={depth + 1}
             />
@@ -397,6 +420,27 @@ const CourseDetailPage = () => {
       dispatch(fetchCourse(id));
     } catch (err) {
       toast.error(err || 'Failed to remove file');
+    }
+  };
+
+  const handleRemoveFolder = async (folder) => {
+    const folderId = folder.driveFileId || folder._id || folder.path || folder.name;
+    if (!folderId) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to delete folder "${folder.name}" and all its contents?`
+      )
+    ) {
+      return;
+    }
+    try {
+      await dispatch(
+        removeFolderFromCourse({ courseId: id, folderId })
+      ).unwrap();
+      toast.success(`Folder "${folder.name}" removed`);
+      dispatch(fetchCourse(id));
+    } catch (err) {
+      toast.error(err || 'Failed to remove folder');
     }
   };
 
@@ -727,11 +771,12 @@ const CourseDetailPage = () => {
               <div className="space-y-1">
                 {currentCourse.folders.map((folder, i) => (
                   <FolderTree
-                    key={folder.driveFileId || i}
+                    key={folder.driveFileId || folder._id || i}
                     folder={folder}
                     completedFiles={completedFiles}
                     onToggleComplete={handleToggleComplete}
                     onRemoveFile={handleRemoveFile}
+                    onRemoveFolder={handleRemoveFolder}
                     onFileClick={setSelectedFile}
                     canManage={canManage}
                   />

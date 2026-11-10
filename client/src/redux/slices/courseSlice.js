@@ -117,11 +117,29 @@ export const removeFileFromCourse = createAsyncThunk(
   "courses/removeFile",
   async ({ courseId, fileId }, { rejectWithValue }) => {
     try {
-      const { data } = await api.delete(`/courses/${courseId}/files/${fileId}`);
+      const { data } = await api.delete(
+        `/courses/${courseId}/files/${encodeURIComponent(fileId)}`,
+      );
       return { courseId, fileId, course: data.course };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to remove file",
+      );
+    }
+  },
+);
+
+export const removeFolderFromCourse = createAsyncThunk(
+  "courses/removeFolder",
+  async ({ courseId, folderId }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(
+        `/courses/${courseId}/folders/${encodeURIComponent(folderId)}`,
+      );
+      return { courseId, folderId, course: data.course };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to remove folder",
       );
     }
   },
@@ -265,6 +283,18 @@ const courseSlice = createSlice({
       })
       // Remove file
       .addCase(removeFileFromCourse.fulfilled, (state, action) => {
+        if (action.payload.course) {
+          const idx = state.courses.findIndex(
+            (c) => c._id === action.payload.course._id,
+          );
+          if (idx !== -1) state.courses[idx] = action.payload.course;
+          if (state.currentCourse?._id === action.payload.course._id) {
+            state.currentCourse = action.payload.course;
+          }
+        }
+      })
+      // Remove folder
+      .addCase(removeFolderFromCourse.fulfilled, (state, action) => {
         if (action.payload.course) {
           const idx = state.courses.findIndex(
             (c) => c._id === action.payload.course._id,

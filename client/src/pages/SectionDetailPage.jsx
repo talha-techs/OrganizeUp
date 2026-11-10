@@ -1114,7 +1114,7 @@ const SectionDetailPage = () => {
                             </span>
                           )}
                           {canManage && (
-                            <button onClick={(e) => { e.stopPropagation(); handleRemoveFile(file._id); }}
+                            <button onClick={(e) => { e.stopPropagation(); handleRemoveFile(file._id || file.driveFileId); }}
                               className="p-1 rounded hover:bg-red-500/10 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer">
                               <IoTrashOutline size={14} />
                             </button>
