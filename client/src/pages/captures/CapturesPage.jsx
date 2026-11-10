@@ -397,13 +397,13 @@ const CapturesPage = () => {
       await dispatch(
         updateCapture({
           id: maximizedCapture._id,
-          notes: maximizedNoteDraft,
+          data: { notes: maximizedNoteDraft },
         }),
       ).unwrap();
       toast.success('Note saved in Vault');
       setMaximizedCapture((prev) => (prev ? { ...prev, notes: maximizedNoteDraft } : null));
     } catch (err) {
-      toast.error('Failed to save note');
+      toast.error(err || 'Failed to save note');
     } finally {
       setIsSavingMaximizedNote(false);
     }
@@ -2145,7 +2145,13 @@ const CapturesPage = () => {
                         rows={8}
                         value={maximizedNoteDraft}
                         onChange={(e) => setMaximizedNoteDraft(e.target.value)}
-                        placeholder="Capture key insights, quotes, action items, or study notes for this resource..."
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveMaximizedNote();
+                          }
+                        }}
+                        placeholder="Capture key insights, quotes, action items, or study notes for this resource... (Ctrl+Enter to save)"
                         className="w-full flex-1 min-h-[160px] p-4 rounded-2xl bg-surface border border-subtle focus:border-accent text-xs text-primary leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-accent transition-all placeholder:text-muted/60"
                       />
 

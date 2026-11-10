@@ -49,8 +49,13 @@ export const createCapture = createAsyncThunk(
 
 export const updateCapture = createAsyncThunk(
   "captures/updateCapture",
-  async ({ id, data: updateData }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const id = payload?.id;
+      const updateData =
+        payload?.data !== undefined
+          ? payload.data
+          : (({ id: _id, ...rest }) => rest)(payload || {});
       const { data } = await api.put(`/captures/${id}`, updateData);
       return data;
     } catch (error) {

@@ -1625,7 +1625,7 @@ const updateCapture = async (req, res) => {
       mediaType: updateMediaType,
       embedUrl,
       images: updateImages,
-    } = req.body;
+    } = req.body || {};
 
     if (title !== undefined) capture.title = title.trim();
     if (notes !== undefined) capture.notes = notes.trim();
