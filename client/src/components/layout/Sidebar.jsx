@@ -176,6 +176,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       title: 'Knowledge',
       collapsible: true,
       items: [
+        { to: '/habits', label: 'Habit Tracker', icon: IoCheckmarkDoneOutline },
         { to: '/notes', label: 'Quick NotePad', icon: IoJournalOutline },
         { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
         { to: '/explore', label: 'Explore Hub', icon: IoCompassOutline },

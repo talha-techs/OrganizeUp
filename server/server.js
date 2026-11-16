@@ -35,6 +35,7 @@ const suggestionRoutes = require("./routes/suggestions");
 const pushRoutes = require("./routes/pushRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const noteRoutes = require("./routes/notes");
+const habitRoutes = require("./routes/habits");
 const internalRoutes = require("./routes/internalRoutes");
 const { processDueReminders } = require("./services/reminderService");
 const CapturedResource = require("./models/CapturedResource");
@@ -212,6 +213,7 @@ app.use("/api/suggestions", apiLimiter, suggestionRoutes);
 app.use("/api/push", apiLimiter, pushRoutes);
 app.use("/api/notifications", apiLimiter, notificationRoutes);
 app.use("/api/notes", noteRoutes);
+app.use("/api/habits", apiLimiter, habitRoutes);
 app.use("/api/internal", internalRoutes);
 
 // Image & file serving from GridFS or R2

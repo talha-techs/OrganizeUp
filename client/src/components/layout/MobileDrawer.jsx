@@ -22,6 +22,7 @@ import {
   IoHelpCircleOutline,
   IoOpenOutline,
   IoJournalOutline,
+  IoCheckmarkDoneOutline,
 } from 'react-icons/io5';
 import { FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 import { logout } from '../../redux/slices/authSlice';
@@ -120,6 +121,7 @@ const MobileDrawer = ({ isOpen, onClose }) => {
       title: 'Knowledge',
       collapsible: true,
       items: [
+        { to: '/habits', label: 'Habit Tracker', icon: IoCheckmarkDoneOutline },
         { to: '/notes', label: 'Quick NotePad', icon: IoJournalOutline },
         { to: '/workspaces', label: 'Workspaces', icon: IoFolderOutline },
         { to: '/explore', label: 'Explore Hub', icon: IoCompassOutline },

@@ -67,6 +67,7 @@ const DiscordLibrary = lazyWithRetry(() => import('./pages/discord/DiscordLibrar
 const CapturesPage = lazyWithRetry(() => import('./pages/captures/CapturesPage'), 'CapturesPage');
 const SuggestionsPage = lazyWithRetry(() => import('./pages/SuggestionsPage'), 'SuggestionsPage');
 const NotesPage = lazyWithRetry(() => import('./pages/notes/NotesPage'), 'NotesPage');
+const HabitTrackerPage = lazyWithRetry(() => import('./pages/HabitTrackerPage'), 'HabitTrackerPage');
 
 import SplashScreen from './components/layout/SplashScreen';
 import InstallPrompt from './components/layout/InstallPrompt';
@@ -219,6 +220,7 @@ const App = () => {
               <Route path="/workspaces" element={<SectionsPage />} />
               <Route path="/workspaces/:id" element={<SectionDetailPage />} />
               <Route path="/notes" element={<NotesPage />} />
+              <Route path="/habits" element={<HabitTrackerPage />} />
               <Route path="/sections" element={<Navigate to="/workspaces" replace />} />
               <Route path="/sections/:id" element={<WorkspaceLegacyRedirect />} />
               <Route path="/youtube-playlists" element={<YouTubePlaylistsPage />} />
