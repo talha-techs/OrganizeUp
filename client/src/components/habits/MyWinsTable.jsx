@@ -11,6 +11,7 @@ import {
   IoCloseOutline,
 } from 'react-icons/io5';
 import { updateWinMilestone, updateHabitProfile } from '../../redux/slices/habitSlice';
+import ThemeDatePicker from '../ui/ThemeDatePicker';
 import toast from 'react-hot-toast';
 
 const MyWinsTable = () => {
@@ -170,11 +171,10 @@ const MyWinsTable = () => {
                       </td>
 
                       <td className="py-3 px-4">
-                        <input
-                          type="date"
+                        <ThemeDatePicker
                           value={achievedDateDraft}
-                          onChange={(e) => setAchievedDateDraft(e.target.value)}
-                          className="text-xs px-2.5 py-1.5 rounded-lg bg-surface border border-subtle text-primary focus:outline-none"
+                          onChange={(val) => setAchievedDateDraft(val)}
+                          placeholder="Pick date..."
                         />
                       </td>
 
@@ -236,7 +236,23 @@ const MyWinsTable = () => {
                     </td>
 
                     <td className="py-3 px-4 text-secondary whitespace-nowrap">
-                      {win.achievedDate || (isAchieved ? 'Achieved' : '—')}
+                      {win.achievedDate ? (
+                        <span className="font-medium text-primary">
+                          {(() => {
+                            const p = String(win.achievedDate).split('-');
+                            if (p.length === 3) {
+                              const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                              const mIdx = parseInt(p[1], 10) - 1;
+                              if (mIdx >= 0 && mIdx < 12) return `${months[mIdx]} ${parseInt(p[2], 10)}, ${p[0]}`;
+                            }
+                            return win.achievedDate;
+                          })()}
+                        </span>
+                      ) : isAchieved ? (
+                        <span className="text-emerald-400 font-medium">Achieved</span>
+                      ) : (
+                        '—'
+                      )}
                     </td>
 
                     <td className="py-3 px-4 text-muted truncate max-w-[220px]">

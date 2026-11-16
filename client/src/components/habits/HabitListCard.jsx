@@ -111,9 +111,6 @@ const HabitListCard = ({ onToggleCollapse, isCollapsed: externalCollapsed }) => 
   };
 
   const handleDeleteHabit = async (habit) => {
-    if (!window.confirm(`Delete habit "${habit.name}" and remove its column from tables?`)) {
-      return;
-    }
     try {
       await dispatch(deleteHabit(habit._id)).unwrap();
       toast.success('Habit removed');
