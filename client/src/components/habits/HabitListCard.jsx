@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IoAddOutline,
@@ -7,15 +7,35 @@ import {
   IoPencilOutline,
   IoTrashOutline,
   IoListOutline,
+  IoChevronBack,
+  IoChevronForward,
 } from 'react-icons/io5';
 import { addHabit, updateHabit, deleteHabit } from '../../redux/slices/habitSlice';
 import { detectHabitIcon, COMMON_EMOJIS } from './habitIcons';
 import toast from 'react-hot-toast';
 
-const HabitListCard = () => {
+const HabitListCard = ({ onToggleCollapse, isCollapsed: externalCollapsed }) => {
   const dispatch = useDispatch();
   const { profile } = useSelector((state) => state.habits);
   const habits = profile?.habits || [];
+
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (externalCollapsed !== undefined) return externalCollapsed;
+    return localStorage.getItem('organizeup_habit_list_collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    if (externalCollapsed !== undefined) {
+      setIsCollapsed(externalCollapsed);
+    }
+  }, [externalCollapsed]);
+
+  const toggleCollapse = () => {
+    const next = !isCollapsed;
+    setIsCollapsed(next);
+    localStorage.setItem('organizeup_habit_list_collapsed', String(next));
+    if (onToggleCollapse) onToggleCollapse(next);
+  };
 
   const [isAdding, setIsAdding] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
@@ -102,29 +122,84 @@ const HabitListCard = () => {
     }
   };
 
+  // Render Collapsed Sidebar Strip
+  if (isCollapsed) {
+    return (
+      <div
+        onClick={toggleCollapse}
+        className="w-12 shrink-0 bg-surface/80 hover:bg-surface border border-subtle rounded-2xl py-4 px-1 flex flex-col items-center gap-3 cursor-pointer shadow-sm transition-all group"
+        title="Click to expand Habit List"
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleCollapse();
+          }}
+          className="p-1.5 rounded-lg bg-surface-raised hover:bg-accent hover:text-white text-secondary transition-colors"
+          title="Expand Habit List"
+        >
+          <IoChevronForward size={14} />
+        </button>
+
+        <div className="flex items-center gap-1 text-[11px] font-bold text-secondary tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 select-none py-1 group-hover:text-primary transition-colors">
+          Habit List ({habits.length})
+        </div>
+
+        <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-subtle/60 w-full overflow-hidden">
+          {habits.slice(0, 8).map((h) => (
+            <span key={h._id} className="text-sm select-none" title={h.name}>
+              {h.icon}
+            </span>
+          ))}
+          {habits.length > 8 && (
+            <span className="text-[10px] text-muted font-mono">+{habits.length - 8}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Render Expanded Card
   return (
-    <div className="w-full md:w-72 lg:w-80 shrink-0 bg-surface/80 backdrop-blur-md rounded-2xl border border-subtle p-5 shadow-sm">
+    <div className="w-full md:w-72 lg:w-80 shrink-0 bg-surface/80 backdrop-blur-md rounded-2xl border border-subtle p-5 shadow-sm transition-all">
       {/* Header */}
       <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-subtle">
         <div className="flex items-center gap-2">
           <IoListOutline size={18} className="text-secondary" />
           <h3 className="text-base font-semibold text-primary tracking-tight">Habit List</h3>
+          <span className="text-[11px] font-mono text-muted bg-surface-raised px-1.5 py-0.5 rounded border border-subtle/50">
+            {habits.length}
+          </span>
         </div>
-        {!isAdding && (
+
+        <div className="flex items-center gap-1">
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdding(true);
+                setNewHabitName('');
+                setNewHabitIcon('');
+              }}
+              className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 transition-colors p-1 rounded-md hover:bg-surface-raised cursor-pointer mr-1"
+              title="Add new habit"
+            >
+              <IoAddOutline size={16} />
+              <span>Add</span>
+            </button>
+          )}
+
+          {/* Collapse Button */}
           <button
             type="button"
-            onClick={() => {
-              setIsAdding(true);
-              setNewHabitName('');
-              setNewHabitIcon('');
-            }}
-            className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 transition-colors p-1 rounded-md hover:bg-surface-raised cursor-pointer"
-            title="Add new habit"
+            onClick={toggleCollapse}
+            className="p-1 rounded-lg text-muted hover:text-primary hover:bg-surface-raised transition-colors cursor-pointer"
+            title="Collapse Habit List"
           >
-            <IoAddOutline size={16} />
-            <span>Add</span>
+            <IoChevronBack size={16} />
           </button>
-        )}
+        </div>
       </div>
 
       {/* Habits List */}

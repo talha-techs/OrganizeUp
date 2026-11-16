@@ -53,12 +53,29 @@ const getHabitProfile = async (req, res) => {
       profile.columnOrder = profile.habits.map((h) => String(h._id));
       await profile.save();
     } else {
+      // Clean up removed default habits if present
+      const removedPatterns = ["no corn/alcohol", "pray namaz", "recite darood"];
+      const hadRemoved = profile.habits.some((h) =>
+        removedPatterns.some((pattern) => h.name.toLowerCase().includes(pattern))
+      );
+      if (hadRemoved) {
+        const removedIds = new Set(
+          profile.habits
+            .filter((h) =>
+              removedPatterns.some((pattern) => h.name.toLowerCase().includes(pattern))
+            )
+            .map((h) => String(h._id))
+        );
+        profile.habits = profile.habits.filter((h) => !removedIds.has(String(h._id)));
+        profile.columnOrder = (profile.columnOrder || []).filter((id) => !removedIds.has(id));
+      }
+
       // Ensure columnOrder has all habits
       const existingIds = profile.habits.map((h) => String(h._id));
       const currentOrder = profile.columnOrder || [];
       const missingIds = existingIds.filter((id) => !currentOrder.includes(id));
-      if (missingIds.length > 0) {
-        profile.columnOrder = [...currentOrder, ...missingIds];
+      if (missingIds.length > 0 || hadRemoved) {
+        profile.columnOrder = [...currentOrder.filter((id) => existingIds.includes(id)), ...missingIds];
         await profile.save();
       }
     }

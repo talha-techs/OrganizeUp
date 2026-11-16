@@ -4,16 +4,13 @@ const defaultHabits = [
   { name: "Sleep 7-8 hours", icon: "💤", order: 0 },
   { name: "Eat healthy meals", icon: "🥗", order: 1 },
   { name: "Social media ≤ 90min", icon: "📱", order: 2 },
-  { name: "No corn/alcohol", icon: "🚫", order: 3 },
-  { name: "Drink 2L water", icon: "💧", order: 4 },
-  { name: "Study ≥ 2 hours", icon: "💻", order: 5 },
-  { name: "Exercise 30 minutes", icon: "🏋️", order: 6 },
-  { name: "Read 30 minutes", icon: "📖", order: 7 },
-  { name: "Journal & self-reflect", icon: "✍️", order: 8 },
-  { name: "Plan tomorrow's tasks", icon: "📋", order: 9 },
-  { name: "LeetCode Problem", icon: "💻", order: 10 },
-  { name: "Pray Namaz", icon: "🕌", order: 11 },
-  { name: "Recite Darood sharif = 20", icon: "🤲", order: 12 },
+  { name: "Drink 2L water", icon: "💧", order: 3 },
+  { name: "Study ≥ 2 hours", icon: "💻", order: 4 },
+  { name: "Exercise 30 minutes", icon: "🏋️", order: 5 },
+  { name: "Read 30 minutes", icon: "📖", order: 6 },
+  { name: "Journal & self-reflect", icon: "✍️", order: 7 },
+  { name: "Plan tomorrow's tasks", icon: "📋", order: 8 },
+  { name: "LeetCode Problem", icon: "💻", order: 9 },
 ];
 
 const defaultWins = [

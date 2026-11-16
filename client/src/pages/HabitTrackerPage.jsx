@@ -6,9 +6,9 @@ import {
   IoChevronForward,
   IoFlameOutline,
   IoGridOutline,
-  IoListOutline,
   IoTodayOutline,
   IoCheckmarkCircleOutline,
+  IoLayersOutline,
 } from 'react-icons/io5';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import HabitListCard from '../components/habits/HabitListCard';
@@ -34,7 +34,8 @@ const HabitTrackerPage = () => {
   const dispatch = useDispatch();
   const { profile, isLoading, stats } = useSelector((state) => state.habits);
 
-  const [activeTab, setActiveTab] = useState('week'); // 'week' | 'month' | 'gallery' | 'wins'
+  // Top Tabs: 'tracker' (Unified page containing This Week + This Month + My Wins) vs 'gallery' (Monthly Overview 12-month gallery)
+  const [activeTab, setActiveTab] = useState('tracker'); // 'tracker' | 'gallery'
 
   // Editable Tagline
   const [isEditingTagline, setIsEditingTagline] = useState(false);
@@ -128,20 +129,17 @@ const HabitTrackerPage = () => {
     return dates;
   }, [currentMonthRef]);
 
-  // Fetch logs whenever active range changes
+  // Fetch logs for both week and month when in tracker tab
   useEffect(() => {
-    let startDate = '';
-    let endDate = '';
+    if (activeTab === 'tracker' && weekDates.length > 0 && monthDates.length > 0) {
+      const weekStart = weekDates[0].dateStr;
+      const weekEnd = weekDates[weekDates.length - 1].dateStr;
+      const monthStart = monthDates[0].dateStr;
+      const monthEnd = monthDates[monthDates.length - 1].dateStr;
 
-    if (activeTab === 'week' && weekDates.length > 0) {
-      startDate = weekDates[0].dateStr;
-      endDate = weekDates[weekDates.length - 1].dateStr;
-    } else if (activeTab === 'month' && monthDates.length > 0) {
-      startDate = monthDates[0].dateStr;
-      endDate = monthDates[monthDates.length - 1].dateStr;
-    }
+      const startDate = weekStart < monthStart ? weekStart : monthStart;
+      const endDate = weekEnd > monthEnd ? weekEnd : monthEnd;
 
-    if (startDate && endDate) {
       dispatch(fetchHabitLogs({ startDate, endDate }));
     }
   }, [dispatch, activeTab, weekDates, monthDates]);
@@ -201,8 +199,8 @@ const HabitTrackerPage = () => {
   }
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Aesthetic Top Tagline Banner */}
+    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 space-y-8">
+      {/* Aesthetic Top Tagline Banner & Streak Counter */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5 text-xs">
           <span className="w-1 h-4 bg-accent rounded-full inline-block" />
@@ -247,51 +245,37 @@ const HabitTrackerPage = () => {
 
         {/* Quick Streak Pill */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('wins')}
+          <a
+            href="#my-wins-section"
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/20 text-orange-400 text-xs font-semibold transition-colors cursor-pointer"
-            title="View Streaks & Wins"
+            title="Jump to My Wins"
           >
             <IoFlameOutline size={15} />
             <span>{stats?.currentStreak || 0}d Streak</span>
-          </button>
+          </a>
         </div>
       </div>
 
-      {/* View Switcher Tabs */}
-      <div className="flex items-center justify-between gap-4 flex-wrap border-b border-subtle pb-3">
+      {/* Primary Tab Switcher: Tracker vs Monthly Overview */}
+      <div className="flex items-center justify-between border-b border-subtle pb-3">
         <div className="flex items-center gap-1 bg-surface-raised p-1 rounded-xl border border-subtle">
           <button
             type="button"
-            onClick={() => setActiveTab('week')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'week'
+            onClick={() => setActiveTab('tracker')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'tracker'
                 ? 'bg-accent text-white shadow-sm'
                 : 'text-secondary hover:text-primary hover:bg-surface'
             }`}
           >
-            <IoCalendarOutline size={15} />
-            <span>This Week</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('month')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'month'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-secondary hover:text-primary hover:bg-surface'
-            }`}
-          >
-            <IoTodayOutline size={15} />
-            <span>This Month</span>
+            <IoLayersOutline size={15} />
+            <span>Habit Tracker</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('gallery')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'gallery'
                 ? 'bg-accent text-white shadow-sm'
                 : 'text-secondary hover:text-primary hover:bg-surface'
@@ -300,134 +284,123 @@ const HabitTrackerPage = () => {
             <IoGridOutline size={15} />
             <span>Monthly Overview</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('wins')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'wins'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-secondary hover:text-primary hover:bg-surface'
-            }`}
-          >
-            <IoCheckmarkCircleOutline size={15} />
-            <span>My Wins</span>
-          </button>
         </div>
 
-        {/* Date Jump Navigator (for Week or Month views) */}
-        {activeTab === 'week' && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-secondary hidden sm:inline">
-              {weekDates[0]?.displayDate} – {weekDates[6]?.displayDate}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={prevWeek}
-                className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
-                title="Previous Week"
-              >
-                <IoChevronBack size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={jumpToTodayWeek}
-                className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={nextWeek}
-                className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
-                title="Next Week"
-              >
-                <IoChevronForward size={15} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'month' && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-secondary hidden sm:inline">
-              {MONTH_NAMES[currentMonthRef.getMonth()]} {currentMonthRef.getFullYear()}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={prevMonth}
-                className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
-                title="Previous Month"
-              >
-                <IoChevronBack size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={jumpToTodayMonth}
-                className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
-              >
-                Current Month
-              </button>
-              <button
-                type="button"
-                onClick={nextMonth}
-                className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
-                title="Next Month"
-              >
-                <IoChevronForward size={15} />
-              </button>
-            </div>
+        {activeTab === 'tracker' && (
+          <div className="hidden sm:flex items-center gap-3 text-xs text-muted">
+            <span className="flex items-center gap-1">• Drag habit icons to reorder columns</span>
           </div>
         )}
       </div>
 
-      {/* Main Content Area */}
-      {activeTab === 'week' && (
-        <div className="flex flex-col md:flex-row items-start gap-6">
-          {/* Left: Habit List Card */}
-          <HabitListCard />
-
-          {/* Right: This Week Table */}
-          <div className="flex-1 w-full overflow-hidden space-y-3">
-            <div className="flex items-center justify-between px-1">
+      {/* TRACKER VIEW: Unified page with This Week + This Month + My Wins */}
+      {activeTab === 'tracker' && (
+        <div className="space-y-10">
+          {/* SECTION 1: THIS WEEK */}
+          <section className="space-y-3">
+            {/* Week Header with Navigation */}
+            <div className="flex items-center justify-between flex-wrap gap-2 px-1">
               <div className="flex items-center gap-2">
                 <IoCalendarOutline size={18} className="text-secondary" />
                 <h2 className="text-base font-semibold text-primary">This Week</h2>
+                <span className="text-xs text-secondary font-medium hidden sm:inline">
+                  ({weekDates[0]?.displayDate} – {weekDates[6]?.displayDate})
+                </span>
               </div>
-              <span className="text-xs text-muted">
-                Tip: Drag habit icons to reorder columns
-              </span>
+
+              {/* Week Navigation Controls */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={prevWeek}
+                  className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
+                  title="Previous Week"
+                >
+                  <IoChevronBack size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={jumpToTodayWeek}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={nextWeek}
+                  className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
+                  title="Next Week"
+                >
+                  <IoChevronForward size={15} />
+                </button>
+              </div>
             </div>
 
-            <HabitTable dates={weekDates} tableName="This Week" />
-          </div>
+            {/* Content: Collapsible Habit List Card + This Week Table */}
+            <div className="flex flex-col md:flex-row items-start gap-4">
+              <HabitListCard />
+              <div className="flex-1 w-full overflow-hidden">
+                <HabitTable dates={weekDates} tableName="This Week" />
+              </div>
+            </div>
+          </section>
+
+          {/* SECTION 2: THIS MONTH */}
+          <section className="space-y-3 pt-4 border-t border-subtle/70">
+            {/* Month Header with Navigation */}
+            <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <IoTodayOutline size={18} className="text-secondary" />
+                <h2 className="text-base font-semibold text-primary">This Month</h2>
+                <span className="text-xs text-secondary font-medium">
+                  ({MONTH_NAMES[currentMonthRef.getMonth()]} {currentMonthRef.getFullYear()})
+                </span>
+              </div>
+
+              {/* Month Navigation Controls */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={prevMonth}
+                  className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
+                  title="Previous Month"
+                >
+                  <IoChevronBack size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={jumpToTodayMonth}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-xs font-medium text-secondary hover:text-primary transition-colors cursor-pointer"
+                >
+                  Current Month
+                </button>
+                <button
+                  type="button"
+                  onClick={nextMonth}
+                  className="p-1.5 rounded-lg bg-surface hover:bg-surface-raised border border-subtle text-secondary hover:text-primary transition-colors cursor-pointer"
+                  title="Next Month"
+                >
+                  <IoChevronForward size={15} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content: Full Month Habit Table */}
+            <HabitTable
+              dates={monthDates}
+              showMonthColumn={true}
+              tableName={`Month - ${MONTH_NAMES[currentMonthRef.getMonth()]}`}
+            />
+          </section>
+
+          {/* SECTION 3: MY WINS & STREAKS */}
+          <section id="my-wins-section" className="pt-4 border-t border-subtle/70">
+            <MyWinsTable />
+          </section>
         </div>
       )}
 
-      {activeTab === 'month' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <IoTodayOutline size={18} className="text-secondary" />
-              <h2 className="text-base font-semibold text-primary">
-                This Month ({MONTH_NAMES[currentMonthRef.getMonth()]})
-              </h2>
-            </div>
-            <span className="text-xs text-muted">
-              Drag habit icons to change column positions
-            </span>
-          </div>
-
-          <HabitTable
-            dates={monthDates}
-            showMonthColumn={true}
-            tableName={`Month - ${MONTH_NAMES[currentMonthRef.getMonth()]}`}
-          />
-        </div>
-      )}
-
+      {/* MONTHLY OVERVIEW GALLERY VIEW: 12-Month Cards */}
       {activeTab === 'gallery' && (
         <MonthlyOverviewGallery
           year={galleryYear}
@@ -437,8 +410,6 @@ const HabitTrackerPage = () => {
           }}
         />
       )}
-
-      {activeTab === 'wins' && <MyWinsTable />}
     </div>
   );
 };
